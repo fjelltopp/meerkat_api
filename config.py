@@ -9,7 +9,8 @@ class Config(object):
     DEBUG = False
     TESTING = False
     # Global stuff
-    
+    SQLALCHEMY_DATABASE_URI = (
+        'postgresql+psycopg2://postgres:postgres@db/meerkat_db')
 class Production(Config):
     DEBUG = False
     TESTING = False

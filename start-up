@@ -1,0 +1,7 @@
+#!/bin/bash
+cd ../meerkat_abacus
+pip3 install .
+python3 meerkat_abacus/manage.py -l all
+cd ../meerkat_api
+pip3 install .
+./runserver.py
