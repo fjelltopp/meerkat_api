@@ -25,7 +25,3 @@ class Location(Resource):
         return row_to_dict(db.session.query(model.Locations).filter(
             model.Locations.id == location_id).first())
 
-class GeoJSON(Resource):
-    """
-    GEOJSON for 
-    """

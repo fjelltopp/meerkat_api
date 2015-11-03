@@ -11,6 +11,7 @@ class Config(object):
     # Global stuff
     SQLALCHEMY_DATABASE_URI = (
         'postgresql+psycopg2://postgres:postgres@db/meerkat_db')
+    SQLALCHEMY_TRACK_MODIFICATIONS = False
 class Production(Config):
     DEBUG = False
     TESTING = False

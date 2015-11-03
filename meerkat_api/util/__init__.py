@@ -2,6 +2,8 @@
 meerkat_api util functions
 
 """
+from datetime import datetime
+
 
 def row_to_dict(row):
     """
@@ -31,3 +33,16 @@ def rows_to_dicts(rows):
     for row in rows:
         data_dicts.append(row_to_dict(row))
     return data_dicts
+
+
+def date_to_epi_week(day=datetime.today()):
+    """
+    Converts a datetime object to an epi_week
+ 
+    Args:
+       day: datetime
+    Returns:
+        epi_week(int): epi week
+
+    """
+    return int((day -  datetime(day.year, 1, 1)).days // 7 + 1)
