@@ -103,8 +103,26 @@ class MeerkatFrontendTestCase(unittest.TestCase):
             model.form_tables["case"]).filter(
             model.form_tables["case"].data.contains(
                 {"intro./visit_type": 'new', "pt1./gender": "female"}))
-        self.assertEqual(data['3']["year"],len(results.all()))
-    
+        self.assertEqual(data['3']["year"], len(results.all()))
+        
+    def test_clinics(self):
+        rv = self.app.get('/clinics/1')
+        self.assertEqual(rv.status_code, 200)
+        data = json.loads(rv.data.decode("utf-8"))
+        self.assertEqual(len(data["features"]),4)
 
+    def test_map(self):
+        rv = self.app.get('/map/1')
+        self.assertEqual(rv.status_code, 200)
+        data = json.loads(rv.data.decode("utf-8"))
+        self.assertEqual(len(data), 4)
+        geo_location = data[0]["geolocation"]
+        results = meerkat_api.db.session.query(model.Data).filter(
+            model.Data.variables.has_key("1"),
+            model.Data.geolocation == geo_location)
+        
+        self.assertEqual(data[0]["value"], len(results.all()))
+
+                         
 if __name__ == '__main__':
     unittest.main()

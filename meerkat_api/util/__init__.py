@@ -45,4 +45,28 @@ def date_to_epi_week(day=datetime.today()):
         epi_week(int): epi week
 
     """
-    return int((day -  datetime(day.year, 1, 1)).days // 7 + 1)
+    return int((day - datetime(day.year, 1, 1)).days // 7 + 1)
+
+
+def is_child(parent, child, locations):
+    """
+    Determines if child is child of parent
+
+    Args:
+        parent: parent_id
+        child: child_id
+        locations: all locations in dict
+
+    Reutrns
+       is_child(Boolean)
+    """
+    parent = int(parent)
+    child = int(child)
+    if child == parent or parent == 1:
+        return True
+    loc_id = child
+    while loc_id != 1:
+        loc_id = locations[loc_id].parent_location
+        if loc_id == parent:
+            return True
+    return False

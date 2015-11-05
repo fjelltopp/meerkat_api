@@ -21,6 +21,7 @@ from meerkat_api.resources.locations import Location, Locations
 from meerkat_api.resources.variables import Variables, Variable
 from meerkat_api.resources.data import Aggregate, AggregateYear
 from meerkat_api.resources.data import AggregateCategory
+from meerkat_api.resources.map import Clinics, MapVariable
 
 api.add_resource(Locations, "/locations")
 api.add_resource(Location, "/location/<location_id>")
@@ -33,7 +34,8 @@ api.add_resource(AggregateYear,
 api.add_resource(AggregateCategory,
                  "/aggregate_category/<category>/<location_id>",
                  "/aggregate_category/<category>/<location_id>/<year>")
-
+api.add_resource(Clinics, "/clinics/<location_id>")
+api.add_resource(MapVariable, "/map/<variable_id>")
 
 @app.route('/')
 def hello_world():
