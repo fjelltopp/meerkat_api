@@ -22,6 +22,7 @@ from meerkat_api.resources.variables import Variables, Variable
 from meerkat_api.resources.data import Aggregate, AggregateYear
 from meerkat_api.resources.data import AggregateCategory
 from meerkat_api.resources.map import Clinics, MapVariable
+from meerkat_api.resources.explore import QueryVariable, QueryCategory
 
 api.add_resource(Locations, "/locations")
 api.add_resource(Location, "/location/<location_id>")
@@ -36,6 +37,14 @@ api.add_resource(AggregateCategory,
                  "/aggregate_category/<category>/<location_id>/<year>")
 api.add_resource(Clinics, "/clinics/<location_id>")
 api.add_resource(MapVariable, "/map/<variable_id>")
+api.add_resource(QueryVariable,
+                 "/query_variable/<variable>/<group_by>",
+                 "/query_variable/<variable>/<group_by>"
+                 "/<start_date>/<end_date>")
+api.add_resource(QueryCategory,
+                 "/query_category/<group_by1>/<group_by2>",
+                 "/query_category/<group_by1>/<group_by2>"
+                 "/<start_date>/<end_date>")
 
 @app.route('/')
 def hello_world():
