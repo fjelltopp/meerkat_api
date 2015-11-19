@@ -48,4 +48,4 @@ api.add_resource(QueryCategory,
 
 @app.route('/')
 def hello_world():
-    return 'Hello WHO 2!'
+    return str(dict(app.config))
