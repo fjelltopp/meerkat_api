@@ -31,7 +31,32 @@ class UtilTests(unittest.TestCase):
         assert util.is_child("3", "7", locations)
         assert not util.is_child(3, 6, locations)
         assert not util.is_child(2, 5, locations)
+    def test_get_children(self):
+        """ test get_children"""
+        locations = {1: model.Locations(name="Demo"),
+                     2: model.Locations(name="Region 1",
+                                        parent_location=1),
+                     3: model.Locations(name="Region 2",
+                                        parent_location=1),
+                     4: model.Locations(name="District 1",
+                                        parent_location=2),
+                     5: model.Locations(name="District 2",
+                                        parent_location=3),
+                     6: model.Locations(name="Clinic 1",
+                                        parent_location=4,
+                                        case_report=1),
+                     7: model.Locations(name="Clinic 2",
+                                        parent_location=5,
+                                        case_report=1),
+        }
+        children = util.get_children(1,locations)
+        assert children == [6,7]
+        children = util.get_children(2,locations)
+        assert children == [6]
+        children = util.get_children(6,locations)
+        assert children == [6]
 
+        
     
         
 

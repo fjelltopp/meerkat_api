@@ -247,7 +247,59 @@ class MeerkatAPITestCase(unittest.TestCase):
         else:
             assert("20-59" not in data["Male"])
 
+    def test_alert(self):
+        """test alert"""
+        results = meerkat_api.db.session.query(model.Alerts).first()
+        rv = self.app.get('/alert/' + results.id)
+        self.assertEqual(rv.status_code, 200)
+        data = json.loads(rv.data.decode("utf-8"))
+        assert data["alerts"]["id"] == results.id
+        results = meerkat_api.db.session.query(model.Links)\
+                .filter(model.Links.link_def == 1).first()
+        rv = self.app.get('/alert/' + results.link_value)
+        self.assertEqual(rv.status_code, 200)
+        data = json.loads(rv.data.decode("utf-8"))
+        print(data)
+        assert "links" in data.keys()
 
-                         
+    def test_alerts(self):
+        """test alerts"""
+        rv = self.app.get('/alerts')
+        self.assertEqual(rv.status_code, 200)
+        data = json.loads(rv.data.decode("utf-8"))
+        results = meerkat_api.db.session.query(model.Alerts).all()
+        links = meerkat_api.db.session.query(model.Links).filter(
+            model.Links.link_def == 1).all()
+        link_ids = []
+        for l in links:
+            link_ids.append(l.link_value)
+        for d in data["alerts"]:
+            if d["alerts"]["id"] in link_ids:
+                assert "links" in d
+            else:
+                assert "links" not in d
+        
+        assert len(data["alerts"]) == len(results)
+
+        rv = self.app.get('/alerts?reason=44')
+        self.assertEqual(rv.status_code, 200)
+        data = json.loads(rv.data.decode("utf-8"))
+        results = meerkat_api.db.session.query(model.Alerts).filter(
+            model.Alerts.reason == 44).all()
+        assert len(data["alerts"]) == len(results)
+
+        rv = self.app.get('/alerts?location=11')
+        self.assertEqual(rv.status_code, 200)
+        data = json.loads(rv.data.decode("utf-8"))
+        results = meerkat_api.db.session.query(model.Alerts).filter(
+            model.Alerts.clinic == 11).all()
+        assert len(data["alerts"]) == len(results)
+        rv = self.app.get('/alerts?location=1')
+        self.assertEqual(rv.status_code, 200)
+        data = json.loads(rv.data.decode("utf-8"))
+        results = meerkat_api.db.session.query(model.Alerts).all()
+        assert len(data["alerts"]) == len(results)
+
+        
 if __name__ == '__main__':
     unittest.main()

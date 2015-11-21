@@ -13,6 +13,7 @@ class Config(object):
         'postgresql+psycopg2://postgres:postgres@db/meerkat_db')
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     APPLICATION_ROOT = "/api"
+    PROPAGATE_EXCEPTIONS = True
 class Production(Config):
     DEBUG = False
     TESTING = False

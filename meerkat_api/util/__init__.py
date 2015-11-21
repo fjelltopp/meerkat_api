@@ -3,6 +3,7 @@ meerkat_api util functions
 
 """
 from datetime import datetime
+from flask import jsonify
 
 
 def row_to_dict(row):
@@ -15,8 +16,18 @@ def row_to_dict(row):
     Returns:
     data_dict: data as dictionary
     """
-    return dict((col, getattr(row, col))
-                for col in row.__table__.columns.keys())
+    if hasattr(row, "__table__"):
+        return dict((col, getattr(row, col))
+                    for col in row.__table__.columns.keys())
+    else:
+        ret = {}
+        for table in row:
+            if table:
+                ret[table.__tablename__] = dict(
+                    (col, getattr(table, col)) for col
+                    in table.__table__.columns.keys())
+        return ret
+
 
 
 def rows_to_dicts(rows):
@@ -70,3 +81,22 @@ def is_child(parent, child, locations):
         if loc_id == parent:
             return True
     return False
+
+
+def get_children(parent, locations):
+    """
+    Return all clinics that are children of parent
+
+    Args:
+        parent: parent_id
+        locations: all locations in dict
+
+    Reutrns
+       list of location ids
+    """
+    ret = []
+    for location_id in locations.keys():
+        if locations[location_id].case_report:
+            if is_child(parent, location_id, locations):
+                ret.append(location_id)
+    return ret
