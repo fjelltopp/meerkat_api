@@ -299,7 +299,20 @@ class MeerkatAPITestCase(unittest.TestCase):
         data = json.loads(rv.data.decode("utf-8"))
         results = meerkat_api.db.session.query(model.Alerts).all()
         assert len(data["alerts"]) == len(results)
-
+        
+    def test_location_tree(self):
+        rv = self.app.get('/locationtree')
+        self.assertEqual(rv.status_code, 200)
+        data = json.loads(rv.data.decode("utf-8"))
+        assert data["text"] == "Demo"
+        nodes = data["nodes"]
+        ids = []
+        for n in nodes:
+            ids.append(n["id"])
+        assert 2 in ids
+        assert 3 in ids
+        assert 4 not in ids
+        assert 5 not in ids
         
 if __name__ == '__main__':
     unittest.main()
