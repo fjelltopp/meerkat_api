@@ -15,7 +15,7 @@ from meerkat_abacus import model
 # Create the Flask app
 app = Flask(__name__)
 app.config.from_object('config.Development')
-app.config.from_envvar('MEERKAT_API_SETTINGS', silent=True)
+app.config.from_envvar('MEERKAT_API_SETTINGS', silent=False)
 db = SQLAlchemy(app)
 api = Api(app)
 
