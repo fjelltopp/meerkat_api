@@ -2,7 +2,7 @@ language: python
 python:
 - '3.4'
 env:
-- MEERKAT_ABACUS_DB_URL='postgresql+psycopg2://postgres:postgres@localhost/meerkat_db MEERKAT_BRANCH='set-up-api'
+- MEERKAT_ABACUS_DB_URL='postgresql+psycopg2://postgres:postgres@localhost/meerkat_db' MEERKAT_BRANCH='set-up-api'
 addons:
   postgresql: '9.4'
 services:
