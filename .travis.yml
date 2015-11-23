@@ -3,6 +3,7 @@ python:
 - '3.4'
 env:
 - MEERKAT_ABACUS_DB_URL='postgresql+psycopg2://postgres:postgres@localhost/meerkat_db'
+- MEERKAT_BRNACH='set-up-api'
 addons:
   postgresql: '9.4'
 services:
@@ -12,6 +13,8 @@ install:
 - git clone https://github.com/who-emro/meerkat_abacus.git
 - pip install -r meerkat_abacus/requirements.txt
 - cd meerkat_abacus
+- git checkout $MEERKAT_BRANCH
+- pip install .
 - python meerkat_abacus/manage.py all
 - cd ..
 
