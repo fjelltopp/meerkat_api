@@ -265,7 +265,30 @@ class MeerkatAPITestCase(unittest.TestCase):
         data = json.loads(rv.data.decode("utf-8"))
         print(data)
         assert "links" in data.keys()
+        
+    def test_aggregate_alert(self):
+        """test aggregate_alerts"""
+        results = meerkat_api.db.session.query(model.Alerts).all()
+        rv = self.app.get('/aggregate_alerts')
+        self.assertEqual(rv.status_code, 200)
+        data = json.loads(rv.data.decode("utf-8"))
+        assert data["total"] == len(results)
+        reason = list(data.keys())
+        reason.remove("total")
+        reason = reason[0]
+        tot = 0
+        for r in results:
+            if str(r.reason) == str(reason):
+                tot += 1
+        assert tot == sum(data[reason].values())
+        rv = self.app.get('/aggregate_alerts?location=11')
+        self.assertEqual(rv.status_code, 200)
+        data = json.loads(rv.data.decode("utf-8"))
+        results = meerkat_api.db.session.query(model.Alerts).filter(
+            model.Alerts.clinic == 11).all()
+        assert data["total"] == len(results)
 
+    
     def test_alerts(self):
         """test alerts"""
         rv = self.app.get('/alerts')

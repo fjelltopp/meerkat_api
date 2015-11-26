@@ -37,7 +37,7 @@ from meerkat_api.resources.variables import Variables, Variable
 from meerkat_api.resources.data import Aggregate, AggregateYear
 from meerkat_api.resources.data import AggregateCategory
 from meerkat_api.resources.map import Clinics, MapVariable
-from meerkat_api.resources.alerts import Alert, Alerts
+from meerkat_api.resources.alerts import Alert, Alerts, AggregateAlerts
 from meerkat_api.resources.explore import QueryVariable, QueryCategory
 
 api.add_resource(Locations, "/locations")
@@ -48,6 +48,7 @@ api.add_resource(Variable, "/variable/<variable_id>")
 api.add_resource(Aggregate, "/aggregate/<variable_id>/<location_id>")
 api.add_resource(Alert, "/alert/<alert_id>")
 api.add_resource(Alerts, "/alerts")
+api.add_resource(AggregateAlerts, "/aggregate_alerts")
 api.add_resource(AggregateYear,
                  "/aggregate_year/<variable_id>/<location_id>",
                  "/aggregate_year/<variable_id>/<location_id>/<year>")
