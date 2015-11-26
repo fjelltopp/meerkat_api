@@ -43,7 +43,19 @@ class MeerkatAPITestCase(unittest.TestCase):
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(rv.status_code, 200)
         self.assertEqual(len(data), 11)
-        
+    def test_tot_clinics(self):
+        """Check tot_clinics"""
+        rv = self.app.get('/tot_clinics/1')
+        data = json.loads(rv.data.decode("utf-8"))
+        self.assertEqual(rv.status_code, 200)
+        results = meerkat_api.db.session.query(
+            model.Locations).filter(
+                model.Locations.case_report == "1").all()
+        assert data["total"] == len(results)
+        rv = self.app.get('/tot_clinics/2')
+        data = json.loads(rv.data.decode("utf-8"))
+        self.assertEqual(rv.status_code, 200)
+        assert data["total"] == 3
     def test_location(self):
         """Check locations"""
         rv = self.app.get('/location/1')

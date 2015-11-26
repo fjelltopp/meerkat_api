@@ -32,7 +32,7 @@ class CustomJSONEncoder(JSONEncoder):
         return JSONEncoder.default(self, obj)
 app.json_encoder = CustomJSONEncoder
 
-from meerkat_api.resources.locations import Location, Locations, LocationTree
+from meerkat_api.resources.locations import Location, Locations, LocationTree, TotClinics
 from meerkat_api.resources.variables import Variables, Variable
 from meerkat_api.resources.data import Aggregate, AggregateYear
 from meerkat_api.resources.data import AggregateCategory
@@ -43,6 +43,7 @@ from meerkat_api.resources.explore import QueryVariable, QueryCategory
 api.add_resource(Locations, "/locations")
 api.add_resource(LocationTree, "/locationtree")
 api.add_resource(Location, "/location/<location_id>")
+api.add_resource(TotClinics, "/tot_clinics/<location_id>")
 api.add_resource(Variables, "/variables/<category>")
 api.add_resource(Variable, "/variable/<variable_id>")
 api.add_resource(Aggregate, "/aggregate/<variable_id>/<location_id>")
