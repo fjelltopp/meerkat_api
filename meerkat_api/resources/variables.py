@@ -20,7 +20,7 @@ class Variables(Resource):
                 model.AggregationVariables.category.has_key(category))
         else:
             results = db.session.query(model.AggregationVariables)
-        return rows_to_dicts(results.all())
+        return rows_to_dicts(results.all(), dict_id="id")
 
     
 class Variable(Resource):

@@ -30,7 +30,7 @@ def row_to_dict(row):
 
 
 
-def rows_to_dicts(rows):
+def rows_to_dicts(rows, dict_id=None):
     """
     translate sql alchemy rows to dicts
 
@@ -40,9 +40,14 @@ def rows_to_dicts(rows):
     Returns:
     data_dicts: data as dictionary
     """
-    data_dicts = []
-    for row in rows:
-        data_dicts.append(row_to_dict(row))
+    if dict_id:
+        data_dicts = {}
+        for row in rows:
+            data_dicts[getattr(row, dict_id)] = row_to_dict(row)
+    else:
+        data_dicts = []
+        for row in rows:
+            data_dicts.append(row_to_dict(row))
     return data_dicts
 
 
