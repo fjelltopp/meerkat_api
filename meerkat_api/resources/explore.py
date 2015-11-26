@@ -36,7 +36,7 @@ def get_variables(category):
     """
     variables_instance = Variables()
     variables = variables_instance.get(category)
-    names = dict((str(v["id"]), v["name"]) for v in variables)
+    names = dict((str(v), variables[v]["name"]) for v in variables.keys())
     return names
 
 class QueryVariable(Resource):

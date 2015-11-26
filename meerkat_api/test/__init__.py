@@ -63,6 +63,8 @@ class MeerkatAPITestCase(unittest.TestCase):
         rv = self.app.get('/variables/gender')
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(rv.status_code, 200)
+        assert "2" in data.keys()
+        assert "3" in data.keys()
         self.assertEqual(len(data), 2)
 
     def test_aggregate(self):
@@ -125,6 +127,7 @@ class MeerkatAPITestCase(unittest.TestCase):
             model.Data.geolocation == geo_location)
         
         self.assertEqual(data[0]["value"], len(results.all()))
+        
     def test_query_variable(self):
         rv = self.app.get('/query_variable/1/gender')
         self.assertEqual(rv.status_code, 200)
@@ -145,6 +148,7 @@ class MeerkatAPITestCase(unittest.TestCase):
             model.Data.variables.has_key("3"),
             extract("year", model.Data.date) == year)
         assert(data["Female"]["total"] == len(results.all()))
+
     def test_query_variable_location(self):
         """Test with variable = location"""
         year = datetime.today().year

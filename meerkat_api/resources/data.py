@@ -86,8 +86,8 @@ class AggregateCategory(Resource):
         aggregate_year = AggregateYear()
 
         return_data = {}
-        for variable in variables:
-            return_data[variable["id"]] = aggregate_year.get(variable["id"],
-                                                             location_id,
-                                                             year)
+        for variable in variables.keys():
+            return_data[variable] = aggregate_year.get(variable,
+                                                       location_id,
+                                                       year)
         return return_data
