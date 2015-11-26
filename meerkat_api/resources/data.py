@@ -63,7 +63,7 @@ class AggregateYear(Resource):
                                                     Data.district,
                                                     Data.clinic))
         ).group_by("week")
-        weeks = dict((el[1], el[0]) for el in results.all())
+        weeks = dict((int(el[1]), el[0]) for el in results.all())
         return {"weeks": weeks, "year": sum(weeks.values())}
 
 
