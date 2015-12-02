@@ -76,7 +76,7 @@ class AggregateAlerts(Resource):
         for a in all_alerts:
             reason = a[0].reason
             if a[1]:
-                status = a[1].data["Status"][0]
+                status = a[1].data["status"]
             else:
                 status = "Pending"
             r = ret.setdefault(str(reason), {})
