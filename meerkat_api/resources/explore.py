@@ -10,7 +10,7 @@ from sqlalchemy.sql.expression import cast
 from meerkat_api.util import row_to_dict, rows_to_dicts, date_to_epi_week
 from meerkat_api import db, app
 from meerkat_abacus.model import Data
-from meerkat_abacus.database_util import get_locations
+from meerkat_abacus.util import get_locations, epi_week_start_date
 from meerkat_api.resources.variables import Variables
 
 def sort_date(start_date,end_date):
@@ -65,11 +65,11 @@ class QueryVariable(Resource):
                 Data.country, Data.region, Data.district, Data.clinic))]
         else:
             conditions = [Data.variables.has_key(variable)] + date_conditions
-            
+        epi_week_start = epi_week_start_date(year)
         columns_to_extract = [func.count(Data.id).label('value'),
                               func.floor(
                                   extract('days', Data.date -
-                                          datetime(year, 1, 1)) / 7 + 1
+                                          epi_week_start) / 7 + 1
                               ).label("week")]
         if group_by == "locations":
             locations = get_locations(db.session)

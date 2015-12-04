@@ -8,7 +8,7 @@ from sqlalchemy import func
 from meerkat_api.util import row_to_dict, rows_to_dicts, is_child, get_children
 from meerkat_api import db, app
 from meerkat_abacus import model
-from meerkat_abacus.database_util import get_locations
+from meerkat_abacus.util import get_locations
 
 
 

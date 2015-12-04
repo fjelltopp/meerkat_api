@@ -39,6 +39,11 @@ from meerkat_api.resources.data import AggregateCategory
 from meerkat_api.resources.map import Clinics, MapVariable
 from meerkat_api.resources.alerts import Alert, Alerts, AggregateAlerts
 from meerkat_api.resources.explore import QueryVariable, QueryCategory
+from meerkat_api.resources.epi_week import EpiWeek, EpiWeekStart
+
+api.add_resource(EpiWeek, "/epi_week",
+                 "/epi_week/<date>")
+api.add_resource(EpiWeekStart, "/epi_week_start/<year>/<epi_week>")
 
 api.add_resource(Locations, "/locations")
 api.add_resource(LocationTree, "/locationtree")

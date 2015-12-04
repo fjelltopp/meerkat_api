@@ -36,6 +36,22 @@ class MeerkatAPITestCase(unittest.TestCase):
         rv = self.app.get('/')
         self.assertEqual(rv.status_code, 200)
         self.assertIn(b'WHO', rv.data)
+        
+    def test_epi_week(self):
+        rv = self.app.get('/epi_week/2015-01-02')
+        data = json.loads(rv.data.decode("utf-8"))
+        self.assertEqual(rv.status_code, 200)
+        assert str(data["epi-week"]) == str(1)
+        rv = self.app.get('/epi_week/2015-12-02')
+        data = json.loads(rv.data.decode("utf-8"))
+        self.assertEqual(rv.status_code, 200)
+        assert str(data["epi-week"]) == str(48)
+
+    def test_epi_week_start(self):
+        rv = self.app.get('/epi_week_start/2015/49')
+        data = json.loads(rv.data.decode("utf-8"))
+        self.assertEqual(rv.status_code, 200)
+        assert data["start_date"] == "2015-12-03T00:00:00"
 
     def test_locations(self):
         """Check locations"""
