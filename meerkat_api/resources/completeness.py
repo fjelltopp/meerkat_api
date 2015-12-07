@@ -48,9 +48,9 @@ class Completeness(Resource):
                  extract('year', Data.date) == year,
 
         ).group_by("week", "clinic","region")
-        last_year = {}
-        last_week = {}
-        last_day = {}
+        last_year = {1: 0}
+        last_week = {1: 0}
+        last_day = {1: 0}
         clinic_data = {1: {}}
         for r in results.all():
             last_year.setdefault(r[3], 0)
@@ -60,15 +60,22 @@ class Completeness(Resource):
             clinic_data[1].setdefault(r[2], {"day": 0, "week": 0, "year": 0})
             clinic_data[r[3]][r[2]]["year"] += r[0]
             clinic_data[1][r[2]]["year"] += r[0]
-            if r[0] > number_per_week:
-                last_year[r[3]] += 1
+            if r[0] >= number_per_week:
+                last_year[r[3]] += number_per_week
+                last_year[1] += number_per_week
+            else:
+                last_year[r[3]] += r[0]
+                last_year[1] += r[0]
             if r[1] == epi_week:
                 last_week.setdefault(r[3], 0)
                 clinic_data[r[3]][r[2]]["week"] += r[0]
                 clinic_data[1][r[2]]["week"] += r[0]
-
-                if r[0] > number_per_week:
-                    last_week[r[3]] += 1
+                if r[0] >= number_per_week:
+                    last_week[r[3]] += number_per_week
+                    last_week[1] += number_per_week
+                else:
+                    last_week[r[3]] += r[0]
+                    last_week[1] += r[0]
         results_daily = db.session.query(
             func.sum(Data.variables[variable].astext.cast(Integer)).label('value'),
             Data.clinic,
@@ -81,23 +88,23 @@ class Completeness(Resource):
             clinic_data[r[3]][r[2]]["day"] += r[0]
             clinic_data[1][r[2]]["day"] += r[0]
 
-            if r[0] > 1:
+            if r[0] >= 1:
+                last_week[1] += 1
                 last_day[r[3]] += 1
 
         n_clinics = {}
-        tot_clinics = TotClinics()
         first_epi_week = date_to_epi_week(db.session.query(
             func.min(Data.date)).first()[0])
         n_weeks = epi_week - first_epi_week
         region_data = {}
-        for region in last_year.keys():
-            n_clinics = tot_clinics.get(region)["total"]
+        for region in list(last_year.keys()) +[1]:
+            n_clinics = len(clinic_data[region].keys())
             
             region_data[region] = {"last_day": last_day.get(region, 0)
                                    / n_clinics*100,
                                    "last_week": last_week.get(region, 0)
-                                   / n_clinics*100,
+                                   / (number_per_week * n_clinics)*100,
                                    "last_year": last_year.get(region, 0)
-                                   / (n_weeks*n_clinics)*100}
+                                   / (n_weeks * n_clinics * number_per_week) * 100}
 
         return {"regions": region_data, "clinics": clinic_data}
