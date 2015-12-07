@@ -17,7 +17,8 @@ class Locations(Resource):
     list of all locations
     """
     def get(self):
-        return rows_to_dicts(db.session.query(model.Locations).all())
+        return rows_to_dicts(db.session.query(model.Locations).all(),
+                             dict_id="id")
 
 class Location(Resource):
     """

@@ -27,7 +27,8 @@ class MeerkatAPITestCase(unittest.TestCase):
             True, True, N=500)
 
         self.app = meerkat_api.app.test_client()
-
+        self.locations = {1: {"name": "Demo"}}
+        self.variables = {1: {"name": "Total"}}
     def tearDown(self):
         pass
 
@@ -46,6 +47,24 @@ class MeerkatAPITestCase(unittest.TestCase):
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(rv.status_code, 200)
         assert str(data["epi-week"]) == str(48)
+
+    def test_completeness(self):
+        #Need some more testing here
+        variable = "1"
+        rv = self.app.get('/completeness/{}/4'.format(variable))
+        data = json.loads(rv.data.decode("utf-8"))
+        self.assertEqual(rv.status_code, 200)
+        assert "clinics" in data.keys()
+        assert "regions" in data.keys()
+        assert "1" in data["clinics"].keys()
+        for clinic in data["clinics"]["1"].keys():
+            results = meerkat_api.db.session.query(
+                model.Data).filter(
+                    model.Data.clinic == clinic,
+                    model.Data.variables.has_key(variable),
+                ).all()
+            assert data["clinics"]["1"][clinic]["year"] == len(results)
+
 
     def test_epi_week_start(self):
         rv = self.app.get('/epi_week_start/2015/49')
@@ -77,14 +96,14 @@ class MeerkatAPITestCase(unittest.TestCase):
         rv = self.app.get('/location/1')
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(rv.status_code, 200)
-        self.assertEqual(data["name"], "Demo")
+        self.assertEqual(data["name"], self.locations[1]["name"])
 
     def test_variable(self):
         """Check locations"""
         rv = self.app.get('/variable/1')
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(rv.status_code, 200)
-        self.assertEqual(data["name"], "Total")
+        self.assertEqual(data["name"], self.variables[1]["name"])
         
     def test_variables(self):
         """Check locations"""
