@@ -47,6 +47,6 @@ class MapVariable(Resource):
                  extract('year', Data.date) == year).group_by("clinic",
                                                               "geolocation")
         locations = get_locations(db.session)
-        return [{"value": r[0], "geolocation": r[1],
+        return [{"value": r[0], "geolocation": r[1].split(","),
                  "clinic": locations[r[2]].name} for r in results.all()]
 

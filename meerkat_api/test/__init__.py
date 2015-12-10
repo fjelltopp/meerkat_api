@@ -171,7 +171,7 @@ class MeerkatAPITestCase(unittest.TestCase):
         geo_location = data[0]["geolocation"]
         results = meerkat_api.db.session.query(model.Data).filter(
             model.Data.variables.has_key("1"),
-            model.Data.geolocation == geo_location)
+            model.Data.geolocation == ",".join(geo_location))
         
         self.assertEqual(data[0]["value"], len(results.all()))
         
