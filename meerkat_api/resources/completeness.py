@@ -84,13 +84,13 @@ class Completeness(Resource):
                  Data.date >= today - timedelta(days=1)
         ).group_by("clinic", "region")
         for r in results_daily.all():
-            last_day.setdefault(r[3], 0)
-            clinic_data[r[3]][r[2]]["day"] += r[0]
-            clinic_data[1][r[2]]["day"] += r[0]
+            last_day.setdefault(r[2], 0)
+            clinic_data[r[2]][r[1]]["day"] += r[0]
+            clinic_data[1][r[1]]["day"] += r[0]
 
             if r[0] >= 1:
                 last_week[1] += 1
-                last_day[r[3]] += 1
+                last_day[r[2]] += 1
 
         n_clinics = {}
         first_epi_week = date_to_epi_week(db.session.query(

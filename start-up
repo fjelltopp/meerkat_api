@@ -1,8 +1,0 @@
-#!/bin/bash
-cd ../meerkat_abacus
-pip3 install -r requirements.txt
-pip3 install -I --no-deps .
-python3 meerkat_abacus/manage.py -l all
-cd ../meerkat_api
-pip3 install -I --no-deps .
-/usr/bin/uwsgi --ini /var/www/uwsgi/app.ini --catch-exceptions --py-autoreload 1
