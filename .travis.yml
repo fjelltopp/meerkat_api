@@ -11,8 +11,9 @@ services:
 - postgresql
 install:
 - pip install -r requirements.txt
-- git clone https://github.com/who-emro/meerkat_abacus.git  who-emro/meerkat_abacus
-- cd /home/travis/build/who-emro
+- git clone https://github.com/who-emro/meerkat_abacus.git
+- pwd
+- ls
 - pip install -r meerkat_abacus/requirements.txt
 - cd meerkat_abacus
 - git checkout $MEERKAT_BRANCH
