@@ -4,7 +4,7 @@ python:
 env:
 - MEERKAT_ABACUS_DB_URL='postgresql+psycopg2://postgres:postgres@localhost/meerkat_db'
   MEERKAT_BRANCH='set-up-api' MEERKAT_API_SETTINGS='../.travis_config'
-  DATA_DIRECTORY='/home/travis/build/who-emro/meerkat_abacus/meerkat_abacus/data/'
+  DATA_DIRECTORY='/home/travis/build/meerkat_abacus/meerkat_abacus/data/'
 addons:
   postgresql: '9.4'
 services:
