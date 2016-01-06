@@ -7,7 +7,7 @@ from datetime import datetime
 from sqlalchemy.sql.expression import cast
 
 from meerkat_api.util import row_to_dict, rows_to_dicts, date_to_epi_week
-from meerkat_api import db
+from meerkat_api import db, app
 from meerkat_abacus.model import Data
 from meerkat_abacus.util import epi_week_start_date
 from meerkat_api.resources.variables import Variables
@@ -50,7 +50,7 @@ class AggregateYear(Resource):
     """
     def get(self, variable_id, location_id, year=datetime.today().year):
         year = int(year)
-        vi= str(variable_id)
+        vi = str(variable_id)
         epi_week_start = epi_week_start_date(year)
         results = db.session.query(
             func.sum(Data.variables[vi].astext.cast(Integer)).label('value'),

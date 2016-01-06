@@ -53,7 +53,7 @@ def get_alerts(args):
     """
     conditions = []
     if "reason" in args.keys():
-        conditions.append(model.Alerts.reason == int(args["reason"]))
+        conditions.append(model.Alerts.reason == args["reason"])
     if "location" in args.keys():
         locations = get_locations(db.session)
         children = get_children(int(args["location"]), locations)
