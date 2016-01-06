@@ -7,6 +7,7 @@ Unit tests for the Meerkat frontend
 import json
 import unittest
 from datetime import datetime
+from datetime import timedelta
 from sqlalchemy import extract
 
 import meerkat_api
@@ -50,8 +51,9 @@ class MeerkatAPITestCase(unittest.TestCase):
 
     def test_completeness(self):
         #Need some more testing here
-        variable = "1"
+        variable = "tot_1"
         rv = self.app.get('/completeness/{}/4'.format(variable))
+        year = datetime.now().year
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(rv.status_code, 200)
         assert "clinics" in data.keys()
@@ -61,7 +63,8 @@ class MeerkatAPITestCase(unittest.TestCase):
             results = meerkat_api.db.session.query(
                 model.Data).filter(
                     model.Data.clinic == clinic,
-                    model.Data.variables.has_key(variable),
+                    extract("year", model.Data.date) == year,
+                    model.Data.variables.has_key(variable)
                 ).all()
             assert data["clinics"]["1"][clinic]["year"] == len(results)
 
@@ -100,7 +103,7 @@ class MeerkatAPITestCase(unittest.TestCase):
 
     def test_variable(self):
         """Check locations"""
-        rv = self.app.get('/variable/1')
+        rv = self.app.get('/variable/tot_1')
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(rv.status_code, 200)
         self.assertEqual(data["name"], self.variables[1]["name"])
@@ -110,13 +113,13 @@ class MeerkatAPITestCase(unittest.TestCase):
         rv = self.app.get('/variables/gender')
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(rv.status_code, 200)
-        assert "2" in data.keys()
-        assert "3" in data.keys()
+        assert "gen_1" in data.keys()
+        assert "gen_2" in data.keys()
         self.assertEqual(len(data), 2)
 
     def test_aggregate(self):
         """Check locations"""
-        rv = self.app.get('/aggregate/1/1')
+        rv = self.app.get('/aggregate/tot_1/1')
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(rv.status_code, 200)
         results = meerkat_api.db.session.query(
@@ -126,9 +129,10 @@ class MeerkatAPITestCase(unittest.TestCase):
         self.assertEqual(data["value"], len(results.all()))
 
     def test_aggregate_yearly(self):
-        """Check locations"""
-        rv = self.app.get('/aggregate_year/1/1')
-        rv2 = self.app.get('/aggregate_year/1/1/2015')
+        """Test for aggregate Yearly"""
+        rv = self.app.get('/aggregate_year/tot_1/1')
+        year = datetime.now().year
+        rv2 = self.app.get('/aggregate_year/tot_1/1/{}'.format(year))
         self.assertEqual(rv.status_code, 200)
         self.assertEqual(rv2.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))
@@ -136,15 +140,18 @@ class MeerkatAPITestCase(unittest.TestCase):
         self.assertEqual(data, data2)
 
         results = meerkat_api.db.session.query(
-            model.form_tables["case"]).filter(
-            model.form_tables["case"].data.contains(
-                {"intro./visit_type": 'new'}))
+            model.Data).filter(
+                extract('year', model.Data.date) == year,
+                model.Data.variables.has_key("tot_1")
+                )
+
         self.assertEqual(data["year"],len(results.all()))
 
     def test_aggregate_category(self):
-        """Check locations"""
+        """Test for aggregate Category """
         rv = self.app.get('/aggregate_category/gender/1')
-        rv2 = self.app.get('/aggregate_category/gender/1/2015')
+        year = datetime.now().year
+        rv2 = self.app.get('/aggregate_category/gender/1/{}'.format(year))
         self.assertEqual(rv.status_code, 200)
         self.assertEqual(rv2.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))
@@ -152,10 +159,11 @@ class MeerkatAPITestCase(unittest.TestCase):
         self.assertEqual(data, data2)
 
         results = meerkat_api.db.session.query(
-            model.form_tables["case"]).filter(
-            model.form_tables["case"].data.contains(
-                {"intro./visit_type": 'new', "pt1./gender": "female"}))
-        self.assertEqual(data['3']["year"], len(results.all()))
+            model.Data).filter(
+                extract('year', model.Data.date) == year,
+                model.Data.variables.has_key("gen_2")
+                )
+        self.assertEqual(data['gen_2']["year"], len(results.all()))
         
     def test_clinics(self):
         rv = self.app.get('/clinics/1')
@@ -164,13 +172,15 @@ class MeerkatAPITestCase(unittest.TestCase):
         self.assertEqual(len(data["features"]),4)
 
     def test_map(self):
-        rv = self.app.get('/map/1')
+        rv = self.app.get('/map/tot_1')
+        year = datetime.now().year
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(len(data), 4)
         geo_location = data[0]["geolocation"]
         results = meerkat_api.db.session.query(model.Data).filter(
-            model.Data.variables.has_key("1"),
+            model.Data.variables.has_key("tot_1"),
+            extract("year", model.Data.date) == year,
             model.Data.geolocation == ",".join(geo_location))
         
         self.assertEqual(data[0]["value"], len(results.all()))
@@ -205,38 +215,40 @@ class MeerkatAPITestCase(unittest.TestCase):
         assert("Female" in data)
         assert("Male" in data)
         results = meerkat_api.db.session.query(model.Data).filter(
-            model.Data.variables.has_key("2"),
+            model.Data.variables.has_key("gen_1"),
             extract("year", model.Data.date) == year)
         assert(data["Male"]["total"] == len(results.all()))
         results = meerkat_api.db.session.query(model.Data).filter(
-            model.Data.variables.has_key("3"),
+            model.Data.variables.has_key("gen_2"),
             extract("year", model.Data.date) == year)
         assert(data["Female"]["total"] == len(results.all()))
     def test_query_variable_locations(self):
         """Test with group_by = locations"""
         year = datetime.today().year
-        rv = self.app.get('/query_variable/1/locations')
+        rv = self.app.get('/query_variable/tot_1/locations')
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))
         assert("Demo" in data)
         assert("Clinic 1" in data)
         results = meerkat_api.db.session.query(model.Data).filter(
             model.Data.region == 2,
-            model.Data.variables.has_key("1"),
+            model.Data.variables.has_key("tot_1"),
             extract("year", model.Data.date) == year)
         assert(data["Region 1"]["total"] == len(results.all()))
     def test_query_variable_dates(self):
         """Test with dates"""
-        rv = self.app.get('/query_variable/1/gender/2015-03-01/2015-07-01')
+        date_end = datetime.now()
+        date_start = date_end - timedelta(days=14)
+        rv = self.app.get('/query_variable/tot_1/gender/{}/{}'.format(date_start.isoformat(),date_end.isoformat()))
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))
         assert("Female" in data)
         assert("Male" in data)
         results = meerkat_api.db.session.query(model.Data).filter(
-            model.Data.variables.has_key("1"),
-            model.Data.variables.has_key("2"),
-            model.Data.date >= datetime(2015, 3, 1),
-            model.Data.date < datetime(2015, 7, 1))
+            model.Data.variables.has_key("tot_1"),
+            model.Data.variables.has_key("gen_1"),
+            model.Data.date >= date_start,
+            model.Data.date < date_end)
         assert data["Male"]["total"] == len(results.all())
 
 
@@ -249,8 +261,8 @@ class MeerkatAPITestCase(unittest.TestCase):
         assert("Female" in data)
         assert("Male" in data)
         results = meerkat_api.db.session.query(model.Data).filter(
-            model.Data.variables.has_key("2"),
-            model.Data.variables.has_key("10"),
+            model.Data.variables.has_key("gen_1"),
+            model.Data.variables.has_key("age_5"),
             extract("year", model.Data.date) == year)
         n_results = len(results.all())
         if n_results > 0:
@@ -269,7 +281,7 @@ class MeerkatAPITestCase(unittest.TestCase):
         assert("Clinic 1" in data)
         results = meerkat_api.db.session.query(model.Data).filter(
             model.Data.region == 2,
-            model.Data.variables.has_key("2"),
+            model.Data.variables.has_key("gen_1"),
             extract("year", model.Data.date) == year)
         n_results = len(results.all())
         if n_results > 0:
@@ -280,17 +292,19 @@ class MeerkatAPITestCase(unittest.TestCase):
     def test_query_category_dates(self):
         """test with dates"""
         year = datetime.today().year
-        rv = self.app.get('/query_category/gender/age/2015-03-01/2015-07-01')
+        date_end = datetime.now()
+        date_start = date_end - timedelta(days=14)
+        rv = self.app.get('/query_category/gender/age/{}/{}'.format(date_start.isoformat(),date_end.isoformat()))
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))
         print(data)
         assert("Female" in data)
         assert("Male" in data)
         results = meerkat_api.db.session.query(model.Data).filter(
-            model.Data.variables.has_key("2"),
-            model.Data.variables.has_key("10"),
-            model.Data.date >= datetime(2015, 3, 1),
-            model.Data.date < datetime(2015, 7, 1))
+            model.Data.variables.has_key("gen_1"),
+            model.Data.variables.has_key("age_5"),
+            model.Data.date >= date_start,
+            model.Data.date < date_end)
         n_results = len(results.all())
         if n_results > 0:
             assert("20-59" in data["Male"])
@@ -355,11 +369,11 @@ class MeerkatAPITestCase(unittest.TestCase):
         
         assert len(data["alerts"]) == len(results)
 
-        rv = self.app.get('/alerts?reason=44')
+        rv = self.app.get('/alerts?reason=moh_24')
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))
         results = meerkat_api.db.session.query(model.Alerts).filter(
-            model.Alerts.reason == 44).all()
+            model.Alerts.reason == "moh_24").all()
         assert len(data["alerts"]) == len(results)
 
         rv = self.app.get('/alerts?location=11')
