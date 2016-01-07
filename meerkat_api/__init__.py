@@ -41,6 +41,7 @@ from meerkat_api.resources.alerts import Alert, Alerts, AggregateAlerts
 from meerkat_api.resources.explore import QueryVariable, QueryCategory
 from meerkat_api.resources.epi_week import EpiWeek, EpiWeekStart
 from meerkat_api.resources.completeness import Completeness
+from meerkat_api.resources.reports import PublicHealth, CdReport
 
 api.add_resource(EpiWeek, "/epi_week",
                  "/epi_week/<date>")
@@ -73,6 +74,11 @@ api.add_resource(QueryCategory,
                  "/query_category/<group_by1>/<group_by2>"
                  "/<start_date>/<end_date>")
 api.add_resource(Completeness, "/completeness/<variable>/<number_per_week>")
+
+#Reports
+
+api.add_resource(PublicHealth, "/reports/public_health/<location>")
+api.add_resource(CdReport, "/reports/cd_report/<location>")
 
 @app.route('/')
 def hello_world():
