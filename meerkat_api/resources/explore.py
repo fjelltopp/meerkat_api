@@ -52,7 +52,7 @@ class QueryVariable(Resource):
     Returns:
         data: {variable_1: {total: X, weeks: {12:X,13:X}}....}
     """
-    def get(self, variable, group_by, start_date=None, end_date=None):
+    def get(self, variable, group_by, start_date=None, end_date=None, only_loc=None):
         variable = str(variable)
         start_date, end_date = sort_date(start_date, end_date)
         year = start_date.year
@@ -65,6 +65,10 @@ class QueryVariable(Resource):
                 Data.country, Data.region, Data.district, Data.clinic))]
         else:
             conditions = [Data.variables.has_key(variable)] + date_conditions
+            if only_loc:
+                conditions += [or_(loc == only_loc for loc in (
+                Data.country, Data.region, Data.district, Data.clinic))]
+                
         epi_week_start = epi_week_start_date(year)
         columns_to_extract = [func.count(Data.id).label('value'),
                               func.floor(
