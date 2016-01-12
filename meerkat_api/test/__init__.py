@@ -43,11 +43,11 @@ class MeerkatAPITestCase(unittest.TestCase):
         rv = self.app.get('/epi_week/2015-01-02')
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(rv.status_code, 200)
-        assert str(data["epi-week"]) == str(1)
+        assert str(data["epi_week"]) == str(1)
         rv = self.app.get('/epi_week/2015-12-02')
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(rv.status_code, 200)
-        assert str(data["epi-week"]) == str(48)
+        assert str(data["epi_week"]) == str(48)
 
     def test_completeness(self):
         #Need some more testing here

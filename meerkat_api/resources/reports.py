@@ -11,7 +11,7 @@ import time
 
 from meerkat_api.util import row_to_dict, rows_to_dicts, date_to_epi_week, get_children
 from meerkat_api import db, app
-from meerkat_abacus.model import Data, Locations, Alerts
+from meerkat_abacus.model import Data, Locations, Alerts, AggregationVariables
 from meerkat_api.resources.variables import Variables
 from meerkat_api.resources.epi_week import EpiWeek
 from meerkat_api.resources.locations import TotClinics
@@ -38,7 +38,7 @@ class CdReport(Resource):
         }
         end_date = end_date - timedelta(days=1)
         ew = EpiWeek()
-        epi_week = ew.get(end_date.isoformat())["epi-week"]
+        epi_week = ew.get(end_date.isoformat())["epi_week"]
 
         ret["data"] = {"epi_week_num": epi_week,
                        "epi_week_date": end_date.isoformat(),
@@ -48,9 +48,14 @@ class CdReport(Resource):
         data = {}
         weeks = [i for i in range(1, epi_week + 1, 1)]
         data_list = [0 for week in weeks]
+        variable_query = db.session.query(AggregationVariables).filter(
+            AggregationVariables.alert == 1)
+        variable_names = {}
+        for v in variable_query.all():
+            variable_names[v.id] = v.name
         for a in all_alerts:
             if a[0].date <= end_date and a[0].date > start_date:
-                reason = a[0].reason
+                reason = variable_names[a[0].reason]
                 report_status = None
                 if a[1]:
                     status = a[1].data["status"]
@@ -60,7 +65,7 @@ class CdReport(Resource):
                         report_status = "suspected"
                 else:
                     report_status = "suspected"
-                epi_week = ew.get(a[0].date.isoformat())["epi-week"]
+                epi_week = ew.get(a[0].date.isoformat())["epi_week"]
                 if report_status:
                     data.setdefault(reason, {"weeks": weeks,
                                              "suspected": list(data_list),
@@ -73,7 +78,7 @@ class CdReport(Resource):
 class PublicHealth(Resource):
     """ Class to return data for the public health report """
     def get(self, location, start_date=None, end_date=None):
-        """ generates date for the Jordan public health report for the year 
+        """ generates date for the public health report for the year 
         up to epi_week for the given location"""
         start = time.time()
         if start_date:
@@ -97,7 +102,7 @@ class PublicHealth(Resource):
         }
         ew = EpiWeek()
         end_date = end_date - timedelta(days=1)
-        epi_week = ew.get(end_date.isoformat())["epi-week"]
+        epi_week = ew.get(end_date.isoformat())["epi_week"]
         ret["data"] = {"epi_week_num": epi_week,
                        "epi_week_date": end_date.isoformat(),
                        "project_epoch": datetime(2015,5,20).isoformat()
@@ -111,9 +116,9 @@ class PublicHealth(Resource):
         ret["data"]["project_region"] = location_name
         #We first add all the summary level data
         tot_clinics = TotClinics()
-        ret["data"]["clinic_num"] = tot_clinics.get(location)
+        ret["data"]["clinic_num"] = tot_clinics.get(location)["total"]
         
-        ret["data"]["global_clinic_num"] = tot_clinics.get(1)
+        ret["data"]["global_clinic_num"] = tot_clinics.get(1)["total"]
         total_cases = get_variable_id("tot_1", start_date, end_date, location, conn)
         ret["data"]["total_cases"] = total_cases
         if total_cases == 0:
@@ -244,12 +249,11 @@ class PublicHealth(Resource):
             tot_sta = 1
         ret["data"]["patient_status"] = []
         for sta in sorted(status, key=status.get, reverse=True):
-            if status[sta] > 0:
-                ret["data"]["patient_status"].append(
-                    make_dict(sta,
-                              status[sta],
-                              status[sta] / tot_sta * 100))
-
+            ret["data"]["patient_status"].append(
+                make_dict(sta,
+                          status[sta],
+                          status[sta] / tot_sta * 100))
+            
 
         #Presenting Complaint
 

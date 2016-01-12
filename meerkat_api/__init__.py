@@ -77,8 +77,13 @@ api.add_resource(Completeness, "/completeness/<variable>/<number_per_week>")
 
 #Reports
 
-api.add_resource(PublicHealth, "/reports/public_health/<location>")
-api.add_resource(CdReport, "/reports/cd_report/<location>")
+api.add_resource(PublicHealth, "/reports/public_health/<location>",
+                 "/reports/public_health/<location>/<end_date>",
+                 "/reports/public_health/<location>/<end_date>/<start_date>")
+api.add_resource(CdReport, "/reports/cd_report/<location>",
+                 "/reports/cd_report/<location>/<end_date>",
+                 "/reports/cd_report/<location>/<end_date>/<start_date>")
+
 
 @app.route('/')
 def hello_world():
