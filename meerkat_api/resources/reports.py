@@ -177,14 +177,16 @@ class PublicHealth(Resource):
 
         #Reporting sites
         locs = get_locations(db.session)
-        sub_locs = get_children(location, locs)
         ret["data"]["reporting_sites"] = []
-        for sl in sub_locs:
-            num = get_variable_id("tot_1", start_date, end_date, sl, conn)
-            ret["data"]["reporting_sites"].append(
-                make_dict(locs[sl].name,
-                          num,
-                          num / total_cases * 100))
+        for l in locs.values():
+            if l.parent_location and int(l.parent_location) == int(location):
+                num = get_variable_id("tot_1",
+                                      start_date,
+                                      end_date, l.id, conn)
+                ret["data"]["reporting_sites"].append(
+                    make_dict(l.name,
+                              num,
+                              num / total_cases * 100))
 
 
         #Alerts
