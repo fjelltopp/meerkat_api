@@ -143,7 +143,7 @@ class PublicHealth(Resource):
         #public health indicators
         ret["data"]["public_health_indicators"] = [
             make_dict("Cases Reported", total_cases, None)]
-        modules = get_variables_category("public", start_date, end_date, location, conn)
+        modules = get_variables_category("module", start_date, end_date, location, conn)
         ret["data"]["public_health_indicators"].append(
             make_dict("Mental Health (mhGAP) algorithm followed",
                       modules["Mental Health (mhGAP)"],
@@ -272,7 +272,7 @@ class PublicHealth(Resource):
             
         ret["data"]["morbidity_communicable"] = get_disease_types("cd", start_date, end_date, location, conn)
         ret["data"]["morbidity_non_communicable"] = get_disease_types("ncd", start_date, end_date, location, conn)
-        ret["data"]["mental_health"] = get_disease_types("mental", start_date, end_date, location, conn)
+        ret["data"]["mental_health"] = get_disease_types("mh", start_date, end_date, location, conn)
 
         ch={}
         query_variable = QueryVariable()
