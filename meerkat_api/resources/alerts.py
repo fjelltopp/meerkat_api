@@ -39,7 +39,7 @@ class Alerts(Resource):
     """
     def get(self):
         args = request.args
-        return jsonify(alerts=rows_to_dicts(get_alerts(args)))
+        return jsonify({"alerts":get_alerts(args).values()})
 
 
 def get_alerts(args):
@@ -61,7 +61,16 @@ def get_alerts(args):
     results = db.session.query(model.Alerts, model.Links).outerjoin(
         model.Links,
         model.Alerts.id == model.Links.link_value).filter(*conditions)
-    return results.all()
+    alerts = {}
+    for r in results.all():
+        if r[0].id not in alerts.keys():
+            alerts[r[0].id] = {"alerts": row_to_dict(r[0])}
+            if r[1]:
+                alerts[r[0].id]["links"] = {r[1].link_def: row_to_dict(r[1])}
+        else:
+            app.logger.info(alerts[r[0].id])
+            alerts[r[0].id]["links"][r[1].link_def] = row_to_dict(r[1])
+    return alerts
     
 class AggregateAlerts(Resource):
     """
@@ -73,12 +82,17 @@ class AggregateAlerts(Resource):
         args = request.args
         all_alerts = get_alerts(args)
         ret = {}
-        for a in all_alerts:
-            reason = a[0].reason
-            if a[1]:
-                status = a[1].data["status"]
+        for a in all_alerts.values():
+            reason = a["alerts"]["reason"]
+            if "links" in a:
+                if "alert_investigation" in a["links"]:
+                    status = a["links"]["alert_investigation"]["data"]["status"]
+                else:
+                    status = "Pending"
+                if "central_review" in a["links"]:
+                    status = a["links"]["central_review"]["data"]["status"]
             else:
-                status = "Pending"
+                status = "Pending"    
             r = ret.setdefault(str(reason), {})
             r.setdefault(status, 0)
             r[status] += 1
