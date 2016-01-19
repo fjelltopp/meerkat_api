@@ -53,19 +53,21 @@ class CdReport(Resource):
         variable_names = {}
         for v in variable_query.all():
             variable_names[v.id] = v.name
-        for a in all_alerts:
-            if a[0].date <= end_date and a[0].date > start_date:
-                reason = variable_names[a[0].reason]
+        for a in all_alerts.values():
+            if a["alerts"]["date"] <= end_date and a["alerts"]["date"] > start_date:
+                reason = variable_names[a["alerts"]["reason"]]
                 report_status = None
-                if a[1]:
-                    status = a[1].data["status"]
+                if "links" in a and "alert_investigation" in a["links"]:
+                    status = a["links"]["alert_investigation"]["data"]["status"]
+                    if "central_review" in a["links"]:
+                        status = a["links"]["central_review"]["data"]["status"]
                     if status == "Confirmed":
                         report_status = "confirmed"
                     elif status != "Disregarded":
                         report_status = "suspected"
                 else:
                     report_status = "suspected"
-                epi_week = ew.get(a[0].date.isoformat())["epi_week"]
+                epi_week = ew.get(a["alerts"]["date"].isoformat())["epi_week"]
                 if report_status:
                     data.setdefault(reason, {"weeks": weeks,
                                              "suspected": list(data_list),
