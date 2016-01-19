@@ -9,7 +9,7 @@ from sqlalchemy.sql.expression import cast
 
 from meerkat_api.util import row_to_dict, rows_to_dicts, date_to_epi_week
 from meerkat_api.resources.locations import TotClinics
-from meerkat_api import db
+from meerkat_api import db,app
 from meerkat_abacus.model import Data
 from meerkat_abacus.util import get_locations, epi_week_start_date
 from meerkat_api.resources.variables import Variables
@@ -89,21 +89,23 @@ class Completeness(Resource):
             clinic_data[1][r[1]]["day"] += r[0]
 
             if r[0] >= 1:
-                last_week[1] += 1
+                last_day[1] += 1
                 last_day[r[2]] += 1
 
         n_clinics = {}
-        first_epi_week = date_to_epi_week(db.session.query(
-            func.min(Data.date)).first()[0])
-        n_weeks = epi_week - first_epi_week
+        first_date = db.session.query(func.min(Data.date)).first()[0]
+        if first_date >= datetime(datetime.now().year, 1, 1):
+            first_epi_week = date_to_epi_week(first_date)
+            n_weeks = epi_week - first_epi_week
+        else:
+            n_weeks = epi_week
         region_data = {}
-        for region in list(last_year.keys()) +[1]:
+        for region in list(last_year.keys()) + [1]:
             n_clinics = len(clinic_data[region].keys())
-            
             region_data[region] = {"last_day": last_day.get(region, 0)
-                                   / n_clinics*100,
+                                   / n_clinics * 100,
                                    "last_week": last_week.get(region, 0)
-                                   / (number_per_week * n_clinics)*100,
+                                   / (number_per_week * n_clinics) * 100,
                                    "last_year": last_year.get(region, 0)
                                    / (n_weeks * n_clinics * number_per_week) * 100}
 

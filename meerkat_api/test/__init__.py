@@ -320,7 +320,7 @@ class MeerkatAPITestCase(unittest.TestCase):
         data = json.loads(rv.data.decode("utf-8"))
         assert data["alerts"]["id"] == results.id
         results = meerkat_api.db.session.query(model.Links)\
-                .filter(model.Links.link_def == 1).first()
+                .filter(model.Links.link_def == "alert_investigation").first()
         rv = self.app.get('/alert/' + results.link_value)
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))
@@ -357,7 +357,7 @@ class MeerkatAPITestCase(unittest.TestCase):
         data = json.loads(rv.data.decode("utf-8"))
         results = meerkat_api.db.session.query(model.Alerts).all()
         links = meerkat_api.db.session.query(model.Links).filter(
-            model.Links.link_def == 1).all()
+            model.Links.link_def == "alert_investigation").all()
         link_ids = []
         for l in links:
             link_ids.append(l.link_value)

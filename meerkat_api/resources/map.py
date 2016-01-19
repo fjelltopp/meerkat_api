@@ -21,7 +21,7 @@ class Clinics(Resource):
         points = []
         for l in locations:
             if (locations[l].case_report and is_child(
-                    location_id, l, locations)):
+                    location_id, l, locations) and locations[l].geolocation):
                 lat, lng = locations[l].geolocation.split(",")
 
                 p = Point((float(lng), float(lat)))
@@ -47,6 +47,10 @@ class MapVariable(Resource):
                  extract('year', Data.date) == year).group_by("clinic",
                                                               "geolocation")
         locations = get_locations(db.session)
-        return [{"value": r[0], "geolocation": r[1].split(","),
-                 "clinic": locations[r[2]].name} for r in results.all()]
+        ret = []
+        for r in results.all():
+            if r[1]:
+                ret.append({"value": r[0], "geolocation": r[1].split(","),
+                            "clinic": locations[r[2]].name})
+        return ret
 
