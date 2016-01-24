@@ -42,10 +42,19 @@ from meerkat_api.resources.explore import QueryVariable, QueryCategory
 from meerkat_api.resources.epi_week import EpiWeek, EpiWeekStart
 from meerkat_api.resources.completeness import Completeness
 from meerkat_api.resources.reports import PublicHealth, CdReport
+from meerkat_api.resources.frontpage import KeyIndicators, TotMap, NumAlerts, ConsultationMap
+
+from meerkat_api.authentication import require_api_key
 
 api.add_resource(EpiWeek, "/epi_week",
                  "/epi_week/<date>")
 api.add_resource(EpiWeekStart, "/epi_week_start/<year>/<epi_week>")
+api.add_resource(KeyIndicators, "/key_indicators")
+api.add_resource(TotMap, "/tot_map")
+api.add_resource(ConsultationMap, "/consultation_map")
+api.add_resource(NumAlerts, "/num_alerts")
+
+
 
 api.add_resource(Locations, "/locations")
 api.add_resource(LocationTree, "/locationtree")
@@ -88,3 +97,9 @@ api.add_resource(CdReport, "/reports/cd_report/<location>",
 @app.route('/')
 def hello_world():
     return "WHO"
+
+
+@app.route('/test-authentication')
+@require_api_key
+def test_authentication():
+    return "Authenticated"

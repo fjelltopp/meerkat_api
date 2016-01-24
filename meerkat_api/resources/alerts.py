@@ -12,6 +12,7 @@ from meerkat_api import db, app
 from meerkat_abacus import model
 from meerkat_abacus.util import get_locations
 from meerkat_api.resources.variables import Variables
+from meerkat_api.authentication import require_api_key
 
 
 
@@ -24,6 +25,7 @@ class Alert(Resource):
     Returns:
         alert
     """
+    decorators = [require_api_key]
     def get(self, alert_id):
         result = db.session.query(model.Alerts, model.Links).outerjoin(
             model.Links, model.Alerts.id == model.Links.link_value).filter(
@@ -37,6 +39,7 @@ class Alerts(Resource):
     Returns:
         alerts
     """
+    decorators = [require_api_key]
     def get(self):
         args = request.args
         return jsonify({"alerts":get_alerts(args).values()})
@@ -51,6 +54,7 @@ def get_alerts(args):
     Returns:
        alerts(list)
     """
+    decorators = [require_api_key]
     conditions = []
     if "reason" in args.keys():
         conditions.append(model.Alerts.reason == args["reason"])
@@ -78,6 +82,7 @@ class AggregateAlerts(Resource):
     Returns:
         alerts
     """
+    decorators = [require_api_key]
     def get(self):
         args = request.args
         all_alerts = get_alerts(args)

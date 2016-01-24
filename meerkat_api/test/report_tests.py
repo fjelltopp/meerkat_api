@@ -24,6 +24,7 @@ class MeerkatAPITestCase(unittest.TestCase):
     def setUp(self):
         """Setup for testing"""
         meerkat_api.app.config['TESTING'] = True
+        meerkat_api.app.config['API_KEY'] = ""
         manage.set_up_everything(
             config.DATABASE_URL,
             True, True, N=500)

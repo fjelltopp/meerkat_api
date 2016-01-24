@@ -1,5 +1,5 @@
 """
-Data resource for querying data
+Data resource for data exploration
 """
 from flask_restful import Resource
 from sqlalchemy import or_, extract, func, Integer
@@ -12,6 +12,7 @@ from meerkat_api import db, app
 from meerkat_abacus.model import Data
 from meerkat_abacus.util import get_locations, epi_week_start_date
 from meerkat_api.resources.variables import Variables
+from meerkat_api.authentication import require_api_key
 
 def sort_date(start_date,end_date):
     """ parses start and end date"""
@@ -52,6 +53,7 @@ class QueryVariable(Resource):
     Returns:
         data: {variable_1: {total: X, weeks: {12:X,13:X}}....}
     """
+    decorators = [require_api_key]
     def get(self, variable, group_by, start_date=None, end_date=None, only_loc=None):
         variable = str(variable)
         start_date, end_date = sort_date(start_date, end_date)
@@ -126,6 +128,7 @@ class QueryCategory(Resource):
     Returns:
         data: {variable_1: {total: X, weeks: {12:X,13:X}}....}
     """
+    decorators = [require_api_key]
     def get(self, group_by1, group_by2, start_date=None, end_date=None):
         start_date, end_date = sort_date(start_date, end_date)
 

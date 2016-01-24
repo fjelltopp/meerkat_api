@@ -23,6 +23,7 @@ class MeerkatAPITestCase(unittest.TestCase):
     def setUp(self):
         """Setup for testing"""
         meerkat_api.app.config['TESTING'] = True
+        meerkat_api.app.config['API_KEY'] = ""
         manage.set_up_everything(
             config.DATABASE_URL,
             True, True, N=500)
@@ -38,7 +39,14 @@ class MeerkatAPITestCase(unittest.TestCase):
         rv = self.app.get('/')
         self.assertEqual(rv.status_code, 200)
         self.assertIn(b'WHO', rv.data)
-        
+    def test_autentication(self):
+        meerkat_api.app.config['API_KEY'] = "test-api"
+        rv = self.app.get("/test-authentication?api_key=test-api")
+        self.assertEqual(rv.status_code, 200)
+        rv = self.app.get("/test-authentication")
+        self.assertEqual(rv.status_code, 401)
+        rv = self.app.get("/test-authentication?api_key=not-real-key")
+        self.assertEqual(rv.status_code, 401)
     def test_epi_week(self):
         rv = self.app.get('/epi_week/2015-01-02')
         data = json.loads(rv.data.decode("utf-8"))

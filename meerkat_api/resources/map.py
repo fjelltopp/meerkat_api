@@ -11,6 +11,7 @@ from meerkat_api import db, app
 from meerkat_abacus import model
 from meerkat_abacus.model import Data
 from meerkat_abacus.util import get_locations
+from meerkat_api.authentication import require_api_key
 
 class Clinics(Resource):
     """
@@ -34,6 +35,7 @@ class MapVariable(Resource):
     """
     json object with a map of variable id
     """
+    decorators = [require_api_key]
     def get(self, variable_id, interval="year"):
         vi= str(variable_id)
         year = datetime.now().year

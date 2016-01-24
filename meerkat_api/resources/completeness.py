@@ -1,5 +1,5 @@
 """
-Data resource for querying data
+Data resource for completeness data
 """
 from flask_restful import Resource
 from flask import request
@@ -13,6 +13,7 @@ from meerkat_api import db,app
 from meerkat_abacus.model import Data
 from meerkat_abacus.util import get_locations, epi_week_start_date
 from meerkat_api.resources.variables import Variables
+from meerkat_api.authentication import require_api_key
 
 
 class Completeness(Resource):
@@ -30,6 +31,7 @@ class Completeness(Resource):
                           clinics gives number of records for last day, 
                           last year and last week
     """
+    decorators = [require_api_key]
     def get(self, variable, number_per_week):
         today = datetime.now()
         year = today.year
