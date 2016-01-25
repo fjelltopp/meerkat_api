@@ -11,7 +11,7 @@ from meerkat_api import db, app
 from meerkat_abacus.model import Data
 from meerkat_abacus.util import epi_week_start_date
 from meerkat_api.resources.variables import Variables
-
+from meerkat_api.authentication import require_api_key
 
 
 class Aggregate(Resource):
@@ -24,6 +24,7 @@ class Aggregate(Resource):
     Returns:
         {"value": value}
     """
+    decorators = [require_api_key]
     def get(self, variable_id, location_id):
         results = db.session.query(Data.variables).filter(
             Data.variables.has_key(variable_id), or_(
@@ -48,6 +49,7 @@ class AggregateYear(Resource):
     Reutrns:
     result_dict: {"weeks":{1:0....}, "year":0}
     """
+    decorators = [require_api_key]
     def get(self, variable_id, location_id, year=datetime.today().year):
         year = int(year)
         vi = str(variable_id)
@@ -80,7 +82,7 @@ class AggregateCategory(Resource):
     Returns:
         result_dict: {variable_id: AggregateYear result_dict}
     """
-
+    decorators = [require_api_key]
     def get(self, category, location_id, year=datetime.today().year):
         variables_instance = Variables()
         variables = variables_instance.get(category)
