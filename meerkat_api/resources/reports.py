@@ -36,6 +36,7 @@ class CdReport(Resource):
                        "generation_timestamp": datetime.now().isoformat(),
                        "schema_version": 0.1
         }
+
         end_date = end_date - timedelta(days=1)
         ew = EpiWeek()
         epi_week = ew.get(end_date.isoformat())["epi_week"]
@@ -44,6 +45,13 @@ class CdReport(Resource):
                        "epi_week_date": end_date.isoformat(),
                        "project_epoch": start_date.isoformat()
         }
+
+        location_name = db.session.query(Locations.name).filter(
+            Locations.id == location).first().name
+        if not location_name:
+            return None
+        ret["data"]["project_region"] = location_name
+
         all_alerts = alerts.get_alerts({"location": location})
         data = {}
         weeks = [i for i in range(1, epi_week + 1, 1)]
