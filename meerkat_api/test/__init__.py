@@ -409,6 +409,19 @@ class MeerkatAPITestCase(unittest.TestCase):
         assert 3 in ids
         assert 4 not in ids
         assert 5 not in ids
+
+    def test_export_data(self):
+        rv = self.app.get('/export/data', headers={"Accept": "text/csv"})
+        self.assertEqual(rv.status_code, 200)
         
+    def test_export_forms(self):
+        for form in ["case", "register", "alert"]:
+            rv = self.app.get('/export/form/{}'.format(form), headers={"Accept": "text/csv"})
+            self.assertEqual(rv.status_code, 200)
+            
+    def test_export_alerts(self):
+        rv = self.app.get('/export/alerts', headers={"Accept": "text/csv"})
+        self.assertEqual(rv.status_code, 200)
+
 if __name__ == '__main__':
     unittest.main()
