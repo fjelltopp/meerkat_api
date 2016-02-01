@@ -8,6 +8,10 @@ from flask.json import JSONEncoder
 from flask.ext.sqlalchemy import SQLAlchemy
 from flask_restful import Api
 from datetime import datetime
+import types
+import io
+import csv
+
 
 from meerkat_abacus import config
 from meerkat_abacus import model
@@ -32,6 +36,32 @@ class CustomJSONEncoder(JSONEncoder):
         return JSONEncoder.default(self, obj)
 app.json_encoder = CustomJSONEncoder
 
+
+@api.representation('text/csv')
+def output_csv(data, code, headers=None):
+    filename = "file"
+    data_is_list = isinstance(data, list)
+    keys = data[0].keys() if data_is_list else data.keys()
+    if isinstance(data, dict) and "keys" in data.keys():
+        keys = data["keys"]
+        filename = data["filename"]
+        data = data["data"]
+        data_is_list = True
+
+    output = io.StringIO()
+    writer = csv.DictWriter(output, keys)
+    writer.writeheader()
+    if data_is_list:
+        writer.writerows(data)
+    else:
+        writer.writerow(data)
+
+    resp = app.make_response(str(output.getvalue()))
+    resp.headers.extend(headers or {
+        "Content-Disposition": "attachment; filename={}.csv".format(filename)})
+
+    return resp
+
 from meerkat_api.resources.locations import Location, Locations, LocationTree, TotClinics
 from meerkat_api.resources.variables import Variables, Variable
 from meerkat_api.resources.data import Aggregate, AggregateYear
@@ -43,7 +73,7 @@ from meerkat_api.resources.epi_week import EpiWeek, EpiWeekStart
 from meerkat_api.resources.completeness import Completeness
 from meerkat_api.resources.reports import PublicHealth, CdReport
 from meerkat_api.resources.frontpage import KeyIndicators, TotMap, NumAlerts, ConsultationMap
-
+from meerkat_api.resources.export_data import ExportData, ExportForm, ExportAlerts
 from meerkat_api.authentication import require_api_key
 
 api.add_resource(EpiWeek, "/epi_week",
@@ -54,7 +84,9 @@ api.add_resource(TotMap, "/tot_map")
 api.add_resource(ConsultationMap, "/consultation_map")
 api.add_resource(NumAlerts, "/num_alerts")
 
-
+api.add_resource(ExportData, "/export/data")
+api.add_resource(ExportForm, "/export/form/<form>")
+api.add_resource(ExportAlerts, "/export/alerts")
 
 api.add_resource(Locations, "/locations")
 api.add_resource(LocationTree, "/locationtree")

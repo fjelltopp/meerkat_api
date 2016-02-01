@@ -54,7 +54,6 @@ def get_alerts(args):
     Returns:
        alerts(list)
     """
-    decorators = [require_api_key]
     conditions = []
     if "reason" in args.keys():
         conditions.append(model.Alerts.reason == args["reason"])
