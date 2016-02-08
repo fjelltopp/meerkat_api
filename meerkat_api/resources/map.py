@@ -36,7 +36,7 @@ class MapVariable(Resource):
     json object with a map of variable id
     """
     decorators = [require_api_key]
-    def get(self, variable_id, interval="year"):
+    def get(self, variable_id, interval="year", include_all_clinics=False):
         vi= str(variable_id)
         year = datetime.now().year
         if interval == "year":
@@ -49,10 +49,17 @@ class MapVariable(Resource):
                  extract('year', Data.date) == year).group_by("clinic",
                                                               "geolocation")
         locations = get_locations(db.session)
-        ret = []
+        ret = {}
         for r in results.all():
             if r[1]:
-                ret.append({"value": r[0], "geolocation": r[1].split(","),
-                            "clinic": locations[r[2]].name})
+                ret[r[2]]= {"value": r[0], "geolocation": r[1].split(","),
+                            "clinic": locations[r[2]].name}
+
+        if include_all_clinics:
+            results = db.session.query(model.Locations)
+            for row in results.all():
+                if row.case_report and row.geolocation and row.id not in ret.keys():
+                    ret[row.id] = {"value": 0, "geolocation": row.geolocation.split(","),
+                                "clinic": row.name}
         return ret
 

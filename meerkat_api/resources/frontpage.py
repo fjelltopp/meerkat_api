@@ -29,14 +29,14 @@ class TotMap(Resource):
     """
     def get(self):
         mv = MapVariable()
-        return mv.get("tot_1")
+        return mv.get("tot_1", include_all_clinics=True)
 class ConsultationMap(Resource):
     """
     Get map fro frontpage
     """
     def get(self):
         mv = MapVariable()
-        return mv.get("reg_1")
+        return mv.get("reg_1", include_all_clinics=True)
 
 class NumAlerts(Resource):
     """

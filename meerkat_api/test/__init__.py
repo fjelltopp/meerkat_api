@@ -185,13 +185,13 @@ class MeerkatAPITestCase(unittest.TestCase):
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(len(data), 4)
-        geo_location = data[0]["geolocation"]
+        geo_location = data[list(data.keys())[0]]["geolocation"]
         results = meerkat_api.db.session.query(model.Data).filter(
             model.Data.variables.has_key("tot_1"),
             extract("year", model.Data.date) == year,
             model.Data.geolocation == ",".join(geo_location))
         
-        self.assertEqual(data[0]["value"], len(results.all()))
+        self.assertEqual(data[list(data.keys())[0]]["value"], len(results.all()))
         
     def test_query_variable(self):
         rv = self.app.get('/query_variable/1/gender')
