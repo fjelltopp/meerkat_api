@@ -18,10 +18,12 @@ from meerkat_api.resources.locations import TotClinics
 from meerkat_api.resources import alerts
 from meerkat_api.resources.explore import QueryVariable
 from meerkat_abacus.util import get_locations
+from meerkat_api.authentication import require_api_key
 
 
 class CdReport(Resource):
     """Class for communical disease report"""
+    decorators = [require_api_key]
     def get(self, location, end_date=None):
         """ generates data for the CD report for the year until the end date for the given location"""
         if end_date:
@@ -87,6 +89,7 @@ class CdReport(Resource):
 
 class PublicHealth(Resource):
     """ Class to return data for the public health report """
+    decorators = [require_api_key]
     def get(self, location, start_date=None, end_date=None):
         """ generates date for the public health report for the year 
         up to epi_week for the given location"""
