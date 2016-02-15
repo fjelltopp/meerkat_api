@@ -105,7 +105,9 @@ api.add_resource(AggregateCategory,
                  "/aggregate_category/<category>/<location_id>",
                  "/aggregate_category/<category>/<location_id>/<year>")
 api.add_resource(Clinics, "/clinics/<location_id>")
-api.add_resource(MapVariable, "/map/<variable_id>")
+api.add_resource(MapVariable, "/map/<variable_id>",
+                 "/map/<variable_id>/<location>")
+
 api.add_resource(QueryVariable,
                  "/query_variable/<variable>/<group_by>",
                  "/query_variable/<variable>/<group_by>"

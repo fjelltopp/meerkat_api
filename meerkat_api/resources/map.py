@@ -3,7 +3,7 @@ Resources for creating maps
 """
 from flask_restful import Resource
 from geojson import Point, FeatureCollection, Feature
-from sqlalchemy import  extract, func, Integer
+from sqlalchemy import  extract, func, Integer, or_
 from datetime import datetime
 
 from meerkat_api.util import row_to_dict, rows_to_dicts, is_child
@@ -36,8 +36,9 @@ class MapVariable(Resource):
     json object with a map of variable id
     """
     decorators = [require_api_key]
-    def get(self, variable_id, interval="year", include_all_clinics=False):
-        vi= str(variable_id)
+    def get(self, variable_id, interval="year", location=1, include_all_clinics=False):
+        location = int(location)
+        vi = str(variable_id)
         year = datetime.now().year
         if interval == "year":
             results = db.session.query(
@@ -46,8 +47,12 @@ class MapVariable(Resource):
                 Data.geolocation,
                 Data.clinic
         ).filter(Data.variables.has_key(vi),
-                 extract('year', Data.date) == year).group_by("clinic",
-                                                              "geolocation")
+                 extract('year', Data.date) == year, or_(
+                     loc == location for loc in (Data.country,
+                                                 Data.region,
+                                                 Data.district,
+                                                 Data.clinic))).group_by("clinic",
+                                                                          "geolocation")
         locations = get_locations(db.session)
         ret = {}
         for r in results.all():
