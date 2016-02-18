@@ -71,7 +71,6 @@ def get_alerts(args):
             if r[1]:
                 alerts[r[0].id]["links"] = {r[1].link_def: row_to_dict(r[1])}
         else:
-            app.logger.info(alerts[r[0].id])
             alerts[r[0].id]["links"][r[1].link_def] = row_to_dict(r[1])
     return alerts
     

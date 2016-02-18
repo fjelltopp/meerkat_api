@@ -10,7 +10,7 @@ from sqlalchemy.sql.expression import cast
 from meerkat_api.util import row_to_dict, rows_to_dicts, date_to_epi_week
 from meerkat_api.resources.locations import TotClinics
 from meerkat_api import db,app
-from meerkat_abacus.model import Data
+from meerkat_abacus.model import Data, Locations
 from meerkat_abacus.util import get_locations, epi_week_start_date
 from meerkat_api.resources.variables import Variables
 from meerkat_api.authentication import require_api_key
@@ -110,5 +110,15 @@ class Completeness(Resource):
                                    / (number_per_week * n_clinics) * 100,
                                    "last_year": last_year.get(region, 0)
                                    / (n_weeks * n_clinics * number_per_week) * 100}
+        results = db.session.query(Locations).filter(Locations.case_report == 1)
+        locations = get_locations(db.session)
+        for row in results.all():
+            if row.case_report and row.id not in clinic_data[1].keys():
+                clinic_data[1][row.id] = {"day": 0, "week": 0, "year": 0}
+                parent_loc = row.parent_location
+                while parent_loc not in clinic_data.keys():
+                    parent_loc = locations[parent_loc].parent_location
+                clinic_data[parent_loc][row.id] = {"day": 0, "week": 0, "year": 0}
 
+        
         return {"regions": region_data, "clinics": clinic_data}

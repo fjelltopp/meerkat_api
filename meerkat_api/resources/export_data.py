@@ -2,6 +2,7 @@
 Data resource for exporting data
 """
 from flask_restful import Resource
+from flask import request
 from sqlalchemy import or_, extract, func, Integer
 from datetime import datetime
 from sqlalchemy.sql.expression import cast
@@ -10,7 +11,7 @@ from sqlalchemy.sql.expression import cast
 from meerkat_api.util import row_to_dict, rows_to_dicts, date_to_epi_week
 from meerkat_api import db, app, output_csv
 from meerkat_abacus.model import Data, form_tables
-from meerkat_abacus.util import epi_week_start_date
+from meerkat_abacus.util import all_location_data
 from meerkat_api.resources.variables import Variables
 from meerkat_api.authentication import require_api_key
 from meerkat_abacus.util import get_locations, get_locations_by_deviceid
@@ -85,19 +86,35 @@ class ExportForm(Resource):
     decorators = [require_api_key]
     
     def get(self, form):
+        specified_keys = False
+        locations, locs_by_deviceid, regions, districts = all_location_data(db.session)
+        if "fields" in request.args.keys():
+            specified_keys = True
+            keys = request.args["fields"].split(",")
+            
         if form in form_tables.keys():
             results = db.session.query(form_tables[form])
-            locs_by_deviceid =  get_locations_by_deviceid(db.session)
-            locs = get_locations(db.session)
             dict_rows = []
-            keys = set()
+            if not specified_keys:
+                keys = set()
+            
             for row in results:
                 dict_row = row.data
-                if row.data["deviceid"] in locs_by_deviceid:
-                    dict_row["location"] = locs[locs_by_deviceid[row.data["deviceid"]]].name
+                clinic_id = locs_by_deviceid.get(row.data["deviceid"], None)
+                if clinic_id:
+                    dict_row["clinic"] = locations[clinic_id].name
+                    if locations[clinic_id].parent_location in districts:
+                        dict_row["district"] = locations[locations[clinic_id].parent_location].name
+                        dict_row["region"] = locations[locations[locations[clinic_id].parent_location].parent_location].name
+                    elif locations[clinic_id].parent_location in regions:
+                        dict_row["district"] = ""
+                        dict_row["region"] = locations[locations[clinic_id].parent_location].name
                 else:
-                    dict_row["location"] = ""
-                keys = keys.union(dict_row.keys())
+                    dict_row["clinic"] = ""
+                    dict_row["district"] = ""
+                    dict_row["region"] = ""
+                if not specified_keys:
+                    keys = keys.union(dict_row.keys())
                 dict_rows.append(dict_row)
         return {"data": dict_rows,
                 "keys": keys,
