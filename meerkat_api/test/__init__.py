@@ -9,7 +9,6 @@ import unittest
 from datetime import datetime
 from datetime import timedelta
 from sqlalchemy import extract
-
 import meerkat_api
 import meerkat_abacus.manage as manage
 import meerkat_abacus.config as config
@@ -418,6 +417,9 @@ class MeerkatAPITestCase(unittest.TestCase):
         for form in ["case", "register", "alert"]:
             rv = self.app.get('/export/form/{}'.format(form), headers={"Accept": "text/csv"})
             self.assertEqual(rv.status_code, 200)
+        rv = self.app.get('/export/form/case?fields=today,intro./module'.format(form), headers={"Accept": "text/csv"})
+        self.assertEqual(rv.status_code, 200)
+            
             
     def test_export_alerts(self):
         rv = self.app.get('/export/alerts', headers={"Accept": "text/csv"})

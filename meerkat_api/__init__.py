@@ -49,7 +49,7 @@ def output_csv(data, code, headers=None):
         data_is_list = True
 
     output = io.StringIO()
-    writer = csv.DictWriter(output, keys)
+    writer = csv.DictWriter(output, keys, extrasaction="ignore")
     writer.writeheader()
     if data_is_list:
         writer.writerows(data)
