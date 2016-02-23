@@ -6,12 +6,6 @@ from flask import request
 from sqlalchemy import or_, extract, func, Integer
 from datetime import datetime
 from sqlalchemy.sql.expression import cast
-import resource
-import sys
-import pickle
-import gc
-from pympler import asizeof
-
 
 from meerkat_api.util import row_to_dict, rows_to_dicts, date_to_epi_week
 from meerkat_api import db, app, output_csv
