@@ -6,6 +6,11 @@ from flask import request
 from sqlalchemy import or_, extract, func, Integer
 from datetime import datetime
 from sqlalchemy.sql.expression import cast
+import resource
+import sys
+import pickle
+import gc
+from pympler import asizeof
 
 
 from meerkat_api.util import row_to_dict, rows_to_dicts, date_to_epi_week
@@ -26,7 +31,6 @@ class ExportData(Resource):
 
     def get(self):
         results = db.session.query(Data)
-        i = 0
         variables = set()
         locs = get_locations(db.session)
         for row in results:
@@ -91,15 +95,15 @@ class ExportForm(Resource):
         if "fields" in request.args.keys():
             specified_keys = True
             keys = request.args["fields"].split(",")
-            
+
         if form in form_tables.keys():
-            results = db.session.query(form_tables[form])
+            results = db.session.query(form_tables[form]).yield_per(200)
             dict_rows = []
             if not specified_keys:
-                keys = set()
-            
+                keys = set(["clinic", "district", "region"])
+            i = 0
             for row in results:
-                dict_row = row.data
+                dict_row = {}
                 clinic_id = locs_by_deviceid.get(row.data["deviceid"], None)
                 if clinic_id:
                     dict_row["clinic"] = locations[clinic_id].name
@@ -114,8 +118,12 @@ class ExportForm(Resource):
                     dict_row["district"] = ""
                     dict_row["region"] = ""
                 if not specified_keys:
-                    keys = keys.union(dict_row.keys())
+                    keys = keys.union(row.data.keys())
+                for key in list(row.data.keys()):
+                    if key in keys and key not in dict_row:
+                        dict_row[key] = row.data[key]
                 dict_rows.append(dict_row)
-        return {"data": dict_rows,
-                "keys": keys,
-                "filename": form}
+                dict_row = {}
+            return {"data": dict_rows,
+                    "keys": keys,
+                    "filename": form}

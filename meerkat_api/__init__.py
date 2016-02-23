@@ -12,7 +12,7 @@ import types
 import io
 import csv
 
-
+import resource
 from meerkat_abacus import config
 from meerkat_abacus import model
 
@@ -55,11 +55,12 @@ def output_csv(data, code, headers=None):
         writer.writerows(data)
     else:
         writer.writerow(data)
-
+#    data = []
     resp = app.make_response(str(output.getvalue()))
+    
     resp.headers.extend(headers or {
         "Content-Disposition": "attachment; filename={}.csv".format(filename)})
-
+    app.logger.info('Memory usage: %s (kb)' % int(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss))
     return resp
 
 from meerkat_api.resources.locations import Location, Locations, LocationTree, TotClinics
