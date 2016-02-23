@@ -412,7 +412,13 @@ class MeerkatAPITestCase(unittest.TestCase):
     def test_export_data(self):
         rv = self.app.get('/export/data', headers={"Accept": "text/csv"})
         self.assertEqual(rv.status_code, 200)
-        
+    def test_export_forms(self):
+        rv = self.app.get('/export/forms')
+        self.assertEqual(rv.status_code, 200)
+        data = json.loads(rv.data.decode("utf-8"))
+        assert "case" in data
+        assert "alert" in data
+        assert "register" in data
     def test_export_forms(self):
         for form in ["case", "register", "alert"]:
             rv = self.app.get('/export/form/{}'.format(form), headers={"Accept": "text/csv"})

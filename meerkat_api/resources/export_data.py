@@ -16,6 +16,17 @@ from meerkat_api.authentication import require_api_key
 from meerkat_abacus.util import get_locations, get_locations_by_deviceid
 from meerkat_api.resources.alerts import get_alerts
 
+
+class Forms(Resource):
+    decorators = [require_api_key]
+
+    def get(self):
+        return_data = {}
+        for form in form_tables.keys():
+            results = db.session.query(form_tables[form]).first()
+            return_data[form] = list(results.data.keys())
+        return return_data
+            
 class ExportData(Resource):
     """
     Export data table from db
