@@ -24,7 +24,7 @@ class Forms(Resource):
         return_data = {}
         for form in form_tables.keys():
             results = db.session.query(form_tables[form]).first()
-            return_data[form] = list(results.data.keys())
+            return_data[form] = list(results.data.keys()) + ["clinic", "district", "region"]
         return return_data
             
 class ExportData(Resource):
