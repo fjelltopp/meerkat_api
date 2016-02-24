@@ -308,6 +308,386 @@ class PublicHealth(Resource):
                               ch[disease] / tot_ch * 100))
         return ret
 
+class CdPublicHealth(Resource):
+    """ Class to return data for the public health report """
+    decorators = [require_api_key]
+    def get(self, location, start_date=None, end_date=None):
+        """ generates date for the public health report for the year 
+        up to epi_week for the given location"""
+        start = time.time()
+        if start_date:
+            start_date = datetime.strptime(start_date, '%Y-%m-%d')
+        else:
+            start_date = datetime.now().replace(month=1, day=1,
+                                                         hour=0, second=0,
+                                                         minute=0,
+                                                         microsecond=0)
+
+            if end_date:
+                end_date = datetime.strptime(end_date,'%Y-%m-%d')
+            else:
+                end_date = datetime.now()
+        ret={}
+        #meta data
+        ret["meta"] = {"uuid": str(uuid.uuid4()),
+                       "project_id": 1,
+                       "generation_timestamp": datetime.now().isoformat(),
+                       "schema_version": 0.1
+        }
+        ew = EpiWeek()
+        end_date = end_date - timedelta(days=1)
+        epi_week = ew.get(end_date.isoformat())["epi_week"]
+        ret["data"] = {"epi_week_num": epi_week,
+                       "epi_week_date": end_date.isoformat(),
+                       "project_epoch": datetime(2015,5,20).isoformat()
+        }
+        conn = db.engine.connect()
+        location_name = db.session.query(Locations.name).filter(
+            Locations.id == location).first().name
+
+        if not location_name:
+            return None
+        ret["data"]["project_region"] = location_name
+        #We first add all the summary level data
+        tot_clinics = TotClinics()
+        ret["data"]["clinic_num"] = tot_clinics.get(location)["total"]
+        
+        ret["data"]["global_clinic_num"] = tot_clinics.get(1)["total"]
+
+        total_cases = get_variable_id("prc_1", start_date, end_date, location, conn)
+        ret["data"]["total_cases"] = total_cases
+        if total_cases == 0:
+            total_cases = 1
+        query_variable = QueryVariable()
+        gender = query_variable.get("prc_1","gender",
+                                    end_date=end_date.strftime("%d/%m/%Y"),
+                                    start_date=start_date.strftime("%d/%m/%Y"),
+                                    only_loc=location)
+        age = query_variable.get("prc_1","age",
+                                 end_date=end_date.strftime("%d/%m/%Y"),
+                                 start_date=start_date.strftime("%d/%m/%Y"),
+                                 only_loc=location)
+        female = gender["Female"]["total"]
+        male = gender["Male"]["total"]
+        ret["data"]["gender"] = [
+            make_dict("Female",
+                      female,
+                      female / total_cases * 100),
+            make_dict("Male",
+                      male,
+                      male / total_cases * 100)
+            ]
+            
+        ret["data"]["percent_cases_male"] = male / total_cases*100
+        ret["data"]["percent_cases_female"] = female / total_cases*100
+        less_5yo = age["<5"]["total"]
+        ret["data"]["percent_cases_lt_5yo"] = less_5yo / total_cases*100
+
+        if less_5yo == 0:
+            less_5yo = 1
+        #public health indicators
+        modules = query_variable.get("prc_1","module",
+                                 end_date=end_date.strftime("%d/%m/%Y"),
+                                 start_date=start_date.strftime("%d/%m/%Y"),
+                                 only_loc=location)
+
+        ret["data"]["public_health_indicators"] = [
+            make_dict("Cases Reported", total_cases, None)]
+        ret["data"]["public_health_indicators"].append(
+            make_dict("Laboratory results recorded",
+                      modules["Laboratory Results"]["total"],
+                      modules["Laboratory Results"]["total"] / total_cases * 100))
+        ret["data"]["public_health_indicators"].append(
+            make_dict("Prescribing practice recorded",
+                      modules["Prescribing"]["total"],
+                      modules["Prescribing"]["total"] / total_cases * 100))
+        #Alerts
+        all_alerts = alerts.get_alerts({"location": location})
+        tot_alerts = 0
+        investigated_alerts = 0
+        for a in all_alerts.values():
+            if a["alerts"]["date"] <= end_date and a["alerts"]["date"] > start_date:
+                tot_alerts += 1
+                report_status = False
+                if "links" in a and "alert_investigation" in a["links"]:
+                    investigated_alerts += 1
+        ret["data"]["public_health_indicators"].append(
+            make_dict("Alerts generated",
+                      tot_alerts,
+                      100)
+        )
+        ret["data"]["public_health_indicators"].append(
+            make_dict("Alerts investigated",
+                      investigated_alerts,
+                      investigated_alerts / tot_alerts * 100)
+        )
+        
+                
+        #Reporting sites
+        locs = get_locations(db.session)
+        ret["data"]["reporting_sites"] = []
+        for l in locs.values():
+            if l.parent_location and int(l.parent_location) == int(location):
+                num = get_variable_id("prc_1",
+                                      start_date,
+                                      end_date, l.id, conn)
+                ret["data"]["reporting_sites"].append(
+                    make_dict(l.name,
+                              num,
+                              num / total_cases * 100))
+
+
+        ret["data"]["alerts_total"] = tot_alerts
+
+        #Demographics
+        ret["data"]["demographics"] = []
+        age =  query_variable.get("prc_1","age_gender",
+                                  end_date=end_date.strftime("%d/%m/%Y"),
+                                  start_date=start_date.strftime("%d/%m/%Y"),
+                                  only_loc=location)
+        age_gender={}
+        for a in age:
+            gender,ac = a.split(" ")
+            if ac in age_gender.keys():
+                age_gender[ac][gender] = age[a]["total"]
+            else:
+                age_gender[ac] = {gender: age[a]["total"]}
+        age_order=["<5", "5-9", "10-14", "15-19", "20-59", ">60"]
+        for a in age_order:
+            if a in age_gender.keys():
+                a_sum = sum(age_gender[a].values())
+            
+                if a_sum == 0:
+                    a_sum = 1
+                ret["data"]["demographics"].append(
+                    {"age": a,
+                     "male": {"quantity": age_gender[a]["Male"],
+                              "percent": age_gender[a]["Male"] / a_sum * 100
+                     },
+                     "female":{"quantity": age_gender[a]["Female"],
+                               "percent": age_gender[a]["Female"]/float(a_sum)*100
+                     }
+                    })
+
+        #Nationality
+        nationality_total = query_variable.get("prc_1","nationality",
+                                  end_date=end_date.strftime("%d/%m/%Y"),
+                                  start_date=start_date.strftime("%d/%m/%Y"),
+                                  only_loc=location)
+        nationality = {}
+        for nat in nationality_total.keys():
+            nationality[nat] = nationality_total[nat]["total"]
+        tot_nat = sum(nationality.values())
+        if tot_nat == 0:
+            tot_nat=1
+        ret["data"]["nationality"] = []
+        for nat in sorted(nationality, key=nationality.get, reverse=True):
+            if nationality[nat] > 0:
+                ret["data"]["nationality"].append(
+                    make_dict(nat,
+                              nationality[nat],
+                              nationality[nat] / tot_nat * 100))
+        #Status
+        status_total = query_variable.get("prc_1","status",
+                                               end_date=end_date.strftime("%d/%m/%Y"),
+                                               start_date=start_date.strftime("%d/%m/%Y"),
+                                               only_loc=location)
+        status = {}
+        for sta in status_total.keys():
+            status[sta] = status_total[sta]["total"]
+        tot_sta = sum(status.values())
+        if tot_sta == 0:
+            tot_sta = 1
+        ret["data"]["patient_status"] = []
+        for sta in sorted(status, key=status.get, reverse=True):
+            ret["data"]["patient_status"].append(
+                make_dict(sta,
+                          status[sta],
+                          status[sta] / tot_sta * 100))
+            
+
+            
+        ret["data"]["morbidity_communicable_icd"] = get_disease_types("cd", start_date, end_date, location, conn)
+        ret["data"]["morbidity_communicable_cd_tab"] = get_disease_types("cd_tab", start_date, end_date, location, conn)
+        return ret
+class NcdPublicHealth(Resource):
+    """ Class to return data for the public health report """
+    decorators = [require_api_key]
+    def get(self, location, start_date=None, end_date=None):
+        """ generates date for the ncd public health report for the year 
+        up to epi_week for the given location"""
+        start = time.time()
+        if start_date:
+            start_date = datetime.strptime(start_date, '%Y-%m-%d')
+        else:
+            start_date = datetime.now().replace(month=1, day=1,
+                                                         hour=0, second=0,
+                                                         minute=0,
+                                                         microsecond=0)
+
+            if end_date:
+                end_date = datetime.strptime(end_date,'%Y-%m-%d')
+            else:
+                end_date = datetime.now()
+        ret={}
+        #meta data
+        ret["meta"] = {"uuid": str(uuid.uuid4()),
+                       "project_id": 1,
+                       "generation_timestamp": datetime.now().isoformat(),
+                       "schema_version": 0.1
+        }
+        ew = EpiWeek()
+        end_date = end_date - timedelta(days=1)
+        epi_week = ew.get(end_date.isoformat())["epi_week"]
+        ret["data"] = {"epi_week_num": epi_week,
+                       "epi_week_date": end_date.isoformat(),
+                       "project_epoch": datetime(2015,5,20).isoformat()
+        }
+        conn = db.engine.connect()
+        location_name = db.session.query(Locations.name).filter(
+            Locations.id == location).first().name
+
+        if not location_name:
+            return None
+        ret["data"]["project_region"] = location_name
+        #We first add all the summary level data
+        tot_clinics = TotClinics()
+        ret["data"]["clinic_num"] = tot_clinics.get(location)["total"]
+        
+        ret["data"]["global_clinic_num"] = tot_clinics.get(1)["total"]
+
+        total_cases = get_variable_id("prc_2", start_date, end_date, location, conn)
+        ret["data"]["total_cases"] = total_cases
+        if total_cases == 0:
+            total_cases = 1
+        query_variable = QueryVariable()
+        gender = query_variable.get("prc_2","gender",
+                                    end_date=end_date.strftime("%d/%m/%Y"),
+                                    start_date=start_date.strftime("%d/%m/%Y"),
+                                    only_loc=location)
+        age = query_variable.get("prc_2","age",
+                                 end_date=end_date.strftime("%d/%m/%Y"),
+                                 start_date=start_date.strftime("%d/%m/%Y"),
+                                 only_loc=location)
+        female = gender["Female"]["total"]
+        male = gender["Male"]["total"]
+        ret["data"]["gender"] = [
+            make_dict("Female",
+                      female,
+                      female / total_cases * 100),
+            make_dict("Male",
+                      male,
+                      male / total_cases * 100)
+            ]
+            
+        ret["data"]["percent_cases_male"] = male / total_cases*100
+        ret["data"]["percent_cases_female"] = female / total_cases*100
+        less_5yo = age["<5"]["total"]
+        ret["data"]["percent_cases_lt_5yo"] = less_5yo / total_cases*100
+
+        if less_5yo == 0:
+            less_5yo = 1
+        #public health indicators
+        modules = query_variable.get("prc_2","module",
+                                 end_date=end_date.strftime("%d/%m/%Y"),
+                                 start_date=start_date.strftime("%d/%m/%Y"),
+                                 only_loc=location)
+
+        ret["data"]["public_health_indicators"] = [
+            make_dict("Cases Reported", total_cases, None)]
+        ret["data"]["public_health_indicators"].append(
+            make_dict("Laboratory results recorded",
+                      modules["Laboratory Results"]["total"],
+                      modules["Laboratory Results"]["total"] / total_cases * 100))
+        ret["data"]["public_health_indicators"].append(
+            make_dict("Prescribing practice recorded",
+                      modules["Prescribing"]["total"],
+                      modules["Prescribing"]["total"] / total_cases * 100))
+        #Reporting sites
+        locs = get_locations(db.session)
+        ret["data"]["reporting_sites"] = []
+        for l in locs.values():
+            if l.parent_location and int(l.parent_location) == int(location):
+                num = get_variable_id("prc_2",
+                                      start_date,
+                                      end_date, l.id, conn)
+                ret["data"]["reporting_sites"].append(
+                    make_dict(l.name,
+                              num,
+                              num / total_cases * 100))
+
+        #Demographics
+        ret["data"]["demographics"] = []
+        age =  query_variable.get("prc_2","age_gender",
+                                  end_date=end_date.strftime("%d/%m/%Y"),
+                                  start_date=start_date.strftime("%d/%m/%Y"),
+                                  only_loc=location)
+        age_gender={}
+        for a in age:
+            gender,ac = a.split(" ")
+            if ac in age_gender.keys():
+                age_gender[ac][gender] = age[a]["total"]
+            else:
+                age_gender[ac] = {gender: age[a]["total"]}
+        age_order=["<5", "5-9", "10-14", "15-19", "20-59", ">60"]
+        for a in age_order:
+            if a in age_gender.keys():
+                a_sum = sum(age_gender[a].values())
+            
+                if a_sum == 0:
+                    a_sum = 1
+                ret["data"]["demographics"].append(
+                    {"age": a,
+                     "male": {"quantity": age_gender[a]["Male"],
+                              "percent": age_gender[a]["Male"] / a_sum * 100
+                     },
+                     "female":{"quantity": age_gender[a]["Female"],
+                               "percent": age_gender[a]["Female"]/float(a_sum)*100
+                     }
+                    })
+
+        #Nationality
+        nationality_total = query_variable.get("prc_2","nationality",
+                                  end_date=end_date.strftime("%d/%m/%Y"),
+                                  start_date=start_date.strftime("%d/%m/%Y"),
+                                  only_loc=location)
+        nationality = {}
+        for nat in nationality_total.keys():
+            nationality[nat] = nationality_total[nat]["total"]
+        tot_nat = sum(nationality.values())
+        if tot_nat == 0:
+            tot_nat=1
+        ret["data"]["nationality"] = []
+        for nat in sorted(nationality, key=nationality.get, reverse=True):
+            if nationality[nat] > 0:
+                ret["data"]["nationality"].append(
+                    make_dict(nat,
+                              nationality[nat],
+                              nationality[nat] / tot_nat * 100))
+        #Status
+        status_total = query_variable.get("prc_2","status",
+                                               end_date=end_date.strftime("%d/%m/%Y"),
+                                               start_date=start_date.strftime("%d/%m/%Y"),
+                                               only_loc=location)
+        status = {}
+        for sta in status_total.keys():
+            status[sta] = status_total[sta]["total"]
+        tot_sta = sum(status.values())
+        if tot_sta == 0:
+            tot_sta = 1
+        ret["data"]["patient_status"] = []
+        for sta in sorted(status, key=status.get, reverse=True):
+            ret["data"]["patient_status"].append(
+                make_dict(sta,
+                          status[sta],
+                          status[sta] / tot_sta * 100))
+            
+
+            
+        ret["data"]["morbidity_non_communicable_icd"] = get_disease_types("ncd", start_date, end_date, location, conn)
+        ret["data"]["morbidity_non_communicable_ncd_tab"] = get_disease_types("ncd_tab", start_date, end_date, location, conn)
+        return ret
+
 
 
 
@@ -326,7 +706,6 @@ def get_disease_types(category, start_date, end_date, location, conn):
                                  diseases[disease],
                                  diseases[disease] / tot_n * 100))
     return ret
-
 def make_dict(name,quantity,percent):
     return {"title": name,
             "quantity": quantity,
