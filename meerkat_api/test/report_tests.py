@@ -102,6 +102,16 @@ class MeerkatAPITestCase(unittest.TestCase):
         rv = self.app.get('/reports/public_health/{}'.format(location))
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))
+    def test_cd_public_health(self):
+        location = 2
+        rv = self.app.get('/reports/cd_public_health/{}'.format(location))
+        self.assertEqual(rv.status_code, 200)
+        data = json.loads(rv.data.decode("utf-8"))
+    def test_ncd_public_health(self):
+        location = 2
+        rv = self.app.get('/reports/ncd_public_health/{}'.format(location))
+        self.assertEqual(rv.status_code, 200)
+        data = json.loads(rv.data.decode("utf-8"))
 
     def test_cd_report(self):
         location = 2
