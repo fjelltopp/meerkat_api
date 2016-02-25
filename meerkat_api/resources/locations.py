@@ -37,16 +37,17 @@ class LocationTree(Resource):
     Returns a Location tree
 
     """
-    def get(self):
+    def get(self, only_case_reports=True):
         locs = get_locations(db.session)
         loc = 1
         ret = {loc: {"id": loc, "text": locs[loc].name, "nodes": []}}
         for l in sorted(locs.keys()):
-            if is_child(l, loc, locs):
-                ret.setdefault(locs[l].parent_location, {"nodes": []})
-            ret.setdefault(l, {"nodes": []})
-            ret[l].update({"id": l, "text": locs[l].name})
-            ret[locs[l].parent_location]["nodes"].append(ret[l])
+            if not only_case_reports or (locs[l].case_report == 1 or not locs[l].deviceid):
+                if is_child(l, loc, locs):
+                    ret.setdefault(locs[l].parent_location, {"nodes": []})
+                ret.setdefault(l, {"nodes": []})
+                ret[l].update({"id": l, "text": locs[l].name})
+                ret[locs[l].parent_location]["nodes"].append(ret[l])
         return jsonify(ret[loc])
 
     
