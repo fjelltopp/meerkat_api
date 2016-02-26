@@ -18,6 +18,7 @@ from meerkat_api.resources.locations import TotClinics
 from meerkat_api.resources import alerts
 from meerkat_api.resources.explore import QueryVariable
 from meerkat_abacus.util import get_locations
+from meerkat_abacus import model
 from meerkat_api.authentication import require_api_key
 
 
@@ -87,6 +88,240 @@ class CdReport(Resource):
         return ret
 
 
+class RefugeePublicHealth(Resource):
+    """ Class to return data for the public health report """
+    decorators = [require_api_key]
+    def get(self, location, start_date=None, end_date=None):
+        """ generates date for the refugee public health report for the year 
+        up to epi_week for the given location"""
+
+        if "refugee" not in model.form_tables:
+            return {}
+        start = time.time()
+        if start_date:
+            start_date = datetime.strptime(start_date, '%Y-%m-%d')
+        else:
+            start_date = datetime.now().replace(month=1, day=1,
+                                                         hour=0, second=0,
+                                                         minute=0,
+                                                         microsecond=0)
+
+            if end_date:
+                end_date = datetime.strptime(end_date,'%Y-%m-%d')
+            else:
+                end_date = datetime.now()
+        ret={}
+        #meta data
+        ret["meta"] = {"uuid": str(uuid.uuid4()),
+                       "project_id": 1,
+                       "generation_timestamp": datetime.now().isoformat(),
+                       "schema_version": 0.1
+        }
+        ew = EpiWeek()
+        end_date = end_date - timedelta(days=1)
+        epi_week = ew.get(end_date.isoformat())["epi_week"]
+        ret["data"] = {"epi_week_num": epi_week,
+                       "epi_week_date": end_date.isoformat(),
+                       "project_epoch": datetime(2015,5,20).isoformat()
+        }
+        conn = db.engine.connect()
+        locs = get_locations(db.session)
+        location_name = locs[int(location)].name
+        if not location_name:
+            return None
+        ret["data"]["project_region"] = location_name
+        #We first find all the refugee clinics
+        refugee_clinics = get_children(location, locs, clinic_type="Refugee")
+        
+        ret["data"]["clinic_num"] = len(refugee_clinics)
+        # Total_population we want the latest submitted total population
+        male = 0
+        female = 0
+        age_gender = {"<5": {"female": 0,
+                   "male": 0},
+             "5-17": {"female": 0,
+                    "male": 0},
+             "18-59": {"female": 0,
+                      "male": 0},
+             ">60": {"female": 0,
+                     "male": 0}
+             }
+        no_clinicians = 0
+        for clinic in refugee_clinics:
+            result = db.session.query(Data.variables).filter(
+                or_(Data.variables.has_key("ref_1"),
+                    Data.variables.has_key("ref_2"),
+                    Data.variables.has_key("ref_3"),
+                    Data.variables.has_key("ref_4"),
+                    Data.variables.has_key("ref_5"),
+                    Data.variables.has_key("ref_6"),
+                    Data.variables.has_key("ref_7"),
+                    Data.variables.has_key("ref_8")),
+                Data.clinic == clinic,
+                Data.date >= start_date,
+                Data.date < end_date
+            ).order_by(Data.date.desc()).first()[0]
+            if(result):
+                age_gender["<5"]["male"] += result["ref_1"]
+                age_gender["<5"]["female"] += result["ref_2"]
+                age_gender["5-17"]["male"] += result["ref_3"]
+                age_gender["5-17"]["female"] += result["ref_4"]
+                age_gender["18-59"]["male"] += result["ref_5"]
+                age_gender["18-59"]["female"] += result["ref_6"]
+                age_gender[">60"]["male"] += result["ref_7"]
+                age_gender[">60"]["female"] += result["ref_8"]
+                female += result["ref_2"] + result["ref_4"] + result["ref_6"] + result["ref_8"]
+                male += result["ref_1"] + result["ref_3"] + result["ref_5"] + result["ref_7"]
+            result = db.session.query(Data.variables).filter(
+                Data.variables.has_key("ref_10"),
+                Data.clinic == clinic,
+                Data.date >= start_date,
+                Data.date < end_date
+            ).order_by(Data.date.desc()).first()[0]
+            if result:
+                no_clinicians += result["ref_10"]
+        tot_pop = male + female
+        ret["data"]["total_population"] = tot_pop
+                
+        total_consultations = get_variable_id("ref_9", start_date, end_date, location, conn)
+        ret["data"]["total_consultations"] = total_consultations
+        if tot_pop == 0:
+            tot_pop = 1
+        u5 =  sum(age_gender["<5"].values())
+        
+        ret["data"]["percent_cases_male"] = male / tot_pop*100
+        ret["data"]["percent_cases_female"] = female / tot_pop*100
+        ret["data"]["percent_cases_lt_5yo"] =u5 / tot_pop*100
+        ret["data"]["n_clinicians"] = no_clinicians
+        
+        if u5 == 0:
+            u5 = 1
+        if total_consultations == 0:
+            total_consultations = 1
+        if no_clinicians == 0:
+            no_clinicians = 1
+        # Morbidity
+        morbidity_cd = get_variables_category("refugee_cd", start_date, end_date, location, conn)
+        morbidity_ncd = get_variables_category("refugee_ncd", start_date, end_date, location, conn)
+        morbidity_injury = get_variables_category("refugee_injury", start_date, end_date, location, conn)
+        morbidity_mh = get_variables_category("refugee_mh", start_date, end_date, location, conn)
+        morbidity_cd_no = sum(morbidity_cd.values())
+        morbidity_ncd_no = sum(morbidity_ncd.values())
+        morbidity_injury_no = sum(morbidity_injury.values())
+        morbidity_mh_no = sum(morbidity_mh.values())
+        total_cases = morbidity_cd_no + morbidity_ncd_no + morbidity_injury_no + morbidity_mh_no
+        ret["data"]["total_cases"] = total_cases
+        if total_cases == 0:
+            total_cases = 1
+        ret["data"]["percent_morbidity_communicable"] = morbidity_cd_no / total_cases * 100
+        ret["data"]["percent_morbidity_non_communicable"] = morbidity_ncd_no / total_cases * 100
+        ret["data"]["percent_morbidity_mental_health"] = morbidity_mh_no / total_cases * 100
+        ret["data"]["percent_morbidity_injury_health"] = morbidity_injury_no / total_cases * 100
+        
+        #Mortality
+        mortality =  get_variables_category("mortality", start_date, end_date, location, conn)
+        mortality_u5 = get_variables_category("u5_mortality", start_date, end_date, location, conn)
+        crude_mortality_rate = sum(mortality.values()) / tot_pop * 1000
+        u5_crude_mortality_rate = sum(mortality_u5.values()) /  u5 * 1000
+        ret["data"]["crude_mortality_rate"] = crude_mortality_rate
+        ret["data"]["u5_crude_mortality_rate"] = u5_crude_mortality_rate
+        #public health indicators
+        days_of_report = (end_date-start_date).days
+        ret["data"]["public_health_indicators"] = [
+            make_dict("Health Utilisation Rate", total_consultations / tot_pop / days_of_report * 365 , None)] # per year
+        ret["data"]["public_health_indicators"].append(
+            make_dict("Number of consultations per clinician per day", total_consultations / no_clinicians / days_of_report, None)
+            )
+        hospital_referrals = get_variable_id("ref_11", start_date, end_date, location, conn)
+        ret["data"]["public_health_indicators"].append(
+            make_dict("Hospitalisation rate",
+                      hospital_referrals /total_consultations, None)
+        )
+        ret["data"]["public_health_indicators"].append(
+            make_dict("Referral rate",
+                      (get_variable_id("ref_12", start_date, end_date, location, conn) + hospital_referrals) /total_consultations, None)
+        )
+        ret["data"]["public_health_indicators"].append(
+            make_dict("Crude Mortality Rate (CMR) ",
+                     crude_mortality_rate, None)
+        )
+        ret["data"]["public_health_indicators"].append(
+            make_dict("Under-five Mortality Rate (U5MR) ",
+                       u5_crude_mortality_rate / total_consultations, None)
+        )
+   
+   
+        #Reporting sites
+        locs = get_locations(db.session)
+        ret["data"]["reporting_sites"] = []
+        for clinic in refugee_clinics:
+            num =  sum(get_variables_category("refugee_morbidity", start_date, end_date, clinic, conn).values())
+            ret["data"]["reporting_sites"].append(
+                    make_dict(locs[clinic].name,
+                              num,
+                              num / total_cases * 100))
+
+      
+        #Demographics
+        ret["data"]["demographics"] = []
+      
+        age_order=["<5", "5-17", "18-59", ">60"]
+        for a in age_order:
+            if a in age_gender.keys():
+                a_sum = sum(age_gender[a].values())
+                if a_sum == 0:
+                    a_sum = 1
+                ret["data"]["demographics"].append(
+                    {"age": a,
+                     "male": {"quantity": age_gender[a]["male"],
+                              "percent": age_gender[a]["male"] / a_sum * 100
+                     },
+                     "female":{"quantity": age_gender[a]["female"],
+                               "percent": age_gender[a]["female"]/float(a_sum)*100
+                     }
+                    })
+        ret["data"]["gender"] = [
+            make_dict("Female",
+                      female,
+                      female / tot_pop * 100),
+            make_dict("Male",
+                      male,
+                      male / tot_pop * 100)
+        ]
+        ret["data"]["presenting_complaints"] = [
+            make_dict("Communicable Disease", morbidity_cd_no, morbidity_cd_no / total_cases *100),
+            make_dict("Non-Communicable Disease", morbidity_ncd_no, morbidity_ncd_no / total_cases *100),
+            make_dict("Mental Health", morbidity_mh_no, morbidity_mh_no / total_cases *100),
+            make_dict("Injury", morbidity_injury_no, morbidity_injury_no / total_cases *100)
+        ]
+
+        
+
+        ret["data"]["morbidity_communicable"] = refugee_disease(morbidity_cd)
+
+        ret["data"]["morbidity_non_communicable"] = refugee_disease(morbidity_ncd)
+        ret["data"]["mental_health"] = refugee_disease(morbidity_mh)
+        ret["data"]["injury"] = refugee_disease(morbidity_injury)
+        
+        return ret
+
+def refugee_disease(disease_demo):
+    diseases = {}
+    for disease in disease_demo.keys():
+        disease_name = disease.split(",")[0].strip()
+        diseases.setdefault(disease_name, 0)
+        diseases[disease_name] += disease_demo[disease]
+
+    tot_n = sum(diseases.values())
+    if tot_n == 0:
+        tot_n = 1
+    ret = []
+    for disease in top(diseases):
+        if diseases[disease] > 0:
+            ret.append(make_dict(disease,
+                                 diseases[disease],
+                                 diseases[disease] / tot_n * 100))
+    return ret
 class PublicHealth(Resource):
     """ Class to return data for the public health report """
     decorators = [require_api_key]
@@ -307,6 +542,11 @@ class PublicHealth(Resource):
                               ch[disease],
                               ch[disease] / tot_ch * 100))
         return ret
+
+
+
+
+    
 
 class CdPublicHealth(Resource):
     """ Class to return data for the public health report """
@@ -728,7 +968,8 @@ def get_variable_id(variable_id, start_date, end_date, location, conn):
         return 0
 
 variables_instance = Variables()
-def get_variables_category(category, start_date, end_date, location, conn):
+
+def get_variables_category(category, start_date, end_date, location, conn, category2=None):
     """ Aggregate category between dates and with location"""
 
     variables = variables_instance.get(category)
@@ -741,6 +982,8 @@ def get_variables_category(category, start_date, end_date, location, conn):
                             conn)
         return_data[variables[variable]["name"]] = r
     return return_data
+
+
 
 # if __name__ == "__main__":
 #     print(get_variables_category("cd", datetime(2016,1,1),datetime(2017,1,1)))

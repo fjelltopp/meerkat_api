@@ -59,10 +59,17 @@ class TotClinics(Resource):
     Returns:
         number of clinics
     """
-    def get(self, location_id):
+    def get(self, location_id, clinic_type=None):
         locs = get_locations(db.session)
         children = get_children(location_id, locs)
-        res = db.session.query(func.count(model.Locations.id)).filter(
-            model.Locations.id.in_(children),
-            model.Locations.case_report == 1).first()
+        if clinic_type: 
+            res = db.session.query(func.count(model.Locations.id)).filter(
+                model.Locations.id.in_(children),
+                model.Locations.case_report == 1,
+                model.Locations.clinic_type==clinic_type).first()
+        else:
+            res = db.session.query(func.count(model.Locations.id)).filter(
+                model.Locations.id.in_(children),
+                model.Locations.case_report == 1).first()
+
         return {"total": res[0]}
