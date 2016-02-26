@@ -17,12 +17,13 @@ class Clinics(Resource):
     """
     geojson for all clinics that are sublocation of location
     """
-    def get(self, location_id):
+    def get(self, location_id, clinic_type=None):
         locations = get_locations(db.session)
         points = []
         for l in locations:
             if (locations[l].case_report and is_child(
-                    location_id, l, locations) and locations[l].geolocation):
+                    location_id, l, locations) and locations[l].geolocation
+                and (not clinic_type or locations[l].clinic_type == clinic_type)):
                 lat, lng = locations[l].geolocation.split(",")
 
                 p = Point((float(lng), float(lat)))
