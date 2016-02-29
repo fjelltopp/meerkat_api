@@ -40,7 +40,9 @@ class EpiWeekStart(Resource):
         start-date: start-date
     """
     def get(self, year, epi_week):
-        start_date = epi_week_start_date(int(year))
-        start_date =  start_date + datetime.timedelta(weeks=int(epi_week) - 1)
-        return jsonify(start_date=start_date)
+        return jsonify(start_date=epi_week_start(year, epi_week))
 
+def epi_week_start(year, epi_week):
+    start_date = epi_week_start_date(int(year))
+    start_date =  start_date + datetime.timedelta(weeks=int(epi_week) - 1)
+    return start_date
