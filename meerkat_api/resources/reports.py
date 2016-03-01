@@ -540,8 +540,10 @@ class RefugeeDetail(Resource):
         return ret
 
 def disease_breakdown(diseases):
-    ret = {}
+    ret = {"diseases": {}}
     disease_total = {}
+    age_gender_total = {}
+    age_total = {}
     for d in diseases:
         split = d.split(",")
         disease_name = ",".join(split[:-1])
@@ -549,15 +551,22 @@ def disease_breakdown(diseases):
         disease_name = disease_name.strip()
         
         gender, age = age_gender.strip().split(" ")
+        gender = gender.lower()
         age = age.strip()
         gender = gender.strip()
         disease_total.setdefault(disease_name, 0)
         disease_total[disease_name] += diseases[d]
-        ret.setdefault(disease_name, {})
-        ret[disease_name].setdefault(age, {})
-        ret[disease_name][age][gender.lower()] = diseases[d]
+        age_total.setdefault(age, 0)
+        age_total[age] += diseases[d]
+        age_gender_total.setdefault(age, {"male": 0, "female": 0})
+        age_gender_total[age][gender] += diseases[d]
+        ret["diseases"].setdefault(disease_name, {})
+        ret["diseases"][disease_name].setdefault(age, {})
+        ret["diseases"][disease_name][age][gender] = diseases[d]
     for d in disease_total:
-        ret[d]["total"] = disease_total[d]
+        ret["diseases"][d]["total"] = disease_total[d]
+    ret["age_gender"] = age_gender_total
+    ret["age"] = age_total
     return ret
     
 class RefugeeCd(Resource):
