@@ -145,6 +145,9 @@ api.add_resource(CdReport, "/reports/cd_report/<location>",
                  "/reports/cd_report/<location>/<end_date>",
                  "/reports/cd_report/<location>/<end_date>/<start_date>")
 
+if "refugee" in model.form_tables:
+    from meerkat_api.resources.frontpage import RefugeePage
+    api.add_resource(RefugeePage, "/refugee_page")
 
 @app.route('/')
 def hello_world():
