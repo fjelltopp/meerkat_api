@@ -79,7 +79,8 @@ class RefugeePage(Resource):
                 tot_pop += clinic_pop
             clinic_map.append({"value": clinic_pop,
                                "geolocation": locs[clinic].geolocation.split(","),
-                               "clinic": locs[clinic].name
+                               "clinic": locs[clinic].name,
+                               "location_id": clinic
                                })
                             
                                
