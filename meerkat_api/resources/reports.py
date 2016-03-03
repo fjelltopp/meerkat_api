@@ -825,11 +825,11 @@ class PublicHealth(Resource):
                 age_gender[ac][gender] = age[a]
             else:
                 age_gender[ac] = {gender: age[a]}
-        age_order=["<5", "5-9", "10-14", "15-19", "20-59", ">60"]
-        for a in age_order:
+        age_variables = variables_instance.get("age")
+        for age_key in sorted(age_variables.keys()):
+            a = age_variables[age_key]["name"]
             if a in age_gender.keys():
                 a_sum = sum(age_gender[a].values())
-            
                 if a_sum == 0:
                     a_sum = 1
                 ret["data"]["demographics"].append(
@@ -881,7 +881,9 @@ class PublicHealth(Resource):
 
             
         ret["data"]["morbidity_communicable"] = get_disease_types("cd", start_date, end_date, location, conn)
+        ret["data"]["morbidity_communicable_tab"] = get_disease_types("cd_tab", start_date, end_date, location, conn)
         ret["data"]["morbidity_non_communicable"] = get_disease_types("ncd", start_date, end_date, location, conn)
+        ret["data"]["morbidity_non_communicable_tab"] = get_disease_types("ncd_tab", start_date, end_date, location, conn)
         ret["data"]["mental_health"] = get_disease_types("mh", start_date, end_date, location, conn)
 
         ch={}
@@ -1054,8 +1056,10 @@ class CdPublicHealth(Resource):
                 age_gender[ac][gender] = age[a]["total"]
             else:
                 age_gender[ac] = {gender: age[a]["total"]}
-        age_order=["<5", "5-9", "10-14", "15-19", "20-59", ">60"]
-        for a in age_order:
+
+        age_variables = variables_instance.get("age")
+        for age_key in sorted(age_variables.keys()):
+            a = age_variables[age_key]["name"]
             if a in age_gender.keys():
                 a_sum = sum(age_gender[a].values())
             
@@ -1231,8 +1235,10 @@ class NcdPublicHealth(Resource):
                 age_gender[ac][gender] = age[a]["total"]
             else:
                 age_gender[ac] = {gender: age[a]["total"]}
-        age_order=["<5", "5-9", "10-14", "15-19", "20-59", ">60"]
-        for a in age_order:
+        age_variables = variables_instance.get("age")
+        for age_key in sorted(age_variables.keys()):
+            a = age_variables[age_key]["name"]
+
             if a in age_gender.keys():
                 a_sum = sum(age_gender[a].values())
             
