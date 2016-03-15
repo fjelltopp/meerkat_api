@@ -70,7 +70,13 @@ class RefugeePage(Resource):
                     Data.variables.has_key("ref_5"),
                     Data.variables.has_key("ref_6"),
                     Data.variables.has_key("ref_7"),
-                    Data.variables.has_key("ref_8")),
+                    Data.variables.has_key("ref_7"),
+                    Data.variables.has_key("ref_8"),
+                    Data.variables.has_key("ref_9"),
+                    Data.variables.has_key("ref_10"),
+                    Data.variables.has_key("ref_11"),
+                    Data.variables.has_key("ref_12")),
+                
                 Data.clinic == clinic,
             ).order_by(Data.date.desc()).first()
             clinic_pop = 0
@@ -89,7 +95,7 @@ class RefugeePage(Resource):
         ret["map"] = clinic_map
         # Get total_number of consultations
         aggregate = Aggregate()
-        ret["key_indicators"]["total_consultation"] = aggregate.get(variable_id="ref_9",
+        ret["key_indicators"]["total_consultation"] = aggregate.get(variable_id="ref_13",
                                                                     location_id=1)["value"]
         mortality = get_variables_category("mortality", datetime(2016,1,1), datetime.now(), 1 , db.engine.connect())
         if tot_pop == 0:

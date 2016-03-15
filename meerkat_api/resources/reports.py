@@ -138,57 +138,36 @@ class RefugeePublicHealth(Resource):
         # Total_population we want the latest submitted total population
         male = 0
         female = 0
-        age_gender = {"0-4": {"female": 0,
-                   "male": 0},
-             "5-17": {"female": 0,
-                    "male": 0},
-             "18-59": {"female": 0,
-                      "male": 0},
-             ">60": {"female": 0,
-                     "male": 0}
-             }
         no_clinicians = 0
+        age_gender = {}
         for clinic in refugee_clinics:
+            clinic_data = get_latest_category("population", clinic, start_date, end_date)
+            for age in clinic_data:
+                age_gender.setdefault(age, {})
+                for gender in clinic_data[age]:
+                    age_gender[age].setdefault(gender, 0)
+                    age_gender[age][gender] += clinic_data[age][gender]
+                    if gender == "female":
+                        female += clinic_data[age][gender]
+                    if gender == "male":
+                        male += clinic_data[age][gender]
+                
             result = db.session.query(Data.variables).filter(
-                or_(Data.variables.has_key("ref_1"),
-                    Data.variables.has_key("ref_2"),
-                    Data.variables.has_key("ref_3"),
-                    Data.variables.has_key("ref_4"),
-                    Data.variables.has_key("ref_5"),
-                    Data.variables.has_key("ref_6"),
-                    Data.variables.has_key("ref_7"),
-                    Data.variables.has_key("ref_8")),
+                Data.variables.has_key("ref_14"),
                 Data.clinic == clinic,
                 Data.date >= start_date,
                 Data.date < end_date
-            ).order_by(Data.date.desc()).first()[0]
-            if(result):
-                age_gender["0-4"]["male"] += result["ref_1"]
-                age_gender["0-4"]["female"] += result["ref_2"]
-                age_gender["5-17"]["male"] += result["ref_3"]
-                age_gender["5-17"]["female"] += result["ref_4"]
-                age_gender["18-59"]["male"] += result["ref_5"]
-                age_gender["18-59"]["female"] += result["ref_6"]
-                age_gender[">60"]["male"] += result["ref_7"]
-                age_gender[">60"]["female"] += result["ref_8"]
-                female += result["ref_2"] + result["ref_4"] + result["ref_6"] + result["ref_8"]
-                male += result["ref_1"] + result["ref_3"] + result["ref_5"] + result["ref_7"]
-            result = db.session.query(Data.variables).filter(
-                Data.variables.has_key("ref_10"),
-                Data.clinic == clinic,
-                Data.date >= start_date,
-                Data.date < end_date
-            ).order_by(Data.date.desc()).first()[0]
+            ).order_by(Data.date.desc()).first()
             if result:
-                no_clinicians += result["ref_10"]
+                no_clinicians += result[0]["ref_14"]
         tot_pop = male + female
         ret["data"]["total_population"] = tot_pop
                 
-        total_consultations = get_variable_id("ref_9", start_date, end_date, location, conn)
+        total_consultations = get_variable_id("ref_13", start_date, end_date, location, conn)
         ret["data"]["total_consultations"] = total_consultations
         if tot_pop == 0:
             tot_pop = 1
-        u5 =  sum(age_gender["0-4"].values())
+        u5 =  sum(age_gender["0-1"].values()) + sum(age_gender["1-4"].values())
         
         ret["data"]["percent_cases_male"] = male / tot_pop*100
         ret["data"]["percent_cases_female"] = female / tot_pop*100
@@ -204,7 +183,7 @@ class RefugeePublicHealth(Resource):
         # Morbidity
         morbidity_cd = get_variables_category("refugee_cd", start_date, end_date, location, conn)
         morbidity_ncd = get_variables_category("refugee_ncd", start_date, end_date, location, conn)
-        morbidity_injury = get_variables_category("refugee_injury", start_date, end_date, location, conn)
+        morbidity_injury = get_variables_category("refugee_trauma", start_date, end_date, location, conn)
         morbidity_mh = get_variables_category("refugee_mh", start_date, end_date, location, conn)
         morbidity_cd_no = sum(morbidity_cd.values())
         morbidity_ncd_no = sum(morbidity_ncd.values())
@@ -233,14 +212,14 @@ class RefugeePublicHealth(Resource):
         ret["data"]["public_health_indicators"].append(
             make_dict("Number of consultations per clinician per day", total_consultations / no_clinicians / days_of_report, None)
             )
-        hospital_referrals = get_variable_id("ref_11", start_date, end_date, location, conn)
+        hospital_referrals = get_variable_id("ref_15", start_date, end_date, location, conn)
         ret["data"]["public_health_indicators"].append(
             make_dict("Hospitalisation rate",
                       hospital_referrals /total_consultations, None)
         )
         ret["data"]["public_health_indicators"].append(
             make_dict("Referral rate",
-                      (get_variable_id("ref_12", start_date, end_date, location, conn) + hospital_referrals) /total_consultations, None)
+                      (get_variable_id("ref_16", start_date, end_date, location, conn) + hospital_referrals) /total_consultations, None)
         )
         ret["data"]["public_health_indicators"].append(
             make_dict("Crude Mortality Rate (CMR) ",
@@ -256,7 +235,7 @@ class RefugeePublicHealth(Resource):
         locs = get_locations(db.session)
         ret["data"]["reporting_sites"] = []
         for clinic in refugee_clinics:
-            num =  sum(get_variables_category("refugee_morbidity", start_date, end_date, clinic, conn).values())
+            num =  sum(get_variables_category("morbidity_refugee", start_date, end_date, clinic, conn).values())
             ret["data"]["reporting_sites"].append(
                     make_dict(locs[clinic].name,
                               num,
@@ -266,7 +245,7 @@ class RefugeePublicHealth(Resource):
         #Demographics
         ret["data"]["demographics"] = []
       
-        age_order=["0-4", "5-17", "18-59", ">60"]
+        age_order = ["0-1", "1-4", "5-14", "15-44", "45-64", ">65"]
         for a in age_order:
             if a in age_gender.keys():
                 a_sum = sum(age_gender[a].values())
@@ -355,53 +334,31 @@ class RefugeeDetail(Resource):
         # Total_population we want the latest submitted total population
         male = 0
         female = 0
-        age_gender = {"0-4": {"female": 0,
-                   "male": 0},
-             "5-17": {"female": 0,
-                    "male": 0},
-             "18-59": {"female": 0,
-                      "male": 0},
-             ">60": {"female": 0,
-                     "male": 0}
-             }
+        age_gender = {}
         no_clinicians = 0
         for clinic in refugee_clinics:
+            clinic_data = get_latest_category("population", clinic, start_date, end_date)
+            for age in clinic_data:
+                age_gender.setdefault(age, {})
+                for gender in clinic_data[age]:
+                    age_gender[age].setdefault(gender, 0)
+                    age_gender[age][gender] += clinic_data[age][gender]
+                    if gender == "female":
+                        female += clinic_data[age][gender]
+                    if gender == "male":
+                        male += clinic_data[age][gender]
             result = db.session.query(Data.variables).filter(
-                or_(Data.variables.has_key("ref_1"),
-                    Data.variables.has_key("ref_2"),
-                    Data.variables.has_key("ref_3"),
-                    Data.variables.has_key("ref_4"),
-                    Data.variables.has_key("ref_5"),
-                    Data.variables.has_key("ref_6"),
-                    Data.variables.has_key("ref_7"),
-                    Data.variables.has_key("ref_8")),
+                Data.variables.has_key("ref_14"),
                 Data.clinic == clinic,
                 Data.date >= start_date,
                 Data.date < end_date
-            ).order_by(Data.date.desc()).first()[0]
-            if(result):
-                age_gender["0-4"]["male"] += result["ref_1"]
-                age_gender["0-4"]["female"] += result["ref_2"]
-                age_gender["5-17"]["male"] += result["ref_3"]
-                age_gender["5-17"]["female"] += result["ref_4"]
-                age_gender["18-59"]["male"] += result["ref_5"]
-                age_gender["18-59"]["female"] += result["ref_6"]
-                age_gender[">60"]["male"] += result["ref_7"]
-                age_gender[">60"]["female"] += result["ref_8"]
-                female += result["ref_2"] + result["ref_4"] + result["ref_6"] + result["ref_8"]
-                male += result["ref_1"] + result["ref_3"] + result["ref_5"] + result["ref_7"]
-            result = db.session.query(Data.variables).filter(
-                Data.variables.has_key("ref_10"),
-                Data.clinic == clinic,
-                Data.date >= start_date,
-                Data.date < end_date
-            ).order_by(Data.date.desc()).first()[0]
+            ).order_by(Data.date.desc()).first()
             if result:
-                no_clinicians += result["ref_10"]
+                no_clinicians += result[0]["ref_14"]
         tot_pop = male + female
         ret["data"]["total_population"] = tot_pop
         ret["data"]["n_clinicians"] = no_clinicians
-        u5 =  sum(age_gender["0-4"].values())
+        u5 =  sum(age_gender["0-1"].values()) + sum(age_gender["1-4"].values())
         if u5 == 0:
             u5 = 1
 
@@ -425,7 +382,7 @@ class RefugeeDetail(Resource):
 
         #3. Morbidity
         #3.1 Staffing
-        total_consultations = get_variable_id("ref_9", start_date, end_date, location, conn)
+        total_consultations = get_variable_id("ref_13", start_date, end_date, location, conn)
         days_of_report = (end_date-start_date).days
         ret["data"]["staffing"] = [
             make_dict("Total Consultations", total_consultations, None)
@@ -456,11 +413,11 @@ class RefugeeDetail(Resource):
         morbidity_mh = get_variables_category("refugee_mh", start_date, end_date, location, conn)
         ret["data"]["mental_health"] = disease_breakdown(morbidity_mh)
         #3.5 Injuries
-        morbidity_injury = get_variables_category("refugee_injury", start_date, end_date, location, conn)
+        morbidity_injury = get_variables_category("refugee_trauma", start_date, end_date, location, conn)
         ret["data"]["injury"] = disease_breakdown(morbidity_injury)
         #4 Referral
-        hospital_referrals = get_variable_id("ref_11", start_date, end_date, location, conn)
-        other_referrals = get_variable_id("ref_12", start_date, end_date, location, conn)
+        hospital_referrals = get_variable_id("ref_15", start_date, end_date, location, conn)
+        other_referrals = get_variable_id("ref_16", start_date, end_date, location, conn)
         ret["data"]["referrals"] = [
             make_dict("Hospital Referrals", hospital_referrals, None)
             ]
@@ -482,7 +439,7 @@ class RefugeeDetail(Resource):
 # Morbidity
         morbidity_cd = get_variables_category("refugee_cd", start_date, end_date, location, conn)
         morbidity_ncd = get_variables_category("refugee_ncd", start_date, end_date, location, conn)
-        morbidity_injury = get_variables_category("refugee_injury", start_date, end_date, location, conn)
+        morbidity_injury = get_variables_category("refugee_trauma", start_date, end_date, location, conn)
         morbidity_mh = get_variables_category("refugee_mh", start_date, end_date, location, conn)
         morbidity_cd_no = sum(morbidity_cd.values())
         morbidity_ncd_no = sum(morbidity_ncd.values())
@@ -549,8 +506,8 @@ def disease_breakdown(diseases):
         disease_name = ",".join(split[:-1])
         age_gender = split[-1]
         disease_name = disease_name.strip()
-        
         gender, age = age_gender.strip().split(" ")
+        
         gender = gender.lower()
         age = age.strip()
         gender = gender.strip()
@@ -568,7 +525,32 @@ def disease_breakdown(diseases):
     ret["age_gender"] = age_gender_total
     ret["age"] = age_total
     return ret
-    
+
+
+def get_latest_category(category, clinic, start_date, end_date):
+    variables = variables_instance.get(category)
+    keys = sorted(variables.keys())
+
+    result = db.session.query(Data.variables).filter(
+        or_(Data.variables.has_key(key) for key in keys),
+        Data.clinic == clinic,
+        Data.date >= start_date,
+        Data.date < end_date
+            ).order_by(Data.date.desc()).first()
+    ret = {}
+    for key in keys:
+        name = variables[key]["name"]
+        gender, age = name.split(",")[1].strip().split(" ")
+        gender = gender.lower()
+        age = age.strip()
+        gender = gender.strip()
+        ret.setdefault(age, {"female": 0, "male": 0})        
+        if(result):
+            ret[age][gender] += result[0][key]
+
+    return ret
+
+
 class RefugeeCd(Resource):
     """ Class to return data for the refugee cd report """
     decorators = [require_api_key]
