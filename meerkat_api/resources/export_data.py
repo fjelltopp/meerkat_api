@@ -2,15 +2,17 @@
 Data resource for exporting data
 """
 from flask_restful import Resource
-from flask import request
+from flask import request, abort
 from sqlalchemy import or_, extract, func, Integer
 from datetime import datetime
 from sqlalchemy.sql.expression import cast
+import json
 
 from meerkat_api.util import row_to_dict, rows_to_dicts, date_to_epi_week
 from meerkat_api import db, app, output_csv
 from meerkat_abacus.model import Data, form_tables
 from meerkat_abacus.util import all_location_data
+from meerkat_abacus.config import country_config, links
 from meerkat_api.resources.variables import Variables
 from meerkat_api.authentication import require_api_key
 from meerkat_abacus.util import get_locations, get_locations_by_deviceid
@@ -87,6 +89,107 @@ class ExportAlerts(Resource):
             output_dicts.append(output_dict)
 
         return {"data": output_dicts, "keys": keys, "filename": "alerts"}
+
+
+
+class ExportCategory(Resource):
+    """
+    Export cases from case form that matches a category
+
+    Args:
+       - category: category to match
+       - variables: variable dictionary
+    """
+    representations = {'text/csv': output_csv}
+    decorators = [require_api_key]
+    
+    def get(self, category, download_name):
+        if "variables" in request.args.keys():
+            variables = json.loads(request.args["variables"])
+        else:
+            abort(501)
+        v = Variables()
+        data_vars = v.get(category)
+        data_keys = data_vars.keys()
+
+        return_keys = []
+        translation_dict = {}
+        alert = False
+        for v in variables:
+            return_keys.append(v[1])
+            translation_dict[v[1]] = v[0]
+            if "alert_link" in v[0]:
+                alert = True
+        if alert:
+            alerts = get_alerts({})
+            link_tables = {}
+            for l in links.links:
+                link_tables[l["id"]] = l["to_table"]
+        icd_code_to_name = {}
+        for v in data_vars:
+            condition = data_vars[v]["condition"]
+            if "," in condition:
+                codes = condition.split(",")
+            else:
+                codes = [condition]
+            for c in codes:
+                icd_code_to_name[c.strip()] = data_vars[v]["name"]
+            
+        results = db.session.query(Data,form_tables["case"]).join(form_tables["case"], Data.uuid==form_tables["case"].uuid).filter(
+            or_(Data.variables.has_key(key) for key in data_keys)
+        )
+        locs = get_locations(db.session)
+        dict_rows = []
+        for r in results:
+            dict_row = {}
+            for k in return_keys:
+                form_var = translation_dict[k]
+                if form_var == "icd_name":
+                    if r[1].data["icd_code"] in icd_code_to_name:
+                        dict_row[k] = icd_code_to_name[r[1].data["icd_code"]]
+                    else:
+                        dict_row[k] = None
+                elif form_var == "clinic":
+                    dict_row[k] = locs[r[0].clinic].name
+                elif form_var == "region":
+                    dict_row[k] = locs[r[0].region].name
+                elif form_var == "district":
+                    dict_row[k] = locs[r[0].district].name
+                elif "alert_link" in form_var:
+                    alert_id = r[0].uuid[-country_config["alert_id_length"]:]
+                    if alert_id in alerts:
+                        link, field = form_var.split("$")[-2:]
+                        alert = alerts[alert_id]
+                        if "links" in alert:
+                            if link in alert["links"]:
+                                to_uuid = alert["links"][link]["to_id"]
+                                table = form_tables[link_tables[link]]
+                                result = db.session.query(table).filter(table.uuid == to_uuid).one()
+                                if field in result.data:
+                                    dict_row[k] = result.data[field]
+                                else:
+                                    dict_row[k] = None
+                            else:
+                                dict_row[k] = None
+                        else:
+                            dict_row[k] = None
+                    else:
+                        dict_row[k] = None
+                else:
+                    if form_var in r[1].data:
+                        dict_row[k] = r[1].data[form_var]
+                    else:
+                        dict_row[k] = None
+
+                    
+            dict_rows.append(dict_row)
+
+        return {"data": dict_rows,
+                "keys": return_keys,
+                "filename": download_name}
+        
+    
+
     
 class ExportForm(Resource):
     """
