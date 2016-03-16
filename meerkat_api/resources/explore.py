@@ -169,13 +169,21 @@ class QueryCategory(Resource):
                             ret.setdefault(names1[l], {}).setdefault(
                                 names2[i2], 0)
                             ret[names1[l]][names2[i2]] += 1
-
+                    else:
+                        for l in locs:
+                            ret.setdefault(names1[l], {}).setdefault(
+                                names2[i2], 0)
         else:
             for r in results.all():
                 for i1 in ids1:
                     for i2 in ids2:
-                        if i1 in r.variables and i2 in r.variables:
-                            ret.setdefault(names1[i1], {}).setdefault(
-                                names2[i2], 0)
-                            ret[names1[i1]][names2[i2]] += 1
+                        if i1 in r.variables:
+                            if i2 in r.variables:
+                                ret.setdefault(names1[i1], {}).setdefault(
+                                    names2[i2], 0)
+                                ret[names1[i1]][names2[i2]] += 1
+                            else:
+                                ret.setdefault(names1[i1], {}).setdefault(
+                                    names2[i2], 0)
+                                
         return ret
