@@ -108,10 +108,11 @@ class ExportCategory(Resource):
             variables = json.loads(request.args["variables"])
         else:
             abort(501)
-        v = Variables()
-        data_vars = v.get(category)
+        var = Variables()
+        data_vars = var.get(category)
         data_keys = data_vars.keys()
-
+        if len(data_keys) == 0:
+            abort(501)
         return_keys = []
         translation_dict = {}
         alert = False
@@ -126,14 +127,19 @@ class ExportCategory(Resource):
             for l in links.links:
                 link_tables[l["id"]] = l["to_table"]
         icd_code_to_name = {}
-        for v in data_vars:
-            condition = data_vars[v]["condition"]
+        if "name_category" in request.args.keys():
+            icd_name = var.get(request.args["name_category"])
+            app.logger.info(len(icd_name))
+        else:
+            icd_name = data_vars
+        for v in icd_name:
+            condition = icd_name[v]["condition"]
             if "," in condition:
                 codes = condition.split(",")
             else:
                 codes = [condition]
             for c in codes:
-                icd_code_to_name[c.strip()] = data_vars[v]["name"]
+                icd_code_to_name[c.strip()] = icd_name[v]["name"]
             
         results = db.session.query(Data,form_tables["case"]).join(form_tables["case"], Data.uuid==form_tables["case"].uuid).filter(
             or_(Data.variables.has_key(key) for key in data_keys)
