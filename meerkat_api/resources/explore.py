@@ -6,6 +6,7 @@ from sqlalchemy import or_, extract, func, Integer
 from datetime import datetime
 from dateutil.parser import parse
 from sqlalchemy.sql.expression import cast
+from flask import request
 
 from meerkat_api.util import row_to_dict, rows_to_dicts, date_to_epi_week
 from meerkat_api import db, app
@@ -131,7 +132,10 @@ class QueryCategory(Resource):
     decorators = [require_api_key]
     def get(self, group_by1, group_by2, start_date=None, end_date=None):
         start_date, end_date = sort_date(start_date, end_date)
-
+        use_ids = False
+        if "use_ids" in request.args.keys():
+            use_ids = True
+        
         if "locations" == group_by2:
             tmp = group_by1
             group_by1 = group_by2
@@ -148,10 +152,14 @@ class QueryCategory(Resource):
 
         else:
             names1 = get_variables(group_by1)
+            if use_ids:
+                names1 = {vid: vid for vid in names1.keys()}
             ids1 = names1.keys()
             conditions = [or_(Data.variables.has_key(str(i)) for i in ids1)]
             
         names2 = get_variables(group_by2)
+        if use_ids:
+            names2 = {vid: vid for vid in names2.keys()}
         ids2 = names2.keys()
         conditions += [or_(Data.variables.has_key(str(i)) for i in ids2)]
         conditions += [Data.date >= start_date, Data.date < end_date]
