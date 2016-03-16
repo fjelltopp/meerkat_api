@@ -74,7 +74,7 @@ from meerkat_api.resources.epi_week import EpiWeek, EpiWeekStart
 from meerkat_api.resources.completeness import Completeness
 from meerkat_api.resources.reports import PublicHealth, CdReport, CdPublicHealth, NcdPublicHealth,RefugeePublicHealth, RefugeeCd,RefugeeDetail
 from meerkat_api.resources.frontpage import KeyIndicators, TotMap, NumAlerts, ConsultationMap
-from meerkat_api.resources.export_data import ExportData, ExportForm, ExportAlerts, Forms
+from meerkat_api.resources.export_data import ExportData, ExportForm, ExportAlerts, Forms, ExportCategory
 from meerkat_api.authentication import require_api_key
 
 api.add_resource(EpiWeek, "/epi_week",
@@ -89,6 +89,7 @@ api.add_resource(ExportData, "/export/data")
 api.add_resource(ExportForm, "/export/form/<form>")
 api.add_resource(ExportAlerts, "/export/alerts")
 api.add_resource(Forms, "/export/forms")
+api.add_resource(ExportCategory, "/export/category/<category>/<download_name>")
 
 api.add_resource(Locations, "/locations")
 api.add_resource(LocationTree, "/locationtree")

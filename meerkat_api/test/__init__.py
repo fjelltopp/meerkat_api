@@ -412,6 +412,10 @@ class MeerkatAPITestCase(unittest.TestCase):
     def test_export_data(self):
         rv = self.app.get('/export/data', headers={"Accept": "text/csv"})
         self.assertEqual(rv.status_code, 200)
+    def test_export_category(self):
+        rv = self.app.get('/export/category/cd_tab/cd?variables=[["icd_code", "ICD CODE"], ["icd_name", "Name"], ["alert_link$alert_investigation$alert_labs./return_lab", "Return Labs"]]', headers={"Accept": "text/csv"})
+        self.assertEqual(rv.status_code, 200)
+        
     def test_export_forms(self):
         rv = self.app.get('/export/forms')
         self.assertEqual(rv.status_code, 200)
