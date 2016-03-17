@@ -118,8 +118,11 @@ api.add_resource(QueryVariable,
                  "/<start_date>/<end_date>")
 api.add_resource(QueryCategory,
                  "/query_category/<group_by1>/<group_by2>",
+                 "/query_category/<group_by1>/<group_by2>/<only_loc>",
                  "/query_category/<group_by1>/<group_by2>"
-                 "/<start_date>/<end_date>")
+                 "/<start_date>/<end_date>",
+                 "/query_category/<group_by1>/<group_by2>"
+                 "/<start_date>/<end_date>/<only_loc>")
 api.add_resource(Completeness, "/completeness/<variable>/<number_per_week>")
 
 #Reports

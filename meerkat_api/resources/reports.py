@@ -58,7 +58,7 @@ class CdReport(Resource):
 
         all_alerts = alerts.get_alerts({"location": location})
         data = {}
-        weeks = [i for i in range(1, epi_week + 1, 1)]
+        weeks = [i for i in range(1, 52, 1)]
         data_list = [0 for week in weeks]
         variable_query = db.session.query(AggregationVariables).filter(
             AggregationVariables.alert == 1)

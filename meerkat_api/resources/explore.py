@@ -130,7 +130,7 @@ class QueryCategory(Resource):
         data: {variable_1: {total: X, weeks: {12:X,13:X}}....}
     """
     decorators = [require_api_key]
-    def get(self, group_by1, group_by2, start_date=None, end_date=None):
+    def get(self, group_by1, group_by2, start_date=None, end_date=None, only_loc=None):
         start_date, end_date = sort_date(start_date, end_date)
         use_ids = False
         if "use_ids" in request.args.keys():
@@ -163,6 +163,9 @@ class QueryCategory(Resource):
         ids2 = names2.keys()
         conditions += [or_(Data.variables.has_key(str(i)) for i in ids2)]
         conditions += [Data.date >= start_date, Data.date < end_date]
+        if only_loc:
+            conditions += [or_(loc == only_loc for loc in (
+                Data.country, Data.region, Data.district, Data.clinic))]
 
         results = db.session.query(
             *tuple(columns_to_query)
