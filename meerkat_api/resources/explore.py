@@ -59,7 +59,10 @@ class QueryVariable(Resource):
         variable = str(variable)
         start_date, end_date = sort_date(start_date, end_date)
         year = start_date.year
-
+        use_ids = False
+        if "use_ids" in request.args.keys():
+            use_ids = True
+        
         ret = {}
         date_conditions = [Data.date >= start_date, Data.date < end_date]
         if "location" in variable:
@@ -89,6 +92,8 @@ class QueryVariable(Resource):
             group_by_query = "country,region,district,clinic"
         else:
             names = get_variables(group_by)
+            if use_ids:
+                names = {vid: vid for vid in names.keys()}
             ids = names.keys()
             for i in ids:
                 columns_to_extract.append(
