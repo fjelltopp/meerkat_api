@@ -184,8 +184,8 @@ class QueryCategory(Resource):
         else:
             for r in results.all():
                 for i1 in ids1:
-                    for i2 in ids2:
-                        if i1 in r.variables:
+                    if i1 in r.variables:
+                        for i2 in ids2:
                             if i2 in r.variables:
                                 ret.setdefault(names1[i1], {}).setdefault(
                                     names2[i2], 0)
@@ -193,5 +193,9 @@ class QueryCategory(Resource):
                             else:
                                 ret.setdefault(names1[i1], {}).setdefault(
                                     names2[i2], 0)
-                                
+                    else:
+                        for i2 in ids2:
+                            ret.setdefault(names1[i1], {}).setdefault(
+                                names2[i2], 0)
+
         return ret
