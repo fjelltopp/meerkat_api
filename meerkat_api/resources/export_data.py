@@ -143,7 +143,7 @@ class ExportCategory(Resource):
             
         results = db.session.query(Data,form_tables["case"]).join(form_tables["case"], Data.uuid==form_tables["case"].uuid).filter(
             or_(Data.variables.has_key(key) for key in data_keys)
-        )
+        ).yield_per(200)
         locs = get_locations(db.session)
         dict_rows = []
         for r in results:
