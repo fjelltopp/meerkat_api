@@ -13,6 +13,7 @@ from meerkat_api import db, app
 from meerkat_abacus.model import Data
 from meerkat_abacus.util import get_locations, epi_week_start_date
 from meerkat_api.resources.variables import Variables
+from meerkat_api.resources.epi_week import EpiWeek
 from meerkat_api.authentication import require_api_key
 
 def sort_date(start_date,end_date):
@@ -99,10 +100,14 @@ class QueryVariable(Resource):
                 columns_to_extract.append(
                     Data.variables.has_key(str(i)).label("id" + str(i)))
             group_by_query = ",".join(["id" + str(i) for i in ids])
-            
-        for n in names.values():
-            ret[n] = {"total": 0, "weeks": {}}
 
+        ew = EpiWeek()
+        start_week = ew.get(start_date.replace(tzinfo=None).isoformat())["epi_week"]
+        end_week = ew.get(end_date.replace(tzinfo=None).isoformat())["epi_week"]
+        if start_week == 0:
+            start_week = 1
+        for n in names.values():
+            ret[n] = {"total": 0, "weeks": {i: 0 for i in range(start_week, end_week+1)}}
 
         results = db.session.query(
             *tuple(columns_to_extract)
