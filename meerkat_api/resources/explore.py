@@ -25,7 +25,7 @@ def sort_date(start_date,end_date):
     else:
         end_date = datetime.today()
     if start_date:
-        start_date = parse(start_date)
+        start_date = parse(start_date).replace(tzinfo=None)
         if start_date < epi_week_start_date(year=start_date.year):
             start_date = epi_week_start_date(year=start_date.year)
     else:
@@ -121,6 +121,8 @@ class QueryVariable(Resource):
         ew = EpiWeek()
         start_week = ew.get(start_date.replace(tzinfo=None).isoformat())["epi_week"]
         end_week = ew.get(end_date.replace(tzinfo=None).isoformat())["epi_week"]
+        if start_date.year != end_date.year:
+            end_week += 52*(end_date.year - start_date.year)
         if start_week == 0:
             start_week = 1
         for n in names.values():
