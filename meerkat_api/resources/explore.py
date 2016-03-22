@@ -110,13 +110,13 @@ class QueryVariable(Resource):
             group_by_query = level
         else:
             names = get_variables(group_by)
-            if use_ids:
-                names = {vid: vid for vid in names.keys()}
             ids = names.keys()
             for i in ids:
                 columns_to_extract.append(
                     Data.variables.has_key(str(i)).label("id" + str(i)))
             group_by_query = ",".join(["id" + str(i) for i in ids])
+        if use_ids:
+            names = {vid: vid for vid in names.keys()}
 
         ew = EpiWeek()
         start_week = ew.get(start_date.replace(tzinfo=None).isoformat())["epi_week"]
