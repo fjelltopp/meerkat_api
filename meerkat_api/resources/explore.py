@@ -125,7 +125,6 @@ class QueryVariable(Resource):
 
         for r in results:
             if "locations" in group_by:
-                app.logger.info(r)
                 ret[names[r[2]]]["total"] += r[0]
                 ret[names[r[2]]]["weeks"][int(r[1])] =int(r[0])
             else:
@@ -213,7 +212,6 @@ class QueryCategory(Resource):
         results = db.session.query(
             *tuple(columns_to_query)
         ).filter(*conditions)
-        app.logger.info(str(results))
         ret = {}
         for r in results.all():
             for i1 in ids1:

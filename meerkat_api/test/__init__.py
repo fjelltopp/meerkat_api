@@ -232,11 +232,11 @@ class MeerkatAPITestCase(unittest.TestCase):
     def test_query_variable_locations(self):
         """Test with group_by = locations"""
         year = datetime.today().year
-        rv = self.app.get('/query_variable/tot_1/locations')
+        rv = self.app.get('/query_variable/tot_1/locations:region')
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))
-        assert("Demo" in data)
-        assert("Clinic 1" in data)
+        assert("Region 1" in data)
+        assert("Region 2" in data)
         results = meerkat_api.db.session.query(model.Data).filter(
             model.Data.region == 2,
             model.Data.variables.has_key("tot_1"),
@@ -281,11 +281,11 @@ class MeerkatAPITestCase(unittest.TestCase):
     def test_query_category_locations(self):
         """Test with locations"""
         year = datetime.today().year
-        rv = self.app.get('/query_category/gender/locations')
+        rv = self.app.get('/query_category/locations:region/gender')
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))
-        assert("Demo" in data)
-        assert("Clinic 1" in data)
+        assert("Region 1" in data)
+        assert("Region 2" in data)
         results = meerkat_api.db.session.query(model.Data).filter(
             model.Data.region == 2,
             model.Data.variables.has_key("gen_1"),
