@@ -15,7 +15,7 @@ class Variables(Resource):
         category: category of variables, category=all gives all variables
     """
     def get(self, category):
-        if category == "locations":
+        if category == "locations" or "locations:" in category:
             l = locations.Locations()
             return l.get()
         elif category != "all":
