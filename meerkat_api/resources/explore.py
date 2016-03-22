@@ -8,6 +8,8 @@ from dateutil.parser import parse
 from sqlalchemy.sql.expression import cast
 from flask import request
 
+
+
 from meerkat_api.util import row_to_dict, rows_to_dicts, date_to_epi_week, is_child
 from meerkat_api import db, app
 from meerkat_abacus.model import Data
@@ -100,7 +102,9 @@ class QueryVariable(Resource):
             ids = locations.keys()
             names = {}
             for l in locations.values():
-                if l.level == level and (not only_loc or is_child(only_loc, l.id, locations)):
+                if (l.level == level
+                    and (not only_loc or is_child(only_loc, l.id, locations))
+                    and (level != "clinic" or l.case_report)):
                     names[l.id] = l.name
             columns_to_extract += [getattr(Data, level, None)]
             group_by_query = level
@@ -172,7 +176,9 @@ class QueryCategory(Resource):
             names1 = {}
             ids1 = []
             for l in locations.values():
-                if l.level == level and (not only_loc or is_child(only_loc, l.id, locations)):
+                if (l.level == level
+                    and (not only_loc or is_child(only_loc, l.id, locations))
+                    and (level != "clinic" or l.case_report)):
                     names1[l.id] = l.name 
                     ids1.append(l.id)
             columns_to_query += [getattr(Data, level)]
@@ -188,7 +194,9 @@ class QueryCategory(Resource):
             names2 = {}
             ids2 = []
             for l in locations.values():
-                if l.level == level and (not only_loc or is_child(only_loc, l.id, locations)):
+                if (l.level == level
+                    and (not only_loc or is_child(only_loc, l.id, locations))
+                    and (level != "clinic" or l.case_report)):
                     names2[l.id] = l.name 
                     ids2.append(l.id)
             columns_to_query += [getattr(Data, level)]
@@ -210,25 +218,27 @@ class QueryCategory(Resource):
 
         conditions += [Data.date >= start_date, Data.date < end_date]
 
-
         results = db.session.query(
             *tuple(columns_to_query)
         ).filter(*conditions)
         ret = {}
+
         for r in results.all():
-            for i1 in ids1:
-                if i1 in r.variables or ("locations" in group_by1 and i1==getattr(r, level, 1)):
-                    for i2 in ids2:
-                        if i2 in r.variables or ("locations" in group_by2 and i2==getattr(r, level, 1)):
-                            ret.setdefault(names1[i1], {}).setdefault(
-                                names2[i2], 0)
-                            ret[names1[i1]][names2[i2]] += 1
-                        else:
-                            ret.setdefault(names1[i1], {}).setdefault(
-                                names2[i2], 0)
-                else:
-                    for i2 in ids2:
+            list_of_vars = r.variables
+            if "locations" in group_by1 or "locations" in group_by2:
+                list_of_vars[getattr(r, level, 1)] = 1
+            for i1 in list_of_vars.keys():
+                for i2 in list_of_vars.keys():
+                    if i1 in ids1 and i2 in ids2:
                         ret.setdefault(names1[i1], {}).setdefault(
                             names2[i2], 0)
-
+                        ret[names1[i1]][names2[i2]] += 1
+        for n1 in names1.values():
+            for n2 in names2.values():
+                if n1 in ret:
+                    if n2 not in ret[n1]:
+                        ret[n1][n2] = 0
+                else:
+                    ret.setdefault(n1, {})
+                    ret[n1][n2] = 0
         return ret
