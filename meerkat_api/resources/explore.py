@@ -24,8 +24,12 @@ def sort_date(start_date,end_date):
         end_date = datetime.today()
     if start_date:
         start_date = parse(start_date)
+        if start_date < epi_week_start_date(year=start_date.year):
+            start_date = epi_week_start_date(year=start_date.year)
     else:
-        start_date = datetime(end_date.year,1,1)
+        start_date = epi_week_start_date(year=end_date.year) #datetime(end_date.year,1,1)
+
+
     return start_date, end_date
 
 
@@ -113,12 +117,10 @@ class QueryVariable(Resource):
         ew = EpiWeek()
         start_week = ew.get(start_date.replace(tzinfo=None).isoformat())["epi_week"]
         end_week = ew.get(end_date.replace(tzinfo=None).isoformat())["epi_week"]
-
         if start_week == 0:
             start_week = 1
         for n in names.values():
             ret[n] = {"total": 0, "weeks": {i: 0 for i in range(start_week, end_week+1)}}
-
         results = db.session.query(
             *tuple(columns_to_extract)
         ).filter(*conditions).group_by("week," + group_by_query)
