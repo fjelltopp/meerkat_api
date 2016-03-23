@@ -3,9 +3,9 @@ Variables resource for querying variable data
 """
 from flask_restful import Resource
 from meerkat_api.util import row_to_dict, rows_to_dicts
-from meerkat_api import db
+from meerkat_api import db, app
 from meerkat_abacus import model
-
+from meerkat_api.resources import locations
 
 class Variables(Resource):
     """
@@ -15,7 +15,10 @@ class Variables(Resource):
         category: category of variables, category=all gives all variables
     """
     def get(self, category):
-        if category != "all":
+        if category == "locations" or "locations:" in category:
+            l = locations.Locations()
+            return l.get()
+        elif category != "all":
             results = db.session.query(model.AggregationVariables).filter(
                 model.AggregationVariables.category.has_key(category))
         else:
