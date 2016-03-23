@@ -118,8 +118,11 @@ class MeerkatAPITestCase(unittest.TestCase):
         rv = self.app.get('/reports/cd_report/{}'.format(location))
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))
-
-        
+    def test_ncd_report(self):
+        location = 2
+        rv = self.app.get('/reports/ncd_report/{}'.format(location))
+        self.assertEqual(rv.status_code, 200)
+        data = json.loads(rv.data.decode("utf-8"))
         
         
     # def test_tot_clinics(self):

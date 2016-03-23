@@ -18,10 +18,89 @@ from meerkat_api.resources.epi_week import EpiWeek, epi_week_start
 from meerkat_api.resources.locations import TotClinics
 from meerkat_api.resources import alerts
 from meerkat_api.resources.explore import QueryVariable
-from meerkat_abacus.util import get_locations
+from meerkat_abacus.util import get_locations, all_location_data
 from meerkat_abacus import model
 from meerkat_api.authentication import require_api_key
 
+class NcdReport(Resource):
+    """
+    Class for ncd report
+    """
+    decorators = [require_api_key]
+    def get(self, location, start_date=None, end_date=None):
+        start = time.time()
+        if start_date:
+            start_date = datetime.strptime(start_date, '%Y-%m-%d')
+        else:
+            start_date = datetime.now().replace(month=1, day=1,
+                                                         hour=0, second=0,
+                                                         minute=0,
+                                                         microsecond=0)
+
+            if end_date:
+                end_date = datetime.strptime(end_date,'%Y-%m-%d')
+            else:
+                end_date = datetime.now()
+        ret={}
+        #meta data
+        ret["meta"] = {"uuid": str(uuid.uuid4()),
+                       "project_id": 1,
+                       "generation_timestamp": datetime.now().isoformat(),
+                       "schema_version": 0.1
+        }
+        ew = EpiWeek()
+        end_date = end_date - timedelta(days=1)
+        epi_week = ew.get(end_date.isoformat())["epi_week"]
+        ret["data"] = {"epi_week_num": epi_week,
+                       "epi_week_date": end_date.isoformat(),
+                       "project_epoch": datetime(2015,5,20).isoformat()
+        }
+        conn = db.engine.connect()
+        location_name = db.session.query(Locations.name).filter(
+            Locations.id == location).first().name
+
+        if not location_name:
+            return None
+        ret["data"]["project_region"] = location_name
+
+        ret["hypertension"] = {"age": {}, "complications": {}}
+        ret["diabetes"] = {"age": {}, "complications": {}}
+
+        diabetes_id = "ncd_1"
+        hypertension_id = "ncd_2"
+        diseases = {"hypertension": hypertension_id, "diabetes": diabetes_id}
+        labs_to_include = {"hypertension": ["lab_1", "lab_2", "lab_3"], "diabetes": ["lab_2", "lab_3", "lab_4", "lab_5"]}
+        locations, ldid, regions, districts = all_location_data(db.session)
+        v = Variables()
+        lab_categories = v.get("lab")
+        for region in regions:
+            for disease in diseases.keys():
+                d_id = diseases[disease]
+                query_variable = QueryVariable()
+                disease_age = query_variable.get(d_id, "age",
+                                                 end_date=end_date.strftime("%d/%m/%Y"),
+                                                 start_date=start_date.strftime("%d/%m/%Y"),
+                                                 only_loc=region)
+                ret[disease]["age"][locations[region].name] = {age: disease_age[age]["total"] for age in disease_age}
+                disease_gender = query_variable.get(d_id, "gender",
+                                                    end_date=end_date.strftime("%d/%m/%Y"),
+                                                    start_date=start_date.strftime("%d/%m/%Y"),
+                                                    only_loc=region)
+                ret[disease]["complications"][locations[region].name] = {gender: disease_gender[gender]["total"] for gender in disease_gender}
+                ret[disease]["complications"][locations[region].name]["Total"] = sum([disease_gender[gender]["total"] for gender in disease_gender])
+
+                labs = query_variable.get(d_id, "lab",
+                                          end_date=end_date.strftime("%d/%m/%Y"),
+                                          start_date=start_date.strftime("%d/%m/%Y"),
+                                          only_loc=region,
+                                          use_ids=True)
+                
+                for l in labs:
+                    if l in labs_to_include[disease]:
+                        ret[disease]["complications"][locations[region].name][lab_categories[l]["name"]] = labs[l]["total"]
+                
+        return ret
+    
 
 class CdReport(Resource):
     """Class for communical disease report"""

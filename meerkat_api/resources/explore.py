@@ -62,13 +62,14 @@ class QueryVariable(Resource):
         data: {variable_1: {total: X, weeks: {12:X,13:X}}....}
     """
     decorators = [require_api_key]
-    def get(self, variable, group_by, start_date=None, end_date=None, only_loc=None):
+    def get(self, variable, group_by, start_date=None, end_date=None, only_loc=None, use_ids=None):
         variable = str(variable)
         start_date, end_date = sort_date(start_date, end_date)
         year = start_date.year
-        use_ids = False
-        if "use_ids" in request.args.keys():
+        if "use_ids" in request.args.keys() or use_ids:
             use_ids = True
+        else:
+            use_ids = False
         
         ret = {}
         date_conditions = [Data.date >= start_date, Data.date < end_date]
