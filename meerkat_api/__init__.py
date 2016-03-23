@@ -72,7 +72,7 @@ from meerkat_api.resources.alerts import Alert, Alerts, AggregateAlerts
 from meerkat_api.resources.explore import QueryVariable, QueryCategory
 from meerkat_api.resources.epi_week import EpiWeek, EpiWeekStart
 from meerkat_api.resources.completeness import Completeness
-from meerkat_api.resources.reports import PublicHealth, CdReport, CdPublicHealth, NcdPublicHealth,RefugeePublicHealth, RefugeeCd,RefugeeDetail
+from meerkat_api.resources.reports import PublicHealth, CdReport, CdPublicHealth, NcdPublicHealth,RefugeePublicHealth, RefugeeCd,RefugeeDetail, NcdReport
 from meerkat_api.resources.frontpage import KeyIndicators, TotMap, NumAlerts, ConsultationMap
 from meerkat_api.resources.export_data import ExportData, ExportForm, ExportAlerts, Forms, ExportCategory
 from meerkat_api.authentication import require_api_key
@@ -130,6 +130,9 @@ api.add_resource(Completeness, "/completeness/<variable>/<number_per_week>")
 api.add_resource(PublicHealth, "/reports/public_health/<location>",
                  "/reports/public_health/<location>/<end_date>",
                  "/reports/public_health/<location>/<end_date>/<start_date>")
+api.add_resource(NcdReport, "/reports/ncd_report/<location>",
+                 "/reports/ncd_report/<location>/<end_date>",
+                 "/reports/ncd_report/<location>/<end_date>/<start_date>")
 api.add_resource(CdPublicHealth, "/reports/cd_public_health/<location>",
                  "/reports/cd_public_health/<location>/<end_date>",
                  "/reports/cd_public_health/<location>/<end_date>/<start_date>")
