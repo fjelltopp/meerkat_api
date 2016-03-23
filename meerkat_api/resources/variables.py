@@ -18,6 +18,9 @@ class Variables(Resource):
         if category == "locations" or "locations:" in category:
             l = locations.Locations()
             return l.get()
+        elif category == "alert":
+            results = db.session.query(model.AggregationVariables).filter(
+                model.AggregationVariables.alert == 1)
         elif category != "all":
             results = db.session.query(model.AggregationVariables).filter(
                 model.AggregationVariables.category.has_key(category))
