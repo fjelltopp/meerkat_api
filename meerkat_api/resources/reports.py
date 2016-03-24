@@ -73,32 +73,53 @@ class NcdReport(Resource):
         locations, ldid, regions, districts = all_location_data(db.session)
         v = Variables()
         lab_categories = v.get("lab")
-        for region in regions:
-            for disease in diseases.keys():
+        ages = v.get("age")
+        for disease in diseases.keys():
+            ret[disease]["age"]["titles"] = ["Region", ]
+            ret[disease]["age"]["data"] = []
+            for age in sorted(ages.keys()):
+                ret[disease]["age"]["titles"].append(ages[age]["name"])
+            ret[disease]["age"]["titles"].append("Total")
+            ret[disease]["complications"]["titles"] = ["Region",
+                                                       "Total",
+                                                       "Female",
+                                                       "Male"]
+            for l in labs_to_include[disease]:
+                ret[disease]["complications"]["titles"].append(
+                    lab_categories[l]["name"])
+            ret[disease]["complications"]["data"] = []
+            for i,region in enumerate(sorted(regions)):
                 d_id = diseases[disease]
                 query_variable = QueryVariable()
                 disease_age = query_variable.get(d_id, "age",
                                                  end_date=end_date.strftime("%d/%m/%Y"),
                                                  start_date=start_date.strftime("%d/%m/%Y"),
-                                                 only_loc=region)
-                ret[disease]["age"][locations[region].name] = {age: disease_age[age]["total"] for age in disease_age}
+                                                 only_loc=region,
+                                                 use_ids=True)
+                
+                ret[disease]["age"]["data"].append({"title": locations[region].name, "values": []})
+                
+                for age in sorted(ages.keys()):
+                    ret[disease]["age"]["data"][i]["values"].append(disease_age[age]["total"])
+                ret[disease]["age"]["data"][i]["values"].append(sum( [a["total"] for a in disease_age.values()]))
                 disease_gender = query_variable.get(d_id, "gender",
                                                     end_date=end_date.strftime("%d/%m/%Y"),
                                                     start_date=start_date.strftime("%d/%m/%Y"),
                                                     only_loc=region)
-                ret[disease]["complications"][locations[region].name] = {gender: disease_gender[gender]["total"] for gender in disease_gender}
-                ret[disease]["complications"][locations[region].name]["Total"] = sum([disease_gender[gender]["total"] for gender in disease_gender])
-
+                ret[disease]["complications"]["data"].append({"title": locations[region].name,
+                                                              "values": [sum([disease_gender[gender]["total"] for gender in disease_gender])]})
+                
+                ret[disease]["complications"]["data"][i]["values"].append(disease_gender["Female"]["total"])
+                ret[disease]["complications"]["data"][i]["values"].append(disease_gender["Male"]["total"])
                 labs = query_variable.get(d_id, "lab",
                                           end_date=end_date.strftime("%d/%m/%Y"),
                                           start_date=start_date.strftime("%d/%m/%Y"),
                                           only_loc=region,
                                           use_ids=True)
                 
-                for l in labs:
-                    if l in labs_to_include[disease]:
-                        ret[disease]["complications"][locations[region].name][lab_categories[l]["name"]] = labs[l]["total"]
-                
+                for l in labs_to_include[disease]:
+                    if l in labs:
+                        ret[disease]["complications"]["data"][i]["values"].append(labs[l]["total"])
         return ret
     
 
