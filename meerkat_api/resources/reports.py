@@ -17,7 +17,7 @@ from meerkat_api.resources.variables import Variables
 from meerkat_api.resources.epi_week import EpiWeek, epi_week_start
 from meerkat_api.resources.locations import TotClinics
 from meerkat_api.resources import alerts
-from meerkat_api.resources.explore import QueryVariable
+from meerkat_api.resources.explore import QueryVariable, query_ids
 from meerkat_abacus.util import get_locations, all_location_data
 from meerkat_abacus import model
 from meerkat_api.authentication import require_api_key
@@ -70,6 +70,11 @@ class NcdReport(Resource):
         hypertension_id = "ncd_2"
         diseases = {"hypertension": hypertension_id, "diabetes": diabetes_id}
         labs_to_include = {"hypertension": ["lab_1", "lab_2", "lab_3"], "diabetes": ["lab_2", "lab_3", "lab_4", "lab_5"]}
+        ids_to_include = {"hypertension":
+                          [["With Diabetes", None], ["Smoking", "smo_2"], ["Complication", None]],
+                          "diabetes":
+                          [["With Hypertension", None], ["Smoking", "smo_2"], ["Complication", None]]
+                          }
         locations, ldid, regions, districts = all_location_data(db.session)
         v = Variables()
         lab_categories = v.get("lab")
@@ -87,8 +92,11 @@ class NcdReport(Resource):
             for l in labs_to_include[disease]:
                 ret[disease]["complications"]["titles"].append(
                     lab_categories[l]["name"])
+            for i in ids_to_include[disease]:
+                ret[disease]["complications"]["titles"].append(i[0])
+                
             ret[disease]["complications"]["data"] = []
-            for i,region in enumerate(sorted(regions)):
+            for i, region in enumerate(sorted(regions)):
                 d_id = diseases[disease]
                 query_variable = QueryVariable()
                 disease_age = query_variable.get(d_id, "age",
@@ -120,6 +128,15 @@ class NcdReport(Resource):
                 for l in labs_to_include[disease]:
                     if l in labs:
                         ret[disease]["complications"]["data"][i]["values"].append(labs[l]["total"])
+
+                for new_id in ids_to_include[disease]:
+                    if new_id[1]:
+                        
+                        ret[disease]["complications"]["data"][i]["values"].append(
+                            query_ids([d_id, new_id[1]], start_date, end_date, only_loc=region)
+                            )
+                    else:
+                        ret[disease]["complications"]["data"][i]["values"].append("N/A")
         return ret
     
 

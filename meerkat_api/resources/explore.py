@@ -48,6 +48,16 @@ def get_variables(category):
     names = dict((str(v), variables[v]["name"]) for v in variables.keys())
     return names
 
+def query_ids(variables, start_date, end_date, only_loc=None):
+    conditions = [Data.date >= start_date, Data.date < end_date]
+    for variable in variables:
+        conditions.append(Data.variables.has_key(variable))
+    if only_loc:
+        conditions += [or_(loc == only_loc for loc in (
+            Data.country, Data.region, Data.district, Data.clinic))]
+    res = db.session.query(func.count(Data.id)).filter(*conditions).one()
+    return res[0]
+
 class QueryVariable(Resource):
     """
     Create a table where all records have variable, and is broken down by
