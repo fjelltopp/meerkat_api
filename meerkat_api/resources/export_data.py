@@ -6,6 +6,7 @@ from flask import request, abort
 from sqlalchemy import or_, extract, func, Integer
 from datetime import datetime
 from sqlalchemy.sql.expression import cast
+from dateutil.parser import parse
 import json
 
 from meerkat_api.util import row_to_dict, rows_to_dicts, date_to_epi_week
@@ -116,30 +117,35 @@ class ExportCategory(Resource):
         return_keys = []
         translation_dict = {}
         alert = False
+
+        icd_code_to_name = {}
         for v in variables:
             return_keys.append(v[1])
             translation_dict[v[1]] = v[0]
             if "alert_link" in v[0]:
                 alert = True
+            if "icd_name$" in v[0]:
+                category = v[0].split("$")[1]
+                app.logger.info(category)
+                icd_name = var.get(category)
+                app.logger.info(len(icd_name))
+                icd_code_to_name[v[0]] = {}
+                for i in icd_name.keys():
+                    condition = icd_name[i]["condition"]
+                    if "," in condition:
+                        codes = condition.split(",")
+                    else:
+                        codes = [condition]
+                    for c in codes:
+                        icd_code_to_name[v[0]][c.strip()] = icd_name[i]["name"]
+        for key in icd_code_to_name.keys():
+            app.logger.info(key,len(icd_code_to_name[key]))
         if alert:
             alerts = get_alerts({})
             link_tables = {}
             for l in links.links:
                 link_tables[l["id"]] = l["to_table"]
-        icd_code_to_name = {}
-        if "name_category" in request.args.keys():
-            icd_name = var.get(request.args["name_category"])
-            app.logger.info(len(icd_name))
-        else:
-            icd_name = data_vars
-        for v in icd_name:
-            condition = icd_name[v]["condition"]
-            if "," in condition:
-                codes = condition.split(",")
-            else:
-                codes = [condition]
-            for c in codes:
-                icd_code_to_name[c.strip()] = icd_name[v]["name"]
+
             
         results = db.session.query(Data,form_tables["case"]).join(form_tables["case"], Data.uuid==form_tables["case"].uuid).filter(
             or_(Data.variables.has_key(key) for key in data_keys)
@@ -150,9 +156,9 @@ class ExportCategory(Resource):
             dict_row = {}
             for k in return_keys:
                 form_var = translation_dict[k]
-                if form_var == "icd_name":
-                    if r[1].data["icd_code"] in icd_code_to_name:
-                        dict_row[k] = icd_code_to_name[r[1].data["icd_code"]]
+                if "icd_name$" in form_var:
+                    if r[1].data["icd_code"] in icd_code_to_name[form_var]:
+                        dict_row[k] = icd_code_to_name[form_var][r[1].data["icd_code"]]
                     else:
                         dict_row[k] = None
                 elif form_var == "clinic":
@@ -161,6 +167,24 @@ class ExportCategory(Resource):
                     dict_row[k] = locs[r[0].region].name
                 elif form_var == "district":
                     dict_row[k] = locs[r[0].district].name
+                elif "$year" in form_var:
+                    field = form_var.split("$")[0]
+                    if field in r[1].data:
+                        dict_row[k] = parse(r[1].data[field]).year
+                    else:
+                        dict_row[k] = None
+                elif "$month" in form_var:
+                    field = form_var.split("$")[0]
+                    if field in r[1].data:
+                        dict_row[k] = parse(r[1].data[field]).month
+                    else:
+                        dict_row[k] = None
+                elif "$epi_week" in form_var:
+                    field = form_var.split("$")[0]
+                    if field in r[1].data:
+                        dict_row[k] = date_to_epi_week(parse(r[1].data[field]))
+                    else:
+                        dict_row[k] = None
                 elif "alert_link" in form_var:
                     alert_id = r[0].uuid[-country_config["alert_id_length"]:]
                     if alert_id in alerts:
