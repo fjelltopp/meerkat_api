@@ -138,8 +138,6 @@ class ExportCategory(Resource):
                         codes = [condition]
                     for c in codes:
                         icd_code_to_name[v[0]][c.strip()] = icd_name[i]["name"]
-        for key in icd_code_to_name.keys():
-            app.logger.info(key,len(icd_code_to_name[key]))
         if alert:
             alerts = get_alerts({})
             link_tables = {}
@@ -169,19 +167,21 @@ class ExportCategory(Resource):
                     dict_row[k] = locs[r[0].district].name
                 elif "$year" in form_var:
                     field = form_var.split("$")[0]
-                    if field in r[1].data:
+                    if field in r[1].data and r[1].data[field]:
                         dict_row[k] = parse(r[1].data[field]).year
                     else:
                         dict_row[k] = None
-                elif "$month" in form_var:
+                elif "$month" in form_var and r[1].data[field]:
                     field = form_var.split("$")[0]
                     if field in r[1].data:
+
                         dict_row[k] = parse(r[1].data[field]).month
                     else:
                         dict_row[k] = None
                 elif "$epi_week" in form_var:
                     field = form_var.split("$")[0]
-                    if field in r[1].data:
+                    if field in r[1].data and r[1].data[field]:
+                        app.logger.info(r[1].data[field])
                         dict_row[k] = date_to_epi_week(parse(r[1].data[field]))
                     else:
                         dict_row[k] = None
