@@ -5,6 +5,7 @@ from flask_restful import Resource
 from sqlalchemy import or_, extract, func, Integer
 from datetime import datetime
 from sqlalchemy.sql.expression import cast
+from flask import jsonify
 
 from meerkat_api.util import row_to_dict, rows_to_dicts, date_to_epi_week
 from meerkat_api import db, app
@@ -94,3 +95,26 @@ class AggregateCategory(Resource):
                                                        location_id,
                                                        year)
         return return_data
+
+class Records(Resource):
+    """
+    Return the records with a variable for locations
+    
+    Args: 
+       variable: variable_id
+       location: location
+    Returns: 
+       list_of_records
+    """
+    decorators = [require_api_key]
+    def get(self, variable, location_id):
+        results = db.session.query(Data).filter(
+            Data.variables.has_key(str(variable)), or_(
+                loc == location_id for loc in (Data.country,
+                                               Data.region,
+                                               Data.district,
+                                               Data.clinic))).all()
+        return jsonify({"records": rows_to_dicts(results)})
+        
+            
+        

@@ -66,7 +66,7 @@ def output_csv(data, code, headers=None):
 from meerkat_api.resources.locations import Location, Locations, LocationTree, TotClinics
 from meerkat_api.resources.variables import Variables, Variable
 from meerkat_api.resources.data import Aggregate, AggregateYear
-from meerkat_api.resources.data import AggregateCategory
+from meerkat_api.resources.data import AggregateCategory, Records
 from meerkat_api.resources.map import Clinics, MapVariable
 from meerkat_api.resources.alerts import Alert, Alerts, AggregateAlerts
 from meerkat_api.resources.explore import QueryVariable, QueryCategory
@@ -75,6 +75,8 @@ from meerkat_api.resources.completeness import Completeness
 from meerkat_api.resources.reports import PublicHealth, CdReport, CdPublicHealth, NcdPublicHealth,RefugeePublicHealth, RefugeeCd,RefugeeDetail, NcdReport
 from meerkat_api.resources.frontpage import KeyIndicators, TotMap, NumAlerts, ConsultationMap
 from meerkat_api.resources.export_data import ExportData, ExportForm, ExportAlerts, Forms, ExportCategory
+from meerkat_api.resources.links import Link, Links
+
 from meerkat_api.authentication import require_api_key
 
 api.add_resource(EpiWeek, "/epi_week",
@@ -90,6 +92,10 @@ api.add_resource(ExportForm, "/export/form/<form>")
 api.add_resource(ExportAlerts, "/export/alerts")
 api.add_resource(Forms, "/export/forms")
 api.add_resource(ExportCategory, "/export/category/<category>/<download_name>")
+
+api.add_resource(Link, "/link/<link_id>")
+api.add_resource(Links, "/links/<links_id>")
+
 
 api.add_resource(Locations, "/locations")
 api.add_resource(LocationTree, "/locationtree")
@@ -107,6 +113,8 @@ api.add_resource(AggregateYear,
 api.add_resource(AggregateCategory,
                  "/aggregate_category/<category>/<location_id>",
                  "/aggregate_category/<category>/<location_id>/<year>")
+
+api.add_resource(Records, "/records/<variable>/<location_id>")
 api.add_resource(Clinics, "/clinics/<location_id>",
                  "/clinics/<location_id>/<clinic_type>")
 api.add_resource(MapVariable, "/map/<variable_id>",
