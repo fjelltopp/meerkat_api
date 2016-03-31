@@ -10,7 +10,7 @@ from sqlalchemy.sql import text
 import uuid
 import time
 
-from meerkat_api.util import row_to_dict, rows_to_dicts, date_to_epi_week, get_children
+from meerkat_api.util import row_to_dict, rows_to_dicts, date_to_epi_week, get_children, is_child
 from meerkat_api import db, app
 from meerkat_abacus.model import Data, Locations, Alerts, AggregationVariables
 from meerkat_api.resources.variables import Variables
@@ -402,6 +402,235 @@ class RefugeePublicHealth(Resource):
         
         return ret
 
+
+class Pip(Resource):
+    """ Class to return data for the pip report """
+    decorators = [require_api_key]
+    def get(self, location, start_date=None, end_date=None):
+        """ generates date for the pip report for the year 
+        up to epi_week for the given location"""
+        start = time.time()
+        if start_date:
+            start_date = datetime.strptime(start_date, '%Y-%m-%d')
+        else:
+            start_date = datetime.now().replace(month=1, day=1,
+                                                         hour=0, second=0,
+                                                         minute=0,
+                                                         microsecond=0)
+
+            if end_date:
+                end_date = datetime.strptime(end_date,'%Y-%m-%d')
+            else:
+                end_date = datetime.now()
+        ret={}
+        #meta data
+        ret["meta"] = {"uuid": str(uuid.uuid4()),
+                       "project_id": 1,
+                       "generation_timestamp": datetime.now().isoformat(),
+                       "schema_version": 0.1
+        }
+        ew = EpiWeek()
+        end_date = end_date - timedelta(days=1)
+        epi_week = ew.get(end_date.isoformat())["epi_week"]
+        ret["data"] = {"epi_week_num": epi_week,
+                       "epi_week_date": end_date.isoformat(),
+                       "project_epoch": datetime(2015,5,20).isoformat()
+        }
+        conn = db.engine.connect()
+        locs = get_locations(db.session)
+        location_name = locs[int(location)].name
+        if not location_name:
+            return None
+        ret["data"]["project_region"] = location_name
+        #We first find the number of SARI sentinel sites
+        sari_clinics = get_children(location, locs, clinic_type="SARI")
+        ret["data"]["num_clinic"] = len(sari_clinics)
+        query_variable = QueryVariable()
+        gender = query_variable.get("pip_2","gender",
+                                    end_date=end_date.strftime("%d/%m/%Y"),
+                                    start_date=start_date.strftime("%d/%m/%Y"),
+                                    only_loc=location)
+       
+        total_cases = get_variable_id("pip_2", start_date, end_date, location, conn)
+        ret["data"]["total_cases"] = total_cases
+        if total_cases == 0:
+            total_cases = 1
+
+        ret["data"]["gender"] = [
+            make_dict("Female",
+                      gender["Female"]["total"],
+                      gender["Female"]["total"] / total_cases * 100),
+            make_dict("Male",
+                      gender["Male"]["total"],
+                      gender["Male"]["total"] / total_cases * 100)
+            ]
+        ret["data"]["percent_cases_female"] = (gender["Female"]["total"] / total_cases) * 100
+        ret["data"]["percent_cases_male"] = (gender["Male"]["total"] / total_cases) * 100
+        pip_cat = query_variable.get("pip_2","pip",
+                                         end_date=end_date.strftime("%d/%m/%Y"),
+                                         start_date=start_date.strftime("%d/%m/%Y"),
+                                         only_loc=location,
+                                         use_ids=True)
+
+        weeks = sorted(pip_cat["pip_2"]["weeks"].keys())
+        
+        ret["data"]["timeline"] = {
+            "suspected": [pip_cat["pip_2"]["weeks"][k] for k in weeks],
+            "weeks": weeks,
+            "confirmed": {
+                "Influenza A": [0 for w in weeks],
+                "Influenza B": [0 for w in weeks],
+                "H1": [0 for w in weeks],
+                "H3": [0 for w in weeks],
+                "H1N1": [0 for w in weeks],
+                "Mixed": [0 for w in weeks]
+                }
+            }
+        
+        ret["data"]["percent_cases_chronic"] = (pip_cat["pip_3"]["total"] / total_cases ) * 100
+        ret["data"]["cases_chronic"] = pip_cat["pip_3"]["total"]
+        # Lab links and follow up links
+        lab_links = db.session.query(model.Links).filter(model.Links.link_def == "pip")
+        total_lab_links = 0
+        lab_types = {"Influenza A": 0,
+                     "Influenza B": 0,
+                     "H1": 0,
+                     "H3": 0,
+                     "H1N1": 0,
+                     "Mixed": 0
+                     }
+        for link in lab_links:
+            total_lab_links += 1
+            epi_week = ew.get(link.from_date.isoformat())["epi_week"]
+            t = link.data["type"]
+            if isinstance(t, list):
+                if epi_week in weeks:
+                    ret["data"]["timeline"]["confirmed"]["Mixed"][epi_week - 1] += 1
+                lab_types["Mixed"] += 1
+            else:
+                if epi_week in weeks:
+                    ret["data"]["timeline"]["confirmed"][t][epi_week -1] += 1
+                lab_types[t] += 1
+        tl = ret["data"]["timeline"]["confirmed"]
+        ret["data"]["timeline"]["confirmed"] = [ {"title": key, "values": list(tl[key])}
+                                                 for key in sorted(tl.keys(), key=lambda key: sum(tl[key]), reverse=True)
+                                                 ]
+                                                 
+        ret["data"]["cases_pcr"] = total_lab_links
+        
+        ret["data"]["flu_type"] = []
+        for l in ["Influenza A", "Influenza B", "H1", "H3", "H1N1", "Mixed"]:
+            ret["data"]["flu_type"].append(
+                make_dict(l, lab_types[l], (lab_types[l]/total_cases) * 100)
+            )
+        followup_links = db.session.query(model.Links).filter(model.Links.link_def == "pip_followup")
+
+        total_followup = 0
+        icu = 0
+        ventilated = 0
+        mortality = 0
+        for link in followup_links:
+            total_followup += 1
+            if link.data["outcome"] == "death":
+                mortality += 1
+            if link.data["ventilated"] == "yes":
+                ventilated += 1
+            if link.data["admitted_to_icu"] == "yes":
+                icu += 1
+        ret["data"]["pip_indicators"] = [make_dict("Total Cases", total_cases, 100)]
+        ret["data"]["pip_indicators"].append(
+            make_dict("Patients followed up", total_followup, total_followup / total_cases * 100))
+        ret["data"]["pip_indicators"].append(
+            make_dict("Laboratory results recorded", total_lab_links, total_lab_links / total_cases * 100))
+        ret["data"]["pip_indicators"].append(
+            make_dict("Patients admitted to ICU  ", icu, icu / total_cases * 100))
+        ret["data"]["pip_indicators"].append(
+            make_dict("Patients ventilated", ventilated, ventilated / total_cases * 100))
+        ret["data"]["pip_indicators"].append(
+            make_dict("Mortality", mortality, mortality / total_cases * 100))
+        ret["data"]["demographics"] = []
+
+
+        ret["data"]["reporting_sites"] = []
+        for l in locs.values():
+            if is_child(location, l.id, locs) and l.case_report and l.clinic_type == "SARI":
+                num = get_variable_id("pip_2",
+                                      start_date,
+                                      end_date, l.id, conn)
+                ret["data"]["reporting_sites"].append(
+                    make_dict(l.name,
+                              num,
+                              num / total_cases * 100))
+
+
+        # Demographis
+        age =  query_variable.get("pip_2","age_gender",
+                                  end_date=end_date.strftime("%d/%m/%Y"),
+                                  start_date=start_date.strftime("%d/%m/%Y"),
+                                  only_loc=location)
+        age_gender={}
+        for a in age:
+            gender,ac = a.split(" ")
+            if ac in age_gender.keys():
+                age_gender[ac][gender] = age[a]["total"]
+            else:
+                age_gender[ac] = {gender: age[a]["total"]}
+        age_variables = variables_instance.get("age")
+        for age_key in sorted(age_variables.keys()):
+            a = age_variables[age_key]["name"]
+
+            if a in age_gender.keys():
+                a_sum = sum(age_gender[a].values())
+            
+                if a_sum == 0:
+                    a_sum = 1
+                ret["data"]["demographics"].append(
+                    {"age": a,
+                     "male": {"quantity": age_gender[a]["Male"],
+                              "percent": age_gender[a]["Male"] / a_sum * 100
+                     },
+                     "female":{"quantity": age_gender[a]["Female"],
+                               "percent": age_gender[a]["Female"]/float(a_sum)*100
+                     }
+                    })
+
+        #Nationality
+        nationality_total = query_variable.get("pip_2","nationality",
+                                  end_date=end_date.strftime("%d/%m/%Y"),
+                                  start_date=start_date.strftime("%d/%m/%Y"),
+                                  only_loc=location)
+        nationality = {}
+        for nat in nationality_total.keys():
+            nationality[nat] = nationality_total[nat]["total"]
+        tot_nat = sum(nationality.values())
+        if tot_nat == 0:
+            tot_nat=1
+        ret["data"]["nationality"] = []
+        for nat in sorted(nationality, key=nationality.get, reverse=True):
+            if nationality[nat] > 0:
+                ret["data"]["nationality"].append(
+                    make_dict(nat,
+                              nationality[nat],
+                              nationality[nat] / tot_nat * 100))
+        #Status
+        status_total = query_variable.get("pip_2","status",
+                                               end_date=end_date.strftime("%d/%m/%Y"),
+                                               start_date=start_date.strftime("%d/%m/%Y"),
+                                               only_loc=location)
+        status = {}
+        for sta in status_total.keys():
+            status[sta] = status_total[sta]["total"]
+        tot_sta = sum(status.values())
+        if tot_sta == 0:
+            tot_sta = 1
+        ret["data"]["patient_status"] = []
+        for sta in sorted(status, key=status.get, reverse=True):
+            ret["data"]["patient_status"].append(
+                make_dict(sta,
+                          status[sta],
+                          status[sta] / tot_sta * 100))
+        return ret
+    
 class RefugeeDetail(Resource):
     """ Class to return data for the public health report """
     decorators = [require_api_key]
@@ -474,6 +703,7 @@ class RefugeeDetail(Resource):
                 no_clinicians += result[0]["ref_14"]
         tot_pop = male + female
         ret["data"]["total_population"] = tot_pop
+
         ret["data"]["n_clinicians"] = no_clinicians
         u5 =  sum(age_gender["0-1"].values()) + sum(age_gender["1-4"].values())
         if u5 == 0:

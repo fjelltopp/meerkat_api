@@ -164,7 +164,10 @@ class ExportCategory(Resource):
                 elif form_var == "region":
                     dict_row[k] = locs[r[0].region].name
                 elif form_var == "district":
-                    dict_row[k] = locs[r[0].district].name
+                    if r[0].district: 
+                        dict_row[k] = locs[r[0].district].name
+                    else:
+                        dict_row[k] = None
                 elif "$year" in form_var:
                     field = form_var.split("$")[0]
                     if field in r[1].data and r[1].data[field]:
@@ -181,7 +184,6 @@ class ExportCategory(Resource):
                 elif "$epi_week" in form_var:
                     field = form_var.split("$")[0]
                     if field in r[1].data and r[1].data[field]:
-                        app.logger.info(r[1].data[field])
                         dict_row[k] = date_to_epi_week(parse(r[1].data[field]))
                     else:
                         dict_row[k] = None
