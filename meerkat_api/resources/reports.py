@@ -472,10 +472,10 @@ class Pip(Resource):
                                          only_loc=location,
                                          use_ids=True)
 
-        weeks = sorted(pip_cat["pip_2"]["weeks"].keys())
+        weeks = list(range(1,53))#sorted(pip_cat["pip_2"]["weeks"].keys())
         
         ret["data"]["timeline"] = {
-            "suspected": [pip_cat["pip_2"]["weeks"][k] for k in weeks],
+            "suspected": [pip_cat["pip_2"]["weeks"][k] if k in pip_cat["pip_2"]["weeks"] else 0 for k in weeks],
             "weeks": weeks,
             "confirmed": {
                 "Influenza A": [0 for w in weeks],
