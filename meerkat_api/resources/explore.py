@@ -80,7 +80,7 @@ class QueryVariable(Resource):
             use_ids = True
         else:
             use_ids = False
-        
+
         ret = {}
         date_conditions = [Data.date >= start_date, Data.date < end_date]
 

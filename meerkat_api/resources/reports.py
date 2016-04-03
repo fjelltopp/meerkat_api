@@ -447,10 +447,13 @@ class Pip(Resource):
         ret["data"]["num_clinic"] = len(sari_clinics)
         query_variable = QueryVariable()
         gender = query_variable.get("pip_2","gender",
-                                    end_date=end_date.strftime("%d/%m/%Y"),
-                                    start_date=start_date.strftime("%d/%m/%Y"),
+                                    end_date=end_date.isoformat(),
+                                    start_date=start_date.isoformat(),
                                     only_loc=location)
-       
+        app.logger.info(gender)
+        app.logger.info(start_date)
+        app.logger.info(location)
+        
         total_cases = get_variable_id("pip_2", start_date, end_date, location, conn)
         ret["data"]["total_cases"] = total_cases
         if total_cases == 0:
@@ -467,8 +470,8 @@ class Pip(Resource):
         ret["data"]["percent_cases_female"] = (gender["Female"]["total"] / total_cases) * 100
         ret["data"]["percent_cases_male"] = (gender["Male"]["total"] / total_cases) * 100
         pip_cat = query_variable.get("pip_2","pip",
-                                         end_date=end_date.strftime("%d/%m/%Y"),
-                                         start_date=start_date.strftime("%d/%m/%Y"),
+                                         end_date=end_date.isoformat(),
+                                         start_date=start_date.isoformat(),
                                          only_loc=location,
                                          use_ids=True)
 
@@ -565,8 +568,8 @@ class Pip(Resource):
 
         # Demographis
         age =  query_variable.get("pip_2","age_gender",
-                                  end_date=end_date.strftime("%d/%m/%Y"),
-                                  start_date=start_date.strftime("%d/%m/%Y"),
+                                  end_date=end_date.isoformat(),
+                                  start_date=start_date.isoformat(),
                                   only_loc=location)
         age_gender={}
         for a in age:
@@ -596,8 +599,8 @@ class Pip(Resource):
 
         #Nationality
         nationality_total = query_variable.get("pip_2","nationality",
-                                  end_date=end_date.strftime("%d/%m/%Y"),
-                                  start_date=start_date.strftime("%d/%m/%Y"),
+                                  end_date=end_date.isoformat(),
+                                  start_date=start_date.isoformat(),
                                   only_loc=location)
         nationality = {}
         for nat in nationality_total.keys():
@@ -614,8 +617,8 @@ class Pip(Resource):
                               nationality[nat] / tot_nat * 100))
         #Status
         status_total = query_variable.get("pip_2","status",
-                                               end_date=end_date.strftime("%d/%m/%Y"),
-                                               start_date=start_date.strftime("%d/%m/%Y"),
+                                               end_date=end_date.isoformat(),
+                                               start_date=start_date.isoformat(),
                                                only_loc=location)
         status = {}
         for sta in status_total.keys():
@@ -1218,8 +1221,8 @@ class PublicHealth(Resource):
         ch={}
         query_variable = QueryVariable()
         child_disease = query_variable.get("age_1","for_child",
-                                           end_date=end_date.strftime("%d/%m/%Y"),
-                                           start_date=start_date.strftime("%d/%m/%Y"),
+                                           end_date=end_date.isoformat(),
+                                           start_date=start_date.isoformat(),
                                            only_loc=location)
         for chi in child_disease.keys():
             ch[chi] = child_disease[chi]["total"]
@@ -1293,12 +1296,12 @@ class CdPublicHealth(Resource):
             total_cases = 1
         query_variable = QueryVariable()
         gender = query_variable.get("prc_1","gender",
-                                    end_date=end_date.strftime("%d/%m/%Y"),
-                                    start_date=start_date.strftime("%d/%m/%Y"),
+                                    end_date=end_date.isoformat(),
+                                    start_date=start_date.isoformat(),
                                     only_loc=location)
         age = query_variable.get("prc_1","age",
-                                 end_date=end_date.strftime("%d/%m/%Y"),
-                                 start_date=start_date.strftime("%d/%m/%Y"),
+                                 end_date=end_date.isoformat(),
+                                 start_date=start_date.isoformat(),
                                  only_loc=location)
         female = gender["Female"]["total"]
         male = gender["Male"]["total"]
@@ -1320,8 +1323,8 @@ class CdPublicHealth(Resource):
             less_5yo = 1
         #public health indicators
         modules = query_variable.get("prc_1","module",
-                                 end_date=end_date.strftime("%d/%m/%Y"),
-                                 start_date=start_date.strftime("%d/%m/%Y"),
+                                 end_date=end_date.isoformat(),
+                                 start_date=start_date.isoformat(),
                                  only_loc=location)
 
         ret["data"]["public_health_indicators"] = [
@@ -1375,8 +1378,8 @@ class CdPublicHealth(Resource):
         #Demographics
         ret["data"]["demographics"] = []
         age =  query_variable.get("prc_1","age_gender",
-                                  end_date=end_date.strftime("%d/%m/%Y"),
-                                  start_date=start_date.strftime("%d/%m/%Y"),
+                                  end_date=end_date.isoformat(),
+                                  start_date=start_date.isoformat(),
                                   only_loc=location)
         age_gender={}
         for a in age:
@@ -1406,8 +1409,8 @@ class CdPublicHealth(Resource):
 
         #Nationality
         nationality_total = query_variable.get("prc_1","nationality",
-                                  end_date=end_date.strftime("%d/%m/%Y"),
-                                  start_date=start_date.strftime("%d/%m/%Y"),
+                                  end_date=end_date.isoformat(),
+                                  start_date=start_date.isoformat(),
                                   only_loc=location)
         nationality = {}
         for nat in nationality_total.keys():
@@ -1424,8 +1427,8 @@ class CdPublicHealth(Resource):
                               nationality[nat] / tot_nat * 100))
         #Status
         status_total = query_variable.get("prc_1","status",
-                                               end_date=end_date.strftime("%d/%m/%Y"),
-                                               start_date=start_date.strftime("%d/%m/%Y"),
+                                               end_date=end_date.isoformat(),
+                                               start_date=start_date.isoformat(),
                                                only_loc=location)
         status = {}
         for sta in status_total.keys():
@@ -1497,12 +1500,12 @@ class NcdPublicHealth(Resource):
             total_cases = 1
         query_variable = QueryVariable()
         gender = query_variable.get("prc_2","gender",
-                                    end_date=end_date.strftime("%d/%m/%Y"),
-                                    start_date=start_date.strftime("%d/%m/%Y"),
+                                    end_date=end_date.isoformat(),
+                                    start_date=start_date.isoformat(),
                                     only_loc=location)
         age = query_variable.get("prc_2","age",
-                                 end_date=end_date.strftime("%d/%m/%Y"),
-                                 start_date=start_date.strftime("%d/%m/%Y"),
+                                 end_date=end_date.isoformat(),
+                                 start_date=start_date.isoformat(),
                                  only_loc=location)
         female = gender["Female"]["total"]
         male = gender["Male"]["total"]
@@ -1524,8 +1527,8 @@ class NcdPublicHealth(Resource):
             less_5yo = 1
         #public health indicators
         modules = query_variable.get("prc_2","module",
-                                 end_date=end_date.strftime("%d/%m/%Y"),
-                                 start_date=start_date.strftime("%d/%m/%Y"),
+                                 end_date=end_date.isoformat(),
+                                 start_date=start_date.isoformat(),
                                  only_loc=location)
 
         ret["data"]["public_health_indicators"] = [
@@ -1554,8 +1557,8 @@ class NcdPublicHealth(Resource):
         #Demographics
         ret["data"]["demographics"] = []
         age =  query_variable.get("prc_2","age_gender",
-                                  end_date=end_date.strftime("%d/%m/%Y"),
-                                  start_date=start_date.strftime("%d/%m/%Y"),
+                                  end_date=end_date.isoformat(),
+                                  start_date=start_date.isoformat(),
                                   only_loc=location)
         age_gender={}
         for a in age:
@@ -1585,8 +1588,8 @@ class NcdPublicHealth(Resource):
 
         #Nationality
         nationality_total = query_variable.get("prc_2","nationality",
-                                  end_date=end_date.strftime("%d/%m/%Y"),
-                                  start_date=start_date.strftime("%d/%m/%Y"),
+                                  end_date=end_date.isoformat(),
+                                  start_date=start_date.isoformat(),
                                   only_loc=location)
         nationality = {}
         for nat in nationality_total.keys():
@@ -1603,8 +1606,8 @@ class NcdPublicHealth(Resource):
                               nationality[nat] / tot_nat * 100))
         #Status
         status_total = query_variable.get("prc_2","status",
-                                               end_date=end_date.strftime("%d/%m/%Y"),
-                                               start_date=start_date.strftime("%d/%m/%Y"),
+                                               end_date=end_date.isoformat(),
+                                               start_date=start_date.isoformat(),
                                                only_loc=location)
         status = {}
         for sta in status_total.keys():
