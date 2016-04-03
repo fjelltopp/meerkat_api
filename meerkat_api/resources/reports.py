@@ -450,10 +450,6 @@ class Pip(Resource):
                                     end_date=end_date.isoformat(),
                                     start_date=start_date.isoformat(),
                                     only_loc=location)
-        app.logger.info(gender)
-        app.logger.info(start_date)
-        app.logger.info(location)
-        
         total_cases = get_variable_id("pip_2", start_date, end_date, location, conn)
         ret["data"]["total_cases"] = total_cases
         if total_cases == 0:
