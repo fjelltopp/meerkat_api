@@ -71,9 +71,9 @@ class NcdReport(Resource):
         diseases = {"hypertension": hypertension_id, "diabetes": diabetes_id}
         labs_to_include = {"hypertension": ["lab_1", "lab_2", "lab_3"], "diabetes": ["lab_2", "lab_3", "lab_4", "lab_5"]}
         ids_to_include = {"hypertension":
-                          [["With Diabetes", None], ["Smoking", "smo_2"], ["Complication", None]],
+                          [["With Diabetes", "com_1"], ["Smoking", "smo_2"], ["Complication", "lab_6"]],
                           "diabetes":
-                          [["With Hypertension", None], ["Smoking", "smo_2"], ["Complication", None]]
+                          [["With Hypertension", "com_2"], ["Smoking", "smo_2"], ["Complication", "lab_6"]]
                           }
         locations, ldid, regions, districts = all_location_data(db.session)
         v = Variables()
@@ -96,7 +96,7 @@ class NcdReport(Resource):
                 ret[disease]["complications"]["titles"].append(i[0])
                 
             ret[disease]["complications"]["data"] = []
-            for i, region in enumerate(sorted(regions)):
+            for i, region in enumerate(sorted(regions) + [1]):
                 d_id = diseases[disease]
                 query_variable = QueryVariable()
                 disease_age = query_variable.get(d_id, "age",
@@ -104,17 +104,20 @@ class NcdReport(Resource):
                                                  start_date=start_date.strftime("%d/%m/%Y"),
                                                  only_loc=region,
                                                  use_ids=True)
-                
-                ret[disease]["age"]["data"].append({"title": locations[region].name, "values": []})
+                loc_name = locations[region].name
+                if loc_name == "Jordan":
+                    loc_name = "Total"
+                ret[disease]["age"]["data"].append({"title": loc_name, "values": []})
                 
                 for age in sorted(ages.keys()):
                     ret[disease]["age"]["data"][i]["values"].append(disease_age[age]["total"])
+                
                 ret[disease]["age"]["data"][i]["values"].append(sum( [a["total"] for a in disease_age.values()]))
                 disease_gender = query_variable.get(d_id, "gender",
                                                     end_date=end_date.strftime("%d/%m/%Y"),
                                                     start_date=start_date.strftime("%d/%m/%Y"),
                                                     only_loc=region)
-                ret[disease]["complications"]["data"].append({"title": locations[region].name,
+                ret[disease]["complications"]["data"].append({"title": loc_name,
                                                               "values": [sum([disease_gender[gender]["total"] for gender in disease_gender])]})
                 
                 ret[disease]["complications"]["data"][i]["values"].append(disease_gender["Female"]["total"])
@@ -137,6 +140,7 @@ class NcdReport(Resource):
                             )
                     else:
                         ret[disease]["complications"]["data"][i]["values"].append("N/A")
+            
         return ret
     
 
