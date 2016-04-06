@@ -132,7 +132,7 @@ class MeerkatAPITestCase(unittest.TestCase):
         results = meerkat_api.db.session.query(
             model.form_tables["case"]).filter(
             model.form_tables["case"].data.contains(
-                {"intro./visit_type": 'new'}))
+                {"intro./visit": 'new'}))
         self.assertEqual(data["value"], len(results.all()))
 
     def test_aggregate_yearly(self):
