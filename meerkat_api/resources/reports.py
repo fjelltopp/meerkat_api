@@ -168,7 +168,7 @@ class CdReport(Resource):
         ret["data"] = {"epi_week_num": epi_week,
                        "end_date": end_date.isoformat(),
                        "project_epoch": start_date.isoformat(),
-                       "start_date": start.date.isoformat()
+                       "start_date": start_date.isoformat()
         }
 
         location_name = db.session.query(Locations.name).filter(
