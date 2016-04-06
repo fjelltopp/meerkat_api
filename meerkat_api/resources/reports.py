@@ -22,25 +22,30 @@ from meerkat_abacus.util import get_locations, all_location_data
 from meerkat_abacus import model
 from meerkat_api.authentication import require_api_key
 
+
+def fix_dates(start_date, end_date):
+    if start_date:
+        start_date = parser.parse(start_date).replace(tzinfo=None)
+    else:
+        start_date = datetime.now().replace(month=1, day=1,
+                                            hour=0, second=0,
+                                            minute=0,
+                                            microsecond=0)
+        
+    if end_date:
+        end_date  = parser.parse(end_date).replace(tzinfo=None)
+    else:
+        end_date = datetime.now()
+    return start_date, end_date
+    
+
 class NcdReport(Resource):
     """
     Class for ncd report
     """
     decorators = [require_api_key]
     def get(self, location, start_date=None, end_date=None):
-        start = time.time()
-        if start_date:
-            start_date = parser.parse(start_date)
-        else:
-            start_date = datetime.now().replace(month=1, day=1,
-                                                         hour=0, second=0,
-                                                         minute=0,
-                                                         microsecond=0)
-
-        if end_date:
-            end_date  = parser.parse(end_date)
-        else:
-            end_date = datetime.now()
+        start_date, end_date = fix_dates(start_date, end_date)
         ret={}
         #meta data
         ret["meta"] = {"uuid": str(uuid.uuid4()),
@@ -149,10 +154,8 @@ class CdReport(Resource):
     decorators = [require_api_key]
     def get(self, location, end_date=None):
         """ generates data for the CD report for the year until the end date for the given location"""
-        if end_date:
-            end_date = datetime.strptime(end_date, '%Y-%m-%d')
-        else:
-            end_date = datetime.now()
+
+        start_date, end_date = fix_dates(None, end_date)
         start_date = datetime(end_date.year, 1, 1)
         ret = {}
         #meta data
@@ -219,19 +222,7 @@ class RefugeePublicHealth(Resource):
 
         if "refugee" not in model.form_tables:
             return {}
-        start = time.time()
-        if start_date:
-            start_date = parser.parse(start_date)
-        else:
-            start_date = datetime.now().replace(month=1, day=1,
-                                                         hour=0, second=0,
-                                                         minute=0,
-                                                         microsecond=0)
-        if end_date:
-            end_date = parser.parse(end_date)
-        else:
-            end_date = datetime.now()
-            
+        start_date, end_date = fix_dates(None, end_date)
         ret={}
         #meta data
         ret["meta"] = {"uuid": str(uuid.uuid4()),
@@ -414,19 +405,7 @@ class Pip(Resource):
     def get(self, location, start_date=None, end_date=None):
         """ generates date for the pip report for the year 
         up to epi_week for the given location"""
-        start = time.time()
-        if start_date:
-            start_date = parser.parse(start_date)
-        else:
-            start_date = datetime.now().replace(month=1, day=1,
-                                                         hour=0, second=0,
-                                                         minute=0,
-                                                         microsecond=0)
-
-        if end_date:
-            end_date = parser.parse(end_date)
-        else:
-            end_date = datetime.now()
+        start_date, end_date = fix_dates(None, end_date)
         ret={}
         #meta data
         ret["meta"] = {"uuid": str(uuid.uuid4()),
@@ -644,18 +623,9 @@ class RefugeeDetail(Resource):
 
         if "refugee" not in model.form_tables:
             return {}
-        if start_date:
-            start_date = parser.parse(start_date)
-        else:
-            start_date = datetime.now().replace(month=1, day=1,
-                                                         hour=0, second=0,
-                                                         minute=0,
-                                                         microsecond=0)
 
-        if end_date:
-            end_date = parser.parse(end_date)
-        else:
-            end_date = datetime.now()
+        
+        start_date, end_date = fix_dates(start_date, end_date)
         ret={}
         #meta data
         ret["meta"] = {"uuid": str(uuid.uuid4()),
@@ -910,19 +880,7 @@ class RefugeeCd(Resource):
 
         if "refugee" not in model.form_tables:
             return {}
-        start = time.time()
-        if start_date:
-            start_date = parser.parse(start_date)
-        else:
-            start_date = datetime.now().replace(month=1, day=1,
-                                                         hour=0, second=0,
-                                                         minute=0,
-                                                         microsecond=0)
-
-        if end_date:
-            end_date = parser.parse(end_date)
-        else:
-            end_date = datetime.now()
+        start_date, end_date = fix_dates(start_date, end_date)
         ret={}
         #meta data
         ret["meta"] = {"uuid": str(uuid.uuid4()),
@@ -1022,18 +980,7 @@ class PublicHealth(Resource):
     def get(self, location, start_date=None, end_date=None):
         """ generates date for the public health report for the year 
         up to epi_week for the given location"""
-        if start_date:
-            start_date = parser.parse(start_date)
-        else:
-            start_date = datetime.now().replace(month=1, day=1,
-                                                         hour=0, second=0,
-                                                         minute=0,
-                                                         microsecond=0)
-
-        if end_date:
-            end_date = parser.parse(end_date)
-        else:
-            end_date = datetime.now()
+        start_date, end_date = fix_dates(start_date, end_date)
         ret={}
         #meta data
         ret["meta"] = {"uuid": str(uuid.uuid4()),
@@ -1249,19 +1196,7 @@ class CdPublicHealth(Resource):
     def get(self, location, start_date=None, end_date=None):
         """ generates date for the public health report for the year 
         up to epi_week for the given location"""
-        start = time.time()
-        if start_date:
-            start_date = parser.parse(start_date)
-        else:
-            start_date = datetime.now().replace(month=1, day=1,
-                                                         hour=0, second=0,
-                                                         minute=0,
-                                                         microsecond=0)
-
-            if end_date:
-                end_date = parser.parse(end_date)
-            else:
-                end_date = datetime.now()
+        start_date, end_date = fix_dates(start_date, end_date)
         ret={}
         #meta data
         ret["meta"] = {"uuid": str(uuid.uuid4()),
@@ -1453,18 +1388,7 @@ class NcdPublicHealth(Resource):
     def get(self, location, start_date=None, end_date=None):
         """ generates date for the ncd public health report for the year 
         up to epi_week for the given location"""
-        if start_date:
-            start_date = parser.parse(start_date)
-        else:
-            start_date = datetime.now().replace(month=1, day=1,
-                                                         hour=0, second=0,
-                                                         minute=0,
-                                                         microsecond=0)
-
-        if end_date:
-            end_date = parser.parse(end_date)
-        else:
-            end_date = datetime.now()
+        start_date, end_date = fix_dates(start_date, end_date)
         ret={}
         #meta data
         ret["meta"] = {"uuid": str(uuid.uuid4()),
