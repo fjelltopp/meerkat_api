@@ -1084,7 +1084,7 @@ class PublicHealth(Resource):
 
         #public health indicators
         ret["data"]["public_health_indicators"] = [
-            make_dict("Cases Reported", total_cases, None)]
+            make_dict("Cases Reported", total_cases, 100)]
         modules = get_variables_category("module", start_date, end_date, location, conn)
         ret["data"]["public_health_indicators"].append(
             make_dict("Mental Health (mhGAP) algorithm followed",
@@ -1328,7 +1328,7 @@ class CdPublicHealth(Resource):
                                  only_loc=location)
 
         ret["data"]["public_health_indicators"] = [
-            make_dict("Cases Reported", total_cases, None)]
+            make_dict("Cases Reported", total_cases, 100)]
         ret["data"]["public_health_indicators"].append(
             make_dict("Laboratory results recorded",
                       modules["Laboratory Results"]["total"],
@@ -1532,7 +1532,7 @@ class NcdPublicHealth(Resource):
                                  only_loc=location)
 
         ret["data"]["public_health_indicators"] = [
-            make_dict("Cases Reported", total_cases, None)]
+            make_dict("Cases Reported", total_cases, 100)]
         ret["data"]["public_health_indicators"].append(
             make_dict("Laboratory results recorded",
                       modules["Laboratory Results"]["total"],
