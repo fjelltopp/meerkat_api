@@ -105,8 +105,8 @@ class NcdReport(Resource):
                 d_id = diseases[disease]
                 query_variable = QueryVariable()
                 disease_age = query_variable.get(d_id, "age",
-                                                 end_date=end_date.strftime("%d/%m/%Y"),
-                                                 start_date=start_date.strftime("%d/%m/%Y"),
+                                                 end_date=end_date.isoformat(),
+                                                 start_date=start_date.isoformat(),
                                                  only_loc=region,
                                                  use_ids=True)
                 loc_name = locations[region].name
@@ -119,8 +119,8 @@ class NcdReport(Resource):
                 
                 ret[disease]["age"]["data"][i]["values"].append(sum( [a["total"] for a in disease_age.values()]))
                 disease_gender = query_variable.get(d_id, "gender",
-                                                    end_date=end_date.strftime("%d/%m/%Y"),
-                                                    start_date=start_date.strftime("%d/%m/%Y"),
+                                                    end_date=end_date.isoformat(),
+                                                    start_date=start_date.isoformat(),
                                                     only_loc=region)
                 ret[disease]["complications"]["data"].append({"title": loc_name,
                                                               "values": [sum([disease_gender[gender]["total"] for gender in disease_gender])]})
@@ -128,8 +128,8 @@ class NcdReport(Resource):
                 ret[disease]["complications"]["data"][i]["values"].append(disease_gender["Female"]["total"])
                 ret[disease]["complications"]["data"][i]["values"].append(disease_gender["Male"]["total"])
                 labs = query_variable.get(d_id, "lab",
-                                          end_date=end_date.strftime("%d/%m/%Y"),
-                                          start_date=start_date.strftime("%d/%m/%Y"),
+                                          end_date=end_date.isoformat(),
+                                          start_date=start_date.isoformat(),
                                           only_loc=region,
                                           use_ids=True)
                 
@@ -993,6 +993,7 @@ class PublicHealth(Resource):
         epi_week = ew.get(end_date.isoformat())["epi_week"]
         ret["data"] = {"epi_week_num": epi_week,
                        "end_date": end_date.isoformat(),
+                       "start_date": start_date.isoformat(),
                        "project_epoch": datetime(2015,5,20).isoformat()
         }
         conn = db.engine.connect()
@@ -1030,7 +1031,7 @@ class PublicHealth(Resource):
 
         #public health indicators
         ret["data"]["public_health_indicators"] = [
-            make_dict("Cases Reported", total_cases, None)]
+            make_dict("Cases Reported", total_cases, 100)]
         modules = get_variables_category("module", start_date, end_date, location, conn)
         ret["data"]["public_health_indicators"].append(
             make_dict("Mental Health (mhGAP) algorithm followed",
@@ -1262,7 +1263,7 @@ class CdPublicHealth(Resource):
                                  only_loc=location)
 
         ret["data"]["public_health_indicators"] = [
-            make_dict("Cases Reported", total_cases, None)]
+            make_dict("Cases Reported", total_cases, 100)]
         ret["data"]["public_health_indicators"].append(
             make_dict("Laboratory results recorded",
                       modules["Laboratory Results"]["total"],
@@ -1454,7 +1455,7 @@ class NcdPublicHealth(Resource):
                                  only_loc=location)
 
         ret["data"]["public_health_indicators"] = [
-            make_dict("Cases Reported", total_cases, None)]
+            make_dict("Cases Reported", total_cases, 100)]
         ret["data"]["public_health_indicators"].append(
             make_dict("Laboratory results recorded",
                       modules["Laboratory Results"]["total"],
