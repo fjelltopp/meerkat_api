@@ -152,11 +152,10 @@ class NcdReport(Resource):
 class CdReport(Resource):
     """Class for communical disease report"""
     decorators = [require_api_key]
-    def get(self, location, end_date=None):
+    def get(self, location, start_date = None,end_date=None):
         """ generates data for the CD report for the year until the end date for the given location"""
 
-        start_date, end_date = fix_dates(None, end_date)
-        start_date = datetime(end_date.year, 1, 1)
+        start_date, end_date = fix_dates(start_date, end_date)
         ret = {}
         #meta data
         ret["meta"] = {"uuid": str(uuid.uuid4()),
@@ -182,13 +181,30 @@ class CdReport(Resource):
 
         all_alerts = alerts.get_alerts({"location": location})
         data = {}
-        weeks = [i for i in range(1, 52, 1)]
+        ewg = ew.get(start_date.isoformat())
+        start_epi_week = ewg["epi_week"]
+        start_year = ewg["year"]
+        year_diff = end_date.year - start_year
+        start_epi_week = start_epi_week - year_diff * 52
+        weeks = [i for i in range(start_epi_week -1, epi_week + 1, 1)]
+
+        nice_weeks = []
+        for w in weeks:
+            i = 0
+            while w <= 0:
+                w += 52
+                i += 1
+            if w == 1:
+                w = "Week 1, "+str(end_date.year - i)
+            nice_weeks.append(w)
+        
         data_list = [0 for week in weeks]
         variable_query = db.session.query(AggregationVariables).filter(
             AggregationVariables.alert == 1)
         variable_names = {}
         for v in variable_query.all():
             variable_names[v.id] = v.name
+        
         for a in all_alerts.values():
             if a["alerts"]["date"] <= end_date and a["alerts"]["date"] > start_date:
                 reason = variable_names[a["alerts"]["reason"]]
@@ -204,14 +220,17 @@ class CdReport(Resource):
                 else:
                     report_status = "suspected"
                 epi_week = ew.get(a["alerts"]["date"].isoformat())["epi_week"]
+                year_diff = end_date.year - a["alerts"]["date"].year 
+                epi_week = epi_week - 52 * year_diff
                 if report_status:
-                    data.setdefault(reason, {"weeks": weeks,
+                    data.setdefault(reason, {"weeks": nice_weeks,
                                              "suspected": list(data_list),
                                              "confirmed": list(data_list)})
-                    data[reason][report_status][epi_week - 1] += 1
+                    app.logger.info(weeks)
+                    data[reason][report_status][weeks.index(epi_week)] += 1
+
         ret["data"]["communicable_diseases"] = data
         return ret
-
 
 class RefugeePublicHealth(Resource):
     """ Class to return data for the public health report """
@@ -405,7 +424,7 @@ class Pip(Resource):
     def get(self, location, start_date=None, end_date=None):
         """ generates date for the pip report for the year 
         up to epi_week for the given location"""
-        start_date, end_date = fix_dates(None, end_date)
+        start_date, end_date = fix_dates(start_date, end_date)
         ret={}
         #meta data
         ret["meta"] = {"uuid": str(uuid.uuid4()),
@@ -455,11 +474,21 @@ class Pip(Resource):
                                          only_loc=location,
                                          use_ids=True)
 
-        weeks = list(range(1,53))#sorted(pip_cat["pip_2"]["weeks"].keys())
         
+        weeks = sorted(pip_cat["pip_2"]["weeks"].keys())
+        nice_weeks = []
+        for w in weeks:
+            i = 0
+            while w > 52:
+                w -= 52
+                i += 1
+            if w == 1:
+                w = "Week 1, "+str(start_date.year + i)
+            nice_weeks.append(w)
+
         ret["data"]["timeline"] = {
             "suspected": [pip_cat["pip_2"]["weeks"][k] if k in pip_cat["pip_2"]["weeks"] else 0 for k in weeks],
-            "weeks": weeks,
+            "weeks": nice_weeks,
             "confirmed": {
                 "Influenza A": [0 for w in weeks],
                 "Influenza B": [0 for w in weeks],
@@ -676,7 +705,6 @@ class RefugeeDetail(Resource):
                 no_clinicians += result[0]["ref_14"]
         tot_pop = male + female
         ret["data"]["total_population"] = tot_pop
-
         ret["data"]["n_clinicians"] = no_clinicians
         u5 =  sum(age_gender["0-1"].values()) + sum(age_gender["1-4"].values())
         if u5 == 0:
@@ -685,6 +713,8 @@ class RefugeeDetail(Resource):
         #1. Population
         age_gender["total"] = tot_pop
         ret["data"]["population"] = {"Refugee Population": age_gender}
+        if tot_pop == 0:
+            tot_pop = 1
 
         #2. Mortality
         mortality =  get_variables_category("mortality", start_date, end_date, location, conn)
