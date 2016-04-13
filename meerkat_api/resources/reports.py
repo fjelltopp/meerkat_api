@@ -1019,7 +1019,7 @@ class PublicHealth(Resource):
                        "schema_version": 0.1
         }
         ew = EpiWeek()
-        end_date = end_date - timedelta(days=1)
+        end_date = end_date
         epi_week = ew.get(end_date.isoformat())["epi_week"]
         ret["data"] = {"epi_week_num": epi_week,
                        "end_date": end_date.isoformat(),
