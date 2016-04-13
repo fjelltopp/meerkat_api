@@ -1257,6 +1257,9 @@ class CdPublicHealth(Resource):
 
         total_cases = get_variable_id("prc_1", start_date, end_date, location, conn)
         ret["data"]["total_cases"] = total_cases
+        ret["data"]["public_health_indicators"] = [
+            make_dict("Cases Reported", total_cases, 100)]
+
         if total_cases == 0:
             total_cases = 1
         query_variable = QueryVariable()
@@ -1292,8 +1295,6 @@ class CdPublicHealth(Resource):
                                  start_date=start_date.isoformat(),
                                  only_loc=location)
 
-        ret["data"]["public_health_indicators"] = [
-            make_dict("Cases Reported", total_cases, 100)]
         ret["data"]["public_health_indicators"].append(
             make_dict("Laboratory results recorded",
                       modules["Laboratory Results"]["total"],
@@ -1317,6 +1318,8 @@ class CdPublicHealth(Resource):
                       tot_alerts,
                       100)
         )
+        if tot_alerts == 0:
+            tot_alerts = 1
         ret["data"]["public_health_indicators"].append(
             make_dict("Alerts investigated",
                       investigated_alerts,
