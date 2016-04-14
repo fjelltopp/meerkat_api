@@ -22,25 +22,30 @@ from meerkat_abacus.util import get_locations, all_location_data
 from meerkat_abacus import model
 from meerkat_api.authentication import require_api_key
 
+
+def fix_dates(start_date, end_date):
+    if start_date:
+        start_date = parser.parse(start_date).replace(tzinfo=None)
+    else:
+        start_date = datetime.now().replace(month=1, day=1,
+                                            hour=0, second=0,
+                                            minute=0,
+                                            microsecond=0)
+        
+    if end_date:
+        end_date  = parser.parse(end_date).replace(tzinfo=None)
+    else:
+        end_date = datetime.now()
+    return start_date, end_date
+    
+
 class NcdReport(Resource):
     """
     Class for ncd report
     """
     decorators = [require_api_key]
     def get(self, location, start_date=None, end_date=None):
-        start = time.time()
-        if start_date:
-            start_date = datetime.strptime(start_date, '%Y-%m-%d')
-        else:
-            start_date = datetime.now().replace(month=1, day=1,
-                                                         hour=0, second=0,
-                                                         minute=0,
-                                                         microsecond=0)
-
-            if end_date:
-                end_date = datetime.strptime(end_date,'%Y-%m-%d')
-            else:
-                end_date = datetime.now()
+        start_date, end_date = fix_dates(start_date, end_date)
         ret={}
         #meta data
         ret["meta"] = {"uuid": str(uuid.uuid4()),
@@ -49,11 +54,11 @@ class NcdReport(Resource):
                        "schema_version": 0.1
         }
         ew = EpiWeek()
-        end_date = end_date - timedelta(days=1)
         epi_week = ew.get(end_date.isoformat())["epi_week"]
         ret["data"] = {"epi_week_num": epi_week,
-                       "epi_week_date": end_date.isoformat(),
-                       "project_epoch": datetime(2015,5,20).isoformat()
+                       "end_date": end_date.isoformat(),
+                       "project_epoch": datetime(2015,5,20).isoformat(),
+                       "start_date": start_date.isoformat()
         }
         conn = db.engine.connect()
         location_name = db.session.query(Locations.name).filter(
@@ -100,8 +105,8 @@ class NcdReport(Resource):
                 d_id = diseases[disease]
                 query_variable = QueryVariable()
                 disease_age = query_variable.get(d_id, "age",
-                                                 end_date=end_date.strftime("%d/%m/%Y"),
-                                                 start_date=start_date.strftime("%d/%m/%Y"),
+                                                 end_date=end_date.isoformat(),
+                                                 start_date=start_date.isoformat(),
                                                  only_loc=region,
                                                  use_ids=True)
                 loc_name = locations[region].name
@@ -114,8 +119,8 @@ class NcdReport(Resource):
                 
                 ret[disease]["age"]["data"][i]["values"].append(sum( [a["total"] for a in disease_age.values()]))
                 disease_gender = query_variable.get(d_id, "gender",
-                                                    end_date=end_date.strftime("%d/%m/%Y"),
-                                                    start_date=start_date.strftime("%d/%m/%Y"),
+                                                    end_date=end_date.isoformat(),
+                                                    start_date=start_date.isoformat(),
                                                     only_loc=region)
                 ret[disease]["complications"]["data"].append({"title": loc_name,
                                                               "values": [sum([disease_gender[gender]["total"] for gender in disease_gender])]})
@@ -123,8 +128,8 @@ class NcdReport(Resource):
                 ret[disease]["complications"]["data"][i]["values"].append(disease_gender["Female"]["total"])
                 ret[disease]["complications"]["data"][i]["values"].append(disease_gender["Male"]["total"])
                 labs = query_variable.get(d_id, "lab",
-                                          end_date=end_date.strftime("%d/%m/%Y"),
-                                          start_date=start_date.strftime("%d/%m/%Y"),
+                                          end_date=end_date.isoformat(),
+                                          start_date=start_date.isoformat(),
                                           only_loc=region,
                                           use_ids=True)
                 
@@ -147,13 +152,10 @@ class NcdReport(Resource):
 class CdReport(Resource):
     """Class for communical disease report"""
     decorators = [require_api_key]
-    def get(self, location, end_date=None):
+    def get(self, location, start_date = None,end_date=None):
         """ generates data for the CD report for the year until the end date for the given location"""
-        if end_date:
-            end_date = datetime.strptime(end_date, '%Y-%m-%d')
-        else:
-            end_date = datetime.now()
-        start_date = datetime(end_date.year, 1, 1)
+
+        start_date, end_date = fix_dates(start_date, end_date)
         ret = {}
         #meta data
         ret["meta"] = {"uuid": str(uuid.uuid4()),
@@ -162,13 +164,13 @@ class CdReport(Resource):
                        "schema_version": 0.1
         }
 
-        end_date = end_date - timedelta(days=1)
         ew = EpiWeek()
         epi_week = ew.get(end_date.isoformat())["epi_week"]
 
         ret["data"] = {"epi_week_num": epi_week,
-                       "epi_week_date": end_date.isoformat(),
-                       "project_epoch": start_date.isoformat()
+                       "end_date": end_date.isoformat(),
+                       "project_epoch": start_date.isoformat(),
+                       "start_date": start_date.isoformat()
         }
 
         location_name = db.session.query(Locations.name).filter(
@@ -179,13 +181,30 @@ class CdReport(Resource):
 
         all_alerts = alerts.get_alerts({"location": location})
         data = {}
-        weeks = [i for i in range(1, 52, 1)]
+        ewg = ew.get(start_date.isoformat())
+        start_epi_week = ewg["epi_week"]
+        start_year = ewg["year"]
+        year_diff = end_date.year - start_year
+        start_epi_week = start_epi_week - year_diff * 52
+        weeks = [i for i in range(start_epi_week -1, epi_week + 1, 1)]
+
+        nice_weeks = []
+        for w in weeks:
+            i = 0
+            while w <= 0:
+                w += 52
+                i += 1
+            if w == 1:
+                w = "Week 1, "+str(end_date.year - i)
+            nice_weeks.append(w)
+        
         data_list = [0 for week in weeks]
         variable_query = db.session.query(AggregationVariables).filter(
             AggregationVariables.alert == 1)
         variable_names = {}
         for v in variable_query.all():
             variable_names[v.id] = v.name
+        
         for a in all_alerts.values():
             if a["alerts"]["date"] <= end_date and a["alerts"]["date"] > start_date:
                 reason = variable_names[a["alerts"]["reason"]]
@@ -201,14 +220,17 @@ class CdReport(Resource):
                 else:
                     report_status = "suspected"
                 epi_week = ew.get(a["alerts"]["date"].isoformat())["epi_week"]
+                year_diff = end_date.year - a["alerts"]["date"].year 
+                epi_week = epi_week - 52 * year_diff
                 if report_status:
-                    data.setdefault(reason, {"weeks": weeks,
+                    data.setdefault(reason, {"weeks": nice_weeks,
                                              "suspected": list(data_list),
                                              "confirmed": list(data_list)})
-                    data[reason][report_status][epi_week - 1] += 1
+                    app.logger.info(weeks)
+                    data[reason][report_status][weeks.index(epi_week)] += 1
+
         ret["data"]["communicable_diseases"] = data
         return ret
-
 
 class RefugeePublicHealth(Resource):
     """ Class to return data for the public health report """
@@ -219,19 +241,7 @@ class RefugeePublicHealth(Resource):
 
         if "refugee" not in model.form_tables:
             return {}
-        start = time.time()
-        if start_date:
-            start_date = datetime.strptime(start_date, '%Y-%m-%d')
-        else:
-            start_date = datetime.now().replace(month=1, day=1,
-                                                         hour=0, second=0,
-                                                         minute=0,
-                                                         microsecond=0)
-
-            if end_date:
-                end_date = datetime.strptime(end_date,'%Y-%m-%d')
-            else:
-                end_date = datetime.now()
+        start_date, end_date = fix_dates(None, end_date)
         ret={}
         #meta data
         ret["meta"] = {"uuid": str(uuid.uuid4()),
@@ -243,8 +253,9 @@ class RefugeePublicHealth(Resource):
         end_date = end_date - timedelta(days=1)
         epi_week = ew.get(end_date.isoformat())["epi_week"]
         ret["data"] = {"epi_week_num": epi_week,
-                       "epi_week_date": end_date.isoformat(),
-                       "project_epoch": datetime(2015,5,20).isoformat()
+                       "end_date": end_date.isoformat(),
+                       "project_epoch": datetime(2015,5,20).isoformat(),
+                       "start_date": start_date.isoformat(),
         }
         conn = db.engine.connect()
         locs = get_locations(db.session)
@@ -413,19 +424,7 @@ class Pip(Resource):
     def get(self, location, start_date=None, end_date=None):
         """ generates date for the pip report for the year 
         up to epi_week for the given location"""
-        start = time.time()
-        if start_date:
-            start_date = datetime.strptime(start_date, '%Y-%m-%d')
-        else:
-            start_date = datetime.now().replace(month=1, day=1,
-                                                         hour=0, second=0,
-                                                         minute=0,
-                                                         microsecond=0)
-
-            if end_date:
-                end_date = datetime.strptime(end_date,'%Y-%m-%d')
-            else:
-                end_date = datetime.now()
+        start_date, end_date = fix_dates(start_date, end_date)
         ret={}
         #meta data
         ret["meta"] = {"uuid": str(uuid.uuid4()),
@@ -434,11 +433,11 @@ class Pip(Resource):
                        "schema_version": 0.1
         }
         ew = EpiWeek()
-        end_date = end_date - timedelta(days=1)
         epi_week = ew.get(end_date.isoformat())["epi_week"]
         ret["data"] = {"epi_week_num": epi_week,
-                       "epi_week_date": end_date.isoformat(),
-                       "project_epoch": datetime(2015,5,20).isoformat()
+                       "end_date": end_date.isoformat(),
+                       "project_epoch": datetime(2015,5,20).isoformat(),
+                       "start_date": start_date.isoformat()
         }
         conn = db.engine.connect()
         locs = get_locations(db.session)
@@ -475,11 +474,21 @@ class Pip(Resource):
                                          only_loc=location,
                                          use_ids=True)
 
-        weeks = list(range(1,53))#sorted(pip_cat["pip_2"]["weeks"].keys())
         
+        weeks = sorted(pip_cat["pip_2"]["weeks"].keys())
+        nice_weeks = []
+        for w in weeks:
+            i = 0
+            while w > 52:
+                w -= 52
+                i += 1
+            if w == 1:
+                w = "Week 1, "+str(start_date.year + i)
+            nice_weeks.append(w)
+
         ret["data"]["timeline"] = {
             "suspected": [pip_cat["pip_2"]["weeks"][k] if k in pip_cat["pip_2"]["weeks"] else 0 for k in weeks],
-            "weeks": weeks,
+            "weeks": nice_weeks,
             "confirmed": {
                 "Influenza A": [0 for w in weeks],
                 "Influenza B": [0 for w in weeks],
@@ -643,19 +652,9 @@ class RefugeeDetail(Resource):
 
         if "refugee" not in model.form_tables:
             return {}
-        start = time.time()
-        if start_date:
-            start_date = datetime.strptime(start_date, '%Y-%m-%d')
-        else:
-            start_date = datetime.now().replace(month=1, day=1,
-                                                         hour=0, second=0,
-                                                         minute=0,
-                                                         microsecond=0)
 
-            if end_date:
-                end_date = datetime.strptime(end_date,'%Y-%m-%d')
-            else:
-                end_date = datetime.now()
+        
+        start_date, end_date = fix_dates(start_date, end_date)
         ret={}
         #meta data
         ret["meta"] = {"uuid": str(uuid.uuid4()),
@@ -664,11 +663,11 @@ class RefugeeDetail(Resource):
                        "schema_version": 0.1
         }
         ew = EpiWeek()
-        end_date = end_date - timedelta(days=1)
         epi_week = ew.get(end_date.isoformat())["epi_week"]
         ret["data"] = {"epi_week_num": epi_week,
-                       "epi_week_date": end_date.isoformat(),
-                       "project_epoch": datetime(2015,5,20).isoformat()
+                       "end_date": end_date.isoformat(),
+                       "project_epoch": datetime(2015,5,20).isoformat(),
+                       "start_date": start_date.isoformat()
         }
         conn = db.engine.connect()
         locs = get_locations(db.session)
@@ -706,7 +705,6 @@ class RefugeeDetail(Resource):
                 no_clinicians += result[0]["ref_14"]
         tot_pop = male + female
         ret["data"]["total_population"] = tot_pop
-
         ret["data"]["n_clinicians"] = no_clinicians
         u5 =  sum(age_gender["0-1"].values()) + sum(age_gender["1-4"].values())
         if u5 == 0:
@@ -715,6 +713,8 @@ class RefugeeDetail(Resource):
         #1. Population
         age_gender["total"] = tot_pop
         ret["data"]["population"] = {"Refugee Population": age_gender}
+        if tot_pop == 0:
+            tot_pop = 1
 
         #2. Mortality
         mortality =  get_variables_category("mortality", start_date, end_date, location, conn)
@@ -910,19 +910,7 @@ class RefugeeCd(Resource):
 
         if "refugee" not in model.form_tables:
             return {}
-        start = time.time()
-        if start_date:
-            start_date = datetime.strptime(start_date, '%Y-%m-%d')
-        else:
-            start_date = datetime.now().replace(month=1, day=1,
-                                                         hour=0, second=0,
-                                                         minute=0,
-                                                         microsecond=0)
-
-            if end_date:
-                end_date = datetime.strptime(end_date,'%Y-%m-%d')
-            else:
-                end_date = datetime.now()
+        start_date, end_date = fix_dates(start_date, end_date)
         ret={}
         #meta data
         ret["meta"] = {"uuid": str(uuid.uuid4()),
@@ -931,11 +919,11 @@ class RefugeeCd(Resource):
                        "schema_version": 0.1
         }
         ew = EpiWeek()
-        end_date = end_date - timedelta(days=1)
         epi_week = ew.get(end_date.isoformat())["epi_week"]
         ret["data"] = {"epi_week_num": epi_week,
-                       "epi_week_date": end_date.isoformat(),
-                       "project_epoch": datetime(2015,5,20).isoformat()
+                       "end_date": end_date.isoformat(),
+                       "project_epoch": datetime(2015,5,20).isoformat(),
+                       "start_date": start_date.isoformat()
         }
         conn = db.engine.connect()
         locs = get_locations(db.session)
@@ -1022,19 +1010,7 @@ class PublicHealth(Resource):
     def get(self, location, start_date=None, end_date=None):
         """ generates date for the public health report for the year 
         up to epi_week for the given location"""
-        start = time.time()
-        if start_date:
-            start_date = datetime.strptime(start_date, '%Y-%m-%d')
-        else:
-            start_date = datetime.now().replace(month=1, day=1,
-                                                         hour=0, second=0,
-                                                         minute=0,
-                                                         microsecond=0)
-
-            if end_date:
-                end_date = datetime.strptime(end_date,'%Y-%m-%d')
-            else:
-                end_date = datetime.now()
+        start_date, end_date = fix_dates(start_date, end_date)
         ret={}
         #meta data
         ret["meta"] = {"uuid": str(uuid.uuid4()),
@@ -1043,10 +1019,11 @@ class PublicHealth(Resource):
                        "schema_version": 0.1
         }
         ew = EpiWeek()
-        end_date = end_date - timedelta(days=1)
+        end_date = end_date
         epi_week = ew.get(end_date.isoformat())["epi_week"]
         ret["data"] = {"epi_week_num": epi_week,
-                       "epi_week_date": end_date.isoformat(),
+                       "end_date": end_date.isoformat(),
+                       "start_date": start_date.isoformat(),
                        "project_epoch": datetime(2015,5,20).isoformat()
         }
         conn = db.engine.connect()
@@ -1250,19 +1227,7 @@ class CdPublicHealth(Resource):
     def get(self, location, start_date=None, end_date=None):
         """ generates date for the public health report for the year 
         up to epi_week for the given location"""
-        start = time.time()
-        if start_date:
-            start_date = datetime.strptime(start_date, '%Y-%m-%d')
-        else:
-            start_date = datetime.now().replace(month=1, day=1,
-                                                         hour=0, second=0,
-                                                         minute=0,
-                                                         microsecond=0)
-
-            if end_date:
-                end_date = datetime.strptime(end_date,'%Y-%m-%d')
-            else:
-                end_date = datetime.now()
+        start_date, end_date = fix_dates(start_date, end_date)
         ret={}
         #meta data
         ret["meta"] = {"uuid": str(uuid.uuid4()),
@@ -1271,11 +1236,11 @@ class CdPublicHealth(Resource):
                        "schema_version": 0.1
         }
         ew = EpiWeek()
-        end_date = end_date - timedelta(days=1)
         epi_week = ew.get(end_date.isoformat())["epi_week"]
         ret["data"] = {"epi_week_num": epi_week,
-                       "epi_week_date": end_date.isoformat(),
-                       "project_epoch": datetime(2015,5,20).isoformat()
+                       "end_date": end_date.isoformat(),
+                       "project_epoch": datetime(2015,5,20).isoformat(),
+                       "start_date": start_date.isoformat()
         }
         conn = db.engine.connect()
         location_name = db.session.query(Locations.name).filter(
@@ -1292,6 +1257,9 @@ class CdPublicHealth(Resource):
 
         total_cases = get_variable_id("prc_1", start_date, end_date, location, conn)
         ret["data"]["total_cases"] = total_cases
+        ret["data"]["public_health_indicators"] = [
+            make_dict("Cases Reported", total_cases, 100)]
+
         if total_cases == 0:
             total_cases = 1
         query_variable = QueryVariable()
@@ -1327,8 +1295,6 @@ class CdPublicHealth(Resource):
                                  start_date=start_date.isoformat(),
                                  only_loc=location)
 
-        ret["data"]["public_health_indicators"] = [
-            make_dict("Cases Reported", total_cases, 100)]
         ret["data"]["public_health_indicators"].append(
             make_dict("Laboratory results recorded",
                       modules["Laboratory Results"]["total"],
@@ -1352,6 +1318,8 @@ class CdPublicHealth(Resource):
                       tot_alerts,
                       100)
         )
+        if tot_alerts == 0:
+            tot_alerts = 1
         ret["data"]["public_health_indicators"].append(
             make_dict("Alerts investigated",
                       investigated_alerts,
@@ -1454,19 +1422,7 @@ class NcdPublicHealth(Resource):
     def get(self, location, start_date=None, end_date=None):
         """ generates date for the ncd public health report for the year 
         up to epi_week for the given location"""
-        start = time.time()
-        if start_date:
-            start_date = datetime.strptime(start_date, '%Y-%m-%d')
-        else:
-            start_date = datetime.now().replace(month=1, day=1,
-                                                         hour=0, second=0,
-                                                         minute=0,
-                                                         microsecond=0)
-
-            if end_date:
-                end_date = datetime.strptime(end_date,'%Y-%m-%d')
-            else:
-                end_date = datetime.now()
+        start_date, end_date = fix_dates(start_date, end_date)
         ret={}
         #meta data
         ret["meta"] = {"uuid": str(uuid.uuid4()),
@@ -1475,11 +1431,11 @@ class NcdPublicHealth(Resource):
                        "schema_version": 0.1
         }
         ew = EpiWeek()
-        end_date = end_date - timedelta(days=1)
         epi_week = ew.get(end_date.isoformat())["epi_week"]
         ret["data"] = {"epi_week_num": epi_week,
-                       "epi_week_date": end_date.isoformat(),
-                       "project_epoch": datetime(2015,5,20).isoformat()
+                       "end_date": end_date.isoformat(),
+                       "project_epoch": datetime(2015,5,20).isoformat(),
+                       "start_date": start_date.isoformat()
         }
         conn = db.engine.connect()
         location_name = db.session.query(Locations.name).filter(
