@@ -110,7 +110,7 @@ class NcdReport(Resource):
                                                  only_loc=region,
                                                  use_ids=True)
                 loc_name = locations[region].name
-                if loc_name == "Jordan":
+                if region == 1:
                     loc_name = "Total"
                 ret[disease]["age"]["data"].append({"title": loc_name, "values": []})
                 
