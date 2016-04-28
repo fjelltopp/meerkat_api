@@ -14,7 +14,11 @@ from meerkat_abacus.util import get_locations
 
 class Locations(Resource):
     """
-    list of all locations
+    List all Locations
+
+    Returns:\n
+       locations: Locations indexed by location_id
+    
     """
     def get(self):
         return rows_to_dicts(db.session.query(model.Locations).all(),
@@ -24,8 +28,10 @@ class Location(Resource):
     """
     Location by location_id
 
-    Args:
-        location_id: id of location
+    Args:\n
+        location_id: id of location\n
+    Returns:\n
+       location: location
     """
     def get(self, location_id):
         return row_to_dict(db.session.query(model.Locations).filter(
@@ -34,8 +40,12 @@ class Location(Resource):
     
 class LocationTree(Resource):
     """
-    Returns a Location tree
+    Location Tree
 
+    Args: 
+       only_case_reports: Only include clinics that submitt case reports
+    Returns: 
+       Returns a location Tree
     """
     def get(self, only_case_reports=True):
         locs = get_locations(db.session)

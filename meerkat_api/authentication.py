@@ -5,8 +5,12 @@ from functools import wraps
 
 def require_api_key(f):
     """
-    @param f: flask function
-    @return: decorator, return the wrapped function or abort json object.
+    Decorator to require api key for authentication 
+    
+    Args: 
+        f: flask function
+    Returns:
+       function: decorated function or abort(401)
     """
     @wraps(f)
     def decorated(*args, **kwargs):

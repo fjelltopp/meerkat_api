@@ -9,10 +9,12 @@ from meerkat_api.resources import locations
 
 class Variables(Resource):
     """
-    Return variables
+    Return variables. If category=all we return all variables.
+    If cateogry=locations or locations: we return locations.
+    If category=alert we return variables which triggers alerts. 
 
-    Args:
-        category: category of variables, category=all gives all variables
+    Args:\n
+        category: category of variables\n
     """
     def get(self, category):
         if category == "locations" or "locations:" in category:
@@ -31,10 +33,10 @@ class Variables(Resource):
     
 class Variable(Resource):
     """
-    Return variable
+    Returns a variable
     
-    Args:
-        variable_id: id of variable to be returned
+    Args:\n
+        variable_id: id of variable to be returned\n
     """
 
     def get(self, variable_id):

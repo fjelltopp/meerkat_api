@@ -8,13 +8,13 @@ from flask import jsonify
 
 def row_to_dict(row):
     """
-    translate sql alchemy row to dict
+    Translate sql alchemy row to dict
 
     Args:
     row: SQL alchemy class
 
     Returns:
-    data_dict: data as dictionary
+      data_dict: data as dictionary
     """
     if hasattr(row, "__table__"):
         return dict((col, getattr(row, col))
@@ -29,16 +29,15 @@ def row_to_dict(row):
         return ret
 
 
-
 def rows_to_dicts(rows, dict_id=None):
     """
-    translate sql alchemy rows to dicts
+    Translate sql alchemy rows to dicts
 
     Args:
-    rows: SQL alchemy class
-
+       rows: List of SQL alchemy rows
+       dict_id: If True we return a dict with the dict_id column as index
     Returns:
-    data_dicts: data as dictionary
+       data_dicts: data as dictionary
     """
     if dict_id:
         data_dicts = {}
@@ -49,19 +48,6 @@ def rows_to_dicts(rows, dict_id=None):
         for row in rows:
             data_dicts.append(row_to_dict(row))
     return data_dicts
-
-
-def date_to_epi_week(day=datetime.today()):
-    """
-    Converts a datetime object to an epi_week
- 
-    Args:
-       day: datetime
-    Returns:
-        epi_week(int): epi week
-
-    """
-    return int((day - datetime(day.year, 1, 1)).days // 7 + 1)
 
 
 def is_child(parent, child, locations):

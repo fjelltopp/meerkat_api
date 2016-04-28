@@ -26,8 +26,7 @@ class MeerkatAPITestCase(unittest.TestCase):
         meerkat_api.app.config['TESTING'] = True
         meerkat_api.app.config['API_KEY'] = ""
         manage.set_up_everything(
-            config.DATABASE_URL,
-            True, True, N=500)
+            True, True, 500)
 
         self.app = meerkat_api.app.test_client()
         self.locations = {1: {"name": "Demo"}}
