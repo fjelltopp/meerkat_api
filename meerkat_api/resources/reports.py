@@ -44,19 +44,20 @@ def fix_dates(start_date, end_date):
        start_date: start date
        end_date: end_date
     Returns:
-       dates (start_date, end_date)
+       dates(tuple): (start_date, end_date)
     """
-    if start_date:
-        start_date = parser.parse(start_date).replace(tzinfo=None)
-    else:
-        start_date = datetime.now().replace(month=1, day=1,
-                                            hour=0, second=0,
-                                            minute=0,
-                                            microsecond=0)
     if end_date:
         end_date  = parser.parse(end_date).replace(tzinfo=None)
     else:
         end_date = datetime.now()
+
+    if start_date:
+        start_date = parser.parse(start_date).replace(tzinfo=None)
+    else:
+        start_date = end_date.replace(month=1, day=1,
+                                      hour=0, second=0,
+                                      minute=0,
+                                      microsecond=0)
     return start_date, end_date
 
 
@@ -73,7 +74,7 @@ def get_disease_types(category, start_date, end_date, location, conn):
        conn: db.connection
 
     Returns: 
-       top_five_disease: ordered list of top five disease with percentage
+       top_five_disease(list): ordered list of top five disease with percentage
     
     """
     diseases = get_variables_category(category, start_date,
@@ -99,7 +100,7 @@ def make_dict(title, quantity, percent):
        percent: percent
     
     Returns: 
-       dict
+       dict(dict): Dictionary
     """
     return {"title": title,
             "quantity": quantity,
@@ -108,14 +109,16 @@ def make_dict(title, quantity, percent):
 def top(values, number=5):
     """
     Return the dict containg the top number(defaults to 5) values.
+    If we ask for the top 2 and the data looks like {"A": 5, "B": 5, "C": 5}
+    we will sort on the keys and take A and B. 
 
     Args:
        values: the dict with data
        number: how many we include (default=5)
     Returns:
-       top_x: dict with the number highest values
+       top_x(dict): dict with the number highest values
     """
-    return sorted(values, key=values.get, reverse=True)[:number]
+    return sorted(values, key=lambda k: (-values[k], k))[:number]
 
 
 # A predifend query to use in get_variable_id
@@ -166,7 +169,7 @@ def get_variables_category(category, start_date, end_date, location, conn, categ
        conn: db.connection
 
     Returns: 
-       aggregate_category: dict with {variable: number, variable2: number3, ...}
+       aggregate_category(dict): dict with {variable: number, variable2: number3, ...}
     """
     variables = variables_instance.get(category)
     return_data = {}
@@ -189,7 +192,7 @@ def disease_breakdown(diseases):
     Args: 
        diseases: dict with Variable Name: value
     Returns:
-      diseases: formatted disease dict with dieases and age and gender breakdown
+      diseases(dict): formatted disease dict with dieases and age and gender breakdown
 
     """
     ret = {"diseases": {}}
@@ -202,7 +205,6 @@ def disease_breakdown(diseases):
         age_gender = split[-1]
         disease_name = disease_name.strip()
         gender, age = age_gender.strip().split(" ")
-        
         gender = gender.lower()
         age = age.strip()
         gender = gender.strip()
@@ -883,16 +885,16 @@ class PublicHealth(Resource):
             make_dict("Prescribing practice recorded",
                       modules["Prescribing"],
                       modules["Prescribing"] / total_cases * 100))
-        smoking_prevalence = get_variable_id("smo_1", start_date, end_date, location, conn)
-        smoking_prevalence_ever = get_variable_id("smo_2", start_date, end_date, location, conn)
+        smoking_prevalence = get_variable_id("smo_2", start_date, end_date, location, conn)
+        smoking_prevalence_ever = get_variable_id("smo_1", start_date, end_date, location, conn)
         smoking_non_prevalence_ever = get_variable_id("smo_3", start_date, end_date, location, conn)
 
         if (smoking_prevalence_ever + smoking_non_prevalence_ever) == 0:
             smoking_prevalence_ever = 1
-            ret["data"]["public_health_indicators"].append(
-                make_dict("Smoking prevalence (current)",
-                          smoking_prevalence,
-                          smoking_prevalence / (smoking_prevalence_ever+smoking_non_prevalence_ever) * 100))
+        ret["data"]["public_health_indicators"].append(
+            make_dict("Smoking prevalence (current)",
+                      smoking_prevalence,
+                      smoking_prevalence / (smoking_prevalence_ever+smoking_non_prevalence_ever) * 100))
 
         #Reporting sites
         locs = get_locations(db.session)
@@ -981,7 +983,7 @@ class PublicHealth(Resource):
         if tot_pc == 0:
             tot_pc = 1
         ret["data"]["presenting_complaints"] = []
-        for p in presenting_complaint:
+        for p in sorted(presenting_complaint, key=presenting_complaint.get, reverse=True):
             ret["data"]["presenting_complaints"].append(
                 make_dict(p,
                           presenting_complaint[p],
