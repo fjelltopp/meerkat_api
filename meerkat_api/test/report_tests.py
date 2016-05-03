@@ -396,7 +396,7 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
             self.assertEqual(data["end_date"],
                              end_date)
 
-            
+
     def test_public_health(self):
         """ test the public health report """
         db_util.insert_codes(self.db.session)
@@ -458,7 +458,6 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
         assert_dict(self, data["nationality"][0], "Null Island", 7, 70.0)
         assert_dict(self, data["nationality"][1], "Demo", 3, 30.0)
         # Status
-        print(data)
         assert_dict(self, data["patient_status"][0], "Jordanian", 9, 90.0)
         assert_dict(self, data["patient_status"][1], "Refugee", 1, 10.0)
 
@@ -638,7 +637,7 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
         # Nationality
 
         assert_dict(self, data["nationality"][0], "Null Island", 6, 6 / 7 * 100)
-        assert_dict(self, data["nationality"][1], "Demo", 1, 1 / 7 *100)
+        assert_dict(self, data["nationality"][1], "Demo", 1, 1 / 7 * 100)
         # Status
         assert_dict(self, data["patient_status"][0], "Jordanian", 7, 100.0)
 
@@ -660,46 +659,225 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
 
         self.assertEqual(data["total_cases"], 6)
         self.assertEqual(data["clinic_num"], 3)
-        
-
-    # def test_cd_public_health(self):
-    #     location = 2
-    #     rv = self.app.get('/reports/cd_public_health/{}'.format(location))
-    #     self.assertEqual(rv.status_code, 200)
-    #     data = json.loads(rv.data.decode("utf-8"))
-    # def test_ncd_public_health(self):
-    #     location = 2
-    #     rv = self.app.get('/reports/ncd_public_health/{}'.format(location))
-    #     self.assertEqual(rv.status_code, 200)
-    #     data = json.loads(rv.data.decode("utf-8"))
-
     # def test_cd_report(self):
     #     location = 2
     #     rv = self.app.get('/reports/cd_report/{}'.format(location))
     #     self.assertEqual(rv.status_code, 200)
     #     data = json.loads(rv.data.decode("utf-8"))
-    # def test_ncd_report(self):
-    #     location = 2
-    #     rv = self.app.get('/reports/ncd_report/{}'.format(location))
-    #     self.assertEqual(rv.status_code, 200)
-    #     data = json.loads(rv.data.decode("utf-8"))
+
+    def test_ncd_report(self):
+        """ Test ncd report """
+        db_util.insert_codes(self.db.session)
+        db_util.insert_locations(self.db.session)
+        db_util.insert_cases(self.db.session, "ncd_report")
+        end_date = datetime(2015, 12, 31).isoformat()
+        start_date = datetime(2015, 1, 1).isoformat()
+        rv = self.app.get('/reports/ncd_report/1/{}/{}'.format(end_date, start_date))
+        self.assertEqual(rv.status_code, 200)
+        data = json.loads(rv.data.decode("utf-8"))
+
+        # Diabetes
+        self.assertEqual(data["diabetes"]["age"]["titles"],
+                         ['Region', '<5', '5-9', '10-14', '15-19', '20-59', '>60', 'Total'])
+        self.assertEqual(data["diabetes"]["age"]["data"][0],
+                         {"title": "Region 1",
+                          "values": [2, 0, 1, 0, 0, 0, 3]}
+                         )
+        self.assertEqual(data["diabetes"]["age"]["data"][1],
+                         {"title": "Region 2",
+                          "values": [0, 0, 0, 1, 0, 0, 1]}
+                         )
+        self.assertEqual(data["diabetes"]["age"]["data"][2],
+                         {"title": "Total",
+                          "values": [2, 0, 1, 1, 0, 0, 4]}
+                         )
+        self.assertEqual(data["diabetes"]["complications"]["titles"],
+                         ['Region', 'Total', 'Female', 'Male', 'Overweight (BMI > 25)', 'Obese (BMI > 30)', 'Fasting Glucose', 'HbA1c (%)', 'With Hypertension', 'Smoking', 'Complication']
+        )
+        self.assertEqual(data["diabetes"]["complications"]["data"][0],
+                         {"title": "Region 1",
+                          "values": [3, 1, 2, 1, 1, 2, 1, 0, 1, 0]}
+                         )
+        self.assertEqual(data["diabetes"]["complications"]["data"][1],
+                         {"title": "Region 2",
+                          "values": [1, 1, 0, 0, 0, 0, 0, 1, 0, 1]}
+                         )
+        self.assertEqual(data["diabetes"]["complications"]["data"][2],
+                         {"title": "Total",
+                          "values": [4, 2, 2, 1, 1, 2, 1, 1, 1, 1]}
+                         )
+
+        # Hypertension
+        self.assertEqual(data["hypertension"]["age"]["titles"],
+                         ['Region', '<5', '5-9', '10-14', '15-19', '20-59', '>60', 'Total'])
+        self.assertEqual(data["hypertension"]["age"]["data"][0],
+                         {"title": "Region 1",
+                          "values": [0, 0, 1, 1, 0, 0, 2]}
+                         )
+        self.assertEqual(data["hypertension"]["age"]["data"][1],
+                         {"title": "Region 2",
+                          "values": [0, 2, 0, 0, 0, 0, 2]}
+                         )
+        self.assertEqual(data["hypertension"]["age"]["data"][2],
+                         {"title": "Total",
+                          "values": [0, 2, 1, 1, 0, 0, 4]}
+                         )
         
-        
-    # def test_tot_clinics(self):
-    #     """Check tot_clinics"""
-    #     rv = self.app.get('/tot_clinics/1')
-    #     data = json.loads(rv.data.decode("utf-8"))
-    #     self.assertEqual(rv.status_code, 200)
-    #     results = meerkat_api.db.session.query(
-    #         model.Locations).filter(
-    #             model.Locations.case_report == "1").all()
-    #     assert data["total"] == len(results)
-    #     rv = self.app.get('/tot_clinics/2')
-    #     data = json.loads(rv.data.decode("utf-8"))
-    #     self.assertEqual(rv.status_code, 200)
-    #     assert data["total"] == 3
+        self.assertEqual(data["hypertension"]["complications"]["titles"],
+                         ['Region', 'Total', 'Female', 'Male', 'Systolic BP < 140', 'Overweight (BMI > 25)', 'Obese (BMI > 30)', 'With Diabetes', 'Smoking', 'Complication']
+                         )
+        self.assertEqual(data["hypertension"]["complications"]["data"][0],
+                         {"title": "Region 1",
+                          "values": [2, 2, 0, 0, 1, 1, 1, 0, 0]}
+                         )
+        self.assertEqual(data["hypertension"]["complications"]["data"][1],
+                         {"title": "Region 2",
+                          "values": [2, 0, 2, 1, 0, 0, 0, 1, 1]}
+                         )
+        self.assertEqual(data["hypertension"]["complications"]["data"][2],
+                         {"title": "Total",
+                          "values": [4, 2, 2, 1, 1, 1, 1, 1, 1]}
+                         )
+
+    def test_cd_report(self):
+        """ Test ncd report """
+        db_util.insert_codes(self.db.session)
+        db_util.insert_locations(self.db.session)
+        db_util.insert_alerts(self.db.session, "cd_report")
+        db_util.insert_links(self.db.session, "cd_report")
+        end_date = datetime(2015, 12, 31).isoformat()
+        start_date = datetime(2015, 1, 1).isoformat()
+        rv = self.app.get('/reports/cd_report/1/{}/{}'.format(end_date, start_date))
+        self.assertEqual(rv.status_code, 200)
+        data = json.loads(rv.data.decode("utf-8"))["data"]["communicable_diseases"]
+
+        self.assertIn("Cholera", data)
+        self.assertIn('Typhoid fever', data)
+        self.assertIn('Diphtheria', data)
+        self.assertEqual(len(data.keys()), 3)
+        # Cholera
+        self.assertEqual(data["Cholera"]["weeks"],
+                         ['Week 1, 2015', 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53])
+        # One suspected case in epi_week 16 and no confirmed cases
+        self.assertEqual(data["Cholera"]["suspected"],
+                         [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0])
+        self.assertEqual(data["Cholera"]["confirmed"],
+                         [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0])
+
+        # Typhoid Fever
+        self.assertEqual(data["Typhoid fever"]["weeks"],
+                         ['Week 1, 2015', 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53])
+        # One suspected case in epi_week 16 and no confirmed cases
+        self.assertEqual(data["Typhoid fever"]["suspected"],
+                         [0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0])
+        self.assertEqual(data["Typhoid fever"]["confirmed"],
+                         [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0])
+
+        # Diphtheria
+        self.assertEqual(data["Diphtheria"]["weeks"],
+                         ['Week 1, 2015', 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53])
+        # One suspected case in epi_week 16 and no confirmed cases
+        self.assertEqual(data["Diphtheria"]["suspected"],
+                         [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0])
+        self.assertEqual(data["Diphtheria"]["confirmed"],
+                         [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0])
+
+    def test_pip_report(self):
+        """ Test pip report """
+        db_util.insert_codes(self.db.session)
+        db_util.insert_locations(self.db.session)
+        db_util.insert_cases(self.db.session, "pip_report")
+        db_util.insert_links(self.db.session, "pip_report")
+        end_date = datetime(2015, 12, 31).isoformat()
+        start_date = datetime(2015, 1, 1).isoformat()
+        rv = self.app.get('/reports/pip/1/{}/{}'.format(end_date, start_date))
+        self.assertEqual(rv.status_code, 200)
+        data = json.loads(rv.data.decode("utf-8"))["data"]
+
+        self.assertEqual(data["total_cases"], 8)
+        self.assertEqual(data["num_clinic"], 2)
+
+        # Demographics
+
+        self.assertEqual(data["percent_cases_male"], 3 / 8 * 100)
+        self.assertEqual(data["percent_cases_female"], 5 / 8 * 100)
+        self.assertEqual(data["demographics"][0]["age"], "<5")
+        self.assertEqual(data["demographics"][0]["male"]["quantity"], 1)
+        self.assertEqual(data["demographics"][0]["male"]["percent"], 50.0)
+        self.assertEqual(data["demographics"][0]["female"]["quantity"], 1)
+        self.assertEqual(data["demographics"][0]["female"]["percent"], 50.0)
+
+        self.assertEqual(data["demographics"][1]["age"], "5-9")
+        self.assertEqual(data["demographics"][1]["male"]["quantity"], 2)
+        self.assertEqual(data["demographics"][1]["male"]["percent"], 100.0)
+        self.assertEqual(data["demographics"][1]["female"]["quantity"], 0)
+        self.assertEqual(data["demographics"][1]["female"]["percent"], 0)
+
+        self.assertEqual(data["demographics"][2]["age"], "10-14")
+        self.assertEqual(data["demographics"][2]["male"]["quantity"], 0)
+        self.assertEqual(data["demographics"][2]["male"]["percent"], 0)
+        self.assertEqual(data["demographics"][2]["female"]["quantity"], 2)
+        self.assertEqual(data["demographics"][2]["female"]["percent"], 100)
+
+        self.assertEqual(data["demographics"][3]["age"], "15-19")
+        self.assertEqual(data["demographics"][3]["male"]["quantity"], 0)
+        self.assertEqual(data["demographics"][3]["male"]["percent"], 0)
+        self.assertEqual(data["demographics"][3]["female"]["quantity"], 2)
+        self.assertEqual(data["demographics"][3]["female"]["percent"], 100.0)
 
 
-    
+        # Indicators
+
+        assert_dict(self, data["pip_indicators"][0], "Total Cases", 8, 100)
+        assert_dict(self, data["pip_indicators"][1], "Patients followed up", 4, 50)
+        assert_dict(self, data["pip_indicators"][2], "Laboratory results recorded", 3, 3 / 8 * 100)
+        assert_dict(self, data["pip_indicators"][3], "Patients admitted to ICU", 3, 3 / 8 * 100)
+        assert_dict(self, data["pip_indicators"][4], "Patients ventilated", 2, 25)
+        assert_dict(self, data["pip_indicators"][5], "Mortality", 1, 12.5)
+
+        self.assertEqual(data["cases_chronic"], 2)
+        self.assertEqual(data["percent_cases_chronic"], 25)
+
+        # Nationality
+
+        assert_dict(self, data["nationality"][0], "Null Island", 7, 7 / 8 *100)
+        assert_dict(self, data["nationality"][1], "Demo", 1, 12.5)
+        # Status
+        assert_dict(self, data["patient_status"][0], "Jordanian", 7, 7 / 8 * 100)
+        assert_dict(self, data["patient_status"][1], "Refugee", 1, 12.5)
+
+        # Reporting Sites
+        assert_dict(self, data["reporting_sites"][0], "Clinic 2", 6, 75.0)
+        assert_dict(self, data["reporting_sites"][1], "Clinic 4", 2, 25.0)
+        # Timeline
+        self.assertEqual(data["timeline"]["weeks"],
+                         ['Week 1, 2015', 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53])
+
+        suspected = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+        suspected[17] = 4
+        suspected[25] = 2
+        suspected[30] = 2
+        h1 =  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+
+        mixed = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+        h1[17] = 1
+        h1n1 = h1
+        mixed[30] = 1
+        zero = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+        self.assertEqual(data["timeline"]["suspected"], suspected)
+        print(data)
+        self.assertEqual(data["timeline"]["confirmed"][0]["title"], "H1")
+        self.assertEqual(data["timeline"]["confirmed"][0]["values"], h1)
+        self.assertEqual(data["timeline"]["confirmed"][1]["title"], "H1N1")
+        self.assertEqual(data["timeline"]["confirmed"][1]["values"], h1n1)
+        self.assertEqual(data["timeline"]["confirmed"][2]["title"], "Mixed")
+        self.assertEqual(data["timeline"]["confirmed"][2]["values"], mixed)
+        self.assertEqual(data["timeline"]["confirmed"][3]["title"], "H3")
+        self.assertEqual(data["timeline"]["confirmed"][3]["values"], zero)
+        self.assertEqual(data["timeline"]["confirmed"][4]["title"], "Influenza A")
+        self.assertEqual(data["timeline"]["confirmed"][4]["values"], zero)
+        self.assertEqual(data["timeline"]["confirmed"][5]["title"], "Influenza B")
+        self.assertEqual(data["timeline"]["confirmed"][5]["values"], zero)
+
 if __name__ == '__main__':
     unittest.main()

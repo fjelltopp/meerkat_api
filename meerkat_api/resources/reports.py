@@ -494,7 +494,7 @@ class CdReport(Resource):
         start_year = ewg["year"]
         year_diff = end_date.year - start_year
         start_epi_week = start_epi_week - year_diff * 52
-        weeks = [i for i in range(start_epi_week - 1, epi_week + 1, 1)]
+        weeks = [i for i in range(start_epi_week, epi_week + 1, 1)]
 
         nice_weeks = []
         for w in weeks:
@@ -596,7 +596,7 @@ class Pip(Resource):
                                     only_loc=location)
         total_cases = get_variable_id(sari_code, start_date, end_date, location, conn)
         ret["data"]["total_cases"] = total_cases
-
+        ret["data"]["pip_indicators"] = [make_dict("Total Cases", total_cases, 100)]
         if total_cases == 0:
             # So the future divsions by total_cases does not break in case of zero cases
             total_cases = 1
@@ -618,12 +618,11 @@ class Pip(Resource):
                                          start_date=start_date.isoformat(),
                                          only_loc=location,
                                          use_ids=True)
-        
         weeks = sorted(pip_cat[sari_code]["weeks"].keys())
         nice_weeks = []
         for w in weeks:
             i = 0
-            while w > 52:
+            while w > 53:
                 w -= 52
                 i += 1
             if w == 1:
@@ -674,7 +673,7 @@ class Pip(Resource):
                 lab_types[t] += 1
         tl = ret["data"]["timeline"]["confirmed"]
         ret["data"]["timeline"]["confirmed"] = [
-            {"title": key, "values": list(tl[key])} for key in sorted(tl.keys(), key=lambda key: sum(tl[key]), reverse=True)
+            {"title": key, "values": list(tl[key])} for key in sorted(tl, key=lambda k: (-sum(tl[k]), k))
         ]
                                                  
         ret["data"]["cases_pcr"] = total_lab_links
@@ -698,13 +697,13 @@ class Pip(Resource):
                 ventilated += 1
             if link.data["admitted_to_icu"] == "yes":
                 icu += 1
-        ret["data"]["pip_indicators"] = [make_dict("Total Cases", total_cases, 100)]
+
         ret["data"]["pip_indicators"].append(
             make_dict("Patients followed up", total_followup, total_followup / total_cases * 100))
         ret["data"]["pip_indicators"].append(
             make_dict("Laboratory results recorded", total_lab_links, total_lab_links / total_cases * 100))
         ret["data"]["pip_indicators"].append(
-            make_dict("Patients admitted to ICU  ", icu, icu / total_cases * 100))
+            make_dict("Patients admitted to ICU", icu, icu / total_cases * 100))
         ret["data"]["pip_indicators"].append(
             make_dict("Patients ventilated", ventilated, ventilated / total_cases * 100))
         ret["data"]["pip_indicators"].append(
