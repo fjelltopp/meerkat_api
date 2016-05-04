@@ -11,6 +11,7 @@ from flask import request
 
 
 from meerkat_api.util import row_to_dict, rows_to_dicts, is_child
+from meerkat_api.resources.epi_week import epi_year_start
 from meerkat_api import db, app
 from meerkat_abacus.model import Data
 from meerkat_abacus.util import get_locations, epi_week_start_date
@@ -153,7 +154,7 @@ class QueryVariable(Resource):
                     Data.country, Data.region, Data.district, Data.clinic))]
 
                 
-        epi_week_start = epi_week_start_date(year)
+        epi_week_start = epi_year_start(year)
         # Determine which columns we want to extract from the Data table
         columns_to_extract = [func.count(Data.id).label('value'),
                               func.floor(

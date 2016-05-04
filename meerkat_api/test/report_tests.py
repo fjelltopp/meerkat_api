@@ -159,6 +159,17 @@ class MeerkatAPIReportsUtilityTestCase(unittest.TestCase):
         self.assertEqual(result["Female"], 94)
         self.assertEqual(result["Male"], 37)
 
+        result = reports.get_variables_category(category,
+                                                start_date,
+                                                end_date,
+                                                location,
+                                                conn,
+                                                use_ids=True)
+        self.assertEqual(result["gen_2"], 94)
+        self.assertEqual(result["gen_1"], 37)
+
+
+        
     def test_get_diease_types(self):
         category = "cd"
 
@@ -367,7 +378,7 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
 
         reports = [
             "public_health", "cd_public_health", "ncd_public_health",
-            "ncd_report", "cd_report"
+            "ncd_report", "cd_report", "refugee_public_health", "refugee_detail", "refugee_cd"
             ]
         for report in reports:
             rv = self.app.get('/reports/{}/1'.format(report))
@@ -879,5 +890,427 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
         self.assertEqual(data["timeline"]["confirmed"][5]["title"], "Influenza B")
         self.assertEqual(data["timeline"]["confirmed"][5]["values"], zero)
 
+
+    def test_refugee_public_health(self):
+        """ Test refugee public health report"""
+        db_util.insert_codes(self.db.session)
+        db_util.insert_locations(self.db.session)
+        db_util.insert_cases(self.db.session, "refugee_data")
+        end_date = datetime(2015, 12, 31).isoformat()
+        start_date = datetime(2015, 1, 1).isoformat()
+        rv = self.app.get('/reports/refugee_public_health/1/{}/{}'.format(end_date, start_date))
+        self.assertEqual(rv.status_code, 200)
+        data = json.loads(rv.data.decode("utf-8"))["data"]
+
+        self.assertEqual(data["total_population"],
+                         2 + 3 + 4 + 5 + 6 + 7 + 8 + 9 + 10 + 11 + 12 + 12)
+        self.assertEqual(data["clinic_num"], 2)
+        self.assertEqual(data["n_clinicians"], 6)
+        self.assertEqual(data["percent_cases_male"], 46 / 89 * 100)
+        self.assertEqual(data["percent_cases_female"], 43 / 89 * 100)
+        self.assertEqual(data["percent_cases_lt_5yo"], 18 / 89 * 100)
+        self.assertEqual(data["total_consultations"], 170)
+        self.assertEqual(data["total_cases"], 25)
+        
+
+        self.assertEqual(data["percent_morbidity_communicable"], 6 / 25 * 100)
+        self.assertEqual(data["percent_morbidity_non_communicable"], 6 / 25 * 100)
+        self.assertEqual(data["percent_morbidity_mental_health"], 10 / 25 * 100)
+        self.assertEqual(data["percent_morbidity_injury_health"], 3 / 25 *100)
+
+        assert_dict(self, data["presenting_complaints"][0],
+                    "Communicable Disease", 6, 6 / 25 * 100)
+        assert_dict(self, data["presenting_complaints"][1],
+                    "Non-Communicable Disease", 6, 6 / 25 * 100)
+        assert_dict(self, data["presenting_complaints"][2],
+                    "Mental Health", 10, 10 / 25 * 100)
+        assert_dict(self, data["presenting_complaints"][3],
+                    "Injury", 3, 3 / 25 * 100)
+        
+        # pop = 89, mortality = 14, u5_mortalit = 6, u5_pop = 18
+        self.assertEqual(data["crude_mortality_rate"], 14 / 89 * 1000)
+        self.assertEqual(data["u5_crude_mortality_rate"], 6 / 18 * 1000)
+
+
+        # Public health indicators days of report = 364
+        assert_dict(self, data["public_health_indicators"][0],
+                    "Health Utilisation Rate",
+                    170 / 89 / 364 * 365,
+                    None)
+        assert_dict(self, data["public_health_indicators"][1],
+                    "Number of consultations per clinician per day",
+                    170 / 6 / 364,
+                    None)
+        assert_dict(self, data["public_health_indicators"][2],
+                    "Hospitalisation rate",
+                    3 / 170,
+                    None)
+        assert_dict(self, data["public_health_indicators"][3],
+                    "Referral rate",
+                    9 / 170,
+                    None)
+        assert_dict(self, data["public_health_indicators"][4],
+                    "Crude Mortality Rate (CMR)",
+                     14 / 89 * 1000,
+                    None)
+        assert_dict(self, data["public_health_indicators"][5],
+                    "Under-five Mortality Rate (U5MR)",
+                    6 / 18 * 1000,
+                    None)
+        
+        # Demographics
+        
+        self.assertEqual(data["demographics"][0]["age"], "0-1")
+        self.assertEqual(data["demographics"][0]["male"]["quantity"], 3)
+        self.assertEqual(data["demographics"][0]["male"]["percent"], 3 / 7 * 100)
+        self.assertEqual(data["demographics"][0]["female"]["quantity"], 4)
+        self.assertEqual(data["demographics"][0]["female"]["percent"], 4 / 7 * 100)
+
+        self.assertEqual(data["demographics"][1]["age"], "1-4")
+        self.assertEqual(data["demographics"][1]["male"]["quantity"], 5)
+        self.assertEqual(data["demographics"][1]["male"]["percent"], 5 / 11 * 100)
+        self.assertEqual(data["demographics"][1]["female"]["quantity"], 6)
+        self.assertEqual(data["demographics"][1]["female"]["percent"], 6 / 11 * 100)
+
+        self.assertEqual(data["demographics"][2]["age"], "5-14")
+        self.assertEqual(data["demographics"][2]["male"]["quantity"], 7)
+        self.assertEqual(data["demographics"][2]["male"]["percent"], 7 / 15 * 100)
+        self.assertEqual(data["demographics"][2]["female"]["quantity"], 8)
+        self.assertEqual(data["demographics"][2]["female"]["percent"], 8 / 15 * 100)
+
+        self.assertEqual(data["demographics"][3]["age"], "15-44")
+        self.assertEqual(data["demographics"][3]["male"]["quantity"], 9)
+        self.assertEqual(data["demographics"][3]["male"]["percent"], 9 / 10 * 100)
+        self.assertEqual(data["demographics"][3]["female"]["quantity"], 1)
+        self.assertEqual(data["demographics"][3]["female"]["percent"], 1 / 10 * 100)
+
+        self.assertEqual(data["demographics"][4]["age"], "45-64")
+        self.assertEqual(data["demographics"][4]["male"]["quantity"], 10)
+        self.assertEqual(data["demographics"][4]["male"]["percent"], 10 / 21 * 100)
+        self.assertEqual(data["demographics"][4]["female"]["quantity"], 11)
+        self.assertEqual(data["demographics"][4]["female"]["percent"], 11 / 21 * 100)
+
+        self.assertEqual(data["demographics"][5]["age"], ">65")
+        self.assertEqual(data["demographics"][5]["male"]["quantity"], 12)
+        self.assertEqual(data["demographics"][5]["male"]["percent"], 12 / 25 * 100)
+        self.assertEqual(data["demographics"][5]["female"]["quantity"], 13)
+        self.assertEqual(data["demographics"][5]["female"]["percent"], 13 / 25 * 100)
+
+        # Reporting Sites
+        
+        assert_dict(self, data["reporting_sites"][0], "Clinic 1", 9, 9 / 25 * 100)
+        assert_dict(self, data["reporting_sites"][1], "Clinic 5", 16, 16 / 25 * 100)
+
+        # Morbidity
+
+        assert_dict(self, data["morbidity_communicable"][0], "Watery Diarrhoea", 6, 100)
+        assert_dict(self, data["morbidity_non_communicable"][0], "Hypertension", 6, 100)
+        assert_dict(self, data["mental_health"][0], "Psychotic disorder (including mania)", 7, 70)
+        assert_dict(self, data["mental_health"][1], "Alcohol or other substance use disorder", 3, 30)
+        assert_dict(self, data["injury"][0], "Other", 3, 100)
+
+    def test_refugee_detail(self):
+        """ Test refugee public health report"""
+        db_util.insert_codes(self.db.session)
+        db_util.insert_locations(self.db.session)
+        db_util.insert_cases(self.db.session, "refugee_data")
+        end_date = datetime(2015, 12, 31).isoformat()
+        start_date = datetime(2015, 1, 1).isoformat()
+        rv = self.app.get('/reports/refugee_detail/1/{}/{}'.format(end_date, start_date))
+        self.assertEqual(rv.status_code, 200)
+        data = json.loads(rv.data.decode("utf-8"))["data"]
+
+        self.assertEqual(data["total_population"],
+                         2 + 3 + 4 + 5 + 6 + 7 + 8 + 9 + 10 + 11 + 12 + 12)
+        self.assertEqual(data["clinic_num"], 2)
+        self.assertEqual(data["n_clinicians"], 6)
+
+        pop = {"0-1": {"male": 3, "female": 4},
+               "1-4": {"male": 5, "female": 6},
+               "5-14": {"male": 7, "female": 8},
+               "15-44": {"male": 9, "female": 1},
+               "45-64": {"male": 10, "female": 11},
+               ">65": {"male": 12, "female": 13},
+               "total": 89
+               }
+        self.assertEqual(data["population"]["Refugee Population"], pop)
+
+
+
+        # Morbidity
+        assert_dict(self, data["mortality"][0],
+                    "Crude Mortality Rate",
+                     14 / 89 * 1000,
+                    None)
+        assert_dict(self, data["mortality"][1],
+                    "Under five crude mortality rate",
+                    6 / 18 * 1000,
+                    None)
+
+        zero_pop = {
+            "0-1": {"male": 0, "female": 0},
+            "1-4": {"male": 0, "female": 0},
+            "5-14": {"male": 0, "female": 0},
+            "15-44": {"male": 0, "female": 0},
+            "45-64": {"male": 0, "female": 0},
+            ">65": {"male": 0, "female": 0},
+            "total": 0
+            
+        }
+
+        for key in data["mortality_breakdown"]["diseases"]:
+            if key == "Lower Respiratory Tract Infection":
+                self.assertEqual(data["mortality_breakdown"]["diseases"][key],
+                                 {
+                                     "0-1": {"male": 0, "female": 0},
+                                     "1-4": {"male": 3, "female": 3},
+                                     "5-14": {"male": 0, "female": 0},
+                                     "15-44": {"male": 0, "female": 0},
+                                     "45-64": {"male": 0, "female": 0},
+                                     ">65": {"male": 0, "female": 0},
+                                     "total": 6
+                                 })
+                
+            elif key == "Tuberculosis":
+                self.assertEqual(data["mortality_breakdown"]["diseases"][key],
+                                 {
+                                     "0-1": {"male": 0, "female": 0},
+                                     "1-4": {"male": 0, "female": 0},
+                                     "5-14": {"male": 0, "female": 0},
+                                     "15-44": {"male": 0, "female": 3},
+                                     "45-64": {"male": 5, "female": 0},
+                                     ">65": {"male": 0, "female": 0},
+                                     "total": 8
+                                 })
+            else:
+                self.assertEqual(data["mortality_breakdown"]["diseases"][key], zero_pop)
+        self.assertEqual(data["mortality_breakdown"]["age_gender"],
+                         {
+                             "0-1": {"male": 0, "female": 0},
+                             "1-4": {"male": 3, "female": 3},
+                             "5-14": {"male": 0, "female": 0},
+                             "15-44": {"male": 0, "female": 3},
+                             "45-64": {"male": 5, "female": 0},
+                             ">65": {"male": 0, "female": 0}
+                         })
+        self.assertEqual(data["mortality_breakdown"]["age"],
+                         {
+                             "0-1": 0,
+                             "1-4": 6,
+                             "5-14": 0,
+                             "15-44": 3,
+                             "45-64": 5, 
+                             ">65": 0
+                             })
+
+        # 3 Morbidity
+        assert_dict(self, data["staffing"][0],
+                    "Total Consultations",
+                     170,
+                    None)
+        assert_dict(self, data["staffing"][1],
+                    "Number of Clinicians",
+                    6,
+                    None)
+        assert_dict(self, data["staffing"][2],
+                    "Health Utilisation Rate",
+                    170 / 89 / 364 * 365,
+                    None)
+        assert_dict(self, data["staffing"][3],
+                    "Number of consultations per clinician per day",
+                    170 / 6 / 364,
+                    None)
+
+        
+        for key in data["communicable_diseases"]["diseases"]:
+            if key == "Watery Diarrhoea":
+                self.assertEqual(data["communicable_diseases"]["diseases"][key],
+                                 {
+                                     "0-1": {"male": 0, "female": 0},
+                                     "1-4": {"male": 0, "female": 0},
+                                     "5-14": {"male": 0, "female": 0},
+                                     "15-44": {"male": 3, "female": 3},
+                                     "45-64": {"male": 0, "female": 0},
+                                     ">65": {"male": 0, "female": 0},
+                                     "total": 6
+                                 })
+
+            else:
+                self.assertEqual(data["communicable_diseases"]["diseases"][key], zero_pop)
+        self.assertEqual(data["communicable_diseases"]["age_gender"],
+                         {
+                             "0-1": {"male": 0, "female": 0},
+                             "1-4": {"male": 0, "female": 0},
+                             "5-14": {"male": 0, "female": 0},
+                             "15-44": {"male": 3, "female": 3},
+                             "45-64": {"male": 0, "female": 0},
+                             ">65": {"male": 0, "female": 0}
+                         })
+        self.assertEqual(data["communicable_diseases"]["age"],
+                         {
+                             "0-1": 0,
+                             "1-4": 0,
+                             "5-14": 0,
+                             "15-44": 6,
+                             "45-64": 0, 
+                             ">65": 0
+                             })
+
+        for key in data["non_communicable_diseases"]["diseases"]:
+            if key == "Hypertension":
+                self.assertEqual(data["non_communicable_diseases"]["diseases"][key],
+                                 {
+                                     "0-1": {"male": 0, "female": 0},
+                                     "1-4": {"male": 3, "female": 3},
+                                     "5-14": {"male": 0, "female": 0},
+                                     "15-44": {"male": 0, "female": 0},
+                                     "45-64": {"male": 0, "female": 0},
+                                     ">65": {"male": 0, "female": 0},
+                                     "total": 6
+                                 })
+            else:
+                self.assertEqual(data["non_communicable_diseases"]["diseases"][key], zero_pop)
+
+        self.assertEqual(data["non_communicable_diseases"]["age_gender"],
+                         {
+                             "0-1": {"male": 0, "female": 0},
+                             "1-4": {"male": 3, "female": 3},
+                             "5-14": {"male": 0, "female": 0},
+                             "15-44": {"male": 0, "female": 0},
+                             "45-64": {"male": 0, "female": 0},
+                             ">65": {"male": 0, "female": 0}
+                         })
+        self.assertEqual(data["non_communicable_diseases"]["age"],
+                         {
+                             "0-1": 0,
+                             "1-4": 6,
+                             "5-14": 0,
+                             "15-44": 0,
+                             "45-64": 0, 
+                             ">65": 0
+                             })
+        print(data["mental_health"])
+        for key in data["mental_health"]["diseases"]:
+            if key == "Alcohol or other substance use disorder":
+                self.assertEqual(data["mental_health"]["diseases"][key],
+                                 {
+                                     "0-1": {"male": 0, "female": 0},
+                                     "1-4": {"male": 0, "female": 0},
+                                     "5-14": {"male": 0, "female": 0},
+                                     "15-44": {"male": 0, "female": 0},
+                                     "45-64": {"male": 0, "female": 0},
+                                     ">65": {"male": 0, "female": 3},
+                                     "total": 3
+                                 })
+            elif key == "Psychotic disorder (including mania)":
+                self.assertEqual(data["mental_health"]["diseases"][key],
+                                 {
+                                     "0-1": {"male": 0, "female": 7},
+                                     "1-4": {"male": 0, "female": 0},
+                                     "5-14": {"male": 0, "female": 0},
+                                     "15-44": {"male": 0, "female": 0},
+                                     "45-64": {"male": 0, "female": 0},
+                                     ">65": {"male": 0, "female": 0},
+                                     "total": 7
+                                 })
+            else:
+                self.assertEqual(data["mental_health"]["diseases"][key], zero_pop)
+
+        self.assertEqual(data["mental_health"]["age_gender"],
+                         {
+                             "0-1": {"male": 0, "female": 7},
+                             "1-4": {"male": 0, "female": 0},
+                             "5-14": {"male": 0, "female": 0},
+                             "15-44": {"male": 0, "female": 0},
+                             "45-64": {"male": 0, "female": 0},
+                             ">65": {"male": 0, "female": 3}
+                         })
+        self.assertEqual(data["mental_health"]["age"],
+                         {
+                             "0-1": 7,
+                             "1-4": 0,
+                             "5-14": 0,
+                             "15-44": 0,
+                             "45-64": 0, 
+                             ">65": 3
+                             })
+
+        for key in data["injury"]["diseases"]:
+            if key == "Other":
+                self.assertEqual(data["injury"]["diseases"][key],
+                                 {
+                                     "0-1": {"male": 3, "female": 0},
+                                     "1-4": {"male": 0, "female": 0},
+                                     "5-14": {"male": 0, "female": 0},
+                                     "15-44": {"male": 0, "female": 0},
+                                     "45-64": {"male": 0, "female": 0},
+                                     ">65": {"male": 0, "female": 0},
+                                     "total": 3
+                                 })
+            else:
+                self.assertEqual(data["injury"]["diseases"][key], zero_pop)
+        self.assertEqual(data["injury"]["age_gender"],
+                         {
+                             "0-1": {"male": 3, "female": 0},
+                             "1-4": {"male": 0, "female": 0},
+                             "5-14": {"male": 0, "female": 0},
+                             "15-44": {"male": 0, "female": 0},
+                             "45-64": {"male": 0, "female": 0},
+                             ">65": {"male": 0, "female": 0}
+                         })
+        self.assertEqual(data["injury"]["age"],
+                         {
+                             "0-1": 3,
+                             "1-4": 0,
+                             "5-14": 0,
+                             "15-44": 0,
+                             "45-64": 0, 
+                             ">65": 0
+                             })
+        # Referral
+
+        assert_dict(self, data["referrals"][0],
+                    "Hospital Referrals",
+                     3,
+                    None)
+        assert_dict(self, data["referrals"][1],
+                    "Other Referrals",
+                    6,
+                    None)
+        assert_dict(self, data["referrals"][2],
+                    "Hospitalisation rate",
+                    3 / 170 ,
+                    None)
+        assert_dict(self, data["referrals"][3],
+                    "Referral rate",
+                    9 / 170,
+                    None)
+    def test_refugee_cd(self):
+        """ Test refugee cd report"""
+        db_util.insert_codes(self.db.session)
+        db_util.insert_locations(self.db.session)
+        db_util.insert_cases(self.db.session, "refugee_data")
+        end_date = datetime(2015, 12, 31).isoformat()
+        start_date = datetime(2015, 1, 1).isoformat()
+        rv = self.app.get('/reports/refugee_cd/1/{}/{}'.format(end_date, start_date))
+        self.assertEqual(rv.status_code, 200)
+        data = json.loads(rv.data.decode("utf-8"))["data"]
+
+        zeroes = [0 for i in range(53)]
+
+        wd = zeroes.copy()
+
+        wd[0] = 2
+        wd[14] = 2
+        wd[16] = 2
+        for key in data["communicable_diseases"]:
+            self.assertEqual(data["communicable_diseases"][key]["weeks"],
+                             ['Week 1, 2015', 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53])
+
+            if key == "Watery Diarrhoea":
+                self.assertEqual(data["communicable_diseases"][key]["suspected"], wd)
+            else:
+                self.assertEqual(data["communicable_diseases"][key]["suspected"], zeroes)
+                
 if __name__ == '__main__':
     unittest.main()

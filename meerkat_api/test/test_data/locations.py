@@ -9,6 +9,6 @@ locations = [
     Locations(**{'clinic_type': 'SARI', 'deviceid': '2', 'case_report': 1, 'geolocation': '0.2,0.2', 'parent_location': 4, 'level': 'clinic', 'name': 'Clinic 2', 'id': 8, 'other': None}),
     Locations(**{'clinic_type': 'Focal', 'deviceid': '3', 'case_report': 0, 'geolocation': '0.2,0.3', 'parent_location': 4, 'level': 'clinic', 'name': 'Clinic 3', 'id': 9, 'other': None}),
     Locations(**{'clinic_type': 'SARI', 'deviceid': '4', 'case_report': 1, 'geolocation': '0.3,0.2', 'parent_location': 5, 'level': 'clinic', 'name': 'Clinic 4', 'id': 10, 'other': None}),
-    Locations(**{'clinic_type': 'Hospital', 'deviceid': '5', 'case_report': 1, 'geolocation': '-0.1,0.4', 'parent_location': 6, 'level': 'clinic', 'name': 'Clinic 5', 'id': 11, 'other': None}),
-    Locations(**{'clinic_type': 'Primary', 'deviceid': '1,6', 'case_report': 1, 'geolocation': '0.1,0.1', 'parent_location': 4, 'level': 'clinic', 'name': 'Clinic 1', 'id': 7, 'other': None})
+    Locations(**{'clinic_type': 'Refugee', 'deviceid': '5', 'case_report': 1, 'geolocation': '-0.1,0.4', 'parent_location': 6, 'level': 'clinic', 'name': 'Clinic 5', 'id': 11, 'other': None}),
+    Locations(**{'clinic_type': 'Refugee', 'deviceid': '1,6', 'case_report': 1, 'geolocation': '0.1,0.1', 'parent_location': 4, 'level': 'clinic', 'name': 'Clinic 1', 'id': 7, 'other': None})
 ]
