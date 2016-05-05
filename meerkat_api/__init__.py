@@ -85,7 +85,7 @@ from meerkat_api.resources.explore import QueryVariable, QueryCategory
 from meerkat_api.resources.epi_week import EpiWeek, EpiWeekStart
 from meerkat_api.resources.completeness import Completeness
 from meerkat_api.resources.reports import PublicHealth, CdReport, CdPublicHealth, NcdPublicHealth,RefugeePublicHealth, RefugeeCd,RefugeeDetail, NcdReport, Pip
-from meerkat_api.resources.frontpage import KeyIndicators, TotMap, NumAlerts, ConsultationMap
+from meerkat_api.resources.frontpage import KeyIndicators, TotMap, NumAlerts, ConsultationMap, RefugeePage
 from meerkat_api.resources.export_data import ExportData, ExportForm, ExportAlerts, Forms, ExportCategory
 from meerkat_api.resources.links import Link, Links
 
@@ -103,6 +103,7 @@ api.add_resource(KeyIndicators, "/key_indicators")
 api.add_resource(TotMap, "/tot_map")
 api.add_resource(ConsultationMap, "/consultation_map")
 api.add_resource(NumAlerts, "/num_alerts")
+api.add_resource(RefugeePage, "/refugee_page")
 
 # Export data
 api.add_resource(ExportData, "/export/data")
