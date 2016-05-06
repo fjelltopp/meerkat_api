@@ -392,8 +392,8 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
         """ Testing that the dates are handled correctly """
         db_util.insert_codes(self.db.session)
         db_util.insert_locations(self.db.session)
-        db.session.query(model.Data).delete()
-        db.session.commit()
+        self.db.session.query(model.Data).delete()
+        self.db.session.commit()
         reports = [
             "public_health", "cd_public_health", "ncd_public_health",
             "ncd_report", "cd_report", "refugee_public_health", "refugee_detail", "refugee_cd"

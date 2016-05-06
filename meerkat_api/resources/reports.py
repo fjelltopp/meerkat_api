@@ -1641,9 +1641,9 @@ class RefugeeDetail(Resource):
         }
         conn = db.engine.connect()
         locs = get_locations(db.session)
-        location_name = locs[int(location)]
-        if not location_name:
+        if int(location) not in locs:
             return None
+        location_name = locs[int(location)]
         ret["data"]["project_region"] = location_name.name
         
         #We first find all the refugee clinics
@@ -1800,9 +1800,9 @@ class RefugeeCd(Resource):
         }
         conn = db.engine.connect()
         locs = get_locations(db.session)
-        location_name = locs[int(location)]
-        if not location_name:
+        if int(location) not in locs:
             return None
+        location_name = locs[int(location)]
         ret["data"]["project_region"] = location_name.name
 
         # We first find all the refugee clinics

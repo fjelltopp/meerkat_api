@@ -43,7 +43,7 @@ class MeerkatAPIDataTestCase(unittest.TestCase):
         rv = self.app.get('/aggregate/gen_2/1')
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(rv.status_code, 200)
-        self.assertEqual(data["value"], 7)
+        self.assertEqual(data["value"], 8)
 
         rv = self.app.get('/aggregate/gen_2/2')
         data = json.loads(rv.data.decode("utf-8"))
@@ -53,7 +53,7 @@ class MeerkatAPIDataTestCase(unittest.TestCase):
         rv = self.app.get('/aggregate/gen_2/3')
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(rv.status_code, 200)
-        self.assertEqual(data["value"], 4)
+        self.assertEqual(data["value"], 5)
 
         rv = self.app.get('/aggregate/gen_2/5')
         data = json.loads(rv.data.decode("utf-8"))
@@ -121,6 +121,7 @@ class MeerkatAPIDataTestCase(unittest.TestCase):
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(sorted(list(data.keys())), [])
+        
     def test_records(self):
         """Test records function """
         rv = self.app.get('/records/prc_1/1')

@@ -3,7 +3,7 @@ meerkat_api.py
 
 Root Flask app for the Meerkat API.
 """
-from flask import Flask
+from flask import Flask, make_response
 from flask.json import JSONEncoder
 from flask.ext.sqlalchemy import SQLAlchemy
 from flask_restful import Api
@@ -52,7 +52,13 @@ def output_csv(data, code, headers=None):
     """
     filename = "file"
     data_is_list = isinstance(data, list)
-    keys = data[0].keys() if data_is_list else data.keys()
+    if data_is_list:
+        if len(data) > 1:
+            keys = data[0].keys()
+        else:
+            keys = []
+    else:
+        keys = data.keys()
     if isinstance(data, dict) and "keys" in data.keys():
         keys = data["keys"]
         filename = data["filename"]
@@ -66,7 +72,7 @@ def output_csv(data, code, headers=None):
         writer.writerows(data)
     else:
         writer.writerow(data)
-    resp = app.make_response(str(output.getvalue()))
+    resp = make_response(str(output.getvalue()), code)
     resp.headers.extend(headers or {
         "Content-Disposition": "attachment; filename={}.csv".format(filename)})
     # To monitor memory usage

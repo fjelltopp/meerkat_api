@@ -26,9 +26,11 @@ class Alert(Resource):
     def get(self, alert_id):
         result = db.session.query(model.Alerts, model.Links).outerjoin(
             model.Links, model.Alerts.id == model.Links.link_value
-        ).filter(model.Alerts.id == alert_id)
-        
-        return jsonify(row_to_dict(result.first()))
+        ).filter(model.Alerts.id == alert_id).first()
+        if result: 
+            return jsonify(row_to_dict(result))
+        else:
+            return {}
 
 
 class Alerts(Resource):

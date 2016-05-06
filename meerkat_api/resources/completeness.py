@@ -126,6 +126,8 @@ class Completeness(Resource):
             # For each region we find the number of clinics and calculate
             # the sum of the number of records / time_frame * n_clinics.
             n_clinics = len(clinic_data[region].keys())
+            if n_clinics == 0:
+                n_clinics = 1
             region_data[region] = {"last_day": last_day.get(region, 0)
                                    / n_clinics * 100,
                                    "last_week": last_week.get(region, 0)

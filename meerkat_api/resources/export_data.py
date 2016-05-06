@@ -135,12 +135,12 @@ class ExportCategory(Resource):
         if "variables" in request.args.keys():
             variables = json.loads(request.args["variables"])
         else:
-            abort(501)
+            return []
         var = Variables()
         data_vars = var.get(category)
         data_keys = data_vars.keys()
         if len(data_keys) == 0:
-            abort(501)
+            return []
         return_keys = []
         translation_dict = {}
         alert = False
