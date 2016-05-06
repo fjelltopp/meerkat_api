@@ -14,6 +14,7 @@ from meerkat_api.resources.data import AggregateCategory, Aggregate
 from meerkat_api.resources.map import MapVariable
 from meerkat_api.resources.reports import get_variables_category
 from meerkat_api.resources.alerts import Alerts
+from meerkat_api.resources.reports import get_latest_category
 
 
 class KeyIndicators(Resource):
@@ -23,7 +24,6 @@ class KeyIndicators(Resource):
     def get(self):
         ac = AggregateCategory()
         return ac.get("key_indicators", 1)
-        
 
 class TotMap(Resource):
     """
@@ -32,13 +32,14 @@ class TotMap(Resource):
     def get(self):
         mv = MapVariable()
         return mv.get("tot_1", include_all_clinics=True)
+    
 class ConsultationMap(Resource):
     """
     Map the total number of consultations
     """
     def get(self):
         mv = MapVariable()
-        return mv.get("reg_1", include_all_clinics=True)
+        return mv.get("reg_2", include_all_clinics=True)
 
 class NumAlerts(Resource):
     """
@@ -48,6 +49,7 @@ class NumAlerts(Resource):
         al = Alerts()
         data = json.loads(al.get().data.decode("utf-8"))
         return {"num_alerts": len(data["alerts"])}
+    
 class RefugeePage(Resource):
     """
     Map and key indicators for the Refugee page
@@ -60,31 +62,16 @@ class RefugeePage(Resource):
         tot_pop = 0
         clinic_map = []
         for clinic in refugee_clinics:
-            result = db.session.query(Data.variables).filter(
-                or_(Data.variables.has_key("ref_1"),
-                    Data.variables.has_key("ref_2"),
-                    Data.variables.has_key("ref_3"),
-                    Data.variables.has_key("ref_4"),
-                    Data.variables.has_key("ref_5"),
-                    Data.variables.has_key("ref_6"),
-                    Data.variables.has_key("ref_7"),
-                    Data.variables.has_key("ref_7"),
-                    Data.variables.has_key("ref_8"),
-                    Data.variables.has_key("ref_9"),
-                    Data.variables.has_key("ref_10"),
-                    Data.variables.has_key("ref_11"),
-                    Data.variables.has_key("ref_12")),
-                
-                Data.clinic == clinic,
-            ).order_by(Data.date.desc()).first()
+            result = get_latest_category("population", clinic, datetime(2015, 1, 1),
+                                         datetime.now())
             clinic_pop = 0
             if(result):
-                clinic_pop = sum(result[0].values())
+                clinic_pop = sum([sum(result[x].values()) for x in result.keys() ])
+
                 tot_pop += clinic_pop
             clinic_map.append({"value": clinic_pop,
                                "geolocation": locs[clinic].geolocation.split(","),
                                "clinic": locs[clinic].name,
                                "location_id": clinic
                                })
-                            
-        return ret
+        return clinic_map

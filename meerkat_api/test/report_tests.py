@@ -371,11 +371,29 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
     def tearDown(self):
         pass
 
+
+    def test_non_location(self):
+        """ Teseting that reports returns None if wrong locations"""
+        db_util.insert_codes(self.db.session)
+        db_util.insert_locations(self.db.session)
+        reports = [
+            "public_health", "cd_public_health", "ncd_public_health",
+            "ncd_report", "cd_report", "refugee_public_health", "refugee_detail", "refugee_cd"
+            ]
+        for report in reports:
+            rv = self.app.get('/reports/{}/99'.format(report))
+            self.assertEqual(rv.status_code, 200)
+            data = json.loads(rv.data.decode("utf-8"))
+            self.assertEqual(data, None)
+
+        
+    
     def test_dates(self):
         """ Testing that the dates are handled correctly """
         db_util.insert_codes(self.db.session)
         db_util.insert_locations(self.db.session)
-
+        db.session.query(model.Data).delete()
+        db.session.commit()
         reports = [
             "public_health", "cd_public_health", "ncd_public_health",
             "ncd_report", "cd_report", "refugee_public_health", "refugee_detail", "refugee_cd"
@@ -390,7 +408,7 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
 
             # With specified dates
             end_date = datetime(2015, 8, 7).isoformat()
-            start_date = datetime(2015, 2, 3).isoformat()
+            start_date = datetime(2014, 2, 3).isoformat()
             rv = self.app.get('/reports/{}/1/{}'.format(report, end_date))
             self.assertEqual(rv.status_code, 200)
             data = json.loads(rv.data.decode("utf-8"))["data"]

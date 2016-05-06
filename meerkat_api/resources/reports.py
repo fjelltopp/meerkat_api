@@ -329,10 +329,10 @@ class NcdReport(Resource):
                        "start_date": start_date.isoformat()
         }
         location_name = db.session.query(Locations.name).filter(
-            Locations.id == location).first().name
+            Locations.id == location).first()
         if not location_name:
             return None
-        ret["data"]["project_region"] = location_name
+        ret["data"]["project_region"] = location_name.name
 
         # Data on Hypertension and Diabebtes, there are two tables for each disease.
         # One for the age breakdown, and one for labs and complications.
@@ -480,10 +480,10 @@ class CdReport(Resource):
         }
 
         location_name = db.session.query(Locations.name).filter(
-            Locations.id == location).first().name
+            Locations.id == location).first()
         if not location_name:
             return None
-        ret["data"]["project_region"] = location_name
+        ret["data"]["project_region"] = location_name.name
 
         # We use the data in the alert table with alert_investigation links
         # Each alert is either classified as suspected, confirmed. We do not include
@@ -581,9 +581,9 @@ class Pip(Resource):
         }
         conn = db.engine.connect()
         locs = get_locations(db.session)
-        location_name = locs[int(location)].name
-        if not location_name:
+        if int(location) not in locs:
             return None
+        location_name = locs[int(location)].name
         ret["data"]["project_region"] = location_name
         
         #We first find the number of SARI sentinel sites
@@ -769,7 +769,7 @@ class Pip(Resource):
             nationality[nat] = nationality_total[nat]["total"]
         tot_nat = sum(nationality.values())
         if tot_nat == 0:
-            tot_nat=1
+            tot_nat = 1
         ret["data"]["nationality"] = []
         for nat in sorted(nationality, key=nationality.get, reverse=True):
             if nationality[nat] > 0:
@@ -834,10 +834,10 @@ class PublicHealth(Resource):
         }
         conn = db.engine.connect()
         location_name = db.session.query(Locations.name).filter(
-            Locations.id == location).first().name
+            Locations.id == location).first()
         if not location_name:
             return None
-        ret["data"]["project_region"] = location_name
+        ret["data"]["project_region"] = location_name.name
 
         #We first add all the summary level data
         tot_clinics = TotClinics()
@@ -1057,10 +1057,10 @@ class CdPublicHealth(Resource):
         }
         conn = db.engine.connect()
         location_name = db.session.query(Locations.name).filter(
-            Locations.id == location).first().name
+            Locations.id == location).first()
         if not location_name:
             return None
-        ret["data"]["project_region"] = location_name
+        ret["data"]["project_region"] = location_name.name
 
         #We first add all the summary level data
         tot_clinics = TotClinics()
@@ -1259,10 +1259,10 @@ class NcdPublicHealth(Resource):
         }
         conn = db.engine.connect()
         location_name = db.session.query(Locations.name).filter(
-            Locations.id == location).first().name
+            Locations.id == location).first()
         if not location_name:
             return None
-        ret["data"]["project_region"] = location_name
+        ret["data"]["project_region"] = location_name.name
 
         #We first add all the summary level data
         tot_clinics = TotClinics()
@@ -1445,9 +1445,9 @@ class RefugeePublicHealth(Resource):
         }
         conn = db.engine.connect()
         locs = get_locations(db.session)
-        location_name = locs[int(location)].name
-        if not location_name:
+        if int(location) not in locs:
             return None
+        location_name = locs[int(location)].name
         ret["data"]["project_region"] = location_name
         
         #We first find all the refugee clinics
@@ -1641,10 +1641,10 @@ class RefugeeDetail(Resource):
         }
         conn = db.engine.connect()
         locs = get_locations(db.session)
-        location_name = locs[int(location)].name
+        location_name = locs[int(location)]
         if not location_name:
             return None
-        ret["data"]["project_region"] = location_name
+        ret["data"]["project_region"] = location_name.name
         
         #We first find all the refugee clinics
         refugee_clinics = get_children(location, locs, clinic_type="Refugee")
@@ -1800,10 +1800,10 @@ class RefugeeCd(Resource):
         }
         conn = db.engine.connect()
         locs = get_locations(db.session)
-        location_name = locs[int(location)].name
+        location_name = locs[int(location)]
         if not location_name:
             return None
-        ret["data"]["project_region"] = location_name
+        ret["data"]["project_region"] = location_name.name
 
         # We first find all the refugee clinics
         refugee_clinics = get_children(location, locs, clinic_type="Refugee")

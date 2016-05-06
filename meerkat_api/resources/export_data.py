@@ -13,6 +13,7 @@ from meerkat_abacus.model import Data, form_tables
 from meerkat_abacus.util import all_location_data
 from meerkat_abacus.config import country_config, links
 from meerkat_api.resources.variables import Variables
+from meerkat_api.resources.epi_week import EpiWeek
 from meerkat_api.authentication import require_api_key
 from meerkat_abacus.util import get_locations, get_locations_by_deviceid
 from meerkat_api.resources.alerts import get_alerts
@@ -204,16 +205,17 @@ class ExportCategory(Resource):
                         dict_row[k] = parse(r[1].data[field]).year
                     else:
                         dict_row[k] = None
-                elif "$month" in form_var and r[1].data[field]:
+                elif "$month" in form_var: 
                     field = form_var.split("$")[0]
-                    if field in r[1].data:
+                    if field in r[1].data and r[1].data[field]:
                         dict_row[k] = parse(r[1].data[field]).month
                     else:
                         dict_row[k] = None
                 elif "$epi_week" in form_var:
+                    ewg = EpiWeek()
                     field = form_var.split("$")[0]
                     if field in r[1].data and r[1].data[field]:
-                        dict_row[k] = date_to_epi_week(parse(r[1].data[field]))
+                        dict_row[k] = ewg.get(r[1].data[field])["epi_week"]
                     else:
                         dict_row[k] = None
                 elif "alert_link" in form_var:

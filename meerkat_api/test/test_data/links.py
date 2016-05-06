@@ -28,3 +28,9 @@ pip_report = [
     Links(**{'link_def': 'pip', 'link_value': 'namru-1', 'id': 6, 'from_date': datetime.datetime(2015, 4, 30, 0, 0), 'to_id': 'uuid:ad953028-499d-4d56-ad56-a9e777a4b4b0', 'data': {"type": "H1N1"}, 'to_date': datetime.datetime(2015, 5, 3, 0, 0)}),
     Links(**{'link_def': 'pip', 'link_value': 'namru-1', 'id': 7, 'from_date': datetime.datetime(2015,7, 30, 0, 0), 'to_id': 'uuid:ad953028-499d-4d56-ad56-a9e777a4b4b0', 'data': {"type": ["H1", "H3"]}, 'to_date': datetime.datetime(2015, 6, 30, 0, 0)})
 ]
+
+
+export_data = [
+    Links(**{'to_id': 'uuid:2119d5e0-fc33-4516-9e94-2651af56c31e', 'link_def': 'alert_investigation', 'from_date': datetime.datetime(2016, 4, 15, 0, 0), 'to_date': datetime.datetime(2015, 4, 29, 3, 10, 45, 244411), 'data': {'investigator': '6', 'status': 'Ongoing', 'checklist': 'Case Management'}, 'link_value': 'ee9376', 'id': 3})
+    ]
+    

@@ -16,6 +16,21 @@ def epi_year_start(year):
     else:
         return epi_week_start_date(year)
 
+def epi_week_start(year, epi_week):
+    """
+    Calculates the start of an epi week:
+
+    Args:
+        epi-week: epi week
+        year: year
+    Returns:
+        start-date: start-date
+    """
+
+    start_date = epi_year_start(int(year))
+    start_date = start_date + datetime.timedelta(weeks=int(epi_week) - 1)
+    return start_date
+
 
 class EpiWeek(Resource):
     """
@@ -52,18 +67,3 @@ class EpiWeekStart(Resource):
     """
     def get(self, year, epi_week):
         return jsonify(start_date=epi_week_start(year, epi_week))
-
-def epi_week_start(year, epi_week):
-    """
-    Calculates the start of an epi week:
-
-    Args:
-        epi-week: epi week
-        year: year
-    Returns:
-        start-date: start-date
-    """
-
-    start_date = epi_year_start(int(year))
-    start_date =  start_date + datetime.timedelta(weeks=int(epi_week) - 1)
-    return start_date

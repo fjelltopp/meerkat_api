@@ -136,8 +136,6 @@ class QueryVariable(Resource):
         else:
             use_ids = False
 
-
-        
         date_conditions = [Data.date >= start_date, Data.date < end_date]
 
         if "location" in variable:
@@ -152,8 +150,6 @@ class QueryVariable(Resource):
                     only_loc = request.args["only_loc"]
                 conditions += [or_(loc == only_loc for loc in (
                     Data.country, Data.region, Data.district, Data.clinic))]
-
-                
         epi_week_start = epi_year_start(year)
         # Determine which columns we want to extract from the Data table
         columns_to_extract = [func.count(Data.id).label('value'),
@@ -196,10 +192,9 @@ class QueryVariable(Resource):
         
         # How we deal with start and end dates in different years
         if start_date.year != end_date.year:
-            end_week += 52 * (end_date.year - start_date.year)
+            end_week += 53 * (end_date.year - start_date.year)
         if start_week == 0:
             start_week = 1
-
         # DB Query
         results = db.session.query(
             *tuple(columns_to_extract)
@@ -210,7 +205,6 @@ class QueryVariable(Resource):
         for n in names.values():
             ret[n] = {"total": 0,
                       "weeks": {i: 0 for i in range(start_week, end_week + 1)}}
-
         for r in results:
             # r = (number, week, other_columns_to_extract
             if "locations" in group_by:
