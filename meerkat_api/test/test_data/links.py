@@ -25,8 +25,8 @@ pip_report = [
     Links(**{'link_def': 'pip_followup', 'link_value': 'namru-4', 'id': 4, 'from_date': datetime.datetime(2015, 4, 12, 0, 0), 'to_id': 'uuid:4e46f58e-74fd-42b6-b5ca-1350328152ee', 'data': {'outcome': "death", 'ventilated': "yes", 'admitted_to_icu': "yes"}, 'to_date': datetime.datetime(2015, 4, 14, 0, 0)}),
     # Labs
     Links(**{'link_def': 'pip', 'link_value': 'namru-1', 'id': 5, 'from_date': datetime.datetime(2015, 4, 30, 0, 0), 'to_id': 'uuid:ad953028-499d-4d56-ad56-a9e777a4b4b0', 'data': {"type": "H1"}, 'to_date': datetime.datetime(2015, 4, 30, 0, 0)}),
-    Links(**{'link_def': 'pip', 'link_value': 'namru-1', 'id': 6, 'from_date': datetime.datetime(2015, 4, 30, 0, 0), 'to_id': 'uuid:ad953028-499d-4d56-ad56-a9e777a4b4b0', 'data': {"type": "H1N1"}, 'to_date': datetime.datetime(2015, 5, 3, 0, 0)}),
-    Links(**{'link_def': 'pip', 'link_value': 'namru-1', 'id': 7, 'from_date': datetime.datetime(2015,7, 30, 0, 0), 'to_id': 'uuid:ad953028-499d-4d56-ad56-a9e777a4b4b0', 'data': {"type": ["H1", "H3"]}, 'to_date': datetime.datetime(2015, 6, 30, 0, 0)})
+    Links(**{'link_def': 'pip', 'link_value': 'namru-2', 'id': 6, 'from_date': datetime.datetime(2015, 4, 30, 0, 0), 'to_id': 'uuid:ad953028-499d-4d56-ad56-a9e777a4b4b0', 'data': {"type": "H1N1"}, 'to_date': datetime.datetime(2015, 5, 3, 0, 0)}),
+    Links(**{'link_def': 'pip', 'link_value': 'namru-3', 'id': 7, 'from_date': datetime.datetime(2015,7, 30, 0, 0), 'to_id': 'uuid:ad953028-499d-4d56-ad56-a9e777a4b4b0', 'data': {"type": ["H1", "H3"]}, 'to_date': datetime.datetime(2015, 6, 30, 0, 0)})
 ]
 
 

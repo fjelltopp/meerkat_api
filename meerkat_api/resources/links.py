@@ -38,7 +38,7 @@ class Links(Resource):
     """
     decorators = [require_api_key]
 
-    def get(self, links_id):
+    def get(self, link_def):
         result = db.session.query(model.Links).filter(
-            model.Links.link_def == links_id).all()
+            model.Links.link_def == link_def).all()
         return jsonify({"links": rows_to_dicts(result, dict_id="link_value")})

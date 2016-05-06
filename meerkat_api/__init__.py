@@ -114,7 +114,7 @@ api.add_resource(ExportCategory, "/export/category/<category>/<download_name>")
 
 # Links
 api.add_resource(Link, "/link/<link_id>")
-api.add_resource(Links, "/links/<links_id>")
+api.add_resource(Links, "/links/<link_def>")
 
 # Location urls
 api.add_resource(Locations, "/locations")

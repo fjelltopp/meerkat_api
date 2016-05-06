@@ -33,7 +33,7 @@ class Clinics(Resource):
                     location_id, l, locations) and locations[l].geolocation
                 and (not clinic_type or locations[l].clinic_type == clinic_type)):
                 lat, lng = locations[l].geolocation.split(",")
-                p = Point((float(lng), float(lat)))
+                p = Point((float(lng), float(lat))) # Note that this is the specified order for geojson
                 points.append(Feature(geometry=p,
                                       properties={"name":
                                                   locations[l].name}))
