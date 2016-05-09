@@ -8,13 +8,13 @@ from flask import jsonify
 
 def row_to_dict(row):
     """
-    translate sql alchemy row to dict
+    Translate sql alchemy row to dict
 
     Args:
     row: SQL alchemy class
 
     Returns:
-    data_dict: data as dictionary
+      data_dict(dict): data as dictionary
     """
     if hasattr(row, "__table__"):
         return dict((col, getattr(row, col))
@@ -29,18 +29,19 @@ def row_to_dict(row):
         return ret
 
 
-
 def rows_to_dicts(rows, dict_id=None):
     """
-    translate sql alchemy rows to dicts
+    Translate sql alchemy rows to dicts
 
     Args:
-    rows: SQL alchemy class
-
+       rows: List of SQL alchemy rows
+       dict_id: If True we return a dict with the dict_id column as index
     Returns:
-    data_dicts: data as dictionary
+       data_dicts(dict): data as dictionary
     """
     if dict_id:
+        if len(rows) >0 and isinstance(rows[0], tuple):
+            raise TypeError("Can not use dict_id=True with tuple rows")
         data_dicts = {}
         for row in rows:
             data_dicts[getattr(row, dict_id)] = row_to_dict(row)
@@ -49,19 +50,6 @@ def rows_to_dicts(rows, dict_id=None):
         for row in rows:
             data_dicts.append(row_to_dict(row))
     return data_dicts
-
-
-def date_to_epi_week(day=datetime.today()):
-    """
-    Converts a datetime object to an epi_week
- 
-    Args:
-       day: datetime
-    Returns:
-        epi_week(int): epi week
-
-    """
-    return int((day - datetime(day.year, 1, 1)).days // 7 + 1)
 
 
 def is_child(parent, child, locations):
@@ -73,8 +61,8 @@ def is_child(parent, child, locations):
         child: child_id
         locations: all locations in dict
 
-    Reutrns
-       is_child(Boolean)
+    Returns:
+       is_child(Boolean): True if child is child of parent
     """
     parent = int(parent)
     child = int(child)
@@ -96,7 +84,7 @@ def get_children(parent, locations, clinic_type=None):
         parent: parent_id
         locations: all locations in dict
 
-    Reutrns
+    Returns:
        list of location ids
     """
     ret = []

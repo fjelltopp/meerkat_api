@@ -1,13 +1,13 @@
 """
-Data resource for querying data
+Resource for aggregating and querying data
+
 """
 from flask_restful import Resource
 from sqlalchemy import or_, extract, func, Integer
 from datetime import datetime
-from sqlalchemy.sql.expression import cast
 from flask import jsonify
 
-from meerkat_api.util import row_to_dict, rows_to_dicts, date_to_epi_week
+from meerkat_api.util import rows_to_dicts
 from meerkat_api import db, app
 from meerkat_abacus.model import Data
 from meerkat_abacus.util import epi_week_start_date
@@ -17,13 +17,14 @@ from meerkat_api.authentication import require_api_key
 
 class Aggregate(Resource):
     """
-    Get total Aggregate over all time
+    Count (or add up) all the records with variable and location over all time. 
     
-    Args:
-        variable: variable_id
-        location: location_id
-    Returns:
-        {"value": value}
+    Args:\n
+        variable: variable_id\n
+        location: location_id\n
+
+    Returns:\n
+        result: {"value": value}\n
     """
     decorators = [require_api_key]
     def get(self, variable_id, location_id):
@@ -41,20 +42,26 @@ class Aggregate(Resource):
 
 class AggregateYear(Resource):
     """
-    Get total and weekly aggregate for a year
+    Get total and weekly aggregate for the current year for the given
+    variable and location. Can get data for other years by useing the 
+    year keyword argument. 
     
-    Args:
-        variable: variable_id
-        location: location_id
-        year: year
-    Reutrns:
-    result_dict: {"weeks":{1:0....}, "year":0}
+    Args:\n
+        variable: variable_id\n
+        location: location_id\n
+        year: year (defaults to current year)\n
+
+    Reutrns:\n
+       result_dict: {"weeks":{1:0....}, "year":0}\n
     """
     decorators = [require_api_key]
+    
     def get(self, variable_id, location_id, year=datetime.today().year):
         year = int(year)
         vi = str(variable_id)
         epi_week_start = epi_week_start_date(year)
+
+        # We sum over variable grouped by epi_week
         results = db.session.query(
             func.sum(Data.variables[vi].astext.cast(Integer)).label('value'),
             func.floor(
@@ -74,16 +81,18 @@ class AggregateYear(Resource):
 class AggregateCategory(Resource):
     """
     Get total and weekly aggregate for a year for all variables
-    with category
+    with a given category. Only aggregate over the given location.
     
-    Args:
-        category: category
-        location: location_id
-        year: year
-    Returns:
-        result_dict: {variable_id: AggregateYear result_dict}
+    Args:\n
+        category: category\n
+        location: location_id\n
+        year: year (defaults to the current year)\n
+
+    Returns:\n
+        result_dict: {variable_id: AggregateYear result_dict}\n
     """
     decorators = [require_api_key]
+    
     def get(self, category, location_id, year=datetime.today().year):
         variables_instance = Variables()
         variables = variables_instance.get(category)
@@ -96,17 +105,20 @@ class AggregateCategory(Resource):
                                                        year)
         return return_data
 
+    
 class Records(Resource):
     """
-    Return the records with a variable for locations
-    
-    Args: 
-       variable: variable_id
-       location: location
-    Returns: 
-       list_of_records
+    Return the records with a given variable and location
+
+    Args:\n
+       variable: variable_id\n
+       location: location\n
+
+    Returns:\n
+       list_of_records\n
     """
     decorators = [require_api_key]
+    
     def get(self, variable, location_id):
         results = db.session.query(Data).filter(
             Data.variables.has_key(str(variable)), or_(
@@ -114,6 +126,7 @@ class Records(Resource):
                                                Data.region,
                                                Data.district,
                                                Data.clinic))).all()
+        
         return jsonify({"records": rows_to_dicts(results)})
         
             
