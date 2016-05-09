@@ -17,6 +17,17 @@ import meerkat_abacus.model as model
 
 
 def need_csv_representation(url):
+    """ 
+    Checks if the url has a csv_representation.
+    
+    All urls that need a csv representation needs to be added to
+    csv_representations. 
+
+    Args:
+       url: the url to check
+    Returns:
+       is_csv: True has csv representation
+    """
     csv_representations = ["export/data", "export/form/", "export/alerts"]
     for r in csv_representations:
         if r in url:
@@ -24,7 +35,16 @@ def need_csv_representation(url):
     return False
 
 def valid_urls(app):
-    """ Return all urls with a semi sensible subsitution for aruments """
+    """ 
+    Return all urls with a semi "sensible" subsitutions for arguments.
+    
+    All arguments need to have a subsitituion in the list in this function.
+    
+    Args: 
+       app: meekrat_app
+    Returns:
+       urls: list of all urls
+    """
     substitutions = {
         "location": "1",
         "location_id": "1",
