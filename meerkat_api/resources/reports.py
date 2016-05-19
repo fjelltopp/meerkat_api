@@ -1883,3 +1883,50 @@ class RefugeeCd(Resource):
                 ret["data"]["communicable_diseases"][d]["suspected"].append(diseases[d])
         return ret
 
+class WeeklyEpiMonitoring(Resource):
+    """
+    Weekly Epi Monitoring or "Rapport de Surveillance Epidémiologique Hebdomadaire"
+
+    This reports gives detailed tables on all aspects the epidiemiological data.
+    As requested by Madagascar. 
+
+    Args:\n
+       location: Location to generate report for\n
+       start_date: Start date of report\n
+       end_date: End date of report\n
+    Returns:\n
+       report_data\n
+    """
+    decorators = [require_api_key]
+    
+    def get(self, location, start_date=None, end_date=None):
+        if not app.config["TESTING"] and "refugee" not in model.form_tables:
+            return {}
+        start_date, end_date = fix_dates(start_date, end_date)
+        ret = {}
+
+        # Meta data
+        ret["meta"] = {"uuid": str(uuid.uuid4()),
+                       "project_id": 1,
+                       "generation_timestamp": datetime.now().isoformat(),
+                       "schema_version": 0.1
+        }
+        # Dates and Location Information
+        ew = EpiWeek()
+        epi_week = ew.get(end_date.isoformat())["epi_week"]
+        ret["data"] = {"epi_week_num": epi_week,
+                       "end_date": end_date.isoformat(),
+                       "project_epoch": datetime(2015,5,20).isoformat(),
+                       "start_date": start_date.isoformat()
+        }
+        conn = db.engine.connect()
+        locs = get_locations(db.session)
+        if int(location) not in locs:
+            return None
+        location_name = locs[int(location)]
+        ret["data"]["project_region"] = location_name.name
+        
+        #TODO: Actually get the data.
+
+
+        return ret
