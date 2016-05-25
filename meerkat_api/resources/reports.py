@@ -237,7 +237,7 @@ def get_latest_category(category, clinic, start_date, end_date):
     been submitted. Once that record is found we sort out the variable names that are of this format
     "Category, Gender AgeGroup" into a structured dict of demographics. 
 
-    Args:
+    Args:get_variables_category(category, start_date, end_date, location, conn, use_ids=False):
        category: the category to get the top five disease from
        clinic: the clinic we are looking at
        start_date: the start date for the aggregation
@@ -1911,15 +1911,17 @@ class WeeklyEpiMonitoring(Resource):
                        "generation_timestamp": datetime.now().isoformat(),
                        "schema_version": 0.1
         }
+
         # Dates and Location Information
         ew = EpiWeek()
         epi_week = ew.get(end_date.isoformat())["epi_week"]
+
         ret["data"] = {"epi_week_num": epi_week,
                        "end_date": end_date.isoformat(),
                        "project_epoch": datetime(2015,5,20).isoformat(),
                        "start_date": start_date.isoformat()
         }
-        conn = db.engine.connect()
+
         locs = get_locations(db.session)
         if int(location) not in locs:
             return None
@@ -1927,6 +1929,51 @@ class WeeklyEpiMonitoring(Resource):
         ret["data"]["project_region"] = location_name.name
         
         #TODO: Actually get the data.
+        conn = db.engine.connect()
 
+        ret['tot_mortality'] = get_variables_category(
+            'tot_mortality', 
+            start_date, 
+            end_date, 
+            location, 
+            conn, 
+            use_ids=True
+        )
+
+        ret['mat_mortality'] = get_variables_category(
+            'mat_mortality', 
+            start_date, 
+            end_date, 
+            location, 
+            conn, 
+            use_ids=True
+        )
+
+        ret['mortality'] = get_variables_category(
+            'mortality', 
+            start_date, 
+            end_date, 
+            location, 
+            conn, 
+            use_ids=False
+        )
+
+        ret['weekly_monitoring'] = get_variables_category(
+            'weekly_monitoring', 
+            start_date, 
+            end_date, 
+            location, 
+            conn, 
+            use_ids=True
+        )
+
+        all_alerts = db.session.query( func.count(Alerts.id) ).filter(
+            Alerts.date >= start_date,
+            Alerts.date < end_date
+        )
+
+        ret['alerts'] = {
+            'total': all_alerts.first()[0]
+        }
 
         return ret

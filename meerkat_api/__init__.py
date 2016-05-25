@@ -90,7 +90,7 @@ from meerkat_api.resources.alerts import Alert, Alerts, AggregateAlerts
 from meerkat_api.resources.explore import QueryVariable, QueryCategory
 from meerkat_api.resources.epi_week import EpiWeek, EpiWeekStart
 from meerkat_api.resources.completeness import Completeness
-from meerkat_api.resources.reports import PublicHealth, CdReport, CdPublicHealth, NcdPublicHealth,RefugeePublicHealth, RefugeeCd,RefugeeDetail, NcdReport, Pip
+from meerkat_api.resources.reports import PublicHealth, CdReport, CdPublicHealth, NcdPublicHealth,RefugeePublicHealth, RefugeeCd,RefugeeDetail, NcdReport, Pip, WeeklyEpiMonitoring
 from meerkat_api.resources.frontpage import KeyIndicators, TotMap, NumAlerts, ConsultationMap, RefugeePage
 from meerkat_api.resources.export_data import ExportData, ExportForm, ExportAlerts, Forms, ExportCategory
 from meerkat_api.resources.links import Link, Links
@@ -194,6 +194,9 @@ api.add_resource(CdReport, "/reports/cd_report/<location>",
 api.add_resource(Pip, "/reports/pip/<location>",
                  "/reports/pip/<location>/<end_date>",
                  "/reports/pip/<location>/<end_date>/<start_date>")
+api.add_resource(WeeklyEpiMonitoring, "/reports/epi_monitoring/<location>",
+                 "/reports/epi_monitoring/<location>/<end_date>",
+                 "/reports/epi_monitoring/<location>/<end_date>/<start_date>")
 
 # Misc
 api.add_resource(Completeness, "/completeness/<variable>/<number_per_week>")
