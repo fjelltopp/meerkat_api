@@ -7,6 +7,7 @@ Unit tests for the alerts resource in Meerkat API
 import json
 import unittest
 import meerkat_api
+from datetime import datetime
 from meerkat_api.test import db_util
 
 class MeerkatAPIAlertsTestCase(unittest.TestCase):
@@ -112,4 +113,12 @@ class MeerkatAPIAlertsTestCase(unittest.TestCase):
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(len(data["alerts"]),8)
+
+        #Test the date filter
+        start = datetime(2015, 3, 1, 0, 0).isoformat()
+        end = datetime(2015, 4, 23, 0, 0).isoformat()
+        rv = self.app.get('/alerts?start_date=' + start + '&end_date=' + end)
+        self.assertEqual(rv.status_code, 200)
+        data = json.loads(rv.data.decode("utf-8"))
+        self.assertEqual(len(data["alerts"]),2)
         
