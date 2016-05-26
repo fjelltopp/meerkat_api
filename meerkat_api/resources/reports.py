@@ -1928,8 +1928,10 @@ class WeeklyEpiMonitoring(Resource):
         location_name = locs[int(location)]
         ret["data"]["project_region"] = location_name.name
         
-        #TODO: Actually get the data.
+        # Actually get the data.
         conn = db.engine.connect()
+
+        var = {}
 
         ret['tot_mortality'] = get_variables_category(
             'tot_mortality', 
@@ -1940,6 +1942,8 @@ class WeeklyEpiMonitoring(Resource):
             use_ids=True
         )
 
+        var['tot_mortality'] = variables_instance.get('tot_mortality')
+
         ret['mat_mortality'] = get_variables_category(
             'mat_mortality', 
             start_date, 
@@ -1948,6 +1952,8 @@ class WeeklyEpiMonitoring(Resource):
             conn, 
             use_ids=True
         )
+
+        var['mat_mortality'] = variables_instance.get('mat_mortality')
 
         ret['mortality'] = get_variables_category(
             'mortality', 
@@ -1958,8 +1964,10 @@ class WeeklyEpiMonitoring(Resource):
             use_ids=False
         )
 
-        ret['weekly_monitoring'] = get_variables_category(
-            'weekly_monitoring', 
+        var['mortality'] = variables_instance.get('mortality')
+
+        ret['epi_monitoring'] = get_variables_category(
+            'epi_monitoring', 
             start_date, 
             end_date, 
             location, 
@@ -1967,13 +1975,29 @@ class WeeklyEpiMonitoring(Resource):
             use_ids=True
         )
 
-        all_alerts = db.session.query( func.count(Alerts.id) ).filter(
-            Alerts.date >= start_date,
-            Alerts.date < end_date
-        )
+        var['epi_monitoring'] = variables_instance.get('epi_monitoring')
+
+        #Alerts
+        all_alerts = alerts.get_alerts({
+            "location": location,
+            "start_date": start_date,
+            "end_date": end_date
+        })
+
+        tot_alerts = 0
+        investigated_alerts = 0
+
+        for a in all_alerts.values():
+                tot_alerts += 1
+                report_status = False
+                if "links" in a and "alert_investigation" in a["links"]:
+                    investigated_alerts += 1
 
         ret['alerts'] = {
-            'total': all_alerts.first()[0]
-        }
+            'total': tot_alerts,
+            'investigated': investigated_alerts
+        }        
+
+        ret['variables'] = var 
 
         return ret
