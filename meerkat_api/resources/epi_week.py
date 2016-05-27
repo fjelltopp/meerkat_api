@@ -4,14 +4,15 @@ Resource to deal with epi-weeks
 from flask_restful import Resource
 from dateutil.parser import parse
 import datetime
-from flask import jsonify, current_app
+from flask import jsonify
+from meerkat_api import app
 
 # The epi_week start date is defined in the meerkat_abacus configs
 from meerkat_abacus.util import epi_week_start_date
 
 
 def epi_year_start(year):
-    if current_app.config["TESTING"]:
+    if app.config["TESTING"]:
         return datetime.datetime(year, 1, 1)
     else:
         return epi_week_start_date(year)

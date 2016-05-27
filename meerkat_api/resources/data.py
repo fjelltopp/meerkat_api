@@ -9,8 +9,8 @@ from flask import jsonify
 
 from meerkat_api.util import rows_to_dicts
 from meerkat_api import db, app
+from meerkat_api.resources.epi_week import epi_year_start
 from meerkat_abacus.model import Data
-from meerkat_abacus.util import epi_week_start_date
 from meerkat_api.resources.variables import Variables
 from meerkat_api.authentication import require_api_key
 
@@ -59,7 +59,7 @@ class AggregateYear(Resource):
     def get(self, variable_id, location_id, year=datetime.today().year):
         year = int(year)
         vi = str(variable_id)
-        epi_week_start = epi_week_start_date(year)
+        epi_week_start = epi_year_start(year)
 
         # We sum over variable grouped by epi_week
         results = db.session.query(

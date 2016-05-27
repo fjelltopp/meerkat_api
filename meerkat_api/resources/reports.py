@@ -623,6 +623,8 @@ class Pip(Resource):
                                          start_date=start_date.isoformat(),
                                          only_loc=location,
                                          use_ids=True)
+        if pip_cat == {}:
+            return ret
         weeks = sorted(pip_cat[sari_code]["weeks"].keys())
         nice_weeks = []
         for w in weeks:
@@ -856,7 +858,7 @@ class PublicHealth(Resource):
         male = get_variable_id("gen_1", start_date, end_date, location, conn)
         ret["data"]["percent_cases_male"] = male / total_cases*100
         ret["data"]["percent_cases_female"] = female / total_cases*100
-        less_5yo = get_variable_id("age_1", start_date, end_date, location, conn)
+        less_5yo = sum(get_variables_category("under_five", start_date, end_date, location, conn).values())
         ret["data"]["percent_cases_lt_5yo"] = less_5yo / total_cases*100
         if less_5yo == 0:
             less_5yo = 1
@@ -1094,10 +1096,15 @@ class CdPublicHealth(Resource):
                       male,
                       male / total_cases * 100)
         ]
-        ret["data"]["percent_cases_male"] = male / total_cases*100
-        ret["data"]["percent_cases_female"] = female / total_cases*100
-        less_5yo = age["<5"]["total"]
-        ret["data"]["percent_cases_lt_5yo"] = less_5yo / total_cases*100
+        ret["data"]["percent_cases_male"] = male / total_cases * 100
+        ret["data"]["percent_cases_female"] = female / total_cases * 100
+        less_5yo = query_variable.get("prc_1", "under_five",
+                                 end_date=end_date.isoformat(),
+                                 start_date=start_date.isoformat(),
+                                 only_loc=location)
+        less_5yo = sum(less_5yo[k]["total"] for k in less_5yo.keys())
+        
+        ret["data"]["percent_cases_lt_5yo"] = less_5yo / total_cases * 100
         if less_5yo == 0:
             less_5yo = 1
         #public health indicators
@@ -1296,7 +1303,13 @@ class NcdPublicHealth(Resource):
             
         ret["data"]["percent_cases_male"] = male / total_cases * 100
         ret["data"]["percent_cases_female"] = female / total_cases * 100
-        less_5yo = age["<5"]["total"]
+        less_5yo = query_variable.get("prc_2", "under_five",
+                                 end_date=end_date.isoformat(),
+                                 start_date=start_date.isoformat(),
+                                 only_loc=location)
+        less_5yo = sum(less_5yo[k]["total"] for k in less_5yo.keys())
+
+                    
         ret["data"]["percent_cases_lt_5yo"] = less_5yo / total_cases * 100
 
         if less_5yo == 0:

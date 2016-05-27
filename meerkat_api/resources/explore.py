@@ -36,10 +36,10 @@ def sort_date(start_date, end_date):
         end_date = datetime.today()
     if start_date:
         start_date = parse(start_date).replace(tzinfo=None)
-        if start_date < epi_week_start_date(year=start_date.year):
-            start_date = epi_week_start_date(year=start_date.year)
+        if start_date < epi_year_start(year=start_date.year):
+            start_date = epi_year_start(year=start_date.year)
     else:
-        start_date = epi_week_start_date(year=end_date.year) #datetime(end_date.year,1,1)
+        start_date = epi_year_start(year=end_date.year) #datetime(end_date.year,1,1)
 
     return start_date, end_date
 
@@ -177,6 +177,8 @@ class QueryVariable(Resource):
             group_by_query = level
         else:
             names = get_variables(group_by)
+            if len(names) == 0:
+                return {}
             ids = names.keys()
             for i in ids:
                 columns_to_extract.append(
