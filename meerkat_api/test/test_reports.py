@@ -377,7 +377,7 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
         db_util.insert_codes(self.db.session)
         db_util.insert_locations(self.db.session)
         reports = [
-            "public_health", "cd_public_health", "ncd_public_health",
+            "public_health", "cd_public_health", "ncd_public_health", "epi_monitoring",
             "ncd_report", "cd_report", "refugee_public_health", "refugee_detail", "refugee_cd"
             ]
         for report in reports:
@@ -395,9 +395,9 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
         self.db.session.query(model.Data).delete()
         self.db.session.commit()
         reports = [
-            "public_health", "cd_public_health", "ncd_public_health",
+            "public_health", "cd_public_health", "ncd_public_health", "epi_monitoring",
             "ncd_report", "cd_report", "refugee_public_health", "refugee_detail", "refugee_cd"
-            ]
+        ]
         for report in reports:
             rv = self.app.get('/reports/{}/1'.format(report))
             self.assertEqual(rv.status_code, 200)
@@ -1303,6 +1303,8 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
                     "Referral rate",
                     9 / 170,
                     None)
+
+
     def test_refugee_cd(self):
         """ Test refugee cd report"""
         db_util.insert_codes(self.db.session)
@@ -1329,6 +1331,76 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
                 self.assertEqual(data["communicable_diseases"][key]["suspected"], wd)
             else:
                 self.assertEqual(data["communicable_diseases"][key]["suspected"], zeroes)
-                
+
+    def test_epi_monitoring(self):
+        """ Test epi monitoring report"""
+
+        #Load the test data.
+        db_util.insert_locations(self.db.session)
+        db_util.insert_codes_from_file(self.db.session, "meerkat_mad/abacus/mad_codes.csv")
+        db_util.insert_cases(self.db.session, "epi_monitoring")
+        db_util.insert_alerts(self.db.session, "epi_monitoring")
+        db_util.insert_links(self.db.session, "epi_monitoring")
+
+        #Select report params
+        end_date = datetime(2015, 1, 7).isoformat()
+        start_date = datetime(2015, 1, 1).isoformat()
+        location = 1
+
+        #Call the api method and check the response is 200 OK. Store the data. 
+        rv = self.app.get('/reports/epi_monitoring/{}/{}/{}'.format(location, end_date, start_date))
+        self.assertEqual(rv.status_code, 200)
+        data = json.loads(rv.data.decode("utf-8"))
+
+        #Refactorisation: check the data is returned is as expected
+        def check_data( data, expected ): 
+            
+            test_dict = {
+                **data["epi_monitoring"],
+                **data["mortality"],
+                **data["mat_mortality"],
+                **data["tot_mortality"]
+            }
+
+            for key, value in test_dict.items(): 
+
+                if( value != expected ):
+                    print( "FAILED ASSERTION | Key: {}  Value: {} Should be {}."
+                           .format( key, value, expected ) )
+                self.assertEqual(value, expected)
+
+                if( key not in data["variables"] ):
+                    print( "KEY NOT INCLUDED IN VARIABLES | Key: {}".format(key) )
+                self.assertTrue( key in data["variables"] )
+
+            self.assertEqual(data["alerts"]["total"], expected)
+            self.assertEqual(data["alerts"]["investigated"], expected)
+
+        #The data is set up to equal 2 everywhere, so check this is the case.
+        check_data( data, 2 )
+
+        #Change the dates and check we get what's expected.
+        end_date = datetime(2016, 1, 7).isoformat()
+        start_date = datetime(2016, 1, 1).isoformat()
+        location = 1
+ 
+        rv = self.app.get('/reports/epi_monitoring/{}/{}/{}'.format(location, end_date, start_date))
+        self.assertEqual(rv.status_code, 200)
+        data = json.loads(rv.data.decode("utf-8"))
+
+        check_data( data, 0 )
+
+        #Change the location and check we get whats expected.
+        end_date = datetime(2015, 1, 7).isoformat()
+        start_date = datetime(2015, 1, 1).isoformat()
+        location = 11
+ 
+        rv = self.app.get('/reports/epi_monitoring/{}/{}/{}'.format(location, end_date, start_date))
+        self.assertEqual(rv.status_code, 200)
+        data = json.loads(rv.data.decode("utf-8"))
+
+        check_data( data, 1 )
+        
+
 if __name__ == '__main__':
     unittest.main()

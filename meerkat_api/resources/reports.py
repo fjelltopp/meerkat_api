@@ -1942,7 +1942,7 @@ class WeeklyEpiMonitoring(Resource):
             use_ids=True
         )
 
-        var['tot_mortality'] = variables_instance.get('tot_mortality')
+        var.update( variables_instance.get('tot_mortality') )
 
         ret['mat_mortality'] = get_variables_category(
             'mat_mortality', 
@@ -1953,7 +1953,7 @@ class WeeklyEpiMonitoring(Resource):
             use_ids=True
         )
 
-        var['mat_mortality'] = variables_instance.get('mat_mortality')
+        var.update( variables_instance.get('mat_mortality') )
 
         ret['mortality'] = get_variables_category(
             'mortality', 
@@ -1961,10 +1961,10 @@ class WeeklyEpiMonitoring(Resource):
             end_date, 
             location, 
             conn, 
-            use_ids=False
+            use_ids=True
         )
 
-        var['mortality'] = variables_instance.get('mortality')
+        var.update( variables_instance.get('mortality') )
 
         ret['epi_monitoring'] = get_variables_category(
             'epi_monitoring', 
@@ -1974,8 +1974,6 @@ class WeeklyEpiMonitoring(Resource):
             conn, 
             use_ids=True
         )
-
-        var['epi_monitoring'] = variables_instance.get('epi_monitoring')
 
         #Alerts
         all_alerts = alerts.get_alerts({
@@ -1993,11 +1991,13 @@ class WeeklyEpiMonitoring(Resource):
                 if "links" in a and "alert_investigation" in a["links"]:
                     investigated_alerts += 1
 
+
         ret['alerts'] = {
             'total': tot_alerts,
             'investigated': investigated_alerts
         }        
 
+        var.update( variables_instance.get('epi_monitoring') )
         ret['variables'] = var 
 
         return ret

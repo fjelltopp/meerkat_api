@@ -14,7 +14,8 @@ import meerkat_abacus.manage as manage
 import meerkat_abacus.config as config
 import meerkat_abacus.model as model
 
-
+from meerkat_api.test.test_alerts import *
+from meerkat_api.test.test_reports import *
 
 def need_csv_representation(url):
     """ 
