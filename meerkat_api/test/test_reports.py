@@ -1337,7 +1337,7 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
 
         #Load the test data.
         db_util.insert_locations(self.db.session)
-        db_util.insert_codes_from_file(self.db.session, "meerkat_mad/abacus/mad_codes.csv")
+        db_util.insert_codes_from_file(self.db.session, "codes.csv")
         db_util.insert_cases(self.db.session, "epi_monitoring")
         db_util.insert_alerts(self.db.session, "epi_monitoring")
         db_util.insert_links(self.db.session, "epi_monitoring")

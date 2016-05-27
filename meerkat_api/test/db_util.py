@@ -68,7 +68,6 @@ def insert_codes_from_file(session, filename):
     session.commit()
 
     for row in read_csv(filename):
-        row.pop("")
         row = field_to_list(row, "category")
         session.add(model.AggregationVariables(**row))
 
@@ -168,12 +167,12 @@ def read_csv(filename):
     Reads csvfile from the test data and returns list of rows
     
     Args:
-        file_path: path of file to read (relative to base directory in which meerkat repos are stored)
+        file_path: path of file to read (relative to the test_data folder)
 
     Returns:
         rows(list): list of rows
     """
-    file_path = os.path.dirname(os.path.realpath(__file__))+"/../../../"+filename
+    file_path = os.path.dirname(os.path.realpath(__file__))+"/test_data/"+filename
     with open(file_path, "r", encoding='utf-8') as f:
         reader = csv.DictReader(f)
         rows = []
