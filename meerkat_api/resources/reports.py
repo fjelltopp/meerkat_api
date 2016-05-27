@@ -237,7 +237,7 @@ def get_latest_category(category, clinic, start_date, end_date):
     been submitted. Once that record is found we sort out the variable names that are of this format
     "Category, Gender AgeGroup" into a structured dict of demographics. 
 
-    Args:
+    Args:get_variables_category(category, start_date, end_date, location, conn, use_ids=False):
        category: the category to get the top five disease from
        clinic: the clinic we are looking at
        start_date: the start date for the aggregation
@@ -1896,3 +1896,121 @@ class RefugeeCd(Resource):
                 ret["data"]["communicable_diseases"][d]["suspected"].append(diseases[d])
         return ret
 
+class WeeklyEpiMonitoring(Resource):
+    """
+    Weekly Epi Monitoring or "Rapport de Surveillance Epidémiologique Hebdomadaire"
+
+    This reports gives detailed tables on all aspects the epidiemiological data.
+    As requested by Madagascar. 
+
+    Args:\n
+       location: Location to generate report for\n
+       start_date: Start date of report\n
+       end_date: End date of report\n
+    Returns:\n
+       report_data\n
+    """
+    decorators = [require_api_key]
+    
+    def get(self, location, start_date=None, end_date=None):
+        if not app.config["TESTING"] and "refugee" not in model.form_tables:
+            return {}
+        start_date, end_date = fix_dates(start_date, end_date)
+        ret = {}
+
+        # Meta data
+        ret["meta"] = {"uuid": str(uuid.uuid4()),
+                       "project_id": 1,
+                       "generation_timestamp": datetime.now().isoformat(),
+                       "schema_version": 0.1
+        }
+
+        # Dates and Location Information
+        ew = EpiWeek()
+        epi_week = ew.get(end_date.isoformat())["epi_week"]
+
+        ret["data"] = {"epi_week_num": epi_week,
+                       "end_date": end_date.isoformat(),
+                       "project_epoch": datetime(2015,5,20).isoformat(),
+                       "start_date": start_date.isoformat()
+        }
+
+        locs = get_locations(db.session)
+        if int(location) not in locs:
+            return None
+        location_name = locs[int(location)]
+        ret["data"]["project_region"] = location_name.name
+        
+        # Actually get the data.
+        conn = db.engine.connect()
+
+        var = {}
+
+        ret['tot_mortality'] = get_variables_category(
+            'tot_mortality', 
+            start_date, 
+            end_date, 
+            location, 
+            conn, 
+            use_ids=True
+        )
+
+        var.update( variables_instance.get('tot_mortality') )
+
+        ret['mat_mortality'] = get_variables_category(
+            'mat_mortality', 
+            start_date, 
+            end_date, 
+            location, 
+            conn, 
+            use_ids=True
+        )
+
+        var.update( variables_instance.get('mat_mortality') )
+
+        ret['mortality'] = get_variables_category(
+            'mortality', 
+            start_date, 
+            end_date, 
+            location, 
+            conn, 
+            use_ids=True
+        )
+
+        var.update( variables_instance.get('mortality') )
+
+        ret['epi_monitoring'] = get_variables_category(
+            'epi_monitoring', 
+            start_date, 
+            end_date, 
+            location, 
+            conn, 
+            use_ids=True
+        )
+
+        #Alerts
+        all_alerts = alerts.get_alerts({
+            "location": location,
+            "start_date": start_date,
+            "end_date": end_date
+        })
+
+        tot_alerts = 0
+        investigated_alerts = 0
+
+        for a in all_alerts.values():
+                tot_alerts += 1
+                report_status = False
+                if "links" in a and "alert_investigation" in a["links"]:
+                    investigated_alerts += 1
+
+
+        ret['alerts'] = {
+            'total': tot_alerts,
+            'investigated': investigated_alerts
+        }        
+
+        var.update( variables_instance.get('epi_monitoring') )
+        ret['variables'] = var 
+
+        return ret

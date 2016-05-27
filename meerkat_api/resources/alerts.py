@@ -2,7 +2,7 @@
 Data resource for getting Alert data
 """
 from flask_restful import Resource
-from flask import jsonify, request
+from flask import jsonify, request, current_app
 
 from meerkat_api.util import row_to_dict, get_children
 from meerkat_api import db
@@ -68,10 +68,18 @@ def get_alerts(args):
         locations = get_locations(db.session)
         children = get_children(int(args["location"]), locations)
         conditions.append(model.Alerts.clinic.in_(children))
+    if "start_date" in args.keys():
+        conditions.append( model.Alerts.date >= args["start_date"] )
+    if "end_date" in args.keys():
+        conditions.append( model.Alerts.date < args["end_date"] )
+
+
+
     results = db.session.query(model.Alerts, model.Links).outerjoin(
         model.Links,
         model.Alerts.id == model.Links.link_value).filter(*conditions)
     alerts = {}
+
     for r in results.all():
         if r[0].id not in alerts.keys():
             alerts[r[0].id] = {"alerts": row_to_dict(r[0])}

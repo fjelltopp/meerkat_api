@@ -23,3 +23,9 @@ cd_report = [
 export_data = [
     Alerts(**{'data': {'gender': 'female', 'age': '33'}, 'clinic': 7, 'uuids': 'uuid:b013c24a-4790-43d6-8b43-4d28a4ce934d', 'date': datetime.datetime(2015, 5, 1, 0, 0), 'id': 'ee9376', 'region': 2, 'reason': 'cmd_11'}),
 ]
+
+epi_monitoring= [
+    Alerts(**{'data': {'gender': 'female', 'age': '33'}, 'clinic': 7, 'uuids': 'uuid:b013c24a-4790-43d6-8b43-4d28a4ce934d', 'date': datetime.datetime(2015, 1, 1, 0, 0), 'id': 'ce934d', 'region': 2, 'reason': 'cmd_11'}),
+    Alerts(**{'data': {'gender': 'female', 'age': '0'}, 'clinic': 11, 'uuids': 'uuid:20b2022f-fbe7-43cb-8467-c569397f3f68', 'date': datetime.datetime(2015, 1, 1, 0, 0), 'id': '7f3f68', 'region': 2, 'reason': 'cmd_1'}),
+
+]

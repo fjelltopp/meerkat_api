@@ -14,7 +14,8 @@ import meerkat_abacus.manage as manage
 import meerkat_abacus.config as config
 import meerkat_abacus.model as model
 
-
+from meerkat_api.test.test_alerts import *
+from meerkat_api.test.test_reports import *
 
 def need_csv_representation(url):
     """ 
@@ -102,7 +103,7 @@ class MeerkatAPITestCase(unittest.TestCase):
         meerkat_api.app.config['TESTING'] = True
         meerkat_api.app.config['API_KEY'] = ""
         manage.set_up_everything(
-            True, True, 500)
+            False, False, 500)
 
         self.app = meerkat_api.app.test_client()
         self.locations = {1: {"name": "Demo"}}

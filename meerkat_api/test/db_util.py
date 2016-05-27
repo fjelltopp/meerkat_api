@@ -5,10 +5,9 @@ Utility functions for setting up the DB for Meerkat API tests
 """
 from datetime import datetime, timedelta
 import uuid
-import random
+import random, csv, os, logging
 
 from meerkat_api.test.test_data import codes, locations, cases, alerts, links
-
 
 from meerkat_abacus import model
 
@@ -56,6 +55,25 @@ def insert_codes(session):
     session.query(model.AggregationVariables).delete()
     session.bulk_save_objects(codes.codes)
     session.commit()
+
+def insert_codes_from_file(session, filename):
+    """
+    Import variables from codes csv-file.
+
+    Args:
+       session: db-session
+    """
+
+    session.query(model.AggregationVariables).delete()
+    session.commit()
+
+    for row in read_csv(filename):
+        row = field_to_list(row, "category")
+        session.add(model.AggregationVariables(**row))
+
+    session.commit()
+
+
 def insert_locations(session):
     """ Add the locations from the locations.py file in test_data
     
@@ -143,3 +161,40 @@ def create_data(session, variables,
             geolocation=geolocations[i]
         ))
     session.commit()
+
+def read_csv(filename):
+    """
+    Reads csvfile from the test data and returns list of rows
+    
+    Args:
+        file_path: path of file to read (relative to the test_data folder)
+
+    Returns:
+        rows(list): list of rows
+    """
+    file_path = os.path.dirname(os.path.realpath(__file__))+"/test_data/"+filename
+    with open(file_path, "r", encoding='utf-8') as f:
+        reader = csv.DictReader(f)
+        rows = []
+        for row in reader:
+            rows.append(row)
+    return rows
+
+def field_to_list(row, key):
+    """
+    Transforms key in row to a list. We split on semicolons if they exist in the string,
+    otherwise we use commas.
+    
+    Args:
+        row: row of data
+        key: key for the field we want
+    Reutrns:
+        row: modified row
+    """
+    if ";" in row[key]:
+        row[key] = [c.strip() for c in row[key].split(";")]
+    elif "," in row[key]:
+        row[key] = [c.strip() for c in row[key].split(",")]
+    else:
+        row[key] = [row[key]]
+    return row
