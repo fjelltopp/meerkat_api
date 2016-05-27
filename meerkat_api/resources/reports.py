@@ -1977,7 +1977,7 @@ class WeeklyEpiMonitoring(Resource):
             use_ids=True
         )
 
-        var.update( variables_instance.get('mortality') )
+        var.update( variables_instance.get('deaths') )
 
         ret['epi_monitoring'] = get_variables_category(
             'epi_monitoring', 
