@@ -1357,7 +1357,7 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
             
             test_dict = {
                 **data["epi_monitoring"],
-                **data["mortality"],
+                **data["deaths"],
                 **data["mat_mortality"],
                 **data["tot_mortality"]
             }
