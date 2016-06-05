@@ -6,7 +6,7 @@ from sqlalchemy import extract, func, Integer
 from datetime import datetime, timedelta
 
 from meerkat_api import db, app
-from meerkat_api.resources.epi_week import EpiWeek
+from meerkat_api.resources.epi_week import EpiWeek, epi_week_start
 from meerkat_abacus.model import Data, Locations
 from meerkat_abacus.util import get_locations, epi_week_start_date
 from meerkat_api.authentication import require_api_key
@@ -33,7 +33,7 @@ class Completeness(Resource):
         today = datetime.now()
         year = today.year
         ew = EpiWeek()
-        epi_week_start = epi_week_start_date(year)
+        epi_year = epi_week_start_date(year)
         epi_week = ew.get(today.isoformat())["epi_week"]
         number_per_week = int(number_per_week)
 
@@ -43,7 +43,7 @@ class Completeness(Resource):
             func.sum(Data.variables[variable].astext.cast(Integer)).label('value'),
             func.floor(
                 extract('days', Data.date -
-                        epi_week_start) / 7 + 1).label("week"),
+                        epi_year) / 7 + 1).label("week"),
             Data.clinic,
             Data.region,
         ).filter(Data.variables.has_key(variable),
@@ -78,7 +78,7 @@ class Completeness(Resource):
                 last_year[r[3]] += r[0]
                 last_year[1] += r[0]
                 
-            if r[1] == epi_week:
+            if r[1] == epi_week - 1:
                 # Last week
                 last_week.setdefault(r[3], 0)
                 clinic_data[r[3]][r[2]]["week"] += r[0]
@@ -122,6 +122,11 @@ class Completeness(Resource):
             n_weeks = epi_week
         region_data = {}
         n_clinics = {}
+        # days_in_current_week = (today - epi_week_start(today.year, epi_week)).days + 1
+        # if number_per_week > days_in_current_week:
+        #     number_per_week_for_epi = days_in_current_week
+        # else:
+        #     number_per_week_for_epi = number_per_week
         for region in list(last_year.keys()) + [1]:
             # For each region we find the number of clinics and calculate
             # the sum of the number of records / time_frame * n_clinics.
