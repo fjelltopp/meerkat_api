@@ -15,6 +15,7 @@ from meerkat_api.resources.map import MapVariable
 from meerkat_api.resources.reports import get_variables_category
 from meerkat_api.resources.alerts import Alerts
 from meerkat_api.resources.reports import get_latest_category
+from meerkat_api.resources.locations import TotClinics
 
 
 class KeyIndicators(Resource):
@@ -49,6 +50,14 @@ class NumAlerts(Resource):
         al = Alerts()
         data = json.loads(al.get().data.decode("utf-8"))
         return {"num_alerts": len(data["alerts"])}
+class NumClinics(Resource):
+    """
+    Return the total number of clinics for the country
+
+    """
+    def get(self):
+        tc = TotClinics()
+        return {"total": tc.get(1)["total"]}
     
 class RefugeePage(Resource):
     """
