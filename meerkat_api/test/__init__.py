@@ -131,7 +131,7 @@ class MeerkatAPITestCase(unittest.TestCase):
         # self.assertEqual(rv.status_code, 401)
         # rv = self.app.get("/test-authentication?api_key=not-real-key")
         # self.assertEqual(rv.status_code, 401)
-        urls_without_authentication = ["/key_indicators", "/tot_map", "consultation_map", "num_alerts", "refugee_page", "/epi_week", "/epi_week_start", "/clinics", "/variables", "/variable", "/tot_clinics", "/locationtree", "/locations", "/location"]
+        urls_without_authentication = ["/key_indicators", "/tot_map", "consultation_map", "num_alerts", "refugee_page", "/epi_week", "/epi_week_start", "/clinics", "/variables", "/variable", "/tot_clinics", "/locationtree", "/locations", "/location", "/num_clinics"]
         urls = valid_urls(meerkat_api.app)
         for url in sorted(urls, reverse=True):
             rv = get_url(self.app, url)
