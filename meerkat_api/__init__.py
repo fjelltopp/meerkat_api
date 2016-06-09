@@ -38,7 +38,7 @@ app.json_encoder = CustomJSONEncoder
 
 
 @api.representation('text/csv')
-def output_csv(data, code, headers=None):
+def output_csv(data_dict, code, headers=None):
     """
     Function to write data to a csv file. If data is list of dicts we
     use the first element's keys as csv headers. If data is a dict it should have
@@ -51,27 +51,19 @@ def output_csv(data, code, headers=None):
        headers: http headers
     """
     filename = "file"
-    data_is_list = isinstance(data, list)
-    if data_is_list:
-        if len(data) > 1:
-            keys = data[0].keys()
-        else:
-            keys = []
-    else:
-        keys = data.keys()
-    if isinstance(data, dict) and "keys" in data.keys():
-        keys = data["keys"]
-        filename = data["filename"]
-        data = data["data"]
-        data_is_list = True
 
-    output = io.StringIO()
-    writer = csv.DictWriter(output, keys, extrasaction="ignore")
-    writer.writeheader()
-    if data_is_list:
+    if "data" in data_dict:
+        keys = data_dict["keys"]
+        filename = data_dict["filename"]
+        data = data_dict["data"]
+        data_is_list = True
+        output = io.StringIO()
+        writer = csv.DictWriter(output, keys, extrasaction="ignore")
+        writer.writeheader()
         writer.writerows(data)
-    else:
-        writer.writerow(data)
+    elif "file" in data_dict:
+        output = data_dict["file"]
+        filename = data_dict["filename"] 
     resp = make_response(str(output.getvalue()), code)
     resp.headers.extend(headers or {
         "Content-Disposition": "attachment; filename={}.csv".format(filename)})

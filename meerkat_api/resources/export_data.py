@@ -3,9 +3,11 @@ Data resource for exporting data
 """
 from flask_restful import Resource
 from flask import request, abort
-from sqlalchemy import or_
+from sqlalchemy import or_, text
 from dateutil.parser import parse
 import json
+import io
+import csv
 
 from meerkat_api.util import row_to_dict
 from meerkat_api import db, app, output_csv
@@ -266,23 +268,28 @@ class ExportForm(Resource):
     decorators = [require_api_key]
     
     def get(self, form):
-        specified_keys = False
         locations, locs_by_deviceid, regions, districts = all_location_data(db.session)
         if "fields" in request.args.keys():
             specified_keys = True
             keys = request.args["fields"].split(",")
-
+        else:
+            keys = ["clinic", "region", "district"]
+            sql = text("SELECT DISTINCT(jsonb_object_keys(data)) from {}".format(form_tables[form].__tablename__))
+            result = db.engine.execute(sql)
+            for r in result:
+                keys.append(r[0])
+        f = io.StringIO()
+        csv_writer = csv.DictWriter(f, keys, extrasaction='ignore')
+        csv_writer.writeheader()
+        i = 0
         if form in form_tables.keys():
-            results = db.session.query(form_tables[form]).yield_per(200)
+            results = db.session.query(form_tables[form].data).yield_per(1000)
             dict_rows = []
-            if not specified_keys:
-                # Add location information to all forms if not specified
-                keys = set(["clinic", "district", "region"])
-                
             for row in results:
-                dict_row = {}
+
+                dict_row = row.data
                 clinic_id = locs_by_deviceid.get(row.data["deviceid"], None)
-                if clinic_id:
+                if clinic_id=="bjarne":
                     dict_row["clinic"] = locations[clinic_id].name
                     # Sort out district and region
                     if locations[clinic_id].parent_location in districts:
@@ -295,13 +302,15 @@ class ExportForm(Resource):
                     dict_row["clinic"] = ""
                     dict_row["district"] = ""
                     dict_row["region"] = ""
-                if not specified_keys:
-                    keys = keys.union(row.data.keys())
                 for key in list(row.data.keys()):
                     if key in keys and key not in dict_row:
                         dict_row[key] = row.data[key]
                 dict_rows.append(dict_row)
-                dict_row = {}
-            return {"data": dict_rows,
-                    "keys": keys,
-                    "filename": form}
+                if i % 1000 == 0:
+                    csv_writer.writerows(dict_rows)
+                    dict_rows = []
+#                    app.logger.info(i)
+                i += 1
+            csv_writer.writerows(dict_rows)
+            return {"filename": form,
+                    "file": f}
