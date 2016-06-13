@@ -22,6 +22,7 @@ from datetime import datetime, timedelta
 from dateutil import parser
 from sqlalchemy.sql import text
 import uuid
+from gettext import gettext
 
 from meerkat_api.util import get_children, is_child
 from meerkat_api import db, app
@@ -333,7 +334,8 @@ class NcdReport(Resource):
         if not location_name:
             return None
         ret["data"]["project_region"] = location_name.name
-
+        tot_clinics = TotClinics()
+        ret["data"]["clinic_num"] = tot_clinics.get(location)["total"]
         # Data on Hypertension and Diabebtes, there are two tables for each disease.
         # One for the age breakdown, and one for labs and complications.
         # For each table we have rows for each Region.
@@ -364,19 +366,19 @@ class NcdReport(Resource):
         locations, ldid, regions, districts = all_location_data(db.session)
         v = Variables()
         lab_categories = v.get("lab")
-        ages = v.get("age")
+        ages = v.get("ncd_age")
         # Loop through diabetes and hypertension
         for disease in diseases.keys():
             # First sort out the titles
-            ret[disease]["age"]["titles"] = ["Region"]
+            ret[disease]["age"]["titles"] = [gettext("Governorate")]
             ret[disease]["age"]["data"] = []
             for age in sorted(ages.keys()):
                 ret[disease]["age"]["titles"].append(ages[age]["name"])
             ret[disease]["age"]["titles"].append("Total")
-            ret[disease]["complications"]["titles"] = ["Region",
-                                                       "Total",
-                                                       "Female",
-                                                       "Male"]
+            ret[disease]["complications"]["titles"] = [gettext("Governorate"),
+                                                       gettext("Total"),
+                                                       gettext("Female"),
+                                                       gettext("Male")]
             for l in labs_to_include[disease]:
                 ret[disease]["complications"]["titles"].append(
                     lab_categories[l]["name"])
@@ -389,14 +391,14 @@ class NcdReport(Resource):
                 d_id = diseases[disease]
                 query_variable = QueryVariable()
                 # get the age breakdown
-                disease_age = query_variable.get(d_id, "age",
+                disease_age = query_variable.get(d_id, "ncd_age",
                                                  end_date=end_date_limit.isoformat(),
                                                  start_date=start_date.isoformat(),
                                                  only_loc=region,
                                                  use_ids=True)
                 loc_name = locations[region].name
                 if region == 1:
-                    loc_name = "Total"
+                    loc_name = gettext("Total")
                 ret[disease]["age"]["data"].append(
                     {"title": loc_name, "values": []}
                 )
@@ -409,14 +411,17 @@ class NcdReport(Resource):
                                                     end_date=end_date_limit.isoformat(),
                                                     start_date=start_date.isoformat(),
                                                     only_loc=region)
+
+                table_two_total = sum([disease_gender[gender]["total"] for gender in disease_gender])
                 ret[disease]["complications"]["data"].append(
                     {
                         "title": loc_name,
-                        "values": [sum([disease_gender[gender]["total"] for gender in disease_gender])]
+                        "values": [table_two_total]
                     })
-                
-                ret[disease]["complications"]["data"][i]["values"].append(disease_gender["Female"]["total"])
-                ret[disease]["complications"]["data"][i]["values"].append(disease_gender["Male"]["total"])
+                if table_two_total == 0:
+                    table_two_total = 1
+                ret[disease]["complications"]["data"][i]["values"].append(disease_gender["Female"]["total"] / table_two_total * 100)
+                ret[disease]["complications"]["data"][i]["values"].append(disease_gender["Male"]["total"] /table_two_total * 100)
                 
                 # Get the lab breakdown
                 labs = query_variable.get(d_id, "lab",
@@ -427,12 +432,12 @@ class NcdReport(Resource):
                 
                 for l in labs_to_include[disease]:
                     if l in labs:
-                        ret[disease]["complications"]["data"][i]["values"].append(labs[l]["total"])
+                        ret[disease]["complications"]["data"][i]["values"].append(labs[l]["total"] / table_two_total * 100)
 
                 for new_id in ids_to_include[disease]:
                     if new_id[1]:
                         ret[disease]["complications"]["data"][i]["values"].append(
-                            query_ids([d_id, new_id[1]], start_date, end_date_limit, only_loc=region)
+                            query_ids([d_id, new_id[1]], start_date, end_date_limit, only_loc=region) / table_two_total * 100
                             )
                     else:
                         # We can N/A to the table if it includes data we are not collecting
@@ -485,7 +490,8 @@ class CdReport(Resource):
         if not location_name:
             return None
         ret["data"]["project_region"] = location_name.name
-
+        tot_clinics = TotClinics()
+        ret["data"]["clinic_num"] = tot_clinics.get(location)["total"]
         # We use the data in the alert table with alert_investigation links
         # Each alert is either classified as suspected, confirmed. We do not include
         # discarded alerts.
@@ -603,15 +609,15 @@ class Pip(Resource):
                                     only_loc=location)
         total_cases = get_variable_id(sari_code, start_date, end_date_limit, location, conn)
         ret["data"]["total_cases"] = total_cases
-        ret["data"]["pip_indicators"] = [make_dict("Total Cases", total_cases, 100)]
+        ret["data"]["pip_indicators"] = [make_dict(gettext("Total Cases"), total_cases, 100)]
         if total_cases == 0:
             # So the future divsions by total_cases does not break in case of zero cases
             total_cases = 1
         ret["data"]["gender"] = [
-            make_dict("Female",
+            make_dict(gettext("Female"),
                       gender["Female"]["total"],
                       gender["Female"]["total"] / total_cases * 100),
-            make_dict("Male",
+            make_dict(gettext("Male"),
                       gender["Male"]["total"],
                       gender["Male"]["total"] / total_cases * 100)
             ]
@@ -642,12 +648,12 @@ class Pip(Resource):
             "suspected": [pip_cat[sari_code]["weeks"][k] if k in pip_cat[sari_code]["weeks"] else 0 for k in weeks],
             "weeks": nice_weeks,
             "confirmed": {
-                "Influenza A": [0 for w in weeks],
-                "Influenza B": [0 for w in weeks],
-                "H1": [0 for w in weeks],
-                "H3": [0 for w in weeks],
-                "H1N1": [0 for w in weeks],
-                "Mixed": [0 for w in weeks]
+                gettext("Influenza A"): [0 for w in weeks],
+                gettext("Influenza B"): [0 for w in weeks],
+                gettext("H1"): [0 for w in weeks],
+                gettext("H3"): [0 for w in weeks],
+                gettext("H1N1"): [0 for w in weeks],
+                gettext("Mixed"): [0 for w in weeks]
                 }
             }
 
@@ -658,12 +664,12 @@ class Pip(Resource):
         # Lab links and follow up links
         lab_links = db.session.query(model.Links).filter(model.Links.link_def == "pip")
         total_lab_links = 0
-        lab_types = {"Influenza A": 0,
-                     "Influenza B": 0,
-                     "H1": 0,
-                     "H3": 0,
-                     "H1N1": 0,
-                     "Mixed": 0
+        lab_types = {gettext("Influenza A"): 0,
+                     gettext("Influenza B"): 0,
+                     gettext("H1"): 0,
+                     gettext("H3"): 0,
+                     gettext("H1N1"): 0,
+                     gettext("Mixed"): 0
                      }
         # Assembling the timeline with suspected cases and the confirmed cases
         # from the lab linkage
@@ -707,15 +713,15 @@ class Pip(Resource):
                 icu += 1
 
         ret["data"]["pip_indicators"].append(
-            make_dict("Patients followed up", total_followup, total_followup / total_cases * 100))
+            make_dict(gettext("Patients followed up"), total_followup, total_followup / total_cases * 100))
         ret["data"]["pip_indicators"].append(
-            make_dict("Laboratory results recorded", total_lab_links, total_lab_links / total_cases * 100))
+            make_dict(gettext("Laboratory results recorded"), total_lab_links, total_lab_links / total_cases * 100))
         ret["data"]["pip_indicators"].append(
-            make_dict("Patients admitted to ICU", icu, icu / total_cases * 100))
+            make_dict(gettext("Patients admitted to ICU"), icu, icu / total_cases * 100))
         ret["data"]["pip_indicators"].append(
-            make_dict("Patients ventilated", ventilated, ventilated / total_cases * 100))
+            make_dict(gettext("Patients ventilated"), ventilated, ventilated / total_cases * 100))
         ret["data"]["pip_indicators"].append(
-            make_dict("Mortality", mortality, mortality / total_cases * 100))
+            make_dict(gettext("Mortality"), mortality, mortality / total_cases * 100))
         ret["data"]["demographics"] = []
 
         # Reportin sites
@@ -874,23 +880,23 @@ class PublicHealth(Resource):
             make_dict("Cases Reported", total_cases, 100)]
         modules = get_variables_category("module", start_date, end_date_limit, location, conn)
         ret["data"]["public_health_indicators"].append(
-            make_dict("Mental Health (mhGAP) algorithm followed",
+            make_dict(gettext("Mental Health (mhGAP) algorithm followed"),
                       modules["Mental Health (mhGAP)"],
                       modules["Mental Health (mhGAP)"] / total_cases * 100))
         ret["data"]["public_health_indicators"].append(
-            make_dict("Child Health (IMCI) algorithm followed",
+            make_dict(gettext("Child Health (IMCI) algorithm followed"),
                       modules["Child Health (IMCI)"],
                       modules["Child Health (IMCI)"] / less_5yo * 100))
         ret["data"]["public_health_indicators"].append(
-            make_dict("Reproductive Health screening",
+            make_dict(gettext("Reproductive Health screening"),
                       modules["Reproductive Health"],
                       modules["Reproductive Health"] / total_cases * 100))
         ret["data"]["public_health_indicators"].append(
-            make_dict("Laboratory results recorded",
+            make_dict(gettext("Laboratory results recorded"),
                       modules["Laboratory Results"],
                       modules["Laboratory Results"] / total_cases * 100))
         ret["data"]["public_health_indicators"].append(
-            make_dict("Prescribing practice recorded",
+            make_dict(gettext("Prescribing practice recorded"),
                       modules["Prescribing"],
                       modules["Prescribing"] / total_cases * 100))
         smoking_prevalence = get_variable_id("smo_2", start_date, end_date_limit, location, conn)
@@ -900,7 +906,7 @@ class PublicHealth(Resource):
         if (smoking_prevalence_ever + smoking_non_prevalence_ever) == 0:
             smoking_prevalence_ever = 1
         ret["data"]["public_health_indicators"].append(
-            make_dict("Smoking prevalence (current)",
+            make_dict(gettext("Smoking prevalence (current)"),
                       smoking_prevalence,
                       smoking_prevalence / (smoking_prevalence_ever+smoking_non_prevalence_ever) * 100))
 
@@ -1076,7 +1082,7 @@ class CdPublicHealth(Resource):
         total_cases = get_variable_id("prc_1", start_date, end_date_limit, location, conn)
         ret["data"]["total_cases"] = total_cases
         ret["data"]["public_health_indicators"] = [
-            make_dict("Cases Reported", total_cases, 100)]
+            make_dict(gettext("Cases Reported"), total_cases, 100)]
 
         if total_cases == 0:
             total_cases = 1
@@ -1116,11 +1122,11 @@ class CdPublicHealth(Resource):
                                  start_date=start_date.isoformat(),
                                  only_loc=location)
         ret["data"]["public_health_indicators"].append(
-            make_dict("Laboratory results recorded",
+            make_dict(gettext("Laboratory results recorded"),
                       modules["Laboratory Results"]["total"],
                       modules["Laboratory Results"]["total"] / total_cases * 100))
         ret["data"]["public_health_indicators"].append(
-            make_dict("Prescribing practice recorded",
+            make_dict(gettext("Prescribing practice recorded"),
                       modules["Prescribing"]["total"],
                       modules["Prescribing"]["total"] / total_cases * 100))
         #Alerts
@@ -1290,7 +1296,7 @@ class NcdPublicHealth(Resource):
                                     end_date=end_date_limit.isoformat(),
                                     start_date=start_date.isoformat(),
                                     only_loc=location)
-        age = query_variable.get("prc_2", "age",
+        age = query_variable.get("prc_2", "ncd_age",
                                  end_date=end_date_limit.isoformat(),
                                  start_date=start_date.isoformat(),
                                  only_loc=location)
@@ -1327,11 +1333,11 @@ class NcdPublicHealth(Resource):
         ret["data"]["public_health_indicators"] = [
             make_dict("Cases Reported", total_cases, 100)]
         ret["data"]["public_health_indicators"].append(
-            make_dict("Laboratory results recorded",
+            make_dict(gettext("Laboratory results recorded"),
                       modules["Laboratory Results"]["total"],
                       modules["Laboratory Results"]["total"] / total_cases * 100))
         ret["data"]["public_health_indicators"].append(
-            make_dict("Prescribing practice recorded",
+            make_dict(gettext("Prescribing practice recorded"),
                       modules["Prescribing"]["total"],
                       modules["Prescribing"]["total"] / total_cases * 100))
         #Reporting sites
@@ -1349,7 +1355,7 @@ class NcdPublicHealth(Resource):
 
         #Demographics
         ret["data"]["demographics"] = []
-        age =  query_variable.get("prc_2","age_gender",
+        age =  query_variable.get("prc_2","ncd_age_gender",
                                   end_date=end_date_limit.isoformat(),
                                   start_date=start_date.isoformat(),
                                   only_loc=location)
@@ -1360,7 +1366,7 @@ class NcdPublicHealth(Resource):
                 age_gender[ac][gender] = age[a]["total"]
             else:
                 age_gender[ac] = {gender: age[a]["total"]}
-        age_variables = variables_instance.get("age")
+        age_variables = variables_instance.get("ncd_age")
         for age_key in sorted(age_variables.keys()):
             a = age_variables[age_key]["name"]
 
@@ -1550,25 +1556,25 @@ class RefugeePublicHealth(Resource):
         days_of_report = (end_date - start_date).days
         
         ret["data"]["public_health_indicators"] = [
-            make_dict("Health Utilisation Rate", total_consultations / tot_pop / days_of_report * 365 , None)] # per year
+            make_dict(gettext("Health Utilisation Rate"), total_consultations / tot_pop / days_of_report * 365 , None)] # per year
         ret["data"]["public_health_indicators"].append(
-            make_dict("Number of consultations per clinician per day", total_consultations / no_clinicians / days_of_report, None)
+            make_dict(gettext("Number of consultations per clinician per day"), total_consultations / no_clinicians / days_of_report, None)
             )
         hospital_referrals = get_variable_id("ref_15", start_date, end_date_limit, location, conn)
         ret["data"]["public_health_indicators"].append(
-            make_dict("Hospitalisation rate",
+            make_dict(gettext("Hospitalisation rate"),
                       hospital_referrals /total_consultations, None)
         )
         ret["data"]["public_health_indicators"].append(
-            make_dict("Referral rate",
+            make_dict(gettext("Referral rate"),
                       (get_variable_id("ref_16", start_date, end_date_limit, location, conn) + hospital_referrals) /total_consultations, None)
         )
         ret["data"]["public_health_indicators"].append(
-            make_dict("Crude Mortality Rate (CMR)",
+            make_dict(gettext("Crude Mortality Rate (CMR)"),
                      crude_mortality_rate, None)
         )
         ret["data"]["public_health_indicators"].append(
-            make_dict("Under-five Mortality Rate (U5MR)",
+            make_dict(gettext("Under-five Mortality Rate (U5MR)"),
                        u5_crude_mortality_rate, None)
         )
 
@@ -1609,10 +1615,10 @@ class RefugeePublicHealth(Resource):
                       male / tot_pop * 100)
         ]
         ret["data"]["presenting_complaints"] = [
-            make_dict("Communicable Disease", morbidity_cd_no, morbidity_cd_no / total_cases * 100),
-            make_dict("Non-Communicable Disease", morbidity_ncd_no, morbidity_ncd_no / total_cases * 100),
-            make_dict("Mental Health", morbidity_mh_no, morbidity_mh_no / total_cases * 100),
-            make_dict("Injury", morbidity_injury_no, morbidity_injury_no / total_cases * 100)
+            make_dict(gettext("Communicable Disease"), morbidity_cd_no, morbidity_cd_no / total_cases * 100),
+            make_dict(gettext("Non-Communicable Disease"), morbidity_ncd_no, morbidity_ncd_no / total_cases * 100),
+            make_dict(gettext("Mental Health"), morbidity_mh_no, morbidity_mh_no / total_cases * 100),
+            make_dict(gettext("Injury"), morbidity_injury_no, morbidity_injury_no / total_cases * 100)
         ]
 
         ret["data"]["morbidity_communicable"] = refugee_disease(morbidity_cd)
@@ -1716,10 +1722,10 @@ class RefugeeDetail(Resource):
         u5_crude_mortality_rate = sum(mortality_u5.values()) / u5 * 1000
         ret["data"]["mortality"] = []
         ret["data"]["mortality"].append(
-            make_dict("Crude Mortality Rate", crude_mortality_rate, None)
+            make_dict(gettext("Crude Mortality Rate"), crude_mortality_rate, None)
         )
         ret["data"]["mortality"].append(
-            make_dict("Under five crude mortality rate", u5_crude_mortality_rate,None)
+            make_dict(gettext("Under five crude mortality rate"), u5_crude_mortality_rate,None)
             )
         ret["data"]["mortality_breakdown"] = disease_breakdown(mortality)
 
@@ -1728,10 +1734,10 @@ class RefugeeDetail(Resource):
         total_consultations = get_variable_id("ref_13", start_date, end_date_limit, location, conn)
         days_of_report = (end_date - start_date).days
         ret["data"]["staffing"] = [
-            make_dict("Total Consultations", total_consultations, None)
+            make_dict(gettext("Total Consultations"), total_consultations, None)
             ]
         ret["data"]["staffing"].append(
-            make_dict("Number of Clinicians", no_clinicians, None)
+            make_dict(gettext("Number of Clinicians"), no_clinicians, None)
             )
         if tot_pop == 0:
             tot_pop = 1
@@ -1740,9 +1746,9 @@ class RefugeeDetail(Resource):
         if no_clinicians == 0:
             no_clinicians = 1
         ret["data"]["staffing"].append(
-            make_dict("Health Utilisation Rate", total_consultations / tot_pop / days_of_report * 365 , None)) # per year
+            make_dict(gettext("Health Utilisation Rate"), total_consultations / tot_pop / days_of_report * 365 , None)) # per year
         ret["data"]["staffing"].append(
-            make_dict("Number of consultations per clinician per day", total_consultations / no_clinicians / days_of_report, None)
+            make_dict(gettext("Number of consultations per clinician per day"), total_consultations / no_clinicians / days_of_report, None)
             )
         
         # 3.2 Communciable Diseases
@@ -1765,17 +1771,17 @@ class RefugeeDetail(Resource):
         hospital_referrals = get_variable_id("ref_15", start_date, end_date_limit, location, conn)
         other_referrals = get_variable_id("ref_16", start_date, end_date_limit, location, conn)
         ret["data"]["referrals"] = [
-            make_dict("Hospital Referrals", hospital_referrals, None)
+            make_dict(gettext("Hospital Referrals"), hospital_referrals, None)
             ]
         ret["data"]["referrals"].append(
-            make_dict("Other Referrals", other_referrals, None)
+            make_dict(gettext("Other Referrals"), other_referrals, None)
             )
         ret["data"]["referrals"].append(
-            make_dict("Hospitalisation rate",
+            make_dict(gettext("Hospitalisation rate"),
                       hospital_referrals /total_consultations, None)
         )
         ret["data"]["referrals"].append(
-            make_dict("Referral rate",
+            make_dict(gettext("Referral rate"),
                       (other_referrals + hospital_referrals) /total_consultations, None)
         )
         return ret

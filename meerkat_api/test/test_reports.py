@@ -707,7 +707,7 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
 
         # Diabetes
         self.assertEqual(data["diabetes"]["age"]["titles"],
-                         ['Region', '<5', '5-9', '10-14', '15-19', '20-59', '>60', 'Total'])
+                         ['Governorate', '<5', '5-9', '10-14', '15-19', '20-59', '>60', 'Total'])
         self.assertEqual(data["diabetes"]["age"]["data"][0],
                          {"title": "Region 1",
                           "values": [2, 0, 1, 0, 0, 0, 3]}
@@ -721,24 +721,24 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
                           "values": [2, 0, 1, 1, 0, 0, 4]}
                          )
         self.assertEqual(data["diabetes"]["complications"]["titles"],
-                         ['Region', 'Total', 'Female', 'Male', 'Overweight (BMI > 25)', 'Obese (BMI > 30)', 'Fasting Glucose', 'HbA1c (%)', 'With Hypertension', 'Smoking', 'Complication']
+                         ['Governorate', 'Total', 'Female', 'Male', 'Overweight (BMI > 25)', 'Obese (BMI > 30)', 'Fasting Glucose', 'HbA1c (%)', 'With Hypertension', 'Smoking', 'Complication']
         )
         self.assertEqual(data["diabetes"]["complications"]["data"][0],
                          {"title": "Region 1",
-                          "values": [3, 1, 2, 1, 1, 2, 1, 0, 1, 0]}
+                          "values": [3, 1 / 3 * 100, 2 / 3 * 100, 1 / 3 * 100, 1 / 3 * 100, 2 / 3 * 100, 1 /3 * 100, 0, 1 / 3 * 100, 0]}
                          )
         self.assertEqual(data["diabetes"]["complications"]["data"][1],
                          {"title": "Region 2",
-                          "values": [1, 1, 0, 0, 0, 0, 0, 1, 0, 1]}
+                          "values": [1, 100 , 0, 0, 0, 0, 0, 100, 0, 100]}
                          )
         self.assertEqual(data["diabetes"]["complications"]["data"][2],
                          {"title": "Total",
-                          "values": [4, 2, 2, 1, 1, 2, 1, 1, 1, 1]}
+                          "values": [4, 2 / 4 * 100, 2 / 4 * 100, 1 / 4 * 100, 1 / 4 * 100, 2 / 4 * 100, 1 / 4 * 100, 1 / 4 * 100, 1 / 4 * 100, 1 / 4 * 100]}
                          )
 
         # Hypertension
         self.assertEqual(data["hypertension"]["age"]["titles"],
-                         ['Region', '<5', '5-9', '10-14', '15-19', '20-59', '>60', 'Total'])
+                         ['Governorate', '<5', '5-9', '10-14', '15-19', '20-59', '>60', 'Total'])
         self.assertEqual(data["hypertension"]["age"]["data"][0],
                          {"title": "Region 1",
                           "values": [0, 0, 1, 1, 0, 0, 2]}
@@ -753,19 +753,19 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
                          )
         
         self.assertEqual(data["hypertension"]["complications"]["titles"],
-                         ['Region', 'Total', 'Female', 'Male', 'Systolic BP < 140', 'Overweight (BMI > 25)', 'Obese (BMI > 30)', 'With Diabetes', 'Smoking', 'Complication']
+                         ['Governorate', 'Total', 'Female', 'Male', 'Systolic BP < 140', 'Overweight (BMI > 25)', 'Obese (BMI > 30)', 'With Diabetes', 'Smoking', 'Complication']
                          )
         self.assertEqual(data["hypertension"]["complications"]["data"][0],
                          {"title": "Region 1",
-                          "values": [2, 2, 0, 0, 1, 1, 1, 0, 0]}
+                          "values": [2, 100, 0, 0, 50, 50, 50, 0, 0]}
                          )
         self.assertEqual(data["hypertension"]["complications"]["data"][1],
                          {"title": "Region 2",
-                          "values": [2, 0, 2, 1, 0, 0, 0, 1, 1]}
+                          "values": [2, 0, 100, 50, 0, 0, 0, 50, 50]}
                          )
         self.assertEqual(data["hypertension"]["complications"]["data"][2],
                          {"title": "Total",
-                          "values": [4, 2, 2, 1, 1, 1, 1, 1, 1]}
+                          "values": [4, 2 / 4 * 100, 2 / 4 * 100, 1 / 4 * 100, 1 / 4 * 100, 1 / 4 * 100, 1 / 4 * 100, 1 / 4 * 100, 1 / 4 * 100]}
                          )
 
     def test_cd_report(self):
