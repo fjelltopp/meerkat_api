@@ -350,38 +350,27 @@ class NcdReport(Resource):
         hypertension_id = "ncd_2"
         diseases = {"hypertension": hypertension_id,
                     "diabetes": diabetes_id}
-        labs_to_include = {"hypertension": ["lab_1", "lab_2", "lab_3"],
-                           "diabetes": ["lab_2", "lab_3", "lab_4", "lab_5"]}
-        # A list of ids we should cross table with both diseases
-        ids_to_include = {
-            "hypertension": [
-                ["With Diabetes", "com_1"],
-                ["Smoking", "smo_2"],
-                ["Complication", "lab_6"]],
-            "diabetes": [
-                ["With Hypertension", "com_2"],
-                ["Smoking", "smo_2"],
-                ["Complication", "lab_6"]]
+        ids_to_include = {"hypertension": [("lab_4", "lab_3"), ("lab_5", "lab_3"), ("lab_2", "lab_1"), ("com_1", "tot"), ("smo_2", "smo_4"), ("lab_11", "lab_10")],
+                          "diabetes": [("lab_4", "lab_3"), ("lab_5", "lab_3"), ("lab_7", "lab_6"), ("lab_9", "lab_8"), ("com_2", "tot"), ("smo_2", "smo_4"), ("lab_11", "lab_10")]
         }
+  
         locations, ldid, regions, districts = all_location_data(db.session)
         v = Variables()
-        lab_categories = v.get("lab")
         ages = v.get("ncd_age")
+        
         # Loop through diabetes and hypertension
         for disease in diseases.keys():
             # First sort out the titles
-            ret[disease]["age"]["titles"] = [gettext("Governorate")]
+            ret[disease]["age"]["titles"] = [gettext("reg")]
             ret[disease]["age"]["data"] = []
             for age in sorted(ages.keys()):
                 ret[disease]["age"]["titles"].append(ages[age]["name"])
             ret[disease]["age"]["titles"].append("Total")
-            ret[disease]["complications"]["titles"] = [gettext("Governorate"),
-                                                       gettext("Total"),
-                                                       gettext("Female"),
-                                                       gettext("Male")]
-            for l in labs_to_include[disease]:
-                ret[disease]["complications"]["titles"].append(
-                    lab_categories[l]["name"])
+            ret[disease]["complications"]["titles"] = [gettext("reg"),
+                                                       gettext("tot"),
+                                                       gettext("gen_1"),
+                                                       gettext("gen_2")]
+  
             for i in ids_to_include[disease]:
                 ret[disease]["complications"]["titles"].append(i[0])
             ret[disease]["complications"]["data"] = []
@@ -420,25 +409,22 @@ class NcdReport(Resource):
                     })
                 if table_two_total == 0:
                     table_two_total = 1
-                ret[disease]["complications"]["data"][i]["values"].append(disease_gender["Female"]["total"] / table_two_total * 100)
-                ret[disease]["complications"]["data"][i]["values"].append(disease_gender["Male"]["total"] /table_two_total * 100)
+                ret[disease]["complications"]["data"][i]["values"].append([disease_gender["Male"]["total"],  disease_gender["Male"]["total"] /table_two_total * 100])
+                ret[disease]["complications"]["data"][i]["values"].append([disease_gender["Female"]["total"],  disease_gender["Female"]["total"] / table_two_total * 100])
+
                 
                 # Get the lab breakdown
-                labs = query_variable.get(d_id, "lab",
-                                          end_date=end_date_limit.isoformat(),
-                                          start_date=start_date.isoformat(),
-                                          only_loc=region,
-                                          use_ids=True)
-                
-                for l in labs_to_include[disease]:
-                    if l in labs:
-                        ret[disease]["complications"]["data"][i]["values"].append(labs[l]["total"] / table_two_total * 100)
-
                 for new_id in ids_to_include[disease]:
-                    if new_id[1]:
+                    if new_id[0]:
+                        numerator = query_ids([d_id, new_id[0]], start_date, end_date_limit, only_loc=region)
+                        if new_id[1] == "tot":
+                            denominator = table_two_total
+                        else:
+                            denominator = query_ids([d_id, new_id[1]], start_date, end_date_limit, only_loc=region)
+                        if denominator == 0:
+                            denominator = 1
                         ret[disease]["complications"]["data"][i]["values"].append(
-                            query_ids([d_id, new_id[1]], start_date, end_date_limit, only_loc=region) / table_two_total * 100
-                            )
+                            [numerator, numerator/ denominator * 100])
                     else:
                         # We can N/A to the table if it includes data we are not collecting
                         ret[disease]["complications"]["data"][i]["values"].append("N/A")
