@@ -759,16 +759,17 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
                          {"title": "Region 1",
                           "values": [2, [0, 0], [2, 100], [1, 100],[0, 0], [0, 0], [1, 50], [0, 0], [0, 0]]}
                          )
-  
+     
         self.assertEqual(data["hypertension"]["complications"]["data"][1],
                          {"title": "Region 2",
-                          "values": [2, [2, 100], [0, 0], [0, 0], [0, 0], [1, 100], [0, 0], [1, 100], [1, 100]]}
+                          "values": [2, [2, 100], [0, 0], [0, 0], [0, 0], [1, 50], [0, 0], [1, 100], [1, 100]]}
                          )
      
 
+     
         self.assertEqual(data["hypertension"]["complications"]["data"][2],
                          {"title": "Total",
-                          "values": [4, [2, 50], [2, 50], [1, 100], [0,0], [1, 100], [1, 1/4*100], [1, 100], [1,100]]}
+                          "values": [4, [2, 50], [2, 50], [1, 100], [0,0], [1, 50], [1, 1/4*100], [1, 100], [1,100]]}
                          )
 
     def test_cd_report(self):
