@@ -21,8 +21,8 @@ class Locations(Resource):
     
     """
     def get(self):
-        return rows_to_dicts(db.session.query(model.Locations).all(),
-                             dict_id="id")
+        return jsonify(rows_to_dicts(db.session.query(model.Locations).all(),
+                             dict_id="id"))
 
 class Location(Resource):
     """
@@ -34,8 +34,8 @@ class Location(Resource):
        location: location
     """
     def get(self, location_id):
-        return row_to_dict(db.session.query(model.Locations).filter(
-            model.Locations.id == location_id).first())
+        return jsonify(row_to_dict(db.session.query(model.Locations).filter(
+            model.Locations.id == location_id).first()))
 
     
 class LocationTree(Resource):

@@ -133,6 +133,10 @@ class Completeness(Resource):
             n_clinics = len(clinic_data[region].keys())
             if n_clinics == 0:
                 n_clinics = 1
+                app.logger.info(variable)
+            app.logger.info(region)
+            app.logger.info(last_week.get(region, 0))
+            app.logger.info(n_clinics)
             region_data[region] = {"last_day": last_day.get(region, 0)
                                    / n_clinics * 100,
                                    "last_week": last_week.get(region, 0)

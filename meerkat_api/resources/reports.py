@@ -900,6 +900,8 @@ class PublicHealth(Resource):
         locs = get_locations(db.session)
         ret["data"]["reporting_sites"] = []
         for l in locs.values():
+            if l.level == "clinic" and l.case_report == 0:
+                continue
             if l.parent_location and int(l.parent_location) == int(location):
                 num = get_variable_id("tot_1",
                                       start_date,
@@ -1141,6 +1143,8 @@ class CdPublicHealth(Resource):
         locs = get_locations(db.session)
         ret["data"]["reporting_sites"] = []
         for l in locs.values():
+            if l.level == "clinic" and l.case_report == 0:
+                continue
             if l.parent_location and int(l.parent_location) == int(location):
                 num = get_variable_id("prc_1",
                                       start_date,
@@ -1331,6 +1335,8 @@ class NcdPublicHealth(Resource):
         ret["data"]["reporting_sites"] = []
         for l in locs.values():
             if l.parent_location and int(l.parent_location) == int(location):
+                if l.level == "clinic" and l.case_report == 0:
+                    continue
                 num = get_variable_id("prc_2",
                                       start_date,
                                       end_date_limit, l.id, conn)
