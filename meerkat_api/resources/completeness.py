@@ -2,15 +2,82 @@
 Data resource for completeness data
 """
 from flask_restful import Resource
+from flask import jsonify
 from sqlalchemy import extract, func, Integer
 from datetime import datetime, timedelta
+#import pandas as pd
 
 from meerkat_api import db, app
 from meerkat_api.resources.epi_week import EpiWeek, epi_week_start
 from meerkat_abacus.model import Data, Locations
 from meerkat_abacus.util import get_locations, epi_week_start_date
 from meerkat_api.authentication import require_api_key
+from meerkat_abacus.util import get_locations
 
+
+
+class NewCompleteness(Resource):
+    """
+    Return completenss data on region and clinic level.
+
+    On the regional level we gives percentage of clinics with at least number_per_week records with variable per week for the last year, 
+    the last week and the last day. Clinics gives number of records for last day, last year and last week. For the regional data we only 
+    count clinics with at least 1 record this year. 
+
+    Args: \n
+        variable: variable_id\n
+        number_per_week: expected number per week\n
+
+    Returns:\n
+        completness data: {regions: region_data, clinics: clinic_data}\n
+    """
+    def get(self, variable, number_per_week):
+        today = datetime.now()
+        year = today.year
+        ew = EpiWeek()
+        epi_year = epi_week_start_date(year)
+        epi_week = ew.get(today.isoformat())["epi_week"]
+        number_per_week = int(number_per_week)
+        locs = get_locations(db.session)
+        data = pd.read_sql(db.session.query(Data.region,
+#                                            Data.district,
+                                            Data.clinic,
+                                            Data.date,
+                                            Data.variables[variable].label(variable)).filter(Data.variables.has_key(variable)).statement, db.session.bind)
+                           
+        end_d = today
+        begining = epi_week_start_date(year)
+        data = data.drop_duplicates(subset=["region","clinic", "date", "reg_1"])
+        tuples = []
+        regs = data.groupby("region")
+        dates = pd.date_range(begining, end_d, freq="1W")
+        for name, group in regs:
+            for clinic in group["clinic"].unique():
+                start_date = locs[clinic].start_date
+                if start_date < begining:
+                    start_date = begining
+                for d in pd.date_range(start_date, end_d, freq="1W"):
+                    tuples.append((name, clinic, d))
+        new_index = pd.MultiIndex.from_tuples(tuples,
+                                              names= ["region", "clinic", "date"])
+        completeness = data.groupby(["region","clinic", pd.TimeGrouper(key="date", freq="1W", label="left")]).sum().reindex(new_index).fillna(0)
+        jordan = completeness.groupby(level=2).mean()
+        regions = completeness.groupby(level=[0,2]).mean()
+        idx = pd.IndexSlice
+        last_two_weeks = jordan.index[-2:]
+        lw = regions.loc[idx[:, last_two_weeks],:]
+        score = lw.groupby(level=0).mean()
+        current_completness = {}
+        region_timeline = {}
+        for region in score.index:
+             current_completness[str(region)] = score.loc[region][variable] / number_per_week * 100
+        for region in regions.index.get_level_values("region"):
+            reg = regions.iloc[ regions.index.get_level_values("region") == region]
+            region_timeline[str(region)] = {"weeks": reg.index.get_level_values("date"),
+                                            "values": reg[variable]}
+        return jsonify({"score": current_completness, "timeline": region_timeline})
+
+        
 
 class Completeness(Resource):
     """
