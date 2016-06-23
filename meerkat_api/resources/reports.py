@@ -2032,6 +2032,12 @@ class WeeklyEpiMonitoring(Resource):
             'investigated': investigated_alerts
         }        
 
+        #Other values required for the email.
+        ret['email'] = {
+            'cases': get_variable_id( 'tot_1', start_date, end_date_limit, location, conn ),
+            'consultations': get_variable_id( 'reg_2', start_date, end_date_limit, location, conn )
+        }
+
         var.update( variables_instance.get('epi_monitoring') )
         ret['variables'] = var 
 
@@ -2054,9 +2060,10 @@ class Malaria(Resource):
     decorators = [require_api_key]
     
     def get(self, location, start_date=None, end_date=None):
-        if not app.config["TESTING"] and "refugee" not in model.form_tables:
-            return {}
+
         start_date, end_date = fix_dates(start_date, end_date)
+        end_date_limit = end_date + timedelta(days=1)
+
         ret = {}
 
         # Meta data
@@ -2071,7 +2078,7 @@ class Malaria(Resource):
         epi_week = ew.get(end_date.isoformat())["epi_week"]
 
         ret["data"] = {"epi_week_num": epi_week,
-                       "end_date": end_date.isoformat(),
+                       "end_date": end_date_limit.isoformat(),
                        "project_epoch": datetime(2015,5,20).isoformat(),
                        "start_date": start_date.isoformat()
         }
@@ -2091,7 +2098,7 @@ class Malaria(Resource):
         ret['malaria_situation'] = get_variables_category(
             'malaria_situation', 
             start_date, 
-            end_date, 
+            end_date_limit, 
             location, 
             conn, 
             use_ids=True
@@ -2102,7 +2109,7 @@ class Malaria(Resource):
         ret['malaria_prevention'] = get_variables_category(
             'malaria_prevention', 
             start_date, 
-            end_date, 
+            end_date_limit, 
             location, 
             conn, 
             use_ids=True
