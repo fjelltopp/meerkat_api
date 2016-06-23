@@ -144,7 +144,9 @@ api.add_resource(Alerts, "/alerts")
 api.add_resource(Clinics, "/clinics/<location_id>",
                  "/clinics/<location_id>/<clinic_type>")
 api.add_resource(MapVariable, "/map/<variable_id>",
-                 "/map/<variable_id>/<location>")
+                 "/map/<variable_id>/<location>",
+                 "/map/<variable_id>/<location>/<end_date>",
+                 "/map/<variable_id>/<location>/<end_date>/<start_date>" )
 
 # Explore data
 api.add_resource(QueryVariable,

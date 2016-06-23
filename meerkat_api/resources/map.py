@@ -7,7 +7,7 @@ from geojson import Point, FeatureCollection, Feature
 from sqlalchemy import extract, func, Integer, or_
 from datetime import datetime
 
-from meerkat_api.util import is_child
+from meerkat_api.util import is_child, fix_dates
 from meerkat_api import db, app
 from meerkat_abacus import model
 from meerkat_abacus.model import Data
@@ -54,28 +54,30 @@ class MapVariable(Resource):
     """
     decorators = [require_api_key]
     
-    def get(self, variable_id, interval="year",
-            location=1, include_all_clinics=False):
+    def get(self, variable_id, location=1, 
+            start_date=None, end_date=None, include_all_clinics=False):
+
+        start_date, end_date = fix_dates(start_date, end_date)
         location = int(location)
         vi = str(variable_id)
         year = datetime.now().year
 
-        if interval == "year":
-            results = db.session.query(
-                func.sum(
-                    Data.variables[vi].astext.cast(Integer)).label('value'),
-                Data.geolocation,
-                Data.clinic
-            ).filter(Data.variables.has_key(vi),
-                     extract('year', Data.date) == year, or_(
-                         loc == location for loc in (Data.country,
-                                                     Data.region,
-                                                     Data.district,
-                                                     Data.clinic))
-            ).group_by("clinic", "geolocation")
-        else:
-            # Currently only support year
-            abort(501)
+        results = db.session.query(
+            func.sum( Data.variables[vi].astext.cast(Integer) ).label('value'),
+            Data.geolocation,
+            Data.clinic
+        ).filter( 
+            Data.variables.has_key(variable_id ),
+            Data.date >= start_date, 
+            Data.date < end_date,
+            or_(
+                loc == location for loc in ( Data.country,
+                                             Data.region,
+                                             Data.district,
+                                             Data.clinic)  
+            )
+        ).group_by("clinic", "geolocation")
+
         locations = get_locations(db.session)
         ret = {}
         for r in results.all():

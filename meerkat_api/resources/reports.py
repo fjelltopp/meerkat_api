@@ -17,14 +17,14 @@ Refugee Detailed Report
 """
 
 from flask_restful import Resource
-from sqlalchemy import or_, func, desc
+from sqlalchemy import or_, func, desc, Integer
 from datetime import datetime, timedelta
 from dateutil import parser
 from sqlalchemy.sql import text
 import uuid
 from gettext import gettext
 
-from meerkat_api.util import get_children, is_child
+from meerkat_api.util import get_children, is_child, fix_dates
 from meerkat_api import db, app
 from meerkat_abacus.model import Data, Locations, Alerts, AggregationVariables
 from meerkat_api.resources.variables import Variables
@@ -35,32 +35,6 @@ from meerkat_api.resources.explore import QueryVariable, query_ids
 from meerkat_abacus.util import get_locations, all_location_data
 from meerkat_abacus import model
 from meerkat_api.authentication import require_api_key
-
-
-def fix_dates(start_date, end_date):
-    """
-    We parse the start and end date and remove any timezone information
-
-    Args: 
-       start_date: start date
-       end_date: end_date
-    Returns:
-       dates(tuple): (start_date, end_date)
-    """
-    if end_date:
-        end_date  = parser.parse(end_date).replace(tzinfo=None)
-    else:
-        end_date = datetime.now()
-    if start_date:
-        start_date = parser.parse(start_date).replace(tzinfo=None)
-    else:
-        start_date = end_date.replace(month=1, day=1,
-                                      hour=0, second=0,
-                                      minute=0,
-                                      microsecond=0)
-    return start_date, end_date
-
-
 
 def get_disease_types(category, start_date, end_date, location, conn):
     """ 
@@ -153,8 +127,52 @@ def get_variable_id(variable_id, start_date, end_date, location, conn):
     else:
         return 0
 
-# Commond variables_instance
+# Common variables_instance
 variables_instance = Variables()
+
+
+def map_variable( variable_id, start_date, end_date, location, conn ):
+    """
+    Map a given variable between dates and with location
+
+    Args: 
+       variable_id: the variable to be mapped
+       start_date: the start date for the aggregation
+       end_date: the end_date for the aggregation
+       location: the location to incldue
+       conn: db.connection
+       use_ids: we use ids instead of names as keys for the return dict
+
+    Returns: 
+       dict
+    """
+
+    results = db.session.query(
+        func.sum( Data.variables[variable_id].astext.cast(Integer) ).label('value'),
+        Data.geolocation,
+        Data.clinic
+    ).filter( 
+        Data.variables.has_key(variable_id ),
+        Data.date >= start_date, 
+        Data.date < end_date,
+        or_(
+            loc == location for loc in ( Data.country,
+                                         Data.region,
+                                         Data.district,
+                                         Data.clinic)  
+        )
+    ).group_by("clinic", "geolocation")
+
+    locations = get_locations(db.session)
+    ret = {}
+    for r in results.all():
+        if r[1]:
+            ret[r[2]] = {"value": r[0], "geolocation": r[1].split(","),
+                         "clinic": locations[r[2]].name}
+
+    return ret
+
+
 
 
 def get_variables_category(category, start_date, end_date, location, conn, use_ids=False):
@@ -2063,6 +2081,7 @@ class Malaria(Resource):
             return None
         location_name = locs[int(location)]
         ret["data"]["project_region"] = location_name.name
+        ret["data"]["project_region_id"] = location
         
         # Actually get the data.
         conn = db.engine.connect()
@@ -2090,6 +2109,8 @@ class Malaria(Resource):
         )
 
         var.update( variables_instance.get('malaria_prevention') )
+
+        ret['map_variable'] = 'epi_1'
 
         ret['variables'] = var 
 
