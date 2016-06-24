@@ -1291,11 +1291,11 @@ class CdPublicHealthMad(Resource):
 
         #Replace with new indicators.
         comp = Completeness()
-        ret["data"]["public_health_indicators"].append({
-          'percent' : comp.get( 'reg_1', 5 )["regions"][1]['last_year'],
-          'title' : 'Yearly completeness across Madagascar',
-          'quantity' : -1
-        })
+        #ret["data"]["public_health_indicators"].append({
+        #  'percent' : comp.get( 'reg_1', 5 )["regions"][1]['last_year'],
+        #  'title' : 'Yearly completeness across Madagascar',
+        #  'quantity' : -1
+        #})
 
         return ret
 
