@@ -23,7 +23,7 @@ from dateutil import parser
 from sqlalchemy.sql import text
 import uuid
 from gettext import gettext
-
+import logging
 from meerkat_api.util import get_children, is_child, fix_dates
 from meerkat_api import db, app
 from meerkat_abacus.model import Data, Locations, Alerts, AggregationVariables
@@ -1127,6 +1127,8 @@ class CdPublicHealth(Resource):
                                  end_date=end_date_limit.isoformat(),
                                  start_date=start_date.isoformat(),
                                  only_loc=location)
+
+        logging.warning( str(modules) )
         ret["data"]["public_health_indicators"].append(
             make_dict(gettext("Laboratory results recorded"),
                       modules["Laboratory Results"]["total"],
@@ -1248,6 +1250,43 @@ class CdPublicHealth(Resource):
         ret["data"]["morbidity_communicable_icd"] = get_disease_types("cd", start_date, end_date_limit, location, conn)
         ret["data"]["morbidity_communicable_cd_tab"] = get_disease_types("cd_tab", start_date, end_date_limit, location, conn)
         return ret
+
+class CdPublicHealthMad(Resource):
+    """
+    Public Health Profile Report for Communicable Diseases
+
+    This reports gives an overview summary over the CD data from the project 
+    Including disease brekdowns reporting locations and demographics
+
+    Args:\n
+       location: Location to generate report for\n
+       start_date: Start date of report\n
+       end_date: End date of report\n
+    Returns:\n
+       report_data\n
+    """
+    decorators = [require_api_key]
+
+    def get(self, location, start_date=None, end_date=None):
+        start_date, end_date = fix_dates(start_date, end_date)
+        end_date_limit = end_date + timedelta(days=1)
+        conn = db.engine.connect()
+        #This report is nearly the same as the CDPublicHealth Report
+        #Let's just get that report and tweak it slightly. 
+        rv = CdPublicHealth()
+        ret = rv.get( location, start_date.isoformat(), end_date.isoformat() )
+        #Other values required for the email.
+        ret['email'] = {
+            'cases': get_variable_id( 'tot_1', start_date, end_date_limit, location, conn ),
+            'consultations': get_variable_id( 'reg_2', start_date, end_date_limit, location, conn ),
+            'clinics': TotClinics().get(location)["total"]
+        }
+        #Delete unwanted indicators.
+        del ret["data"]["public_health_indicators"][1:3]
+        #TODO: Replace with new indicators.
+        
+        return ret
+
 class NcdPublicHealth(Resource):
     """
     Public Health Profile Report for Non-Communicable Diseases
@@ -2030,12 +2069,13 @@ class WeeklyEpiMonitoring(Resource):
         ret['alerts'] = {
             'total': tot_alerts,
             'investigated': investigated_alerts
-        }        
-
+        }  
+      
         #Other values required for the email.
         ret['email'] = {
             'cases': get_variable_id( 'tot_1', start_date, end_date_limit, location, conn ),
-            'consultations': get_variable_id( 'reg_2', start_date, end_date_limit, location, conn )
+            'consultations': get_variable_id( 'reg_2', start_date, end_date_limit, location, conn ),
+            'clinics': TotClinics().get(location)["total"]
         }
 
         var.update( variables_instance.get('epi_monitoring') )
@@ -2116,6 +2156,11 @@ class Malaria(Resource):
         )
 
         var.update( variables_instance.get('malaria_prevention') )
+
+        #Other values required for the email.
+        ret['email'] = {
+            'clinics': TotClinics().get(location)["total"]
+        }
 
         ret['map_variable'] = 'epi_1'
 

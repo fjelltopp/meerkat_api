@@ -82,7 +82,7 @@ from meerkat_api.resources.alerts import Alert, Alerts, AggregateAlerts
 from meerkat_api.resources.explore import QueryVariable, QueryCategory
 from meerkat_api.resources.epi_week import EpiWeek, EpiWeekStart
 from meerkat_api.resources.completeness import Completeness
-from meerkat_api.resources.reports import PublicHealth, CdReport, CdPublicHealth, NcdPublicHealth,RefugeePublicHealth, RefugeeCd,RefugeeDetail, NcdReport, Pip, WeeklyEpiMonitoring, Malaria
+from meerkat_api.resources.reports import PublicHealth, CdReport, CdPublicHealth, CdPublicHealthMad, NcdPublicHealth,RefugeePublicHealth, RefugeeCd,RefugeeDetail, NcdReport, Pip, WeeklyEpiMonitoring, Malaria
 from meerkat_api.resources.frontpage import KeyIndicators, TotMap, NumAlerts, ConsultationMap, RefugeePage, NumClinics
 from meerkat_api.resources.export_data import ExportData, ExportForm, ExportAlerts, Forms, ExportCategory
 from meerkat_api.resources.links import Link, Links
@@ -171,6 +171,9 @@ api.add_resource(NcdReport, "/reports/ncd_report/<location>",
 api.add_resource(CdPublicHealth, "/reports/cd_public_health/<location>",
                  "/reports/cd_public_health/<location>/<end_date>",
                  "/reports/cd_public_health/<location>/<end_date>/<start_date>")
+api.add_resource(CdPublicHealthMad, "/reports/cd_public_health_mad/<location>",
+                 "/reports/cd_public_health_mad/<location>/<end_date>",
+                 "/reports/cd_public_health_mad/<location>/<end_date>/<start_date>")
 api.add_resource(NcdPublicHealth, "/reports/ncd_public_health/<location>",
                  "/reports/ncd_public_health/<location>/<end_date>",
                  "/reports/ncd_public_health/<location>/<end_date>/<start_date>")
