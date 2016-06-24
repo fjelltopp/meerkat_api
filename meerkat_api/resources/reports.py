@@ -27,6 +27,7 @@ import logging
 from meerkat_api.util import get_children, is_child, fix_dates
 from meerkat_api import db, app
 from meerkat_abacus.model import Data, Locations, Alerts, AggregationVariables
+from meerkat_api.resources.completeness import Completeness
 from meerkat_api.resources.variables import Variables
 from meerkat_api.resources.epi_week import EpiWeek, epi_week_start
 from meerkat_api.resources.locations import TotClinics
@@ -1268,23 +1269,34 @@ class CdPublicHealthMad(Resource):
     decorators = [require_api_key]
 
     def get(self, location, start_date=None, end_date=None):
+
         start_date, end_date = fix_dates(start_date, end_date)
         end_date_limit = end_date + timedelta(days=1)
         conn = db.engine.connect()
+
         #This report is nearly the same as the CDPublicHealth Report
         #Let's just get that report and tweak it slightly. 
         rv = CdPublicHealth()
         ret = rv.get( location, start_date.isoformat(), end_date.isoformat() )
+
         #Other values required for the email.
         ret['email'] = {
             'cases': get_variable_id( 'tot_1', start_date, end_date_limit, location, conn ),
             'consultations': get_variable_id( 'reg_2', start_date, end_date_limit, location, conn ),
             'clinics': TotClinics().get(location)["total"]
         }
+
         #Delete unwanted indicators.
         del ret["data"]["public_health_indicators"][1:3]
-        #TODO: Replace with new indicators.
-        
+
+        #Replace with new indicators.
+        comp = Completeness()
+        ret["data"]["public_health_indicators"].append({
+          'percent' : comp.get( 'reg_1', 5 )["regions"][1]['last_year'],
+          'title' : 'Yearly completeness across Madagascar',
+          'quantity' : -1
+        })
+
         return ret
 
 class NcdPublicHealth(Resource):
