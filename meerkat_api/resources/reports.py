@@ -2130,7 +2130,7 @@ class Malaria(Resource):
         epi_week = ew.get(end_date.isoformat())["epi_week"]
 
         ret["data"] = {"epi_week_num": epi_week,
-                       "end_date": end_date_limit.isoformat(),
+                       "end_date": end_date.isoformat(),
                        "project_epoch": datetime(2015,5,20).isoformat(),
                        "start_date": start_date.isoformat()
         }
