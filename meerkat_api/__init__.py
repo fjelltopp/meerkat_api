@@ -15,7 +15,7 @@ import resource
 
 # Create the Flask app
 app = Flask(__name__)
-app.config.from_object('config.Development')
+app.config.from_object('config.Config')
 app.config.from_envvar('MEERKAT_API_SETTINGS', silent=True)
 db = SQLAlchemy(app)
 api = Api(app)
