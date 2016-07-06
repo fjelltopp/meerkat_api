@@ -1149,14 +1149,14 @@ class CdPublicHealth(Resource):
                 if "links" in a and "alert_investigation" in a["links"]:
                     investigated_alerts += 1
         ret["data"]["public_health_indicators"].append(
-            make_dict("Alerts generated",
+            make_dict(gettext("Alerts generated"),
                       tot_alerts,
                       100)
         )
         if tot_alerts == 0:
             tot_alerts = 1
         ret["data"]["public_health_indicators"].append(
-            make_dict("Alerts investigated",
+            make_dict(gettext("Alerts investigated"),
                       investigated_alerts,
                       investigated_alerts / tot_alerts * 100)
         )
