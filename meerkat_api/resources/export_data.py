@@ -134,6 +134,7 @@ class ExportCategory(Resource):
     decorators = [require_api_key]
     
     def get(self, category, download_name):
+        app.logger.warning( "Export Category Called")
         if "variables" in request.args.keys():
             variables = json.loads(request.args["variables"])
         else:
@@ -247,7 +248,7 @@ class ExportCategory(Resource):
                     else:
                         dict_row[k] = None
             dict_rows.append(dict_row)
-
+        app.logger.warning(str(dict_rows))
         return {"data": dict_rows,
                 "keys": return_keys,
                 "filename": download_name}

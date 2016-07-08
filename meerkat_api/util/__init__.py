@@ -4,7 +4,31 @@ meerkat_api util functions
 """
 from datetime import datetime
 from flask import jsonify
+from datetime import datetime, timedelta
+from dateutil import parser
 
+def fix_dates(start_date, end_date):
+    """
+    We parse the start and end date and remove any timezone information
+
+    Args: 
+       start_date: start date
+       end_date: end_date
+    Returns:
+       dates(tuple): (start_date, end_date)
+    """
+    if end_date:
+        end_date  = parser.parse(end_date).replace(tzinfo=None)
+    else:
+        end_date = datetime.now()
+    if start_date:
+        start_date = parser.parse(start_date).replace(tzinfo=None)
+    else:
+        start_date = end_date.replace(month=1, day=1,
+                                      hour=0, second=0,
+                                      minute=0,
+                                      microsecond=0)
+    return start_date, end_date
 
 def row_to_dict(row):
     """

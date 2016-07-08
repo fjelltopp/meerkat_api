@@ -17,16 +17,17 @@ Refugee Detailed Report
 """
 
 from flask_restful import Resource
-from sqlalchemy import or_, func, desc
+from sqlalchemy import or_, func, desc, Integer
 from datetime import datetime, timedelta
 from dateutil import parser
 from sqlalchemy.sql import text
 import uuid
 from gettext import gettext
-
-from meerkat_api.util import get_children, is_child
+import logging
+from meerkat_api.util import get_children, is_child, fix_dates
 from meerkat_api import db, app
 from meerkat_abacus.model import Data, Locations, Alerts, AggregationVariables
+from meerkat_api.resources.completeness import Completeness
 from meerkat_api.resources.variables import Variables
 from meerkat_api.resources.epi_week import EpiWeek, epi_week_start
 from meerkat_api.resources.locations import TotClinics
@@ -35,32 +36,6 @@ from meerkat_api.resources.explore import QueryVariable, query_ids
 from meerkat_abacus.util import get_locations, all_location_data
 from meerkat_abacus import model
 from meerkat_api.authentication import require_api_key
-
-
-def fix_dates(start_date, end_date):
-    """
-    We parse the start and end date and remove any timezone information
-
-    Args: 
-       start_date: start date
-       end_date: end_date
-    Returns:
-       dates(tuple): (start_date, end_date)
-    """
-    if end_date:
-        end_date  = parser.parse(end_date).replace(tzinfo=None)
-    else:
-        end_date = datetime.now()
-    if start_date:
-        start_date = parser.parse(start_date).replace(tzinfo=None)
-    else:
-        start_date = end_date.replace(month=1, day=1,
-                                      hour=0, second=0,
-                                      minute=0,
-                                      microsecond=0)
-    return start_date, end_date
-
-
 
 def get_disease_types(category, start_date, end_date, location, conn):
     """ 
@@ -153,8 +128,52 @@ def get_variable_id(variable_id, start_date, end_date, location, conn):
     else:
         return 0
 
-# Commond variables_instance
+# Common variables_instance
 variables_instance = Variables()
+
+
+def map_variable( variable_id, start_date, end_date, location, conn ):
+    """
+    Map a given variable between dates and with location
+
+    Args: 
+       variable_id: the variable to be mapped
+       start_date: the start date for the aggregation
+       end_date: the end_date for the aggregation
+       location: the location to incldue
+       conn: db.connection
+       use_ids: we use ids instead of names as keys for the return dict
+
+    Returns: 
+       dict
+    """
+
+    results = db.session.query(
+        func.sum( Data.variables[variable_id].astext.cast(Integer) ).label('value'),
+        Data.geolocation,
+        Data.clinic
+    ).filter( 
+        Data.variables.has_key(variable_id ),
+        Data.date >= start_date, 
+        Data.date < end_date,
+        or_(
+            loc == location for loc in ( Data.country,
+                                         Data.region,
+                                         Data.district,
+                                         Data.clinic)  
+        )
+    ).group_by("clinic", "geolocation")
+
+    locations = get_locations(db.session)
+    ret = {}
+    for r in results.all():
+        if r[1]:
+            ret[r[2]] = {"value": r[0], "geolocation": r[1].split(","),
+                         "clinic": locations[r[2]].name}
+
+    return ret
+
+
 
 
 def get_variables_category(category, start_date, end_date, location, conn, use_ids=False):
@@ -1109,6 +1128,8 @@ class CdPublicHealth(Resource):
                                  end_date=end_date_limit.isoformat(),
                                  start_date=start_date.isoformat(),
                                  only_loc=location)
+
+        logging.warning( str(modules) )
         ret["data"]["public_health_indicators"].append(
             make_dict(gettext("Laboratory results recorded"),
                       modules["Laboratory Results"]["total"],
@@ -1128,14 +1149,14 @@ class CdPublicHealth(Resource):
                 if "links" in a and "alert_investigation" in a["links"]:
                     investigated_alerts += 1
         ret["data"]["public_health_indicators"].append(
-            make_dict("Alerts generated",
+            make_dict(gettext("Alerts generated"),
                       tot_alerts,
                       100)
         )
         if tot_alerts == 0:
             tot_alerts = 1
         ret["data"]["public_health_indicators"].append(
-            make_dict("Alerts investigated",
+            make_dict(gettext("Alerts investigated"),
                       investigated_alerts,
                       investigated_alerts / tot_alerts * 100)
         )
@@ -1230,6 +1251,54 @@ class CdPublicHealth(Resource):
         ret["data"]["morbidity_communicable_icd"] = get_disease_types("cd", start_date, end_date_limit, location, conn)
         ret["data"]["morbidity_communicable_cd_tab"] = get_disease_types("cd_tab", start_date, end_date_limit, location, conn)
         return ret
+
+class CdPublicHealthMad(Resource):
+    """
+    Public Health Profile Report for Communicable Diseases
+
+    This reports gives an overview summary over the CD data from the project 
+    Including disease brekdowns reporting locations and demographics
+
+    Args:\n
+       location: Location to generate report for\n
+       start_date: Start date of report\n
+       end_date: End date of report\n
+    Returns:\n
+       report_data\n
+    """
+    decorators = [require_api_key]
+
+    def get(self, location, start_date=None, end_date=None):
+
+        start_date, end_date = fix_dates(start_date, end_date)
+        end_date_limit = end_date + timedelta(days=1)
+        conn = db.engine.connect()
+
+        #This report is nearly the same as the CDPublicHealth Report
+        #Let's just get that report and tweak it slightly. 
+        rv = CdPublicHealth()
+        ret = rv.get( location, start_date.isoformat(), end_date.isoformat() )
+
+        #Other values required for the email.
+        ret['email'] = {
+            'cases': get_variable_id( 'tot_1', start_date, end_date_limit, location, conn ),
+            'consultations': get_variable_id( 'reg_2', start_date, end_date_limit, location, conn ),
+            'clinics': TotClinics().get(location)["total"]
+        }
+
+        #Delete unwanted indicators.
+        del ret["data"]["public_health_indicators"][1:3]
+
+        #Replace with new indicators.
+        comp = Completeness()
+        #ret["data"]["public_health_indicators"].append({
+        #  'percent' : comp.get( 'reg_1', 5 )["regions"][1]['last_year'],
+        #  'title' : 'Yearly completeness across Madagascar',
+        #  'quantity' : -1
+        #})
+
+        return ret
+
 class NcdPublicHealth(Resource):
     """
     Public Health Profile Report for Non-Communicable Diseases
@@ -2012,9 +2081,101 @@ class WeeklyEpiMonitoring(Resource):
         ret['alerts'] = {
             'total': tot_alerts,
             'investigated': investigated_alerts
-        }        
+        }  
+      
+        #Other values required for the email.
+        ret['email'] = {
+            'cases': get_variable_id( 'tot_1', start_date, end_date_limit, location, conn ),
+            'consultations': get_variable_id( 'reg_2', start_date, end_date_limit, location, conn ),
+            'clinics': TotClinics().get(location)["total"]
+        }
 
         var.update( variables_instance.get('epi_monitoring') )
+        ret['variables'] = var 
+
+        return ret
+
+class Malaria(Resource):
+    """
+    Malaria Report or "Rapport de Surveillance Epidemiologique Hebdomadaire du Paludisme"
+
+    This reports gives detailed tables on aspects concerning Malaria.
+    As requested by Madagascar. 
+
+    Args:\n
+       location: Location to generate report for\n
+       start_date: Start date of report\n
+       end_date: End date of report\n
+    Returns:\n
+       report_data\n
+    """
+    decorators = [require_api_key]
+    
+    def get(self, location, start_date=None, end_date=None):
+
+        start_date, end_date = fix_dates(start_date, end_date)
+        end_date_limit = end_date + timedelta(days=1)
+
+        ret = {}
+
+        # Meta data
+        ret["meta"] = {"uuid": str(uuid.uuid4()),
+                       "project_id": 1,
+                       "generation_timestamp": datetime.now().isoformat(),
+                       "schema_version": 0.1
+        }
+
+        # Dates and Location Information
+        ew = EpiWeek()
+        epi_week = ew.get(end_date.isoformat())["epi_week"]
+
+        ret["data"] = {"epi_week_num": epi_week,
+                       "end_date": end_date.isoformat(),
+                       "project_epoch": datetime(2015,5,20).isoformat(),
+                       "start_date": start_date.isoformat()
+        }
+
+        locs = get_locations(db.session)
+        if int(location) not in locs:
+            return None
+        location_name = locs[int(location)]
+        ret["data"]["project_region"] = location_name.name
+        ret["data"]["project_region_id"] = location
+        
+        # Actually get the data.
+        conn = db.engine.connect()
+
+        var = {}
+
+        ret['malaria_situation'] = get_variables_category(
+            'malaria_situation', 
+            start_date, 
+            end_date_limit, 
+            location, 
+            conn, 
+            use_ids=True
+        )
+
+        var.update( variables_instance.get('malaria_situation') )
+
+        ret['malaria_prevention'] = get_variables_category(
+            'malaria_prevention', 
+            start_date, 
+            end_date_limit, 
+            location, 
+            conn, 
+            use_ids=True
+        )
+
+        var.update( variables_instance.get('malaria_prevention') )
+
+        #Other values required for the email.
+        ret['email'] = {
+            'clinics': TotClinics().get(location)["total"]
+        }
+
+        ret['map_variable'] = 'epi_1'
+
         ret['variables'] = var 
 
         return ret

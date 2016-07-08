@@ -27,7 +27,6 @@ def epi_week_start(year, epi_week):
     Returns:
         start-date: start-date
     """
-
     start_date = epi_year_start(int(year))
     start_date = start_date + datetime.timedelta(weeks=int(epi_week) - 1)
     return start_date
