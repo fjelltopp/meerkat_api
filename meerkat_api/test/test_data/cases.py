@@ -106,3 +106,20 @@ malaria = [
         Data(**{'date': datetime.datetime(2015, 1, 1, 0, 0), 'clinic_type': 'Hospital', 'district': 6, 'region': 3, 'clinic': 11, 'variables': {"mls_1": 1, "mls_10": 1, "mls_11": 1, "mls_12": 1, "mls_13": 1, "mls_14": 1, "mls_15": 1, "mls_16": 1, "mls_17": 1, "mls_18": 1, "mls_19": 1, "mls_2": 1, "mls_20": 1, "mls_21": 1, "mls_22": 1, "mls_23": 1, "mls_24": 1, "mls_25": 1, "mls_26": 1, "mls_27": 1, "mls_28": 1, "mls_29": 1, "mls_3": 1, "mls_30": 1, "mls_31": 1, "mls_32": 1, "mls_33": 1, "mls_34": 1, "mls_35": 1, "mls_36": 1, "mls_37": 1, "mls_38": 1, "mls_39": 1, "mls_4": 1, "mls_40": 1, "mls_41": 1, "mls_42": 1, "mls_43": 1, "mls_44": 1, "mls_45": 1, "mls_46": 1, "mls_47": 1, "mls_48": 1, "mls_49": 1, "mls_5": 1, "mls_50": 1, "mls_51": 1, "mls_52": 1, "mls_6": 1, "mls_7": 1, "mls_8": 1, "mls_9": 1, "mlp_1": 1, "mlp_2": 1, "mlp_3": 1, "mlp_4": 1, "mlp_5": 1, "mlp_6": 1, "mlp_7": 1, "mlp_8": 1, "mlp_9": 1}, 'geolocation': '0,0', 'uuid': 'uuid:fe301f1b-c541-4dde-a355-1552b03e6b79', 'country': 1, 'id': 1002}),
 
 ]
+
+date = datetime.date.today()
+start = datetime.datetime(date.year, 1, 1)
+
+offset = date.weekday() - start.weekday()
+
+if offset < 0:
+    offset = 7 - offset
+
+completeness = [
+    Data(**{'uuid': 'uuid:b59474ed-29e7-490b-a947-558babdf80a5', 'clinic_type': 'Primary', 'district': 4, 'variables': { 'reg_1': 1}, 'clinic': 7, 'geolocation': '0.2,0.2', 'id': 1, 'region': 2, 'country': 1, 'date': date - datetime.timedelta(days=1 + offset)}),
+    Data(**{'uuid': 'uuid:b59474ed-29e7-490b-a947-558babdf80a5', 'clinic_type': 'Primary', 'district': 4, 'variables': { 'reg_1': 1}, 'clinic': 7, 'geolocation': '0.2,0.2', 'id': 2, 'region': 2, 'country': 1, 'date': date - datetime.timedelta(days=2 + offset)}),
+    Data(**{'uuid': 'uuid:b59474ed-29e7-490b-a947-558babdf80a5', 'clinic_type': 'Primary', 'district': 4, 'variables': { 'reg_1': 1}, 'clinic': 7, 'geolocation': '0.2,0.2', 'id': 3, 'region': 2, 'country': 1, 'date': date - datetime.timedelta(days=3 + offset)}),
+    Data(**{'uuid': 'uuid:b59474ed-29e7-490b-a947-558babdf80a5', 'clinic_type': 'Primary', 'district': 4, 'variables': { 'reg_1': 1}, 'clinic': 7, 'geolocation': '0.2,0.2', 'id': 4, 'region': 2, 'country': 1, 'date': date - datetime.timedelta(days=8 + offset)}),
+    Data(**{'uuid': 'uuid:b59474ed-29e7-490b-a947-558babdf80a5', 'clinic_type': 'Primary', 'district': 4, 'variables': { 'reg_1': 1}, 'clinic': 8, 'geolocation': '0.2,0.2', 'id': 5, 'region': 2, 'country': 1, 'date': date - datetime.timedelta(days=1 + offset)}),
+    Data(**{'uuid': 'uuid:b59474ed-29e7-490b-a947-558babdf80a5', 'clinic_type': 'Primary', 'district': 4, 'variables': { 'reg_1': 1}, 'clinic': 8, 'geolocation': '0.2,0.2', 'id': 6, 'region': 2, 'country': 1, 'date': date - datetime.timedelta(days=1 + offset)}) # Same day should not count,
+]

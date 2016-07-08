@@ -12,7 +12,6 @@ import io
 import csv
 import resource
 
-
 # Create the Flask app
 app = Flask(__name__)
 app.config.from_object('config.Config')
@@ -26,7 +25,7 @@ class CustomJSONEncoder(JSONEncoder):
     """
     def default(self, obj):
         try:
-            if isinstance(obj, datetime):
+            if isinstance(obj, datetime) or isinstance(obj, np.datetime64):
                 return obj.isoformat()
             iterable = iter(obj)
         except TypeError:
@@ -81,7 +80,7 @@ from meerkat_api.resources.map import Clinics, MapVariable
 from meerkat_api.resources.alerts import Alert, Alerts, AggregateAlerts
 from meerkat_api.resources.explore import QueryVariable, QueryCategory
 from meerkat_api.resources.epi_week import EpiWeek, EpiWeekStart
-from meerkat_api.resources.completeness import Completeness, NewCompleteness
+from meerkat_api.resources.completeness import Completeness, NewCompleteness, NonReporting
 from meerkat_api.resources.reports import PublicHealth, CdReport, CdPublicHealth, CdPublicHealthMad, NcdPublicHealth,RefugeePublicHealth, RefugeeCd,RefugeeDetail, NcdReport, Pip, WeeklyEpiMonitoring, Malaria
 from meerkat_api.resources.frontpage import KeyIndicators, TotMap, NumAlerts, ConsultationMap, RefugeePage, NumClinics
 from meerkat_api.resources.export_data import ExportData, ExportForm, ExportAlerts, Forms, ExportCategory
@@ -200,8 +199,11 @@ api.add_resource(Malaria, "/reports/malaria/<location>",
                  "/reports/malaria/<location>/<end_date>/<start_date>")
 
 # Misc
-api.add_resource(Completeness, "/completeness/<variable>/<number_per_week>")
-#api.add_resource(NewCompleteness, "/new_completeness/<variable>/<number_per_week>")
+#api.add_resource(Completeness, "/completeness/<variable>/<number_per_week>")
+api.add_resource(NonReporting, "/non_reporting/<variable>/<location>")
+api.add_resource(NewCompleteness,
+                 "/completeness/<variable>/<location>/<number_per_week>",
+                 "/completeness/<variable>/<location>/<number_per_week>/<weekend>")
 api.add_resource(Records, "/records/<variable>/<location_id>")
 
 

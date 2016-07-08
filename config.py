@@ -6,7 +6,7 @@ Configuration and settings
 
 
 class Config(object):
-    DEBUG = False
+    DEBUG = True
     TESTING = False
     # Global stuff
     SQLALCHEMY_DATABASE_URI = (
