@@ -67,7 +67,8 @@ def valid_urls(app):
         "date": datetime(2015, 1, 1).isoformat(),
         "link_def": "alert_investigation",
         "alert_id": "aaaaaa",
-        "link_id": "1"
+        "link_id": "1",
+        "weekend": "5,6"
         }
     urls = []
     for url in meerkat_api.app.url_map.iter_rules():

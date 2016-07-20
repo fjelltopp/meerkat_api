@@ -81,10 +81,11 @@ class Completeness(Resource):
             return {}
 
         # If today is the start of an epi week we do not want to include the current epi week
-        if today.weekday() == epi_year_weekday:
-            end_d = today - timedelta(days=1)
-        else:
-            end_d = today
+        offset = today.weekday() - epi_year_weekday
+        
+        if offset < 0:
+            offset = 7 + offset
+        end_d = today - timedelta(days=offset + 1)
             
         begining = epi_week_start_date(today.year)
         # We drop duplicates so each clinic can only have one record per day

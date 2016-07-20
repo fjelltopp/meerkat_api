@@ -5,7 +5,7 @@ Root Flask app for the Meerkat API.
 """
 from flask import Flask, make_response
 from flask.json import JSONEncoder
-from flask.ext.sqlalchemy import SQLAlchemy
+from flask_sqlalchemy import SQLAlchemy
 from flask_restful import Api
 from datetime import datetime
 import io
