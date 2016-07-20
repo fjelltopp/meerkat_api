@@ -385,10 +385,10 @@ class NcdReport(Resource):
             for age in sorted(ages.keys()):
                 ret[disease]["age"]["titles"].append(ages[age]["name"])
             ret[disease]["age"]["titles"].append("Total")
-            ret[disease]["complications"]["titles"] = [gettext("reg"),
-                                                       gettext("tot"),
-                                                       gettext("gen_1"),
-                                                       gettext("gen_2")]
+            ret[disease]["complications"]["titles"] = ["reg",
+                                                       "tot",
+                                                       "gen_1",
+                                                       "gen_2"]
   
             for i in ids_to_include[disease]:
                 ret[disease]["complications"]["titles"].append(i[0])
