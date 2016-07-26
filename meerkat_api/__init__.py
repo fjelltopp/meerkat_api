@@ -105,7 +105,8 @@ api.add_resource(NumClinics, "/num_clinics")
 api.add_resource(RefugeePage, "/refugee_page")
 
 # Export data
-api.add_resource(ExportData, "/export/data")
+api.add_resource(ExportData, "/export/data",
+                 "/export/data/<use_loc_ids>")
 api.add_resource(ExportForm, "/export/form/<form>")
 api.add_resource(ExportAlerts, "/export/alerts")
 api.add_resource(Forms, "/export/forms")

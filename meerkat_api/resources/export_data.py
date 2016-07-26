@@ -50,7 +50,7 @@ class ExportData(Resource):
     representations = {'text/csv': output_csv}
     decorators = [require_api_key]
 
-    def get(self):
+    def get(self, use_loc_ids=False):
         results = db.session.query(Data)
         variables = set()
         locs = get_locations(db.session)
@@ -61,9 +61,10 @@ class ExportData(Resource):
         dict_rows = []
         for row in results:
             dict_row = row_to_dict(row)
-            for l in ["country", "region", "district", "clinic"]:
-                if dict_row[l]:
-                    dict_row[l] = locs[dict_row[l]].name
+            if not use_loc_ids:
+                for l in ["country", "region", "district", "clinic"]:
+                    if dict_row[l]:
+                        dict_row[l] = locs[dict_row[l]].name
             dict_row.update(dict_row.pop("variables"))
             dict_rows.append(dict_row)
         return {"data": dict_rows, "keys": fieldnames, "filename": "data"}
@@ -290,7 +291,7 @@ class ExportForm(Resource):
 
                 dict_row = row.data
                 clinic_id = locs_by_deviceid.get(row.data["deviceid"], None)
-                if clinic_id=="bjarne":
+                if clinic_id:
                     dict_row["clinic"] = locations[clinic_id].name
                     # Sort out district and region
                     if locations[clinic_id].parent_location in districts:
