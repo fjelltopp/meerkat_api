@@ -1086,8 +1086,13 @@ class CdPublicHealth(Resource):
         
         ret["data"]["global_clinic_num"] = tot_clinics.get(1)["total"]
 
+        total_consultations = get_variable_id("tot_1", start_date, end_date_limit, location, conn)
+        ret["data"]["total_consultations"] = total_consultations
         total_cases = get_variable_id("prc_1", start_date, end_date_limit, location, conn)
         ret["data"]["total_cases"] = total_cases
+        total_deaths = get_variable_id("dea_1", start_date, end_date_limit, location, conn)
+        ret["data"]["total_deaths"] = total_deaths
+
         ret["data"]["public_health_indicators"] = [
             make_dict(gettext("Cases Reported"), total_cases, 100)]
 
