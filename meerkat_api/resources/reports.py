@@ -395,7 +395,7 @@ class NcdReport(Resource):
             ret[disease]["complications"]["data"] = []
 
             # Loop through each region, we add [1] to include the whole country
-            for i, region in enumerate( sorted(regions) + [1] ):
+            for i, region in enumerate( [1] + sorted(regions) ):
                 d_id = diseases[disease]
                 query_variable = QueryVariable()
                 # get the age breakdown
