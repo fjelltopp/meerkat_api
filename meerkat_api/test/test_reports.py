@@ -450,35 +450,39 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
         assert_dict(self, data["reporting_sites"][1], "Region 2", 4, 40.0)
 
         # Demographics
-
         self.assertEqual(data["percent_cases_male"], 30.0)
         self.assertEqual(data["percent_cases_female"], 70.0)
         self.assertEqual(data["percent_cases_lt_5yo"], 20.0)
         self.assertEqual(data["demographics"][0]["age"], "<5")
+        self.assertEqual(data["demographics"][0]["percent"], 20)
         self.assertEqual(data["demographics"][0]["male"]["quantity"], 2)
         self.assertEqual(data["demographics"][0]["male"]["percent"], 100.0)
         self.assertEqual(data["demographics"][0]["female"]["quantity"], 0)
         self.assertEqual(data["demographics"][0]["female"]["percent"], 0)
 
         self.assertEqual(data["demographics"][1]["age"], "5-9")
+        self.assertEqual(data["demographics"][1]["percent"], 20)
         self.assertEqual(data["demographics"][1]["male"]["quantity"], 0)
         self.assertEqual(data["demographics"][1]["male"]["percent"], 0)
         self.assertEqual(data["demographics"][1]["female"]["quantity"], 2)
         self.assertEqual(data["demographics"][1]["female"]["percent"], 100.0)
 
         self.assertEqual(data["demographics"][2]["age"], "10-14")
+        self.assertEqual(data["demographics"][2]["percent"], 20)
         self.assertEqual(data["demographics"][2]["male"]["quantity"], 1)
         self.assertEqual(data["demographics"][2]["male"]["percent"], 50.0)
         self.assertEqual(data["demographics"][2]["female"]["quantity"], 1)
         self.assertEqual(data["demographics"][2]["female"]["percent"], 50.0)
 
         self.assertEqual(data["demographics"][3]["age"], "15-19")
+        self.assertEqual(data["demographics"][3]["percent"], 20)
         self.assertEqual(data["demographics"][3]["male"]["quantity"], 0)
         self.assertEqual(data["demographics"][3]["male"]["percent"], 0)
         self.assertEqual(data["demographics"][3]["female"]["quantity"], 2)
         self.assertEqual(data["demographics"][3]["female"]["percent"], 100.0)
 
         self.assertEqual(data["demographics"][4]["age"], "20-59")
+        self.assertEqual(data["demographics"][4]["percent"], 20)
         self.assertEqual(data["demographics"][4]["male"]["quantity"], 0)
         self.assertEqual(data["demographics"][4]["male"]["percent"], 0)
         self.assertEqual(data["demographics"][4]["female"]["quantity"], 2)
@@ -558,30 +562,35 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
         self.assertEqual(data["percent_cases_male"], 50.0)
         self.assertEqual(data["percent_cases_lt_5yo"], 2 / 6 * 100)
         self.assertEqual(data["demographics"][0]["age"], "<5")
+        self.assertEqual(data["demographics"][0]["percent"], round(2*100/6, 2))
         self.assertEqual(data["demographics"][0]["male"]["quantity"], 1)
         self.assertEqual(data["demographics"][0]["male"]["percent"], 50.0)
         self.assertEqual(data["demographics"][0]["female"]["quantity"], 1)
         self.assertEqual(data["demographics"][0]["female"]["percent"], 50.0)
         
         self.assertEqual(data["demographics"][1]["age"], "5-9")
+        self.assertEqual(data["demographics"][1]["percent"], round(2*100/6, 2))
         self.assertEqual(data["demographics"][1]["male"]["quantity"], 2)
         self.assertEqual(data["demographics"][1]["male"]["percent"], 100.0)
         self.assertEqual(data["demographics"][1]["female"]["quantity"], 0)
         self.assertEqual(data["demographics"][1]["female"]["percent"], 0)
         
         self.assertEqual(data["demographics"][2]["age"], "10-14")
+        self.assertEqual(data["demographics"][2]["percent"], 0)
         self.assertEqual(data["demographics"][2]["male"]["quantity"], 0)
         self.assertEqual(data["demographics"][2]["male"]["percent"], 0)
         self.assertEqual(data["demographics"][2]["female"]["quantity"], 0)
         self.assertEqual(data["demographics"][2]["female"]["percent"], 0)
 
         self.assertEqual(data["demographics"][3]["age"], "15-19")
+        self.assertEqual(data["demographics"][3]["percent"], round(100/6, 2))
         self.assertEqual(data["demographics"][3]["male"]["quantity"], 0)
         self.assertEqual(data["demographics"][3]["male"]["percent"], 0)
         self.assertEqual(data["demographics"][3]["female"]["quantity"], 1)
         self.assertEqual(data["demographics"][3]["female"]["percent"], 100.0)
 
         self.assertEqual(data["demographics"][4]["age"], "20-59")
+        self.assertEqual(data["demographics"][4]["percent"], round(1*100/6, 2))
         self.assertEqual(data["demographics"][4]["male"]["quantity"], 0)
         self.assertEqual(data["demographics"][4]["male"]["percent"], 0)
         self.assertEqual(data["demographics"][4]["female"]["quantity"], 1)
@@ -637,29 +646,34 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
         assert_dict(self, data["reporting_sites"][1], "Region 2", 1, 1 / 7 *100)
 
         # Demographics
-
+        logging.warning(data["demographics"])
         self.assertEqual(data["percent_cases_male"], 3 / 7 * 100)
         self.assertEqual(data["percent_cases_female"], 4 / 7 * 100)
         self.assertEqual(data["percent_cases_lt_5yo"], 2 / 7 *100)
         self.assertEqual(data["demographics"][0]["age"], "<5")
+
         self.assertEqual(data["demographics"][0]["male"]["quantity"], 2)
+        self.assertEqual(data["demographics"][0]["percent"], round(2*100/7, 2))
         self.assertEqual(data["demographics"][0]["male"]["percent"], 100)
         self.assertEqual(data["demographics"][0]["female"]["quantity"], 0)
         self.assertEqual(data["demographics"][0]["female"]["percent"], 0)
 
         self.assertEqual(data["demographics"][1]["age"], "5-9")
+        self.assertEqual(data["demographics"][1]["percent"], round(2*100/7, 2))
         self.assertEqual(data["demographics"][1]["male"]["quantity"], 0)
         self.assertEqual(data["demographics"][1]["male"]["percent"], 0)
         self.assertEqual(data["demographics"][1]["female"]["quantity"], 2)
         self.assertEqual(data["demographics"][1]["female"]["percent"], 100)
 
         self.assertEqual(data["demographics"][2]["age"], "10-14")
+        self.assertEqual(data["demographics"][2]["percent"], round(2*100/7, 2))
         self.assertEqual(data["demographics"][2]["male"]["quantity"], 1)
         self.assertEqual(data["demographics"][2]["male"]["percent"], 50.0)
         self.assertEqual(data["demographics"][2]["female"]["quantity"], 1)
         self.assertEqual(data["demographics"][2]["female"]["percent"], 50.0)
 
         self.assertEqual(data["demographics"][3]["age"], "15-19")
+        self.assertEqual(data["demographics"][3]["percent"], round(1*100/7, 2))
         self.assertEqual(data["demographics"][3]["male"]["quantity"], 0)
         self.assertEqual(data["demographics"][3]["male"]["percent"], 0)
         self.assertEqual(data["demographics"][3]["female"]["quantity"], 1)
@@ -837,32 +851,34 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
         self.assertEqual(data["percent_cases_male"], 3 / 8 * 100)
         self.assertEqual(data["percent_cases_female"], 5 / 8 * 100)
         self.assertEqual(data["demographics"][0]["age"], "<5")
+        self.assertEqual(data["demographics"][0]["percent"], 25.0)
         self.assertEqual(data["demographics"][0]["male"]["quantity"], 1)
         self.assertEqual(data["demographics"][0]["male"]["percent"], 50.0)
         self.assertEqual(data["demographics"][0]["female"]["quantity"], 1)
         self.assertEqual(data["demographics"][0]["female"]["percent"], 50.0)
 
         self.assertEqual(data["demographics"][1]["age"], "5-9")
+        self.assertEqual(data["demographics"][1]["percent"], 25.0)
         self.assertEqual(data["demographics"][1]["male"]["quantity"], 2)
         self.assertEqual(data["demographics"][1]["male"]["percent"], 100.0)
         self.assertEqual(data["demographics"][1]["female"]["quantity"], 0)
         self.assertEqual(data["demographics"][1]["female"]["percent"], 0)
 
         self.assertEqual(data["demographics"][2]["age"], "10-14")
+        self.assertEqual(data["demographics"][2]["percent"], 25.0)
         self.assertEqual(data["demographics"][2]["male"]["quantity"], 0)
         self.assertEqual(data["demographics"][2]["male"]["percent"], 0)
         self.assertEqual(data["demographics"][2]["female"]["quantity"], 2)
         self.assertEqual(data["demographics"][2]["female"]["percent"], 100)
 
         self.assertEqual(data["demographics"][3]["age"], "15-19")
+        self.assertEqual(data["demographics"][0]["percent"], 25.0)
         self.assertEqual(data["demographics"][3]["male"]["quantity"], 0)
         self.assertEqual(data["demographics"][3]["male"]["percent"], 0)
         self.assertEqual(data["demographics"][3]["female"]["quantity"], 2)
         self.assertEqual(data["demographics"][3]["female"]["percent"], 100.0)
-
-
+        
         # Indicators
-
         assert_dict(self, data["pip_indicators"][0], "Total Cases", 8, 100)
         assert_dict(self, data["pip_indicators"][1], "Patients followed up", 4, 50)
         assert_dict(self, data["pip_indicators"][2], "Laboratory results recorded", 3, 3 / 8 * 100)
