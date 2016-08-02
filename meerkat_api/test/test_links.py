@@ -49,4 +49,4 @@ class MeerkatAPIAlertsTestCase(unittest.TestCase):
         data = json.loads(rv.data.decode("utf-8"))["links"]
         self.assertEqual(len(data), 3)
         self.assertEqual(data["namru-2"]["id"], 6)
-        self.assertEqual(data["namru-3"]["data"], {"type": ["H1", "H3"]})
+        self.assertEqual(data["namru-3"]["data"], {"type": "Mixed"})
