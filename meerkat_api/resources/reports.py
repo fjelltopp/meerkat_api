@@ -396,6 +396,7 @@ class NcdReport(Resource):
 
             # Loop through each region, we add [1] to include the whole country
             for i, region in enumerate( [1] + sorted(regions) ):
+
                 d_id = diseases[disease]
                 query_variable = QueryVariable()
                 # get the age breakdown
@@ -748,9 +749,11 @@ class Pip(Resource):
                                   end_date=end_date_limit.isoformat(),
                                   start_date=start_date.isoformat(),
                                   only_loc=location)
-
+        logging.warning( age )
         age_gender={}
+
         tot = sum([group["total"] for group in age.values()])
+        
         for a in age:
             gender,ac = a.split(" ")
             if ac in age_gender.keys():
@@ -758,7 +761,7 @@ class Pip(Resource):
             else:
                 age_gender[ac] = {gender: age[a]["total"]}
     
-
+        logging.warning( age_gender )
         age_variables = variables_instance.get("age")
         for age_key in sorted(age_variables.keys()):
             a = age_variables[age_key]["name"]
@@ -770,7 +773,7 @@ class Pip(Resource):
                 ret["data"]["demographics"].append(
                     {"age": a,
                      "quantity": age_gender[a]["Male"] + age_gender[a]["Female"],
-                     "percent": a_sum / tot *100,
+                     "percent": a_sum / tot *100 if tot != 0 else 0,
                      "male": {"quantity": age_gender[a]["Male"],
                               "percent": age_gender[a]["Male"] / a_sum * 100
                      },
@@ -997,7 +1000,7 @@ class PublicHealth(Resource):
                 ret["data"]["demographics"].append(
                     {"age": a,
                      "quantity": age_gender[a]["Male"] + age_gender[a]["Female"],
-                     "percent": a_sum / tot *100,
+                     "percent": a_sum / tot *100 if tot != 0 else 0,
                      "male": {"quantity": age_gender[a]["Male"],
                               "percent": age_gender[a]["Male"] / a_sum * 100
                      },
@@ -1244,7 +1247,7 @@ class CdPublicHealth(Resource):
                 ret["data"]["demographics"].append(
                     {"age": a,
                      "quantity": age_gender[a]["Male"] + age_gender[a]["Female"],
-                     "percent": a_sum / tot *100,
+                     "percent": a_sum / tot *100 if tot != 0 else 0,
                      "male": {"quantity": age_gender[a]["Male"],
                               "percent": age_gender[a]["Male"] / a_sum * 100
                      },
@@ -1485,7 +1488,7 @@ class NcdPublicHealth(Resource):
                 ret["data"]["demographics"].append(
                     {"age": a,
                      "quantity": age_gender[a]["Male"] + age_gender[a]["Female"],
-                     "percent": a_sum / tot *100,
+                     "percent": a_sum / tot *100 if tot != 0 else 0,
                      "male": {"quantity": age_gender[a]["Male"],
                               "percent": age_gender[a]["Male"] / a_sum * 100
                      },
@@ -1726,7 +1729,7 @@ class RefugeePublicHealth(Resource):
                 ret["data"]["demographics"].append(
                     {"age": a,
                      "quantity": age_gender[a]["Male"] + age_gender[a]["Female"],
-                     "percent": a_sum / tot *100,
+                     "percent": a_sum / tot *100 if tot != 0 else 0,
                      "male": {"quantity": age_gender[a]["Male"],
                               "percent": age_gender[a]["Male"] / a_sum * 100
                      },
