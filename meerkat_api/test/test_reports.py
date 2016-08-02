@@ -890,9 +890,9 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
         self.assertEqual(data["percent_cases_chronic"], 25)
 
         # Nationality
-
         assert_dict(self, data["nationality"][0], "Null Island", 7, 7 / 8 *100)
         assert_dict(self, data["nationality"][1], "Demo", 1, 12.5)
+
         # Status
         assert_dict(self, data["patient_status"][0], "Jordanian", 7, 7 / 8 * 100)
         assert_dict(self, data["patient_status"][1], "Refugee", 1, 12.5)
@@ -900,35 +900,42 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
         # Reporting Sites
         assert_dict(self, data["reporting_sites"][0], "Clinic 2", 6, 75.0)
         assert_dict(self, data["reporting_sites"][1], "Clinic 4", 2, 25.0)
-        # Timeline
-        self.assertEqual(data["timeline"]["weeks"],
-                         ['Week 1, 2015', 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53])
 
-        suspected = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+        #Timeline
+        #Set up expected data.
+        weeks = [i+1 for i in range(0,53)]
+        weeks[0] = 'Week 1, 2015'
+
+        zero = [0 for i in range(0,53)]
+
+        suspected = [0 for i in range(0,53)]
         suspected[17] = 4
         suspected[25] = 2
         suspected[30] = 2
-        h1 =  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
 
-        mixed = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
-        h1[17] = 1
-        h1n1 = h1
-        mixed[30] = 1
-        zero = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+        flu_type = [0 for i in range(0,53)]
+        flu_type[0] = 1
+
+        expected = [
+            { 'title':'B', 'values': flu_type },
+            { 'title':'H3', 'values': zero },
+            { 'title':'H1N1', 'values': flu_type },
+            { 'title':'Mixed', 'values': flu_type }
+        ]
+
+        #Check that returned data is as expected.
+        self.assertEqual(data["timeline"]["weeks"], weeks)
         self.assertEqual(data["timeline"]["suspected"], suspected)
-        print(data)
-        self.assertEqual(data["timeline"]["confirmed"][0]["title"], "H1")
-        self.assertEqual(data["timeline"]["confirmed"][0]["values"], h1)
-        self.assertEqual(data["timeline"]["confirmed"][1]["title"], "H1N1")
-        self.assertEqual(data["timeline"]["confirmed"][1]["values"], h1n1)
-        self.assertEqual(data["timeline"]["confirmed"][2]["title"], "Mixed")
-        self.assertEqual(data["timeline"]["confirmed"][2]["values"], mixed)
-        self.assertEqual(data["timeline"]["confirmed"][3]["title"], "H3")
-        self.assertEqual(data["timeline"]["confirmed"][3]["values"], zero)
-        self.assertEqual(data["timeline"]["confirmed"][4]["title"], "Influenza A")
-        self.assertEqual(data["timeline"]["confirmed"][4]["values"], zero)
-        self.assertEqual(data["timeline"]["confirmed"][5]["title"], "Influenza B")
-        self.assertEqual(data["timeline"]["confirmed"][5]["values"], zero)
+        for item in expected:
+            passed = item in data["timeline"]["confirmed"]
+            if not passed:
+                logging.warning( 
+                    "Item {} not found in timeline data as expected.".format( item['title'] )
+                )
+            self.assertTrue( passed )
+
+
+
 
 
     def test_refugee_public_health(self):
