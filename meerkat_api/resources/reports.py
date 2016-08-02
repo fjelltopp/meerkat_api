@@ -432,6 +432,7 @@ class NcdReport(Resource):
                 ret[disease]["complications"]["data"][i]["values"].append([disease_gender["Male"]["total"],  disease_gender["Male"]["total"] /table_two_total * 100])
                 ret[disease]["complications"]["data"][i]["values"].append([disease_gender["Female"]["total"],  disease_gender["Female"]["total"] / table_two_total * 100])
 
+
                 
                 # Get the lab breakdown
                 for new_id in ids_to_include[disease]:
@@ -745,7 +746,7 @@ class Pip(Resource):
 
         #Demographics
         ret["data"]["demographics"] = []
-        age =  query_variable.get("prc_1","age_gender",
+        age =  query_variable.get(sari_code,"age_gender",
                                   end_date=end_date_limit.isoformat(),
                                   start_date=start_date.isoformat(),
                                   only_loc=location)
@@ -753,7 +754,6 @@ class Pip(Resource):
         age_gender={}
 
         tot = sum([group["total"] for group in age.values()])
-        
         for a in age:
             gender,ac = a.split(" ")
             if ac in age_gender.keys():
@@ -761,19 +761,18 @@ class Pip(Resource):
             else:
                 age_gender[ac] = {gender: age[a]["total"]}
     
-        logging.warning( age_gender )
         age_variables = variables_instance.get("age")
         for age_key in sorted(age_variables.keys()):
             a = age_variables[age_key]["name"]
             if a in age_gender.keys():
                 a_sum = sum(age_gender[a].values())
-            
+                a_perc = a_sum / tot *100 if tot != 0 else 0
                 if a_sum == 0:
                     a_sum = 1
                 ret["data"]["demographics"].append(
                     {"age": a,
                      "quantity": age_gender[a]["Male"] + age_gender[a]["Female"],
-                     "percent": a_sum / tot *100 if tot != 0 else 0,
+                     "percent": round(a_perc, 2),
                      "male": {"quantity": age_gender[a]["Male"],
                               "percent": age_gender[a]["Male"] / a_sum * 100
                      },
@@ -980,7 +979,7 @@ class PublicHealth(Resource):
                                   only_loc=location)
 
         age_gender={}
-        tot = sum([group["total"] for group in age.values()])
+        tot = sum([group for group in age.values()])
         for a in age:
             gender,ac = a.split(" ")
             if ac in age_gender.keys():
@@ -994,20 +993,21 @@ class PublicHealth(Resource):
             a = age_variables[age_key]["name"]
             if a in age_gender.keys():
                 a_sum = sum(age_gender[a].values())
-            
+                a_perc = a_sum / tot *100 if tot != 0 else 0
                 if a_sum == 0:
                     a_sum = 1
                 ret["data"]["demographics"].append(
                     {"age": a,
                      "quantity": age_gender[a]["Male"] + age_gender[a]["Female"],
-                     "percent": a_sum / tot *100 if tot != 0 else 0,
+                     "percent": round(a_perc, 2),
                      "male": {"quantity": age_gender[a]["Male"],
                               "percent": age_gender[a]["Male"] / a_sum * 100
                      },
                      "female":{"quantity": age_gender[a]["Female"],
                                "percent": age_gender[a]["Female"]/float(a_sum)*100
                      }
-                    })
+                 })
+
 
         #Nationality
         nationality = get_variables_category("nationality", start_date, end_date_limit, location, conn)
@@ -1219,6 +1219,7 @@ class CdPublicHealth(Resource):
 
         ret["data"]["alerts_total"] = tot_alerts
 
+
         #Demographics
         ret["data"]["demographics"] = []
         age =  query_variable.get("prc_1","age_gender",
@@ -1235,19 +1236,18 @@ class CdPublicHealth(Resource):
             else:
                 age_gender[ac] = {gender: age[a]["total"]}
     
-
         age_variables = variables_instance.get("age")
         for age_key in sorted(age_variables.keys()):
             a = age_variables[age_key]["name"]
             if a in age_gender.keys():
                 a_sum = sum(age_gender[a].values())
-            
+                a_perc = a_sum / tot *100 if tot != 0 else 0
                 if a_sum == 0:
                     a_sum = 1
                 ret["data"]["demographics"].append(
                     {"age": a,
                      "quantity": age_gender[a]["Male"] + age_gender[a]["Female"],
-                     "percent": a_sum / tot *100 if tot != 0 else 0,
+                     "percent": round(a_perc, 2),
                      "male": {"quantity": age_gender[a]["Male"],
                               "percent": age_gender[a]["Male"] / a_sum * 100
                      },
@@ -1462,13 +1462,14 @@ class NcdPublicHealth(Resource):
 
         #Demographics
         ret["data"]["demographics"] = []
-        age =  query_variable.get("prc_1","age_gender",
+        age =  query_variable.get("prc_2","age_gender",
                                   end_date=end_date_limit.isoformat(),
                                   start_date=start_date.isoformat(),
                                   only_loc=location)
 
         age_gender={}
         tot = sum([group["total"] for group in age.values()])
+
         for a in age:
             gender,ac = a.split(" ")
             if ac in age_gender.keys():
@@ -1476,19 +1477,18 @@ class NcdPublicHealth(Resource):
             else:
                 age_gender[ac] = {gender: age[a]["total"]}
     
-
         age_variables = variables_instance.get("age")
         for age_key in sorted(age_variables.keys()):
             a = age_variables[age_key]["name"]
             if a in age_gender.keys():
                 a_sum = sum(age_gender[a].values())
-            
+                a_perc = a_sum / tot *100 if tot != 0 else 0
                 if a_sum == 0:
                     a_sum = 1
                 ret["data"]["demographics"].append(
                     {"age": a,
                      "quantity": age_gender[a]["Male"] + age_gender[a]["Female"],
-                     "percent": a_sum / tot *100 if tot != 0 else 0,
+                     "percent": round(a_perc, 2),
                      "male": {"quantity": age_gender[a]["Male"],
                               "percent": age_gender[a]["Male"] / a_sum * 100
                      },
