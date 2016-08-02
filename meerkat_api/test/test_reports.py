@@ -708,71 +708,71 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
         data = json.loads(rv.data.decode("utf-8"))
 
         # Diabetes
-        self.assertEqual(data["diabetes"]["age"]["titles"],
-                         ['reg', '<5', '5-9', '10-14', '15-19', '20-59', '>60', 'Total'])
-        self.assertEqual(data["diabetes"]["age"]["data"][0],
-                         {"title": "Region 1",
-                          "values": [2, 0, 1, 0, 0, 0, 3]}
-                         )
-        self.assertEqual(data["diabetes"]["age"]["data"][1],
-                         {"title": "Region 2",
-                          "values": [0, 0, 0, 1, 0, 0, 1]}
-                         )
-        self.assertEqual(data["diabetes"]["age"]["data"][2],
-                         {"title": "Total",
-                          "values": [2, 0, 1, 1, 0, 0, 4]}
-                         )
+        self.assertEqual( data["diabetes"]["age"]["titles"],
+                          ['reg', '<5', '5-9', '10-14', '15-19', '20-59', '>60', 'Total'] )
+        self.assertEqual( data["diabetes"]["age"]["data"][0], 
+                          { "title": "Total", "values": [2, 0, 1, 1, 0, 0, 4] } )
+        self.assertEqual( data["diabetes"]["age"]["data"][1], 
+                          { "title": "Region 1", "values": [2, 0, 1, 0, 0, 0, 3] } )
+        self.assertEqual( data["diabetes"]["age"]["data"][2], 
+                          { "title": "Region 2", "values": [0, 0, 0, 1, 0, 0, 1] } )
+
+
         self.assertEqual(data["diabetes"]["complications"]["titles"],
                          ['reg', 'tot', 'gen_1', 'gen_2', 'lab_4', 'lab_5', 'lab_7', 'lab_9', 'com_2', 'smo_2', 'lab_11']
         )
         self.assertEqual(data["diabetes"]["complications"]["data"][0],
-                         {"title": "Region 1",
-                          "values": [3, [2 , 2/ 3 * 100], [1, 1/3 * 100] , [1, 50], [1, 50], [0, 0], [1, 50], [0, 0], [1, 50], [0, 0]]}
-                         )
-        self.assertEqual(data["diabetes"]["complications"]["data"][1],
-                         {"title": "Region 2",
-                          "values": [1, [0 , 0], [1, 100] , [0, 0], [0, 0], [1, 100], [0, 0], [1, 100], [0, 0], [1, 100]]}
-                         )
-        self.assertEqual(data["diabetes"]["complications"]["data"][2],
                          {"title": "Total",
                           "values": [4, [2 , 2/ 4 * 100], [2, 2/4 * 100] , [1, 50], [1, 50], [1, 100], [1, 50], [1, 25], [1, 50], [1, 100]]}
                          )
+        self.assertEqual(data["diabetes"]["complications"]["data"][1],
+                         {"title": "Region 1",
+                          "values": [3, [2 , 2/ 3 * 100], [1, 1/3 * 100] , [1, 50], [1, 50], [0, 0], [1, 50], [0, 0], [1, 50], [0, 0]]}
+                         )
+        self.assertEqual(data["diabetes"]["complications"]["data"][2],
+                         {"title": "Region 2",
+                          "values": [1, [0 , 0], [1, 100] , [0, 0], [0, 0], [1, 100], [0, 0], [1, 100], [0, 0], [1, 100]]}
+                         )
+        
 
         # Hypertension
         self.assertEqual(data["hypertension"]["age"]["titles"],
                          ['reg', '<5', '5-9', '10-14', '15-19', '20-59', '>60', 'Total'])
         self.assertEqual(data["hypertension"]["age"]["data"][0],
-                         {"title": "Region 1",
-                          "values": [0, 0, 1, 1, 0, 0, 2]}
-                         )
-        self.assertEqual(data["hypertension"]["age"]["data"][1],
-                         {"title": "Region 2",
-                          "values": [0, 2, 0, 0, 0, 0, 2]}
-                         )
-        self.assertEqual(data["hypertension"]["age"]["data"][2],
                          {"title": "Total",
                           "values": [0, 2, 1, 1, 0, 0, 4]}
                          )
+        self.assertEqual(data["hypertension"]["age"]["data"][1],
+                         {"title": "Region 1",
+                          "values": [0, 0, 1, 1, 0, 0, 2]}
+                         )
+        self.assertEqual(data["hypertension"]["age"]["data"][2],
+                         {"title": "Region 2",
+                          "values": [0, 2, 0, 0, 0, 0, 2]}
+                         )
+
         
         self.assertEqual(data["hypertension"]["complications"]["titles"],
                          ['reg', 'tot', 'gen_1', 'gen_2', 'lab_4', 'lab_5', 'lab_2', 'com_1', 'smo_2', 'lab_11'])
 
+     
         self.assertEqual(data["hypertension"]["complications"]["data"][0],
+                         {"title": "Total",
+                          "values": [4, [2, 50], [2, 50], [1, 100], [0,0], [1, 50], [1, 1/4*100], [1, 100], [1,100]]}
+                         )
+
+        self.assertEqual(data["hypertension"]["complications"]["data"][1],
                          {"title": "Region 1",
                           "values": [2, [0, 0], [2, 100], [1, 100],[0, 0], [0, 0], [1, 50], [0, 0], [0, 0]]}
                          )
      
-        self.assertEqual(data["hypertension"]["complications"]["data"][1],
+        self.assertEqual(data["hypertension"]["complications"]["data"][2],
                          {"title": "Region 2",
                           "values": [2, [2, 100], [0, 0], [0, 0], [0, 0], [1, 50], [0, 0], [1, 100], [1, 100]]}
                          )
      
 
-     
-        self.assertEqual(data["hypertension"]["complications"]["data"][2],
-                         {"title": "Total",
-                          "values": [4, [2, 50], [2, 50], [1, 100], [0,0], [1, 50], [1, 1/4*100], [1, 100], [1,100]]}
-                         )
+
 
     def test_cd_report(self):
         """ Test ncd report """
