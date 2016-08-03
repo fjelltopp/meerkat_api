@@ -384,7 +384,7 @@ class NcdReport(Resource):
             ret[disease]["age"]["data"] = []
             for age in sorted(ages.keys()):
                 ret[disease]["age"]["titles"].append(ages[age]["name"])
-            ret[disease]["age"]["titles"].append("Total")
+            ret[disease]["age"]["titles"].insert(1,"Total")
             ret[disease]["complications"]["titles"] = ["reg",
                                                        "tot",
                                                        "gen_1",
@@ -413,7 +413,7 @@ class NcdReport(Resource):
                 
                 for age in sorted(ages.keys()):
                     ret[disease]["age"]["data"][i]["values"].append(disease_age[age]["total"])
-                ret[disease]["age"]["data"][i]["values"].append(sum( [a["total"] for a in disease_age.values()]))
+                ret[disease]["age"]["data"][i]["values"].insert(0,sum( [a["total"] for a in disease_age.values()]))
                 # Get gender breakdown
                 disease_gender = query_variable.get(d_id, "gender",
                                                     end_date=end_date_limit.isoformat(),
