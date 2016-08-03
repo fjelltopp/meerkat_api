@@ -2,12 +2,10 @@
 Data resource for exporting data
 """
 from flask_restful import Resource
-from flask import request, abort
+from flask import request, abort, current_app
 from sqlalchemy import or_, text
 from dateutil.parser import parse
-import json
-import io
-import csv
+import json, io, csv, logging
 
 from meerkat_api.util import row_to_dict
 from meerkat_api import db, app, output_csv
@@ -124,7 +122,6 @@ class ExportCategory(Resource):
 
     * alert_links$alert_investigation$field: will get the field in the correpsonding alert_investigation
     
-
     Args:\n
        category: category to match\n
        variables: variable dictionary\n
@@ -136,6 +133,7 @@ class ExportCategory(Resource):
     
     def get(self, category, download_name):
         app.logger.warning( "Export Category Called")
+
         if "variables" in request.args.keys():
             variables = json.loads(request.args["variables"])
         else:
@@ -149,7 +147,7 @@ class ExportCategory(Resource):
         translation_dict = {}
         alert = False
         icd_code_to_name = {}
-
+        link_ids = []
         #Set up icd_code_to_name if needed and determine if alert_links are included
         for v in variables:
             return_keys.append(v[1])
@@ -169,13 +167,23 @@ class ExportCategory(Resource):
                         codes = [condition]
                     for c in codes:
                         icd_code_to_name[v[0]][c.strip()] = icd_name[i]["name"]
+
+            if "gen_link$" in v[0]:
+                link_ids.append( v[0].split("$")[1] )
+
+               
         # Sort out alerts
         if alert:
             alerts = get_alerts({})
             link_tables = {}
             for l in links.links:
                 link_tables[l["id"]] = l["to_table"]
-                
+          
+        #Ordered link definitions so we can definitions easily when adding linked data.  
+        ordered_links = {}
+        for link in links.links:
+            ordered_links[link["id"]] = link
+
         # DB query, with yield_per(200) for memory reasons
         results = db.session.query(Data,form_tables["case"]).join(form_tables["case"], Data.uuid==form_tables["case"].uuid).filter(
             or_(Data.variables.has_key(key) for key in data_keys)
@@ -222,6 +230,26 @@ class ExportCategory(Resource):
                         dict_row[k] = ewg.get(r[1].data[field])["epi_week"]
                     else:
                         dict_row[k] = None
+
+                #A general framework for referencing links in the download data.
+                #link$<link id>$<linked form field>
+                elif "gen_link$" in form_var:
+                    link_def = ordered_links[form_var.split("$")[1]]
+                    field = form_var.split("$")[2]
+                    table = form_tables[link_def['to_table']]
+                    txt = "SELECT data->>'{}' FROM {} WHERE data->>'{}'='{}'".format( 
+                        field,
+                        table.__tablename__, 
+                        link_def['to_column'], 
+                        r[1].data[link_def['from_column']]
+                    )
+                    result = db.engine.execute( txt ).first()
+
+                    if result:
+                        dict_row[k] = result[0]    
+                    else:
+                        dict_row[k] = None
+
                 elif "alert_link" in form_var:
                     alert_id = r[0].uuid[-country_config["alert_id_length"]:]
                     if alert_id in alerts:
@@ -249,7 +277,7 @@ class ExportCategory(Resource):
                     else:
                         dict_row[k] = None
             dict_rows.append(dict_row)
-        app.logger.warning(str(dict_rows))
+        #app.logger.warning(str(dict_rows))
         return {"data": dict_rows,
                 "keys": return_keys,
                 "filename": download_name}

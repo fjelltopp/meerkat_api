@@ -117,6 +117,7 @@ class MeerkatAPITestCase(unittest.TestCase):
         self.assertTrue(found_tf)
         self.assertTrue(found_bd)
         self.assertTrue(found_uuid)
+        #TODO: Test the general framework for accessing data in linked forms.
 
     def test_export_forms(self):
         """ Test the basic export form functionality """
