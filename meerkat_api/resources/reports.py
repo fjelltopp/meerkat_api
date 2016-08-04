@@ -681,11 +681,7 @@ class Pip(Resource):
             total_lab_links += 1
             epi_week = ew.get(link.from_date.isoformat())["epi_week"]
             t = link.data["type"]
-            if isinstance(t, list):
-                if epi_week in weeks:
-                    ret["data"]["timeline"]["confirmed"]["Mixed"][epi_week - 1] += 1
-                lab_types["Mixed"] += 1
-            else:
+            if t:
                 if epi_week in weeks:
                     ret["data"]["timeline"]["confirmed"][t][epi_week -1] += 1
                 lab_types[t] += 1
