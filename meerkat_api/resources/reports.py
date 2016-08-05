@@ -362,8 +362,8 @@ class NcdReport(Resource):
         # Data is list of rows(dicts) with a title for the y-axis title and
         # a list of values that are the values for the row in the right order
         
-        ret["hypertension"] = {"age": {}, "complications": {}}
-        ret["diabetes"] = {"age": {}, "complications": {}}
+        ret["hypertension"] = {"age": {}, "complications": {}, "email_summary": {}}
+        ret["diabetes"] = {"age": {}, "complications": {}, "email_summary": {}}
 
         diabetes_id = "ncd_1"
         hypertension_id = "ncd_2"
@@ -416,6 +416,11 @@ class NcdReport(Resource):
                 for age in sorted(ages.keys()):
                     ret[disease]["age"]["data"][i]["values"].append(disease_age[age]["total"])
                 ret[disease]["age"]["data"][i]["values"].insert(0,sum( [a["total"] for a in disease_age.values()]))
+                
+                #Add whole country summary for email report
+                if region == 1:
+                  ret[disease]["email_summary"]["cases"]=ret[disease]["age"]["data"][i]["values"][0]
+
                 # Get gender breakdown
                 disease_gender = query_variable.get(d_id, "gender",
                                                     end_date=end_date_limit.isoformat(),
@@ -447,6 +452,14 @@ class NcdReport(Resource):
                             denominator = 1
                         ret[disease]["complications"]["data"][i]["values"].append(
                             [numerator, numerator/ denominator * 100])
+
+                        #control for email report for the whole country
+                        if region == 1:
+                          if disease == "diabetes" and new_id[0] == "lab_9":
+                            ret[disease]["email_summary"]["control"] = numerator/ denominator * 100
+                          elif disease == "hypertension" and new_id[0] == "lab_2":
+                            ret[disease]["email_summary"]["control"] = numerator/ denominator * 100
+
                     else:
                         # We can N/A to the table if it includes data we are not collecting
                         ret[disease]["complications"]["data"][i]["values"].append("N/A")
