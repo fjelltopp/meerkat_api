@@ -204,7 +204,6 @@ api.add_resource(Malaria, "/reports/malaria/<location>",
 api.add_resource(Completeness, "/completeness/<variable>/<number_per_week>")
 api.add_resource(Records, "/records/<variable>/<location_id>")
 
-
 @app.route('/')
 def hello_world():
     return "WHO"
