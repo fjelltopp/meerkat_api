@@ -394,6 +394,7 @@ class NcdReport(Resource):
                 ret[disease]["complications"]["titles"].append(i[0])
             ret[disease]["complications"]["data"] = []
 
+
             # Loop through each region, we add [1] to include the whole country
             for i, region in enumerate( sorted(regions) + [1] ):
                 d_id = diseases[disease]
