@@ -721,8 +721,10 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))
 
+
         # Diabetes
         self.assertEqual( data["diabetes"]["age"]["titles"],
+<<<<<<< HEAD
                           ['reg', 'Total', '<5', '5-9', '10-14', '15-19', '20-59', '>60'] )
         self.assertEqual( data["diabetes"]["age"]["data"][0], 
                           { "title": "Total", "values": [4, 2, 0, 1, 1, 0, 0] } )
@@ -730,6 +732,15 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
                           { "title": "Region 1", "values": [3, 2, 0, 1, 0, 0, 0] } )
         self.assertEqual( data["diabetes"]["age"]["data"][2], 
                           { "title": "Region 2", "values": [1, 0, 0, 0, 1, 0, 0] } )
+=======
+                            ['reg', 'Total', '<5', '5-9', '10-14', '15-19', '20-59', '>60'] )
+        self.assertEqual( data["diabetes"]["age"]["data"][0], 
+                            { "title": "Total", "values": [4, 2, 0, 1, 1, 0, 0] } )
+        self.assertEqual( data["diabetes"]["age"]["data"][1], 
+                            { "title": "Region 1", "values": [3, 2, 0, 1, 0, 0, 0] } )
+        self.assertEqual( data["diabetes"]["age"]["data"][2], 
+                            { "title": "Region 2", "values": [1, 0, 0, 0, 1, 0, 0] } )
+>>>>>>> issue124
 
 
         self.assertEqual(data["diabetes"]["complications"]["titles"],
@@ -763,7 +774,11 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
         self.assertEqual(data["hypertension"]["age"]["data"][2],
                          {"title": "Region 2",
                           "values": [2, 0, 2, 0, 0, 0, 0]}
+<<<<<<< HEAD
                          )
+=======
+)
+>>>>>>> issue124
 
         
         self.assertEqual(data["hypertension"]["complications"]["titles"],
