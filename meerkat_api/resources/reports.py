@@ -362,8 +362,8 @@ class NcdReport(Resource):
         # Data is list of rows(dicts) with a title for the y-axis title and
         # a list of values that are the values for the row in the right order
         
-        ret["hypertension"] = {"age": {}, "complications": {}, "email_summary": {}}
-        ret["diabetes"] = {"age": {}, "complications": {}, "email_summary": {}}
+        ret["hypertension"] = {"age": {}, "complications": {}}
+        ret["diabetes"] = {"age": {}, "complications": {}}
 
         diabetes_id = "ncd_1"
         hypertension_id = "ncd_2"
@@ -416,11 +416,6 @@ class NcdReport(Resource):
                 for age in sorted(ages.keys()):
                     ret[disease]["age"]["data"][i]["values"].append(disease_age[age]["total"])
                 ret[disease]["age"]["data"][i]["values"].insert(0,sum( [a["total"] for a in disease_age.values()]))
-                
-                #Add whole country summary for email report
-                if region == 1:
-                  ret[disease]["email_summary"]["cases"]=ret[disease]["age"]["data"][i]["values"][0]
-
                 # Get gender breakdown
                 disease_gender = query_variable.get(d_id, "gender",
                                                     end_date=end_date_limit.isoformat(),
@@ -452,14 +447,6 @@ class NcdReport(Resource):
                             denominator = 1
                         ret[disease]["complications"]["data"][i]["values"].append(
                             [numerator, numerator/ denominator * 100])
-
-                        #control for email report for the whole country
-                        if region == 1:
-                          if disease == "diabetes" and new_id[0] == "lab_9":
-                            ret[disease]["email_summary"]["control"] = numerator/ denominator * 100
-                          elif disease == "hypertension" and new_id[0] == "lab_2":
-                            ret[disease]["email_summary"]["control"] = numerator/ denominator * 100
-
                     else:
                         # We can N/A to the table if it includes data we are not collecting
                         ret[disease]["complications"]["data"][i]["values"].append("N/A")
@@ -606,7 +593,8 @@ class Pip(Resource):
         ret["data"] = {"epi_week_num": epi_week,
                        "end_date": end_date.isoformat(),
                        "project_epoch": datetime(2015,5,20).isoformat(),
-                       "start_date": start_date.isoformat()
+                       "start_date": start_date.isoformat(),
+                       "email_summary":{}
         }
         conn = db.engine.connect()
         locs = get_locations(db.session)
@@ -731,6 +719,8 @@ class Pip(Resource):
             make_dict(gettext("Patients followed up"), total_followup, total_followup / total_cases * 100))
         ret["data"]["pip_indicators"].append(
             make_dict(gettext("Laboratory results recorded"), total_lab_links, total_lab_links / total_cases * 100))
+        ret["data"]["email_summary"]["lab_recorded"] = total_lab_links
+        ret["data"]["email_summary"]["lab_recorded_per"] = total_lab_links / total_cases * 100
         ret["data"]["pip_indicators"].append(
             make_dict(gettext("Patients admitted to ICU"), icu, icu / total_cases * 100))
         ret["data"]["pip_indicators"].append(
