@@ -764,7 +764,7 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
         self.assertEqual(data["hypertension"]["age"]["data"][2],
                          {"title": "Region 2",
                           "values": [2, 0, 2, 0, 0, 0, 0]}
-)
+                         )
 
         
         self.assertEqual(data["hypertension"]["complications"]["titles"],
