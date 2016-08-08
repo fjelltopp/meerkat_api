@@ -396,7 +396,7 @@ class NcdReport(Resource):
 
 
             # Loop through each region, we add [1] to include the whole country
-            for i, region in enumerate( [1] + sorted(regions) ):
+            for i, region in enumerate( sorted(regions) + [1]):
 
                 d_id = diseases[disease]
                 query_variable = QueryVariable()
