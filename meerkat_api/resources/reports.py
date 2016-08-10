@@ -1467,11 +1467,12 @@ class NcdPublicHealth(Resource):
 
         #Demographics
         ret["data"]["demographics"] = []
-        age =  query_variable.get("prc_2","age_gender",
+        age =  query_variable.get("prc_2","ncd_age_gender",
                                   end_date=end_date_limit.isoformat(),
                                   start_date=start_date.isoformat(),
                                   only_loc=location)
 
+        logging.warning(age)
         age_gender={}
         tot = sum([group["total"] for group in age.values()])
 
@@ -1482,7 +1483,7 @@ class NcdPublicHealth(Resource):
             else:
                 age_gender[ac] = {gender: age[a]["total"]}
     
-        age_variables = variables_instance.get("age")
+        age_variables = variables_instance.get("ncd_age")
         for age_key in sorted(age_variables.keys()):
             a = age_variables[age_key]["name"]
             if a in age_gender.keys():
