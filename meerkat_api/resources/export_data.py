@@ -9,7 +9,7 @@ import json, io, csv, logging
 
 from meerkat_api.util import row_to_dict
 from meerkat_api import db, app, output_csv
-from meerkat_abacus.model import Data, form_tables
+from meerkat_abacus.model import Data, form_tables, Links
 from meerkat_abacus.util import all_location_data
 from meerkat_abacus.config import country_config, links
 from meerkat_api.resources.variables import Variables
@@ -148,6 +148,7 @@ class ExportCategory(Resource):
         alert = False
         icd_code_to_name = {}
         link_ids = []
+        have_links = False
         #Set up icd_code_to_name if needed and determine if alert_links are included
         for v in variables:
             return_keys.append(v[1])
@@ -169,6 +170,7 @@ class ExportCategory(Resource):
                         icd_code_to_name[v[0]][c.strip()] = icd_name[i]["name"]
 
             if "gen_link$" in v[0]:
+                have_links = True
                 link_ids.append( v[0].split("$")[1] )
 
                
@@ -183,7 +185,25 @@ class ExportCategory(Resource):
         ordered_links = {}
         for link in links.links:
             ordered_links[link["id"]] = link
+        link_ids = set(link_ids)
 
+        # Need to get all the links from the DB first due to speed issues
+        if have_links:
+            link_data = {}
+            for link in link_ids:
+                link_def = ordered_links[link]
+                table = form_tables[link_def['to_table']]
+                links_values = db.session.query(Links.to_id).filter(Links.link_def == link).all()
+                to_ids = []
+                for l in links_values:
+                    to_ids.append(l[0])
+                to_data = db.session.query(table).filter(table.uuid.in_(to_ids))
+                link_data_by_value = {}
+                for d in to_data:
+                    link_data_by_value[d.data[link_def["to_column"]]]= d.data
+                link_data[link] = link_data_by_value
+
+                
         # DB query, with yield_per(200) for memory reasons
         results = db.session.query(Data,form_tables["case"]).join(form_tables["case"], Data.uuid==form_tables["case"].uuid).filter(
             or_(Data.variables.has_key(key) for key in data_keys)
@@ -191,7 +211,7 @@ class ExportCategory(Resource):
         
         locs = get_locations(db.session)
         dict_rows = []
-        
+
         #Prepare each row
         for r in results:
             dict_row = {}
@@ -234,19 +254,11 @@ class ExportCategory(Resource):
                 #A general framework for referencing links in the download data.
                 #link$<link id>$<linked form field>
                 elif "gen_link$" in form_var:
-                    link_def = ordered_links[form_var.split("$")[1]]
-                    field = form_var.split("$")[2]
-                    table = form_tables[link_def['to_table']]
-                    txt = "SELECT data->>'{}' FROM {} WHERE data->>'{}'='{}'".format( 
-                        field,
-                        table.__tablename__, 
-                        link_def['to_column'], 
-                        r[1].data[link_def['from_column']]
-                    )
-                    result = db.engine.execute( txt ).first()
-
-                    if result:
-                        dict_row[k] = result[0]    
+                    link = form_var.split("$")[1]
+                    link_def = ordered_links[link]
+                    if link_data[link]:
+                        if r[1].data[link_def['from_column']] in link_data[link]:
+                            dict_row[k] = link_data[link][r[1].data[link_def['from_column']]][form_var.split("$")[-1]]
                     else:
                         dict_row[k] = None
 
