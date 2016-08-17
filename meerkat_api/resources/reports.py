@@ -1170,20 +1170,19 @@ class CdPublicHealth(Resource):
         if less_5yo == 0:
             less_5yo = 1
         #public health indicators
-        modules = query_variable.get("prc_1", "module",
-                                 end_date=end_date_limit.isoformat(),
-                                 start_date=start_date.isoformat(),
-                                 only_loc=location)
 
-        logging.warning( str(modules) )
+        medicines = query_variable.get("prc_2", "medicine",
+                                     end_date=end_date_limit.isoformat(),
+                                     start_date=start_date.isoformat(),
+                                     only_loc=location, use_ids=True)
+        tot_med = medicines["med_1"]["total"]
+        if tot_med == 0:
+            tot_med = 1
         ret["data"]["public_health_indicators"].append(
-            make_dict(gettext("Laboratory results recorded"),
-                      modules["Laboratory Results"]["total"],
-                      modules["Laboratory Results"]["total"] / total_cases * 100))
-        ret["data"]["public_health_indicators"].append(
-            make_dict(gettext("Prescribing practice recorded"),
-                      modules["Prescribing"]["total"],
-                      modules["Prescribing"]["total"] / total_cases * 100))
+            make_dict(gettext("Availability of prescribed medicines"),
+                      medicines["med_2"]["total"],
+                      medicines["med_2"]["total"] / tot_med * 100))
+
         #Alerts
         all_alerts = alerts.get_alerts({"location": location})
         tot_alerts = 0
@@ -1435,21 +1434,50 @@ class NcdPublicHealth(Resource):
         if less_5yo == 0:
             less_5yo = 1
         #public health indicators
-        modules = query_variable.get("prc_2", "module",
-                                 end_date=end_date_limit.isoformat(),
-                                 start_date=start_date.isoformat(),
-                                 only_loc=location)
 
+        smoking = query_ids(["prc_2", "smo_4"], start_date, end_date, only_loc=location)
+        tot_diabetes = query_ids(["ncd_1"], start_date, end_date, only_loc=location)
+        tot_hypertension = query_ids(["ncd_2"], start_date, end_date, only_loc=location)
+
+        if tot_diabetes == 0:
+            tot_diabetes = 1
+        if tot_hypertension == 0:
+            tot_hypertension = 1
+        
+        diabetes_with_hba1c = query_ids(["ncd_1", "lab_8"], start_date, end_date, only_loc=location)
+        hypertension_with_bp = query_ids(["ncd_2", "lab_1"], start_date, end_date, only_loc=location)
         ret["data"]["public_health_indicators"] = [
             make_dict("Cases Reported", total_cases, 100)]
+
+
+        
         ret["data"]["public_health_indicators"].append(
-            make_dict(gettext("Laboratory results recorded"),
-                      modules["Laboratory Results"]["total"],
-                      modules["Laboratory Results"]["total"] / total_cases * 100))
+            make_dict(gettext("Patient have smoking status recorded"),
+                      smoking,
+                      smoking / total_cases * 100))
+
         ret["data"]["public_health_indicators"].append(
-            make_dict(gettext("Prescribing practice recorded"),
-                      modules["Prescribing"]["total"],
-                      modules["Prescribing"]["total"] / total_cases * 100))
+            make_dict(gettext("Diabetes mellitus patients have HbA1C recorded"),
+                      diabetes_with_hba1c,
+                      diabetes_with_hba1c / tot_diabetes * 100))
+
+        ret["data"]["public_health_indicators"].append(
+            make_dict(gettext("Hypertension patients have BP recorded"),
+                      hypertension_with_bp,
+                      hypertension_with_bp / tot_hypertension * 100))
+
+
+        medicines = query_variable.get("prc_2", "medicine",
+                                     end_date=end_date_limit.isoformat(),
+                                     start_date=start_date.isoformat(),
+                                     only_loc=location, use_ids=True)
+        tot_med = medicines["med_1"]["total"]
+        if tot_med == 0:
+            tot_med = 1
+        ret["data"]["public_health_indicators"].append(
+            make_dict(gettext("Availability of prescribed medicines"),
+                      medicines["med_2"]["total"],
+                      medicines["med_2"]["total"] / tot_med * 100))
         #Reporting sites
         locs = get_locations(db.session)
         ret["data"]["reporting_sites"] = []
