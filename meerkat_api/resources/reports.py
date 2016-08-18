@@ -1175,13 +1175,20 @@ class CdPublicHealth(Resource):
                                      end_date=end_date_limit.isoformat(),
                                      start_date=start_date.isoformat(),
                                      only_loc=location, use_ids=True)
-        tot_med = medicines["med_1"]["total"]
-        if tot_med == 0:
-            tot_med = 1
-        ret["data"]["public_health_indicators"].append(
-            make_dict(gettext("Availability of prescribed medicines"),
-                      medicines["med_2"]["total"],
-                      medicines["med_2"]["total"] / tot_med * 100))
+        
+        if "med_1" in medicines and "med_2" in medicines:
+            tot_med = medicines["med_1"]["total"]
+            if tot_med == 0:
+                tot_med = 1
+            ret["data"]["public_health_indicators"].append(
+                make_dict(gettext("Availability of prescribed medicines"),
+                          medicines["med_2"]["total"],
+                          medicines["med_2"]["total"] / tot_med * 100))
+        else:
+            ret["data"]["public_health_indicators"].append(
+                make_dict(gettext("Availability of prescribed medicines"),
+                          0,0))
+
 
         #Alerts
         all_alerts = alerts.get_alerts({"location": location})
@@ -1471,13 +1478,19 @@ class NcdPublicHealth(Resource):
                                      end_date=end_date_limit.isoformat(),
                                      start_date=start_date.isoformat(),
                                      only_loc=location, use_ids=True)
-        tot_med = medicines["med_1"]["total"]
-        if tot_med == 0:
-            tot_med = 1
-        ret["data"]["public_health_indicators"].append(
-            make_dict(gettext("Availability of prescribed medicines"),
-                      medicines["med_2"]["total"],
-                      medicines["med_2"]["total"] / tot_med * 100))
+        if "med_1" in medicines and "med_2" in medicines:
+            tot_med = medicines["med_1"]["total"]
+            if tot_med == 0:
+                tot_med = 1
+            ret["data"]["public_health_indicators"].append(
+                make_dict(gettext("Availability of prescribed medicines"),
+                          medicines["med_2"]["total"],
+                          medicines["med_2"]["total"] / tot_med * 100))
+        else:
+            ret["data"]["public_health_indicators"].append(
+                make_dict(gettext("Availability of prescribed medicines"),
+                          0,0))
+
         #Reporting sites
         locs = get_locations(db.session)
         ret["data"]["reporting_sites"] = []

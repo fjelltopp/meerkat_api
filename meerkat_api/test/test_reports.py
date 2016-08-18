@@ -612,8 +612,8 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
         # Public Health Indicators
 
         self.assertEqual(data["public_health_indicators"][0]["quantity"], 6)
-        self.assertEqual(data["public_health_indicators"][1]["quantity"], 1)
-        self.assertEqual(data["public_health_indicators"][2]["quantity"], 1)
+        self.assertEqual(data["public_health_indicators"][1]["quantity"], 0)
+        self.assertEqual(data["public_health_indicators"][2]["quantity"], 0)
 
         # test with a different Location
 
@@ -692,10 +692,8 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
 
         # Public Health Indicators
         self.assertEqual(data["public_health_indicators"][0]["quantity"], 7)
-        self.assertEqual(data["public_health_indicators"][1]["quantity"], 1)
-        self.assertEqual(data["public_health_indicators"][2]["quantity"], 1)
-        self.assertEqual(data["public_health_indicators"][3]["quantity"], 3)
-        self.assertEqual(data["public_health_indicators"][4]["quantity"], 2)
+        self.assertEqual(data["public_health_indicators"][1]["quantity"], 0)
+
 
         # Test with a different Location
         rv = self.app.get('/reports/cd_public_health/2/{}/{}'.format(end_date, start_date))
