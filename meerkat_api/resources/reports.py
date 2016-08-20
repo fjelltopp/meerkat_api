@@ -26,7 +26,7 @@ from gettext import gettext
 import logging
 from meerkat_api.util import get_children, is_child, fix_dates
 from meerkat_api import db, app
-from meerkat_abacus.model import Data, Locations, Alerts, AggregationVariables
+from meerkat_abacus.model import Data, Locations, AggregationVariables
 from meerkat_api.resources.completeness import Completeness
 from meerkat_api.resources.variables import Variables
 from meerkat_api.resources.epi_week import EpiWeek, epi_week_start
@@ -97,7 +97,7 @@ def top(values, number=5):
 
 
 # A predifend query to use in get_variable_id
-qu = text("SELECT sum(CAST(data.variables ->> :variables_1 AS INTEGER)) AS sum_1  FROM data WHERE (data.variables ? :variables_2) AND data.date >= :date_1 AND data.date < :date_2 AND (data.country = :country_1 OR data.region = :region_1 OR data.district = :district_1 OR data.clinic = :clinic_1)")
+qu = text("SELECT sum(CAST(data.variables ->> :variables_1 AS FLOAT)) AS sum_1  FROM data WHERE (data.variables ? :variables_2) AND data.date >= :date_1 AND data.date < :date_2 AND (data.country = :country_1 OR data.region = :region_1 OR data.district = :district_1 OR data.clinic = :clinic_1)")
 
 
 def get_variable_id(variable_id, start_date, end_date, location, conn):
@@ -546,22 +546,22 @@ class CdReport(Resource):
         for v in variable_query.all():
             variable_names[v.id] = v.name
         # The loop through all alerts
-        for a in all_alerts.values():
-            if a["alerts"]["date"] <= end_date and a["alerts"]["date"] >= start_date:
-                reason = variable_names[a["alerts"]["reason"]]
+        for a in all_alerts:
+            if a["date"] <= end_date and a["date"] >= start_date:
+                reason = variable_names[a["variables"]["alert_reason"]]
                 report_status = None
-                if "links" in a and "alert_investigation" in a["links"]:
-                    status = a["links"]["alert_investigation"]["data"]["status"]
-                    if "central_review" in a["links"]:
-                        status = a["links"]["central_review"]["data"]["status"]
-                    if status == "Confirmed":
+                if "ale_1" in a["variables"]:
+                    status_code = "ale_"
+                    if "cre_1" in a["variables"]:
+                        status_code = "cre_"
+                    if status_code + "2" in a["variables"]:
                         report_status = "confirmed"
-                    elif status != "Disregarded":
+                    elif status_code + "4" in a["variables"]:
                         report_status = "suspected"
                 else:
                     report_status = "suspected"
-                epi_week = ew.get(a["alerts"]["date"].isoformat())["epi_week"]
-                year_diff = end_date.year - a["alerts"]["date"].year
+                epi_week = ew.get(a["date"].isoformat())["epi_week"]
+                year_diff = end_date.year - a["date"].year
                 epi_week = epi_week - 52 * year_diff
                 if report_status:
                     data.setdefault(reason, {"weeks": nice_weeks,
@@ -950,17 +950,20 @@ class PublicHealth(Resource):
 
         #Alerts
         alerts = db.session.query(
-            Alerts.reason, func.count(Alerts.id).label("count")).filter(
-                Alerts.date >= start_date,
-                Alerts.date < end_date_limit).group_by(Alerts.reason).order_by(desc("count")).limit(5)
+            Data.variables["alert_reason"], func.count(Data.uuid).label("count")).filter(
+                Data.date >= start_date,
+                Data.date < end_date_limit,
+                Data.variables.has_key("alert")).group_by(Data.variables["alert_reason"]).order_by(desc("count")).limit(5)
         ret["data"]["alerts"]=[]
         for a in alerts.all():
             ret["data"]["alerts"].append(
                 {"subject": a[0],
                  "quantity": a[1]})
-        all_alerts = db.session.query(func.count(Alerts.id)).filter(
-                Alerts.date >= start_date,
-                Alerts.date < end_date_limit)
+        all_alerts = db.session.query(func.count(Data.uuid)).filter(
+            Data.date >= start_date,
+            Data.date < end_date_limit,
+            Data.variables.has_key("alert")
+        )
         ret["data"]["alerts_total"] = all_alerts.first()[0]
 
         #Gender
@@ -1194,11 +1197,11 @@ class CdPublicHealth(Resource):
         all_alerts = alerts.get_alerts({"location": location})
         tot_alerts = 0
         investigated_alerts = 0
-        for a in all_alerts.values():
-            if a["alerts"]["date"] <= end_date and a["alerts"]["date"] > start_date:
+        for a in all_alerts:
+            if a["date"] <= end_date and a["date"] > start_date:
                 tot_alerts += 1
                 report_status = False
-                if "links" in a and "alert_investigation" in a["links"]:
+                if "ale_1" in a["variables"]:
                     investigated_alerts += 1
         ret["data"]["public_health_indicators"].append(
             make_dict(gettext("Alerts generated"),

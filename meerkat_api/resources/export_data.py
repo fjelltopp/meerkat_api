@@ -9,9 +9,9 @@ import json, io, csv, logging
 
 from meerkat_api.util import row_to_dict
 from meerkat_api import db, app, output_csv
-from meerkat_abacus.model import Data, form_tables, Links
-from meerkat_abacus.util import all_location_data
-from meerkat_abacus.config import country_config, links
+from meerkat_abacus.model import Data, form_tables
+from meerkat_abacus.util import all_location_data, get_links
+from meerkat_abacus.config import country_config, links, config_directory
 from meerkat_api.resources.variables import Variables
 from meerkat_api.resources.epi_week import EpiWeek
 from meerkat_api.authentication import require_api_key
@@ -67,46 +67,6 @@ class ExportData(Resource):
             dict_rows.append(dict_row)
         return {"data": dict_rows, "keys": fieldnames, "filename": "data"}
 
-
-class ExportAlerts(Resource):
-    """
-    Export all alerts with investigation information as csv file
-
-    Returns:\n
-        csv_file: csv file with alert data\n
-    """
-    representations = {'text/csv': output_csv}
-    decorators = [require_api_key]
-    
-    def get(self):
-        alerts = get_alerts({})
-        output_dicts = []
-        locs_by_deviceid = get_locations_by_deviceid(db.session)
-        locs = get_locations(db.session)
-        keys = set()
-        
-        for a in alerts.values():
-            output_dict = a["alerts"]
-            output_dict["date"] = output_dict["date"].isoformat()
-            output_dict.update(output_dict.pop("data"))
-            output_dict["clinic"] = locs[output_dict["clinic"]].name
-            if "links" in a:
-                for link in a["links"]:
-                    output_dict[link+"_date"] = a["links"][link]["to_date"].isoformat()
-                    for key in a["links"][link]["data"]:
-                        if isinstance(a["links"][link]["data"][key], list):
-                            output_dict[link + "_"+key] = ";".join(a["links"][link]["data"][key])
-                        else:
-                            output_dict[link + "_"+key] = a["links"][link]["data"][key]
-                            if key == "investigator":
-                                output_dict[link + "_"+key] = locs[locs_by_deviceid[a["links"][link]["data"][key]]].name
-            keys = keys.union(output_dict.keys())
-            output_dicts.append(output_dict)
-
-        return {"data": output_dicts, "keys": keys, "filename": "alerts"}
-
-
-
 class ExportCategory(Resource):
     """
     Export cases from case form that matches a category
@@ -131,8 +91,8 @@ class ExportCategory(Resource):
     representations = {'text/csv': output_csv}
     decorators = [require_api_key]
     
-    def get(self, category, download_name):
-        app.logger.warning( "Export Category Called")
+    def get(self, form_name, category, download_name):
+        app.logger.warning("Export Category Called")
 
         if "variables" in request.args.keys():
             variables = json.loads(request.args["variables"])
@@ -149,12 +109,11 @@ class ExportCategory(Resource):
         icd_code_to_name = {}
         link_ids = []
         have_links = False
+        
         #Set up icd_code_to_name if needed and determine if alert_links are included
         for v in variables:
             return_keys.append(v[1])
             translation_dict[v[1]] = v[0]
-            if "alert_link" in v[0]:
-                alert = True
             if "icd_name$" in v[0]:
                 category = v[0].split("$")[1]
                 icd_name = var.get(category)
@@ -169,43 +128,25 @@ class ExportCategory(Resource):
                     for c in codes:
                         icd_code_to_name[v[0]][c.strip()] = icd_name[i]["name"]
 
-            if "gen_link$" in v[0]:
+            if "link$" in v[0]:
                 have_links = True
-                link_ids.append( v[0].split("$")[1] )
+                link_ids.append(v[0].split("$")[1])
 
-               
-        # Sort out alerts
-        if alert:
-            alerts = get_alerts({})
-            link_tables = {}
-            for l in links.links:
-                link_tables[l["id"]] = l["to_table"]
-          
-        #Ordered link definitions so we can definitions easily when adding linked data.  
-        ordered_links = {}
-        for link in links.links:
-            ordered_links[link["id"]] = link
         link_ids = set(link_ids)
-
-        # Need to get all the links from the DB first due to speed issues
-        if have_links:
-            link_data = {}
-            for link in link_ids:
-                link_def = ordered_links[link]
-                table = form_tables[link_def['to_table']]
-                links_values = db.session.query(Links.to_id).filter(Links.link_def == link).all()
-                to_ids = []
-                for l in links_values:
-                    to_ids.append(l[0])
-                to_data = db.session.query(table).filter(table.uuid.in_(to_ids))
-                link_data_by_value = {}
-                for d in to_data:
-                    link_data_by_value[d.data[link_def["to_column"]]]= d.data
-                link_data[link] = link_data_by_value
+        links_by_type, links_by_name = get_links(config_directory + "links.csv")
 
                 
         # DB query, with yield_per(200) for memory reasons
-        results = db.session.query(Data,form_tables["case"]).join(form_tables["case"], Data.uuid==form_tables["case"].uuid).filter(
+        results = db.session.query(Data,form_tables[form_name]).join(
+            form_tables[form_name], Data.uuid==form_tables[form_name].uuid)
+
+        link_id_index = {}
+        for i, l in enumerate(link_ids):
+            form = form_tables[links_by_name[l]["form"]]
+            results = results.join(form, Data.links[-1].astext == form.uuid)
+            link_id_index[l] = i
+
+        results = results.filter(
             or_(Data.variables.has_key(key) for key in data_keys)
         ).yield_per(200)
         
@@ -255,32 +196,24 @@ class ExportCategory(Resource):
                 #link$<link id>$<linked form field>
                 elif "gen_link$" in form_var:
                     link = form_var.split("$")[1]
-                    link_def = ordered_links[link]
-                    if link_data[link]:
-                        if r[1].data[link_def['from_column']] in link_data[link]:
-                            dict_row[k] = link_data[link][r[1].data[link_def['from_column']]][form_var.split("$")[-1]]
+                    link_index = link_id_index[link]
+                    if r[link_index]:
+                        dict_row[k] = r[link_index][form_var.split("$")[-1]]
                     else:
                         dict_row[k] = None
 
-                elif "alert_link" in form_var:
-                    alert_id = r[0].uuid[-country_config["alert_id_length"]:]
-                    if alert_id in alerts:
-                        link, field = form_var.split("$")[-2:]
-                        alert = alerts[alert_id]
-                        if "links" in alert:
-                            if link in alert["links"]:
-                                to_uuid = alert["links"][link]["to_id"]
-                                table = form_tables[link_tables[link]]
-                                result = db.session.query(table).filter(
-                                    table.uuid == to_uuid).one()
-                                if field in result.data:
-                                    dict_row[k] = result.data[field]
-                                else:
-                                    dict_row[k] = None
-                            else:
-                                dict_row[k] = None
-                        else:
-                            dict_row[k] = None
+                elif "code" == form_var.split("$")[0]:
+                    # code$cod_1,cod_2$Text_1$Text_2
+                    print(form_var)
+                    codes = form_var.split("$")[1].split(",")
+                    text = form_var.split("$")[2].split(",")
+
+                    final_text = []
+                    for i in range(len(codes)):
+                        if codes[i] in r[0].variables:
+                            final_text.append(text[i])
+                    if len(final_text) > 0:
+                        dict_row[k] = " ".join(final_text)
                     else:
                         dict_row[k] = None
                 else:
