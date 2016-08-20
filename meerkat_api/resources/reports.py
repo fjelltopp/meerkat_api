@@ -648,7 +648,7 @@ class Pip(Resource):
         # We now want to get a timeline of the lab confirmed influenze types.
         # The Influenza types and other pip related variables have category pip
         pip_cat = query_variable.get(sari_code, "pip",
-                                         end_date=end_date.isoformat(),
+                                         end_date=end_date_limit.isoformat(),
                                          start_date=start_date.isoformat(),
                                          only_loc=location,
                                          use_ids=True)
@@ -692,13 +692,14 @@ class Pip(Resource):
         # Assembling the timeline with suspected cases and the confirmed cases
         # from the lab linkage
         for link in lab_links:
-            total_lab_links += 1
-            epi_week = ew.get(link.from_date.isoformat())["epi_week"]
-            t = link.data["type"]
-            if t:
-                if epi_week in weeks:
-                    ret["data"]["timeline"]["confirmed"][t][epi_week -1] += 1
-                lab_types[t] += 1
+            if link.from_date > start_date and link.from_date <= end_date_limit:
+                total_lab_links += 1
+                epi_week = ew.get(link.from_date.isoformat())["epi_week"]
+                t = link.data["type"]
+                if t:
+                    if epi_week in weeks:
+                        ret["data"]["timeline"]["confirmed"][t][weeks.index(epi_week)] += 1
+                    lab_types[t] += 1
         tl = ret["data"]["timeline"]["confirmed"]
         ret["data"]["timeline"]["confirmed"] = [
             {"title": key, "values": list(tl[key])} for key in sorted(tl, key=lambda k: (-sum(tl[k]), k))
