@@ -24,9 +24,9 @@ pip_report = [
     Links(**{'link_def': 'pip_followup', 'link_value': 'namru-3', 'id': 3, 'from_date': datetime.datetime(2015, 3, 23, 0, 0), 'to_id': 'uuid:e470d7b0-d211-4d82-b082-294c7a3415a6', 'data': {'outcome': [], 'ventilated': [], 'admitted_to_icu': []}, 'to_date': datetime.datetime(2015, 3, 24, 0, 0)}),
     Links(**{'link_def': 'pip_followup', 'link_value': 'namru-4', 'id': 4, 'from_date': datetime.datetime(2015, 4, 12, 0, 0), 'to_id': 'uuid:4e46f58e-74fd-42b6-b5ca-1350328152ee', 'data': {'outcome': "death", 'ventilated': "yes", 'admitted_to_icu': "yes"}, 'to_date': datetime.datetime(2015, 4, 14, 0, 0)}),
     # Labs
-    Links(**{'link_def': 'pip', 'link_value': 'namru-1', 'id': 5, 'from_date': datetime.datetime(2015, 1, 1, 0, 0), 'to_id': 'uuid:ad953028-499d-4d56-ad56-a9e777a4b4b0', 'data': {"type": "B"}, 'to_date': datetime.datetime(2015, 4, 30, 0, 0)}),
-    Links(**{'link_def': 'pip', 'link_value': 'namru-2', 'id': 6, 'from_date': datetime.datetime(2015, 1, 1, 0, 0), 'to_id': 'uuid:ad953028-499d-4d56-ad56-a9e777a4b4b0', 'data': {"type": "H1N1"}, 'to_date': datetime.datetime(2015, 5, 3, 0, 0)}),
-    Links(**{'link_def': 'pip', 'link_value': 'namru-3', 'id': 7, 'from_date': datetime.datetime(2015,1, 1, 0, 0), 'to_id': 'uuid:ad953028-499d-4d56-ad56-a9e777a4b4b0', 'data': {"type": "Mixed"}, 'to_date': datetime.datetime(2015, 6, 30, 0, 0)})
+    Links(**{'link_def': 'pip', 'link_value': 'namru-1', 'id': 5, 'from_date': datetime.datetime(2015, 1, 5, 0, 0), 'to_id': 'uuid:ad953028-499d-4d56-ad56-a9e777a4b4b0', 'data': {"type": "B"}, 'to_date': datetime.datetime(2015, 4, 30, 0, 0)}),
+    Links(**{'link_def': 'pip', 'link_value': 'namru-2', 'id': 6, 'from_date': datetime.datetime(2015, 1, 5, 0, 0), 'to_id': 'uuid:ad953028-499d-4d56-ad56-a9e777a4b4b0', 'data': {"type": "H1N1"}, 'to_date': datetime.datetime(2015, 5, 3, 0, 0)}),
+    Links(**{'link_def': 'pip', 'link_value': 'namru-3', 'id': 7, 'from_date': datetime.datetime(2015,1, 5, 0, 0), 'to_id': 'uuid:ad953028-499d-4d56-ad56-a9e777a4b4b0', 'data': {"type": "Mixed"}, 'to_date': datetime.datetime(2015, 6, 30, 0, 0)})
 ]
 
 
