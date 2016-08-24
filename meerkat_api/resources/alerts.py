@@ -61,7 +61,7 @@ def get_alerts(args):
     """
     conditions = [model.Data.variables.has_key("alert")]
     if "reason" in args.keys():
-        conditions.append(model.Data.variables["alert_reason"] == args["reason"])
+        conditions.append(model.Data.variables["alert_reason"].astext == args["reason"])
     if "location" in args.keys():
         locations = get_locations(db.session)
         children = get_children(int(args["location"]), locations)

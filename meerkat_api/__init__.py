@@ -85,7 +85,7 @@ from meerkat_api.resources.completeness import Completeness
 from meerkat_api.resources.reports import PublicHealth, CdReport, CdPublicHealth, CdPublicHealthMad, NcdPublicHealth,RefugeePublicHealth, RefugeeCd,RefugeeDetail, NcdReport, Pip, WeeklyEpiMonitoring, Malaria
 from meerkat_api.resources.frontpage import KeyIndicators, TotMap, NumAlerts, ConsultationMap, RefugeePage, NumClinics
 from meerkat_api.resources.export_data import ExportData, ExportForm, Forms, ExportCategory
-from meerkat_api.resources.links import Link, Links
+#from meerkat_api.resources.links import Link, Links
 
 from meerkat_api.authentication import require_api_key
 
@@ -112,8 +112,8 @@ api.add_resource(Forms, "/export/forms")
 api.add_resource(ExportCategory, "/export/category/<form_name>/<category>/<download_name>")
 
 # Links
-api.add_resource(Link, "/link/<link_id>")
-api.add_resource(Links, "/links/<link_def>")
+# api.add_resource(Link, "/link/<link_id>")
+# api.add_resource(Links, "/links/<link_def>")
 
 # Location urls
 api.add_resource(Locations, "/locations")

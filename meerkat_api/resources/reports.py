@@ -548,6 +548,7 @@ class CdReport(Resource):
         # The loop through all alerts
         for a in all_alerts:
             if a["date"] <= end_date and a["date"] >= start_date:
+                print(a)
                 reason = variable_names[a["variables"]["alert_reason"]]
                 report_status = None
                 if "ale_1" in a["variables"]:
@@ -681,7 +682,7 @@ class Pip(Resource):
         ret["data"]["cases_chronic"] = pip_cat["pip_3"]["total"]
         
         # Lab links and follow up links
-        lab_links = db.session.query(model.Links).filter(model.Links.link_def == "pip")
+        lab_links = [] #db.session.query(model.Links).filter(model.Links.link_def == "pip")
         total_lab_links = 0
         lab_types = {
             gettext("B"): 0,
@@ -713,7 +714,7 @@ class Pip(Resource):
             )
 
         #Followup indicators
-        followup_links = db.session.query(model.Links).filter(model.Links.link_def == "pip_followup")
+        followup_links =[] # db.session.query(model.Links).filter(model.Links.link_def == "pip_followup")
         total_followup = 0
         icu = 0
         ventilated = 0
@@ -2175,10 +2176,10 @@ class WeeklyEpiMonitoring(Resource):
         tot_alerts = 0
         investigated_alerts = 0
 
-        for a in all_alerts.values():
+        for a in all_alerts:
                 tot_alerts += 1
                 report_status = False
-                if "links" in a and "alert_investigation" in a["links"]:
+                if "ale_1" in a["variables"]:
                     investigated_alerts += 1
 
 

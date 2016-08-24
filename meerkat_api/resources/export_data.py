@@ -204,7 +204,6 @@ class ExportCategory(Resource):
 
                 elif "code" == form_var.split("$")[0]:
                     # code$cod_1,cod_2$Text_1$Text_2
-                    print(form_var)
                     codes = form_var.split("$")[1].split(",")
                     text = form_var.split("$")[2].split(",")
 
@@ -249,6 +248,9 @@ class ExportForm(Resource):
             keys = request.args["fields"].split(",")
         else:
             keys = ["clinic", "region", "district"]
+            if form not in form_tables:
+                return {"filename": form,
+                        "file": io.StringIO()}
             sql = text("SELECT DISTINCT(jsonb_object_keys(data)) from {}".format(form_tables[form].__tablename__))
             result = db.engine.execute(sql)
             for r in result:

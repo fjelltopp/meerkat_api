@@ -52,7 +52,7 @@ class MeerkatAPITestCase(unittest.TestCase):
         """ Test get variables """
         variables = explore.get_variables("pc")
         self.assertEqual(sorted(list(variables.keys())),
-                         sorted(["prc_1", "prc_2", "prc_3", "prc_4", "prc_5", "prc_6", "prc_7"]))
+                         sorted(["prc_1", "prc_2", "prc_3", "prc_4", "prc_6", "prc_7"]))
 
     def test_query_ids(self):
         """ test the query_ids function """
