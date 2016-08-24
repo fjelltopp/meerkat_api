@@ -10,7 +10,7 @@ import json, io, csv, logging
 from meerkat_api.util import row_to_dict
 from meerkat_api import db, app, output_csv
 from meerkat_abacus.model import Data, form_tables
-from meerkat_abacus.util import all_location_data, get_links
+from meerkat_abacus.util import all_location_data
 from meerkat_abacus.config import country_config, links, config_directory
 from meerkat_api.resources.variables import Variables
 from meerkat_api.resources.epi_week import EpiWeek
