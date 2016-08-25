@@ -2,7 +2,7 @@
 Data resource for completeness data
 """
 from flask_restful import Resource
-from flask import jsonify
+from flask import jsonify, request
 from sqlalchemy import extract, func, Integer, or_
 from datetime import datetime, timedelta
 import pandas as pd
@@ -63,6 +63,14 @@ class Completeness(Resource):
                     "clinic": None}
         sublevel = sublevels[location_type]
 
+
+        conditions = [Data.variables.has_key(variable),
+                     or_(loc == location for loc in (Data.country,
+                                                     Data.region,
+                                                     Data.district,
+                                                     Data.clinic))]
+        if "tag" in request.args.keys():
+            conditions.append(Data.tags.has_key(request.args["tag"]))
         # get the data
         data = pd.read_sql(
             db.session.query(Data.region,
@@ -70,11 +78,7 @@ class Completeness(Resource):
                              Data.clinic,
                              Data.date,
                              Data.variables[variable].label(variable)
-            ).filter(Data.variables.has_key(variable),
-                     or_(loc == location for loc in (Data.country,
-                                                     Data.region,
-                                                     Data.district,
-                                                     Data.clinic))).statement,
+            ).filter(*conditions).statement,
             db.session.bind)
 
         if len(data) == 0:
@@ -88,6 +92,8 @@ class Completeness(Resource):
         end_d = today - timedelta(days=offset + 1)
             
         begining = epi_week_start_date(today.year)
+
+        
         # We drop duplicates so each clinic can only have one record per day
         data = data.drop_duplicates(subset=["region", "district", "clinic", "date", variable])
 
@@ -227,44 +233,3 @@ class NonReporting(Resource):
 
         return {"clinics": non_reporting_clinics}
 
-
-=======
-            n_weeks = epi_week
-        region_data = {}
-        n_clinics = {}
-        # days_in_current_week = (today - epi_week_start(today.year, epi_week)).days + 1
-        # if number_per_week > days_in_current_week:
-        #     number_per_week_for_epi = days_in_current_week
-        # else:
-        #     number_per_week_for_epi = number_per_week
-        for region in list(last_year.keys()) + [1]:
-            # For each region we find the number of clinics and calculate
-            # the sum of the number of records / time_frame * n_clinics.
-            n_clinics = len(clinic_data[region].keys())
-            if n_clinics == 0:
-                n_clinics = 1
-                app.logger.info(variable)
-            region_data[region] = {"last_day": last_day.get(region, 0)
-                                   / n_clinics * 100,
-                                   "last_week": last_week.get(region, 0)
-                                   / (number_per_week * n_clinics) * 100}
-            
-                                   # "last_year": last_year.get(region, 0)
-                                   # / (n_weeks * n_clinics * number_per_week) * 100}
-
-        # Get all clinics that send should send case_reports. As the above code will not
-        # find clinics with 0 records. 
-
-        results = db.session.query(Locations).filter(Locations.case_report == 1)
-        locations = get_locations(db.session)
-        for row in results.all():
-            if row.case_report and row.id not in clinic_data[1].keys():
-                clinic_data[1][row.id] = {"day": 0, "week": 0, "year": 0}
-                parent_loc = row.parent_location
-                while parent_loc not in clinic_data.keys():
-                    parent_loc = locations[parent_loc].parent_location
-                    if locations[parent_loc].parent_location == 1 and parent_loc not in clinic_data.keys():
-                        clinic_data[parent_loc] = {}
-                clinic_data[parent_loc][row.id] = {"day": 0, "week": 0, "year": 0}
-        return {"regions": region_data, "clinics": clinic_data}
->>>>>>> master
