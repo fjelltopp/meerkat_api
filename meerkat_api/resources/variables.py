@@ -2,6 +2,8 @@
 Variables resource for querying variable data
 """
 from flask_restful import Resource
+from sqlalchemy import or_
+from flask import request
 from meerkat_api.util import row_to_dict, rows_to_dicts
 from meerkat_api import db, app
 from meerkat_abacus import model
@@ -21,8 +23,13 @@ class Variables(Resource):
             l = locations.Locations()
             return l.get()
         elif category == "alert":
-            results = db.session.query(model.AggregationVariables).filter(
-                model.AggregationVariables.alert == 1)
+            if "include_group_b" in request.args:
+                results = db.session.query(model.AggregationVariables).filter(
+                    or_(model.AggregationVariables.alert == 1,
+                         model.AggregationVariables.alert_desc == "Group B"))
+            else:
+                results = db.session.query(model.AggregationVariables).filter(
+                    model.AggregationVariables.alert == 1)
         elif category != "all":
             results = db.session.query(model.AggregationVariables).filter(
                 model.AggregationVariables.category.has_key(category))

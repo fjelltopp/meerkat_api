@@ -362,8 +362,8 @@ class NcdReport(Resource):
         # Data is list of rows(dicts) with a title for the y-axis title and
         # a list of values that are the values for the row in the right order
         
-        ret["hypertension"] = {"age": {}, "complications": {}}
-        ret["diabetes"] = {"age": {}, "complications": {}}
+        ret["hypertension"] = {"age": {}, "complications": {}, "email_summary": {}}
+        ret["diabetes"] = {"age": {}, "complications": {}, "email_summary": {}}
 
         diabetes_id = "ncd_1"
         hypertension_id = "ncd_2"
@@ -384,7 +384,7 @@ class NcdReport(Resource):
             ret[disease]["age"]["data"] = []
             for age in sorted(ages.keys()):
                 ret[disease]["age"]["titles"].append(ages[age]["name"])
-            ret[disease]["age"]["titles"].append("Total")
+            ret[disease]["age"]["titles"].insert(1,"Total")
             ret[disease]["complications"]["titles"] = ["reg",
                                                        "tot",
                                                        "gen_1",
@@ -394,8 +394,10 @@ class NcdReport(Resource):
                 ret[disease]["complications"]["titles"].append(i[0])
             ret[disease]["complications"]["data"] = []
 
+
             # Loop through each region, we add [1] to include the whole country
-            for i, region in enumerate(sorted(regions) + [1]):
+            for i, region in enumerate( sorted(regions) + [1]):
+
                 d_id = diseases[disease]
                 query_variable = QueryVariable()
                 # get the age breakdown
@@ -413,7 +415,12 @@ class NcdReport(Resource):
                 
                 for age in sorted(ages.keys()):
                     ret[disease]["age"]["data"][i]["values"].append(disease_age[age]["total"])
-                ret[disease]["age"]["data"][i]["values"].append(sum( [a["total"] for a in disease_age.values()]))
+                ret[disease]["age"]["data"][i]["values"].insert(0,sum( [a["total"] for a in disease_age.values()]))
+
+                #Add whole country summary for email report
+                if region == 1:
+                  ret[disease]["email_summary"]["cases"]=ret[disease]["age"]["data"][i]["values"][0]
+
                 # Get gender breakdown
                 disease_gender = query_variable.get(d_id, "gender",
                                                     end_date=end_date_limit.isoformat(),
@@ -431,6 +438,7 @@ class NcdReport(Resource):
                 ret[disease]["complications"]["data"][i]["values"].append([disease_gender["Male"]["total"],  disease_gender["Male"]["total"] /table_two_total * 100])
                 ret[disease]["complications"]["data"][i]["values"].append([disease_gender["Female"]["total"],  disease_gender["Female"]["total"] / table_two_total * 100])
 
+
                 
                 # Get the lab breakdown
                 for new_id in ids_to_include[disease]:
@@ -444,6 +452,13 @@ class NcdReport(Resource):
                             denominator = 1
                         ret[disease]["complications"]["data"][i]["values"].append(
                             [numerator, numerator/ denominator * 100])
+
+                        #control for email report for the whole country
+                        if region == 1:
+                          if disease == "diabetes" and new_id[0] == "lab_9":
+                            ret[disease]["email_summary"]["control"] = numerator/ denominator * 100
+                          elif disease == "hypertension" and new_id[0] == "lab_2":
+                            ret[disease]["email_summary"]["control"] = numerator/ denominator * 100
                     else:
                         # We can N/A to the table if it includes data we are not collecting
                         ret[disease]["complications"]["data"][i]["values"].append("N/A")
@@ -590,7 +605,8 @@ class Pip(Resource):
         ret["data"] = {"epi_week_num": epi_week,
                        "end_date": end_date.isoformat(),
                        "project_epoch": datetime(2015,5,20).isoformat(),
-                       "start_date": start_date.isoformat()
+                       "start_date": start_date.isoformat(),
+                       "email_summary":{}
         }
         conn = db.engine.connect()
         locs = get_locations(db.session)
@@ -653,9 +669,7 @@ class Pip(Resource):
             "suspected": [pip_cat[sari_code]["weeks"][k] if k in pip_cat[sari_code]["weeks"] else 0 for k in weeks],
             "weeks": nice_weeks,
             "confirmed": {
-                gettext("Influenza A"): [0 for w in weeks],
-                gettext("Influenza B"): [0 for w in weeks],
-                gettext("H1"): [0 for w in weeks],
+                gettext("B"): [0 for w in weeks],
                 gettext("H3"): [0 for w in weeks],
                 gettext("H1N1"): [0 for w in weeks],
                 gettext("Mixed"): [0 for w in weeks]
@@ -669,27 +683,23 @@ class Pip(Resource):
         # Lab links and follow up links
         lab_links = db.session.query(model.Links).filter(model.Links.link_def == "pip")
         total_lab_links = 0
-        lab_types = {gettext("Influenza A"): 0,
-                     gettext("Influenza B"): 0,
-                     gettext("H1"): 0,
-                     gettext("H3"): 0,
-                     gettext("H1N1"): 0,
-                     gettext("Mixed"): 0
-                     }
+        lab_types = {
+            gettext("B"): 0,
+            gettext("H3"): 0,
+            gettext("H1N1"): 0,
+            gettext("Mixed"): 0
+        }
         # Assembling the timeline with suspected cases and the confirmed cases
         # from the lab linkage
         for link in lab_links:
-            total_lab_links += 1
-            epi_week = ew.get(link.from_date.isoformat())["epi_week"]
-            t = link.data["type"]
-            if isinstance(t, list):
-                if epi_week in weeks:
-                    ret["data"]["timeline"]["confirmed"]["Mixed"][epi_week - 1] += 1
-                lab_types["Mixed"] += 1
-            else:
-                if epi_week in weeks:
-                    ret["data"]["timeline"]["confirmed"][t][epi_week -1] += 1
-                lab_types[t] += 1
+            if link.from_date > start_date and link.from_date <= end_date:
+                total_lab_links += 1
+                epi_week = ew.get(link.from_date.isoformat())["epi_week"]
+                t = link.data["type"]
+                if t:
+                    if epi_week in weeks:
+                        ret["data"]["timeline"]["confirmed"][t][weeks.index(epi_week)] += 1
+                    lab_types[t] += 1
         tl = ret["data"]["timeline"]["confirmed"]
         ret["data"]["timeline"]["confirmed"] = [
             {"title": key, "values": list(tl[key])} for key in sorted(tl, key=lambda k: (-sum(tl[k]), k))
@@ -698,10 +708,11 @@ class Pip(Resource):
         ret["data"]["cases_pcr"] = total_lab_links
         
         ret["data"]["flu_type"] = []
-        for l in ["Influenza A", "Influenza B", "H1", "H3", "H1N1", "Mixed"]:
+        for l in ["B", "H3", "H1N1", "Mixed"]:
             ret["data"]["flu_type"].append(
                 make_dict(l, lab_types[l], (lab_types[l]/total_cases) * 100)
             )
+
         #Followup indicators
         followup_links = db.session.query(model.Links).filter(model.Links.link_def == "pip_followup")
         total_followup = 0
@@ -721,6 +732,8 @@ class Pip(Resource):
             make_dict(gettext("Patients followed up"), total_followup, total_followup / total_cases * 100))
         ret["data"]["pip_indicators"].append(
             make_dict(gettext("Laboratory results recorded"), total_lab_links, total_lab_links / total_cases * 100))
+        ret["data"]["email_summary"]["lab_recorded"] = total_lab_links
+        ret["data"]["email_summary"]["lab_recorded_per"] = total_lab_links / total_cases * 100
         ret["data"]["pip_indicators"].append(
             make_dict(gettext("Patients admitted to ICU"), icu, icu / total_cases * 100))
         ret["data"]["pip_indicators"].append(
@@ -742,29 +755,34 @@ class Pip(Resource):
                               num / total_cases * 100))
 
 
-        # Demographis
+        #Demographics
+        ret["data"]["demographics"] = []
         age =  query_variable.get(sari_code,"age_gender",
                                   end_date=end_date_limit.isoformat(),
                                   start_date=start_date.isoformat(),
                                   only_loc=location)
         age_gender={}
+
+        tot = sum([group["total"] for group in age.values()])
         for a in age:
             gender,ac = a.split(" ")
             if ac in age_gender.keys():
                 age_gender[ac][gender] = age[a]["total"]
             else:
                 age_gender[ac] = {gender: age[a]["total"]}
+    
         age_variables = variables_instance.get("age")
         for age_key in sorted(age_variables.keys()):
             a = age_variables[age_key]["name"]
-
             if a in age_gender.keys():
                 a_sum = sum(age_gender[a].values())
-            
+                a_perc = a_sum / tot *100 if tot != 0 else 0
                 if a_sum == 0:
                     a_sum = 1
                 ret["data"]["demographics"].append(
                     {"age": a,
+                     "quantity": age_gender[a]["Male"] + age_gender[a]["Female"],
+                     "percent": round(a_perc, 2),
                      "male": {"quantity": age_gender[a]["Male"],
                               "percent": age_gender[a]["Male"] / a_sum * 100
                      },
@@ -946,10 +964,28 @@ class PublicHealth(Resource):
                 Alerts.date < end_date_limit)
         ret["data"]["alerts_total"] = all_alerts.first()[0]
 
+        #Gender
+        query_variable = QueryVariable()
+        gender = query_variable.get("prc_1", "gender",
+                                    end_date=end_date_limit.isoformat(),
+                                    start_date=start_date.isoformat(),
+                                    only_loc=location)
+        female = gender["Female"]["total"]
+        male = gender["Male"]["total"]
+        ret["data"]["gender"] = [
+            make_dict("Female",
+                      female,
+                      female / total_cases * 100),
+            make_dict("Male",
+                      male,
+                      male / total_cases * 100)
+        ]
+
         #Demographics
         ret["data"]["demographics"] = []
         age = get_variables_category("age_gender", start_date, end_date_limit, location, conn)
         age_gender={}
+        tot = sum([group for group in age.values()])
         for a in age:
             gender,ac = a.split(" ")
             if ac in age_gender.keys():
@@ -961,17 +997,23 @@ class PublicHealth(Resource):
             a = age_variables[age_key]["name"]
             if a in age_gender.keys():
                 a_sum = sum(age_gender[a].values())
+                a_perc = a_sum / tot *100 if tot != 0 else 0
                 if a_sum == 0:
                     a_sum = 1
                 ret["data"]["demographics"].append(
                     {"age": a,
+                     "quantity": age_gender[a]["Male"] + age_gender[a]["Female"],
+                     "percent": round(a_perc, 2),
                      "male": {"quantity": age_gender[a]["Male"],
                               "percent": age_gender[a]["Male"] / a_sum * 100
                      },
                      "female":{"quantity": age_gender[a]["Female"],
                                "percent": age_gender[a]["Female"]/float(a_sum)*100
                      }
-                    })
+                 })
+
+
+
 
         #Nationality
         nationality = get_variables_category("nationality", start_date, end_date_limit, location, conn)
@@ -1086,8 +1128,13 @@ class CdPublicHealth(Resource):
         
         ret["data"]["global_clinic_num"] = tot_clinics.get(1)["total"]
 
+        total_consultations = get_variable_id("tot_1", start_date, end_date_limit, location, conn)
+        ret["data"]["total_consultations"] = total_consultations
         total_cases = get_variable_id("prc_1", start_date, end_date_limit, location, conn)
         ret["data"]["total_cases"] = total_cases
+        total_deaths = get_variable_id("dea_1", start_date, end_date_limit, location, conn)
+        ret["data"]["total_deaths"] = total_deaths
+
         ret["data"]["public_health_indicators"] = [
             make_dict(gettext("Cases Reported"), total_cases, 100)]
 
@@ -1124,20 +1171,26 @@ class CdPublicHealth(Resource):
         if less_5yo == 0:
             less_5yo = 1
         #public health indicators
-        modules = query_variable.get("prc_1", "module",
-                                 end_date=end_date_limit.isoformat(),
-                                 start_date=start_date.isoformat(),
-                                 only_loc=location)
 
-        logging.warning( str(modules) )
-        ret["data"]["public_health_indicators"].append(
-            make_dict(gettext("Laboratory results recorded"),
-                      modules["Laboratory Results"]["total"],
-                      modules["Laboratory Results"]["total"] / total_cases * 100))
-        ret["data"]["public_health_indicators"].append(
-            make_dict(gettext("Prescribing practice recorded"),
-                      modules["Prescribing"]["total"],
-                      modules["Prescribing"]["total"] / total_cases * 100))
+        medicines = query_variable.get("prc_2", "medicine",
+                                     end_date=end_date_limit.isoformat(),
+                                     start_date=start_date.isoformat(),
+                                     only_loc=location, use_ids=True)
+        
+        if "med_1" in medicines and "med_2" in medicines:
+            tot_med = medicines["med_1"]["total"]
+            if tot_med == 0:
+                tot_med = 1
+            ret["data"]["public_health_indicators"].append(
+                make_dict(gettext("Availability of prescribed medicines"),
+                          medicines["med_2"]["total"],
+                          medicines["med_2"]["total"] / tot_med * 100))
+        else:
+            ret["data"]["public_health_indicators"].append(
+                make_dict(gettext("Availability of prescribed medicines"),
+                          0,0))
+
+
         #Alerts
         all_alerts = alerts.get_alerts({"location": location})
         tot_alerts = 0
@@ -1178,30 +1231,35 @@ class CdPublicHealth(Resource):
 
         ret["data"]["alerts_total"] = tot_alerts
 
+
         #Demographics
         ret["data"]["demographics"] = []
         age =  query_variable.get("prc_1","age_gender",
                                   end_date=end_date_limit.isoformat(),
                                   start_date=start_date.isoformat(),
                                   only_loc=location)
+
         age_gender={}
+        tot = sum([group["total"] for group in age.values()])
         for a in age:
             gender,ac = a.split(" ")
             if ac in age_gender.keys():
                 age_gender[ac][gender] = age[a]["total"]
             else:
                 age_gender[ac] = {gender: age[a]["total"]}
-
+    
         age_variables = variables_instance.get("age")
         for age_key in sorted(age_variables.keys()):
             a = age_variables[age_key]["name"]
             if a in age_gender.keys():
                 a_sum = sum(age_gender[a].values())
-            
+                a_perc = a_sum / tot *100 if tot != 0 else 0
                 if a_sum == 0:
                     a_sum = 1
                 ret["data"]["demographics"].append(
                     {"age": a,
+                     "quantity": age_gender[a]["Male"] + age_gender[a]["Female"],
+                     "percent": round(a_perc, 2),
                      "male": {"quantity": age_gender[a]["Male"],
                               "percent": age_gender[a]["Male"] / a_sum * 100
                      },
@@ -1384,21 +1442,56 @@ class NcdPublicHealth(Resource):
         if less_5yo == 0:
             less_5yo = 1
         #public health indicators
-        modules = query_variable.get("prc_2", "module",
-                                 end_date=end_date_limit.isoformat(),
-                                 start_date=start_date.isoformat(),
-                                 only_loc=location)
 
+        smoking = query_ids(["prc_2", "smo_4"], start_date, end_date, only_loc=location)
+        tot_diabetes = query_ids(["ncd_1"], start_date, end_date, only_loc=location)
+        tot_hypertension = query_ids(["ncd_2"], start_date, end_date, only_loc=location)
+
+        if tot_diabetes == 0:
+            tot_diabetes = 1
+        if tot_hypertension == 0:
+            tot_hypertension = 1
+        
+        diabetes_with_hba1c = query_ids(["ncd_1", "lab_8"], start_date, end_date, only_loc=location)
+        hypertension_with_bp = query_ids(["ncd_2", "lab_1"], start_date, end_date, only_loc=location)
         ret["data"]["public_health_indicators"] = [
             make_dict("Cases Reported", total_cases, 100)]
+
+
+        
         ret["data"]["public_health_indicators"].append(
-            make_dict(gettext("Laboratory results recorded"),
-                      modules["Laboratory Results"]["total"],
-                      modules["Laboratory Results"]["total"] / total_cases * 100))
+            make_dict(gettext("Patient have smoking status recorded"),
+                      smoking,
+                      smoking / total_cases * 100))
+
         ret["data"]["public_health_indicators"].append(
-            make_dict(gettext("Prescribing practice recorded"),
-                      modules["Prescribing"]["total"],
-                      modules["Prescribing"]["total"] / total_cases * 100))
+            make_dict(gettext("Diabetes mellitus patients have HbA1C recorded"),
+                      diabetes_with_hba1c,
+                      diabetes_with_hba1c / tot_diabetes * 100))
+
+        ret["data"]["public_health_indicators"].append(
+            make_dict(gettext("Hypertension patients have BP recorded"),
+                      hypertension_with_bp,
+                      hypertension_with_bp / tot_hypertension * 100))
+
+
+        medicines = query_variable.get("prc_2", "medicine",
+                                     end_date=end_date_limit.isoformat(),
+                                     start_date=start_date.isoformat(),
+                                     only_loc=location, use_ids=True)
+        if "med_1" in medicines and "med_2" in medicines:
+            tot_med = medicines["med_1"]["total"]
+            if tot_med == 0:
+                tot_med = 1
+            ret["data"]["public_health_indicators"].append(
+                make_dict(gettext("Availability of prescribed medicines"),
+                          medicines["med_2"]["total"],
+                          medicines["med_2"]["total"] / tot_med * 100))
+        else:
+            ret["data"]["public_health_indicators"].append(
+                make_dict(gettext("Availability of prescribed medicines"),
+                          0,0))
+
         #Reporting sites
         locs = get_locations(db.session)
         ret["data"]["reporting_sites"] = []
@@ -1420,24 +1513,30 @@ class NcdPublicHealth(Resource):
                                   end_date=end_date_limit.isoformat(),
                                   start_date=start_date.isoformat(),
                                   only_loc=location)
+
+        logging.warning(age)
         age_gender={}
+        tot = sum([group["total"] for group in age.values()])
+
         for a in age:
             gender,ac = a.split(" ")
             if ac in age_gender.keys():
                 age_gender[ac][gender] = age[a]["total"]
             else:
                 age_gender[ac] = {gender: age[a]["total"]}
+    
         age_variables = variables_instance.get("ncd_age")
         for age_key in sorted(age_variables.keys()):
             a = age_variables[age_key]["name"]
-
             if a in age_gender.keys():
                 a_sum = sum(age_gender[a].values())
-            
+                a_perc = a_sum / tot *100 if tot != 0 else 0
                 if a_sum == 0:
                     a_sum = 1
                 ret["data"]["demographics"].append(
                     {"age": a,
+                     "quantity": age_gender[a]["Male"] + age_gender[a]["Female"],
+                     "percent": round(a_perc, 2),
                      "male": {"quantity": age_gender[a]["Male"],
                               "percent": age_gender[a]["Male"] / a_sum * 100
                      },
@@ -1525,8 +1624,8 @@ class RefugeePublicHealth(Resource):
         epi_week = ew.get(end_date.isoformat())["epi_week"]
         ret["data"] = {"epi_week_num": epi_week,
                        "end_date": end_date.isoformat(),
-                       "project_epoch": datetime(2015, 5, 20).isoformat(),
-                       "start_date": start_date.isoformat(),
+                       "project_epoch": datetime(2015, 5, 20).isoformat(),        
+                       "start_date": start_date.isoformat()
         }
         conn = db.engine.connect()
         locs = get_locations(db.session)
@@ -1666,7 +1765,8 @@ class RefugeePublicHealth(Resource):
                      "female":{"quantity": age_gender[a]["female"],
                                "percent": age_gender[a]["female"]/float(a_sum)*100
                      }
-                    })
+                })
+
         ret["data"]["gender"] = [
             make_dict("Female",
                       female,
@@ -1675,6 +1775,8 @@ class RefugeePublicHealth(Resource):
                       male,
                       male / tot_pop * 100)
         ]
+
+
         ret["data"]["presenting_complaints"] = [
             make_dict(gettext("Communicable Disease"), morbidity_cd_no, morbidity_cd_no / total_cases * 100),
             make_dict(gettext("Non-Communicable Disease"), morbidity_ncd_no, morbidity_ncd_no / total_cases * 100),

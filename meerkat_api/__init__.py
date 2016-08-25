@@ -206,7 +206,6 @@ api.add_resource(Completeness,
                  "/completeness/<variable>/<location>/<number_per_week>/<weekend>")
 api.add_resource(Records, "/records/<variable>/<location_id>")
 
-
 @app.route('/')
 def hello_world():
     return "WHO"
