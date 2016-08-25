@@ -51,7 +51,7 @@ class Completeness(Resource):
         ).group_by("week", "clinic","region")
 
         # We index all th results arrays by region_id
-        last_year = {1: 0} # 1 is the location id for the whole country
+        last_year = {1: 0}  # 1 is the location id for the whole country
         last_week = {1: 0}
         last_day = {1: 0}
         clinic_data = {1: {}}
@@ -134,15 +134,13 @@ class Completeness(Resource):
             if n_clinics == 0:
                 n_clinics = 1
                 app.logger.info(variable)
-            app.logger.info(region)
-            app.logger.info(last_week.get(region, 0))
-            app.logger.info(n_clinics)
             region_data[region] = {"last_day": last_day.get(region, 0)
                                    / n_clinics * 100,
                                    "last_week": last_week.get(region, 0)
-                                   / (number_per_week * n_clinics) * 100,
-                                   "last_year": last_year.get(region, 0)
-                                   / (n_weeks * n_clinics * number_per_week) * 100}
+                                   / (number_per_week * n_clinics) * 100}
+            
+                                   # "last_year": last_year.get(region, 0)
+                                   # / (n_weeks * n_clinics * number_per_week) * 100}
 
         # Get all clinics that send should send case_reports. As the above code will not
         # find clinics with 0 records. 
@@ -155,6 +153,7 @@ class Completeness(Resource):
                 parent_loc = row.parent_location
                 while parent_loc not in clinic_data.keys():
                     parent_loc = locations[parent_loc].parent_location
+                    if locations[parent_loc].parent_location == 1 and parent_loc not in clinic_data.keys():
+                        clinic_data[parent_loc] = {}
                 clinic_data[parent_loc][row.id] = {"day": 0, "week": 0, "year": 0}
-
         return {"regions": region_data, "clinics": clinic_data}
