@@ -167,8 +167,8 @@ class Completeness(Resource):
             ).sum().fillna(0)[variable].reindex(dates).sort_index().fillna(0)
             
             timeline = {str(location): {
-                "weeks": completeness.index.to_pydatetime(),
-                "values": completeness.values}
+                "weeks": [ d.isoformat() for d in completeness.index.to_pydatetime()],
+                "values": [float(v) for v in completeness.values]}
             }
             last_two_weeks = completeness.index[-2:]
             score = pd.Series() 
@@ -195,8 +195,12 @@ class Completeness(Resource):
                 found_dates.values,
                 errors="ignore"
             ).to_pydatetime()
+            dates_not_reported = [ d.isoformat() for d in dates_not_reported]
             clinic_scores = None # Not needed for this level
-
+            app.logger.error(series_to_json_dict(score))
+            app.logger.error(dates_not_reported)
+            app.logger.error(timeline)
+            
         return jsonify({"score": series_to_json_dict(score),
                         "timeline": timeline,
                         "clinic_score": series_to_json_dict(clinic_scores),
