@@ -310,7 +310,7 @@ class ExportForm(Resource):
     decorators = [require_api_key]
     
     def get(self, form):
-        locations, locs_by_deviceid, regions, districts = all_location_data(db.session)
+        locations, locs_by_deviceid, regions, districts, devices = all_location_data(db.session)
         if "fields" in request.args.keys():
             specified_keys = True
             keys = request.args["fields"].split(",")

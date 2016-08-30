@@ -3,7 +3,7 @@ Data resource for data exploration
 """
 from flask_restful import Resource
 from sqlalchemy import or_, extract, func, Integer
-from datetime import datetime
+from datetime import datetime, timedelta
 from dateutil.parser import parse
 from sqlalchemy.sql.expression import cast
 from flask import request

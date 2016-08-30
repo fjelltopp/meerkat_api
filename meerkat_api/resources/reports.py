@@ -373,7 +373,7 @@ class NcdReport(Resource):
                           "diabetes": [("lab_4", "lab_3"), ("lab_5", "lab_3"), ("lab_7", "lab_6"), ("lab_9", "lab_8"), ("com_2", "tot"), ("smo_2", "prc_2"), ("lab_11", "lab_10")]
         }
   
-        locations, ldid, regions, districts = all_location_data(db.session)
+        locations, ldid, regions, districts, devices = all_location_data(db.session)
         v = Variables()
         ages = v.get("ncd_age")
         
