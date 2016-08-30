@@ -107,11 +107,12 @@ class Completeness(Resource):
             tuples = []
             for name in sublocations:
                 for clinic in get_children(name, locs):
-                    start_date = locs[clinic].start_date
-                    if start_date < begining:
-                        start_date = begining
-                    for d in pd.date_range(start_date, end_d, freq=freq):
-                        tuples.append((name, clinic, d))
+                    if locs[clinic].case_report:
+                        start_date = locs[clinic].start_date
+                        if start_date < begining:
+                            start_date = begining
+                        for d in pd.date_range(start_date, end_d, freq=freq):
+                            tuples.append((name, clinic, d))
 
             new_index = pd.MultiIndex.from_tuples(tuples,
                                                   names=[sublevel, "clinic", "date"])
@@ -122,6 +123,14 @@ class Completeness(Resource):
                  pd.TimeGrouper(key="date", freq=freq, label="left")]
             ).sum().reindex(new_index)[variable].fillna(0).sort_index()
 
+            # Drop clinics with no submissions
+
+            clinic_sums = completeness.groupby(level=1).sum()
+            zero_clinics = clinic_sums[clinic_sums == 0].index
+            completeness = completeness.drop(zero_clinics, level=1)
+            completeness.reindex()
+
+            app.logger.error(completeness.index)
             # We only want to count a maximum of number per week per week
             completeness[completeness > number_per_week] = number_per_week
             
@@ -199,7 +208,7 @@ class Completeness(Resource):
             clinic_scores = None # Not needed for this level
             app.logger.error(series_to_json_dict(score))
             app.logger.error(dates_not_reported)
-            app.logger.error(timeline)
+        app.logger.error(timeline)
             
         return jsonify({"score": series_to_json_dict(score),
                         "timeline": timeline,
@@ -224,12 +233,12 @@ class NonReporting(Resource):
         locations = get_locations(db.session)
         location = int(location)
         clinics = get_children(location, locations)
-        ew = EpiWeek()
-        epi_week = ew.get()
-        start_date = epi_week_start(epi_week["year"],
-                                    epi_week["epi_week"]) - timedelta(days=7 * num_weeks)
+#        ew = EpiWeek()
+ #       epi_week = ew.get()
+        # start_date = epi_week_start(epi_week["year"],
+        #                             epi_week["epi_week"]) - timedelta(days=7 * num_weeks)
         clinics_with_variable = [ r[0] for r in db.session.query(Data.clinic).filter(
-            Data.variables.has_key(variable), Data.date > start_date).all()]
+            Data.variables.has_key(variable)).all()]
         non_reporting_clinics = []
         for clinic in clinics:
             if clinic not in clinics_with_variable:
