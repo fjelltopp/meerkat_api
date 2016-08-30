@@ -206,9 +206,6 @@ class Completeness(Resource):
             ).to_pydatetime()
             dates_not_reported = [ d.isoformat() for d in dates_not_reported]
             clinic_scores = None # Not needed for this level
-            app.logger.error(series_to_json_dict(score))
-            app.logger.error(dates_not_reported)
-        app.logger.error(timeline)
             
         return jsonify({"score": series_to_json_dict(score),
                         "timeline": timeline,

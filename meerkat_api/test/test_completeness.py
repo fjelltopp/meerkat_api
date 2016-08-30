@@ -60,15 +60,11 @@ class MeerkatAPIDataTestCase(unittest.TestCase):
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(sorted(data.keys()),
                          ["clinic_score", "dates_not_reported", "score", "timeline"])
-        self.assertEqual(data["score"]["1"], 5 / 40 * 100)
-        self.assertAlmostEqual(data["score"]["2"], 5 / 30 *100)
-        self.assertEqual(data["score"]["3"], 0)
+        self.assertEqual(data["score"]["1"], 5 / 20 * 100)
+        self.assertAlmostEqual(data["score"]["2"], 5 / 20 *100)
 
         self.assertEqual(data["clinic_score"]["7"], 40)
         self.assertEqual(data["clinic_score"]["8"], 10)
-        self.assertEqual(data["clinic_score"]["10"], 0)
-        self.assertEqual(data["clinic_score"]["11"], 0)
-
         today = date.today()
         today = datetime(today.year, today.month, today.day)
         if today.year == 2016:
@@ -88,12 +84,10 @@ class MeerkatAPIDataTestCase(unittest.TestCase):
 
         self.assertEqual(data["timeline"]["1"]["weeks"], dates_iso)
         
-        self.assertEqual(data["timeline"]["1"]["values"][-1], 1)
-        self.assertEqual(data["timeline"]["1"]["values"][-2], 0.25)
-        self.assertAlmostEqual(data["timeline"]["2"]["values"][-1], 4 / 3)
-        self.assertAlmostEqual(data["timeline"]["2"]["values"][-2], 1 / 3)
-        self.assertAlmostEqual(data["timeline"]["3"]["values"][-1], 0)
-        self.assertAlmostEqual(data["timeline"]["3"]["values"][-2], 0)
+        self.assertEqual(data["timeline"]["1"]["values"][-1], 2)
+        self.assertEqual(data["timeline"]["1"]["values"][-2], 0.5)
+        self.assertAlmostEqual(data["timeline"]["2"]["values"][-1], 4 / 2)
+        self.assertAlmostEqual(data["timeline"]["2"]["values"][-2], 1 / 2)
 
 
         rv = self.app.get('completeness/reg_1/4/5')
