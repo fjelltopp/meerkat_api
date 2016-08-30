@@ -369,7 +369,7 @@ class NcdReport(Resource):
         hypertension_id = "ncd_2"
         diseases = {"hypertension": hypertension_id,
                     "diabetes": diabetes_id}
-        ids_to_include = {"hypertension": [("lab_4", "lab_3"), ("lab_5", "lab_3"), ("lab_2", "lab_1"), ("com_1", "tot"), ("smo_2", "smo_4"), ("lab_11", "lab_10")],
+        ids_to_include = {"hypertension": [("lab_4", "lab_3"), ("lab_5", "lab_3"), ("lab_2", "lab_1"), ("com_1", "tot"), ("smo_2", "prc_2"), ("lab_11", "lab_10")],
                           "diabetes": [("lab_4", "lab_3"), ("lab_5", "lab_3"), ("lab_7", "lab_6"), ("lab_9", "lab_8"), ("com_2", "tot"), ("smo_2", "prc_2"), ("lab_11", "lab_10")]
         }
   

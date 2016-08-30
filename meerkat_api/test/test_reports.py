@@ -736,7 +736,7 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
         )
         self.assertEqual(data["diabetes"]["complications"]["data"][0],
                          {"title": "Region 1",
-                          "values": [3, [2 , 2/ 3 * 100], [1, 1/3 * 100] , [1, 50], [1, 50], [0, 0], [1, 50], [0, 0], [1, 50], [0, 0]]}
+                          "values": [3, [2 , 2/ 3 * 100], [1, 1/3 * 100] , [1, 50], [1, 50], [0, 0], [1, 50], [0, 0], [1, 1 / 3 * 100], [0, 0]]}
                          )
         self.assertEqual(data["diabetes"]["complications"]["data"][1],
                          {"title": "Region 2",
@@ -744,7 +744,7 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
                          )
         self.assertEqual(data["diabetes"]["complications"]["data"][2],
                          {"title": "Total",
-                          "values": [4, [2 , 2/ 4 * 100], [2, 2/4 * 100] , [1, 50], [1, 50], [1, 100], [1, 50], [1, 25], [1, 50], [1, 100]]}
+                          "values": [4, [2 , 2/ 4 * 100], [2, 2/4 * 100] , [1, 50], [1, 50], [1, 100], [1, 50], [1, 25], [1, 25], [1, 100]]}
                          )
         
 
@@ -770,13 +770,14 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
                          {"title": "Region 1",
                           "values": [2, [0, 0], [2, 100], [1, 100],[0, 0], [0, 0], [1, 50], [0, 0], [0, 0]]}
                          )
+        print(data["hypertension"]["complications"]["data"][1])
         self.assertEqual(data["hypertension"]["complications"]["data"][1],
                          {"title": "Region 2",
-                          "values": [2, [2, 100], [0, 0], [0, 0], [0, 0], [1, 50], [0, 0], [1, 100], [1, 100]]}
+                          "values": [2, [2, 100], [0, 0], [0, 0], [0, 0], [1, 50], [0, 0], [1, 50], [1, 100]]}
                          )
         self.assertEqual(data["hypertension"]["complications"]["data"][2],
                          {"title": "Total",
-                          "values": [4, [2, 50], [2, 50], [1, 100], [0,0], [1, 50], [1, 1/4*100], [1, 100], [1,100]]}
+                          "values": [4, [2, 50], [2, 50], [1, 100], [0,0], [1, 50], [1, 1/4*100], [1,25], [1,100]]}
                          )     
 
 
