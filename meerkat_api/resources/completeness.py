@@ -139,7 +139,7 @@ class Completeness(Resource):
 
             # Find last two weeks 
             idx = pd.IndexSlice
-            last_two_weeks = location_completeness_per_week.index[-2:]
+            last_two_weeks = location_completeness_per_week.index[-1:]
 
             # Get sublocation completeness for last two weeks as a percentage
             completeness_last_two_weeks = sublocations_completeness_per_week.loc[idx[:, last_two_weeks]]
