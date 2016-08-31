@@ -80,7 +80,6 @@ class Completeness(Resource):
                              Data.variables[variable].label(variable)
             ).filter(*conditions).statement,
             db.session.bind)
-
         if len(data) == 0:
             return {}
 
@@ -113,7 +112,6 @@ class Completeness(Resource):
                             start_date = begining
                         for d in pd.date_range(start_date, end_d, freq=freq):
                             tuples.append((name, clinic, d))
-
             new_index = pd.MultiIndex.from_tuples(tuples,
                                                   names=[sublevel, "clinic", "date"])
 
@@ -173,6 +171,10 @@ class Completeness(Resource):
             completeness = data.groupby(
                 pd.TimeGrouper(key="date", freq=freq, label="left")
             ).sum().fillna(0)[variable].reindex(dates).sort_index().fillna(0)
+
+            # We only want to count a maximum of number per week per week
+            completeness[completeness > number_per_week] = number_per_week
+
             
             timeline = {str(location): {
                 "weeks": [ d.isoformat() for d in completeness.index.to_pydatetime()],
