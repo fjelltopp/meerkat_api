@@ -130,7 +130,6 @@ class Completeness(Resource):
             completeness = completeness.drop(zero_clinics, level=1)
             completeness.reindex()
 
-            app.logger.error(completeness.index)
             # We only want to count a maximum of number per week per week
             completeness[completeness > number_per_week] = number_per_week
             
@@ -179,7 +178,7 @@ class Completeness(Resource):
                 "weeks": [ d.isoformat() for d in completeness.index.to_pydatetime()],
                 "values": [float(v) for v in completeness.values]}
             }
-            last_two_weeks = completeness.index[-2:]
+            last_two_weeks = completeness.index[-1:]
             score = pd.Series() 
             score.loc[location] = completeness[last_two_weeks].mean() / number_per_week * 100
 
