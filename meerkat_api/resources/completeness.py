@@ -12,7 +12,7 @@ from meerkat_api.resources.epi_week import EpiWeek, epi_week_start
 from meerkat_abacus.model import Data, Locations
 from meerkat_api.util import get_children
 from meerkat_abacus.util import get_locations, epi_week_start_date
-from meerkat_api.authentication import require_api_key
+from meerkat_api.authentication import authenticate
 from meerkat_abacus.util import get_locations
 from pandas.tseries.offsets import CustomBusinessDay
 
@@ -46,7 +46,7 @@ class Completeness(Resource):
     Returns:\n
         completness data: {score: score, timeline: timeline, clinic_score: clinic:score, dates_not_reported: dated_not_reported}\n
     """
-    decorators = [require_api_key]
+    decorators = [authenticate]
     def get(self, variable, location, number_per_week, weekend=None):
         today = datetime.now()
         epi_year_weekday = epi_week_start_date(today.year).weekday()
@@ -226,7 +226,7 @@ class NonReporting(Resource):
     Returns:\n
         list_of_clinics
     """
-    decorators = [require_api_key]
+    decorators = [authenticate]
     def get(self, variable, location, num_weeks=2):
         locations = get_locations(db.session)
         location = int(location)

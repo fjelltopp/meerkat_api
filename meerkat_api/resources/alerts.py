@@ -8,7 +8,7 @@ from meerkat_api.util import row_to_dict, get_children
 from meerkat_api import db
 from meerkat_abacus import model
 from meerkat_abacus.util import get_locations
-from meerkat_api.authentication import require_api_key
+from meerkat_api.authentication import authenticate
 
 
 class Alert(Resource):
@@ -21,7 +21,7 @@ class Alert(Resource):
     Returns:\n
         alert\n
     """
-    decorators = [require_api_key]
+    decorators = [authenticate]
 
     def get(self, alert_id):
         result = db.session.query(model.Alerts, model.Links).outerjoin(
@@ -40,7 +40,7 @@ class Alerts(Resource):
     Returns:\n
         alerts\n
     """
-    decorators = [require_api_key]
+    decorators = [authenticate]
     
     def get(self):
         args = request.args
@@ -98,7 +98,7 @@ class AggregateAlerts(Resource):
     Returns:\n
         alerts(dict): Aggregagated alerts by reason and status\n
     """
-    decorators = [require_api_key]
+    decorators = [authenticate]
     
     def get(self):
         args = request.args

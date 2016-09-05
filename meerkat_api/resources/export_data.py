@@ -14,7 +14,7 @@ from meerkat_abacus.util import all_location_data
 from meerkat_abacus.config import country_config, links
 from meerkat_api.resources.variables import Variables
 from meerkat_api.resources.epi_week import EpiWeek
-from meerkat_api.authentication import require_api_key
+from meerkat_api.authentication import authenticate
 from meerkat_abacus.util import get_locations, get_locations_by_deviceid
 from meerkat_api.resources.alerts import get_alerts
 
@@ -26,7 +26,7 @@ class Forms(Resource):
     Returns:\n
        forms: dict of forms with all their variables\n
     """
-    decorators = [require_api_key]
+    decorators = [authenticate]
 
     def get(self):
         return_data = {}
@@ -46,7 +46,7 @@ class ExportData(Resource):
         csv_file: with a row for each row in the data table\n
     """
     representations = {'text/csv': output_csv}
-    decorators = [require_api_key]
+    decorators = [authenticate]
 
     def get(self, use_loc_ids=False):
         results = db.session.query(Data)
@@ -76,7 +76,7 @@ class ExportAlerts(Resource):
         csv_file: csv file with alert data\n
     """
     representations = {'text/csv': output_csv}
-    decorators = [require_api_key]
+    decorators = [authenticate]
     
     def get(self):
         alerts = get_alerts({})
@@ -121,6 +121,9 @@ class ExportCategory(Resource):
     * field$month, field$year, field$epi_week: will extract the month, year or epi_week from the field
 
     * alert_links$alert_investigation$field: will get the field in the correpsonding alert_investigation
+
+    * calc$bmi calculates bmi as: 
+      results./bmi_weight / ((results./bmi_height/100) * (results./bmi_height/100))
     
     Args:\n
        category: category to match\n
@@ -129,7 +132,7 @@ class ExportCategory(Resource):
        csv_file\n
     """
     representations = {'text/csv': output_csv}
-    decorators = [require_api_key]
+    decorators = [authenticate]
     
     def get(self, category, download_name):
         app.logger.warning( "Export Category Called")
@@ -261,7 +264,9 @@ class ExportCategory(Resource):
                             dict_row[k] = link_data[link][r[1].data[link_def['from_column']]][form_var.split("$")[-1]]
                     else:
                         dict_row[k] = None
-
+                elif "calc$bmi" in form_var:
+                    calculation = r['results./bmi_weight'] / ((r['results./bmi_height']/100) * (r['results./bmi_height']/100))
+                    dict_row[k] = calculation
                 elif "alert_link" in form_var:
                     alert_id = r[0].uuid[-country_config["alert_id_length"]:]
                     if alert_id in alerts:
@@ -307,7 +312,7 @@ class ExportForm(Resource):
        csv-file\n
     """
     representations = {'text/csv': output_csv}
-    decorators = [require_api_key]
+    decorators = [authenticate]
     
     def get(self, form):
         locations, locs_by_deviceid, regions, districts, devices = all_location_data(db.session)

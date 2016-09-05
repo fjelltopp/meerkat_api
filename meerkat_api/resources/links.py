@@ -8,7 +8,7 @@ from meerkat_api.util import row_to_dict, rows_to_dicts
 from meerkat_api import app, db
 from meerkat_abacus import model
 from meerkat_abacus.util import get_locations
-from meerkat_api.authentication import require_api_key
+from meerkat_api.authentication import authenticate
 
 class Link(Resource):
     """
@@ -20,7 +20,7 @@ class Link(Resource):
     Returns:\n
         link\n
     """
-    decorators = [require_api_key]
+    decorators = [authenticate]
     def get(self, link_id):
         result = db.session.query(model.Links).filter(
             model.Links.id == link_id).one()
@@ -36,7 +36,7 @@ class Links(Resource):
     Returns:\n
         link\n
     """
-    decorators = [require_api_key]
+    decorators = [authenticate]
 
     def get(self, link_def):
         result = db.session.query(model.Links).filter(

@@ -1,10 +1,10 @@
 from flask import abort, request, current_app
 from functools import wraps
+import authorise as auth
 
-
-def require_api_key(f):
+def authenticate(f):
     """
-    Decorator to require api key for authentication 
+    Decorator to require api authentication 
     
     Args: 
         f: flask function
@@ -13,9 +13,6 @@ def require_api_key(f):
     """
     @wraps(f)
     def decorated(*args, **kwargs):
-        if request.args.get('api_key') == current_app.config["API_KEY"] or current_app.config["API_KEY"] == "":
-            return f(*args, **kwargs)
-        else:
-            current_app.logger.warning("Unauthorized address trying to use the API: {}".format(request.remote_addr))
-            abort(401)
+        auth.check_auth(['registered'])
+        return f(*args, **kwargs)
     return decorated

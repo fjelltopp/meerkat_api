@@ -35,7 +35,7 @@ from meerkat_api.resources import alerts
 from meerkat_api.resources.explore import QueryVariable, query_ids
 from meerkat_abacus.util import get_locations, all_location_data
 from meerkat_abacus import model
-from meerkat_api.authentication import require_api_key
+from meerkat_api.authentication import authenticate
 
 def get_disease_types(category, start_date, end_date, location, conn):
     """ 
@@ -329,7 +329,7 @@ class NcdReport(Resource):
     Returns:\n
        report_data\n
     """
-    decorators = [require_api_key]
+    decorators = [authenticate]
     def get(self, location, start_date=None, end_date=None):
         start_date, end_date = fix_dates(start_date, end_date)
         end_date_limit = end_date + timedelta(days=1)
@@ -482,7 +482,7 @@ class CdReport(Resource):
     Returns:\n
        report_data\n
     """
-    decorators = [require_api_key]
+    decorators = [authenticate]
     
     def get(self, location, start_date = None,end_date=None):
         start_date, end_date = fix_dates(start_date, end_date)
@@ -587,7 +587,7 @@ class Pip(Resource):
     Returns:\n
        report_data\n
     """
-    decorators = [require_api_key]
+    decorators = [authenticate]
 
     def get(self, location, start_date=None, end_date=None):
         start_date, end_date = fix_dates(start_date, end_date)
@@ -844,7 +844,7 @@ class PublicHealth(Resource):
     Returns:\n
        report_data\n
     """
-    decorators = [require_api_key]
+    decorators = [authenticate]
 
     def get(self, location, start_date=None, end_date=None):
         start_date, end_date = fix_dates(start_date, end_date)
@@ -1094,7 +1094,7 @@ class CdPublicHealth(Resource):
     Returns:\n
        report_data\n
     """
-    decorators = [require_api_key]
+    decorators = [authenticate]
 
     def get(self, location, start_date=None, end_date=None):
 
@@ -1324,7 +1324,7 @@ class CdPublicHealthMad(Resource):
     Returns:\n
        report_data\n
     """
-    decorators = [require_api_key]
+    decorators = [authenticate]
 
     def get(self, location, start_date=None, end_date=None):
 
@@ -1371,7 +1371,7 @@ class NcdPublicHealth(Resource):
     Returns:\n
        report_data\n
     """
-    decorators = [require_api_key]
+    decorators = [authenticate]
     
     def get(self, location, start_date=None, end_date=None):
         start_date, end_date = fix_dates(start_date, end_date)
@@ -1602,7 +1602,7 @@ class RefugeePublicHealth(Resource):
        report_data\n
     """
 
-    decorators = [require_api_key]
+    decorators = [authenticate]
     
     def get(self, location, start_date=None, end_date=None):
         if not app.config["TESTING"] and "refugee" not in model.form_tables:
@@ -1804,7 +1804,7 @@ class RefugeeDetail(Resource):
     Returns:\n
        report_data\n
     """
-    decorators = [require_api_key]
+    decorators = [authenticate]
     
     def get(self, location, start_date=None, end_date=None):
         if not app.config["TESTING"] and "refugee" not in model.form_tables:
@@ -1963,7 +1963,7 @@ class RefugeeCd(Resource):
        report_data\n
     """
 
-    decorators = [require_api_key]
+    decorators = [authenticate]
 
     def get(self, location, start_date=None, end_date=None):
         if not app.config["TESTING"] and "refugee" not in model.form_tables:
@@ -2086,7 +2086,7 @@ class WeeklyEpiMonitoring(Resource):
     Returns:\n
        report_data\n
     """
-    decorators = [require_api_key]
+    decorators = [authenticate]
     
     def get(self, location, start_date=None, end_date=None):
         start_date, end_date = fix_dates(start_date, end_date)
@@ -2211,7 +2211,7 @@ class Malaria(Resource):
     Returns:\n
        report_data\n
     """
-    decorators = [require_api_key]
+    decorators = [authenticate]
     
     def get(self, location, start_date=None, end_date=None):
 
