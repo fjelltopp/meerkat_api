@@ -262,6 +262,17 @@ class ExportCategory(Resource):
                     else:
                         dict_row[k] = None
 
+                #Mahoosive hack... Might be nice to add a genral "calc" keyword.
+                elif "calc$bmi" in form_var:
+                    logging.warning(r[1].data)
+                    weight = int(r[1].data['results./bmi_weight'])
+                    height = int(r[1].data['results./bmi_height'])
+                    logging.warning(weight)
+                    logging.warning(height)
+                    calculation = weight/((height/100)*(height/100))
+                    logging.warning(calculation)
+                    dict_row[k] = calculation
+
                 elif "alert_link" in form_var:
                     alert_id = r[0].uuid[-country_config["alert_id_length"]:]
                     if alert_id in alerts:
