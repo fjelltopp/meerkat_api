@@ -220,6 +220,8 @@ class ExportCategory(Resource):
                 if "icd_name$" in form_var:
                     if r[1].data["icd_code"] in icd_code_to_name[form_var]:
                         dict_row[k] = icd_code_to_name[form_var][r[1].data["icd_code"]]
+                    elif r[1].data["icd_code"].split(".")[0] in icd_code_to_name[form_var]:
+                        dict_row[k] = icd_code_to_name[form_var][r[1].data["icd_code"].split(".")[0]]
                     else:
                         dict_row[k] = None
                 elif form_var == "clinic":
