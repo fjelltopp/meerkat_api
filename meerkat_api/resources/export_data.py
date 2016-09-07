@@ -266,14 +266,15 @@ class ExportCategory(Resource):
 
                 #Mahoosive hack... Might be nice to add a genral "calc" keyword.
                 elif "calc$bmi" in form_var:
-                    logging.warning(r[1].data)
-                    weight = int(r[1].data['results./bmi_weight'])
-                    height = int(r[1].data['results./bmi_height'])
-                    logging.warning(weight)
-                    logging.warning(height)
-                    calculation = weight/((height/100)*(height/100))
-                    logging.warning(calculation)
-                    dict_row[k] = calculation
+                    weight = r[1].data['results./bmi_weight']
+                    height = r[1].data['results./bmi_height']
+                    if height and weight:
+                        height = float(height)
+                        weight = float(weight)
+                        calculation = weight/((height/100)*(height/100))
+                        dict_row[k] = calculation
+                    else:
+                        dict_row[k] = None
 
                 elif "alert_link" in form_var:
                     alert_id = r[0].uuid[-country_config["alert_id_length"]:]
