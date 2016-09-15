@@ -69,7 +69,9 @@ def valid_urls(app):
         "alert_id": "aaaaaa",
         "link_id": "1",
         "use_loc_ids": "1",
-        "form_name": "demo_case"
+        "form_name": "demo_case",
+        "weekend": "5,6",
+        "use_loc_ids": "1"
         }
     urls = []
     for url in meerkat_api.app.url_map.iter_rules():
@@ -145,28 +147,6 @@ class MeerkatAPITestCase(unittest.TestCase):
                 wrong_key = url + "?api_key=wrong-key"
                 rv = get_url(self.app, wrong_key)
                 self.assertEqual(rv.status_code, 401)
-
-                
-    def test_completeness(self):
-        #Need some more testing here
-        variable = "tot_1"
-        rv = self.app.get('/completeness/{}/4'.format(variable))
-        year = datetime.now().year
-        data = json.loads(rv.data.decode("utf-8"))
-        self.assertEqual(rv.status_code, 200)
-        
-        assert "clinics" in data.keys()
-        assert "regions" in data.keys()
-        assert "1" in data["clinics"].keys()
-        for clinic in data["clinics"]["1"].keys():
-            results = meerkat_api.db.session.query(
-                model.Data).filter(
-                    model.Data.clinic == clinic,
-                    extract("year", model.Data.date) == year,
-                    model.Data.variables.has_key(variable)
-                ).all()
-            assert data["clinics"]["1"][clinic]["year"] == len(results)
-
 
 if __name__ == '__main__':
     unittest.main()

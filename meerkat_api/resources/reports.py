@@ -373,7 +373,7 @@ class NcdReport(Resource):
                           "diabetes": [("lab_4", "lab_3"), ("lab_5", "lab_3"), ("lab_7", "lab_6"), ("lab_9", "lab_8"), ("com_2", "tot"), ("smo_2", "smo_4"), ("lab_11", "lab_10")]
         }
   
-        locations, ldid, regions, districts = all_location_data(db.session)
+        locations, ldid, regions, districts, devices = all_location_data(db.session)
         v = Variables()
         ages = v.get("ncd_age")
         
@@ -693,13 +693,14 @@ class Pip(Resource):
         # Assembling the timeline with suspected cases and the confirmed cases
         # from the lab linkage
         for link in lab_links:
-            total_lab_links += 1
-            epi_week = ew.get(link.from_date.isoformat())["epi_week"]
-            t = link.data["type"]
-            if t:
-                if epi_week in weeks:
-                    ret["data"]["timeline"]["confirmed"][t][epi_week -1] += 1
-                lab_types[t] += 1
+            if link.from_date > start_date and link.from_date <= end_date:
+                total_lab_links += 1
+                epi_week = ew.get(link.from_date.isoformat())["epi_week"]
+                t = link.data["type"]
+                if t:
+                    if epi_week in weeks:
+                        ret["data"]["timeline"]["confirmed"][t][weeks.index(epi_week)] += 1
+                    lab_types[t] += 1
         tl = ret["data"]["timeline"]["confirmed"]
         ret["data"]["timeline"]["confirmed"] = [
             {"title": key, "values": list(tl[key])} for key in sorted(tl, key=lambda k: (-sum(tl[k]), k))
