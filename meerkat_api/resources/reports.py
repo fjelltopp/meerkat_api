@@ -653,9 +653,15 @@ class Pip(Resource):
                                          start_date=start_date.isoformat(),
                                          only_loc=location,
                                          use_ids=True)
-        if pip_cat == {}:
+
+        pip_labs = query_variable.get(sari_code, "pip_lab",
+                                     end_date=end_date.isoformat(),
+                                     start_date=start_date.isoformat(),
+                                     only_loc=location,
+                                     use_ids=True)
+        if pip_labs == {}:
             return ret
-        weeks = sorted(pip_cat[sari_code]["weeks"].keys(), key=float)
+        weeks = sorted(pip_cat["pip_2"]["weeks"].keys(), key=float)
         nice_weeks = []
         for w in weeks:
             i = 0
@@ -670,10 +676,10 @@ class Pip(Resource):
             "suspected": [pip_cat[sari_code]["weeks"][k] if k in pip_cat[sari_code]["weeks"] else 0 for k in weeks],
             "weeks": nice_weeks,
             "confirmed": {
-                gettext("B"): [0 for w in weeks],
-                gettext("H3"): [0 for w in weeks],
-                gettext("H1N1"): [0 for w in weeks],
-                gettext("Mixed"): [0 for w in weeks]
+                gettext("B"): [pip_labs["pil_6"]["weeks"][w] for w in weeks],
+                gettext("H3"): [pip_labs["pil_4"]["weeks"][w] for w in weeks],
+                gettext("H1N1"): [pip_labs["pil_5"]["weeks"][w] for w in weeks],
+                gettext("Mixed"): [pip_labs["pil_7"]["weeks"][w] for w in weeks],
                 }
             }
 
@@ -682,53 +688,35 @@ class Pip(Resource):
         ret["data"]["cases_chronic"] = pip_cat["pip_3"]["total"]
         
         # Lab links and follow up links
-        lab_links = [] #db.session.query(model.Links).filter(model.Links.link_def == "pip")
         total_lab_links = 0
         lab_types = {
-            gettext("B"): 0,
-            gettext("H3"): 0,
-            gettext("H1N1"): 0,
-            gettext("Mixed"): 0
+            gettext("B"): pip_labs["pil_6"]["total"],
+            gettext("H3"): pip_labs["pil_4"]["total"],
+            gettext("H1N1"): pip_labs["pil_5"]["total"],
+            gettext("Mixed"): pip_labs["pil_7"]["total"]
         }
         # Assembling the timeline with suspected cases and the confirmed cases
         # from the lab linkage
-        for link in lab_links:
-            if link.from_date > start_date and link.from_date <= end_date:
-                total_lab_links += 1
-                epi_week = ew.get(link.from_date.isoformat())["epi_week"]
-                t = link.data["type"]
-                if t:
-                    if epi_week in weeks:
-                        ret["data"]["timeline"]["confirmed"][t][weeks.index(epi_week)] += 1
-                    lab_types[t] += 1
-        tl = ret["data"]["timeline"]["confirmed"]
-        ret["data"]["timeline"]["confirmed"] = [
-            {"title": key, "values": list(tl[key])} for key in sorted(tl, key=lambda k: (-sum(tl[k]), k))
-        ]
-                                                 
+       
+
+        total_lab_links = pip_labs["pil_2"]["total"] + pip_labs["pil_3"]["total"]
         ret["data"]["cases_pcr"] = total_lab_links
-        
         ret["data"]["flu_type"] = []
         for l in ["B", "H3", "H1N1", "Mixed"]:
             ret["data"]["flu_type"].append(
                 make_dict(l, lab_types[l], (lab_types[l]/total_cases) * 100)
             )
 
-        #Followup indicators
-        followup_links =[] # db.session.query(model.Links).filter(model.Links.link_def == "pip_followup")
-        total_followup = 0
-        icu = 0
-        ventilated = 0
-        mortality = 0
-        for link in followup_links:
-            total_followup += 1
-            if link.data["outcome"] == "death":
-                mortality += 1
-            if link.data["ventilated"] == "yes":
-                ventilated += 1
-            if link.data["admitted_to_icu"] == "yes":
-                icu += 1
-
+        pip_followup = query_variable.get(sari_code, "pip_followup",
+                                         end_date=end_date.isoformat(),
+                                         start_date=start_date.isoformat(),
+                                         only_loc=location,
+                                         use_ids=True)
+        print(pip_followup)
+        total_followup = pip_followup["pif_1"]["total"]
+        icu = pip_followup["pif_3"]["total"]
+        ventilated = pip_followup["pif_4"]["total"]
+        mortality = pip_followup["pif_5"]["total"]
         ret["data"]["pip_indicators"].append(
             make_dict(gettext("Patients followed up"), total_followup, total_followup / total_cases * 100))
         ret["data"]["pip_indicators"].append(
