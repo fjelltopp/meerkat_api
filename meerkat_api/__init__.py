@@ -126,7 +126,8 @@ api.add_resource(Variable, "/variable/<variable_id>")
 
 # Aggregate Data
 api.add_resource(Aggregate, "/aggregate/<variable_id>/<location_id>")
-api.add_resource(AggregateAlerts, "/aggregate_alerts")
+api.add_resource(AggregateAlerts, "/aggregate_alerts",
+                 "/aggregate_alerts/<central_review>")
 api.add_resource(AggregateYear,
                  "/aggregate_year/<variable_id>/<location_id>",
                  "/aggregate_year/<variable_id>/<location_id>/<year>")

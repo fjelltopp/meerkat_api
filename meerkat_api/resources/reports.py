@@ -17,6 +17,7 @@ Refugee Detailed Report
 """
 
 from flask_restful import Resource
+from flask import request
 from sqlalchemy import or_, func, desc, Integer
 from datetime import datetime, timedelta
 from dateutil import parser
@@ -518,7 +519,12 @@ class CdReport(Resource):
 
         # To get this data we loop through every alert and determine it's status
         # and which week it belongs to. We then assemble this data in the return dict.
-        
+
+        central_review = False
+        if "other" in request.args:
+            if request.args["other"] == "central_review":
+                central_review = True
+            
         all_alerts = alerts.get_alerts({"location": location})
         data = {}
         ewg = ew.get(start_date.isoformat())
@@ -548,19 +554,23 @@ class CdReport(Resource):
         # The loop through all alerts
         for a in all_alerts:
             if a["date"] <= end_date and a["date"] >= start_date:
-                print(a)
                 reason = variable_names[a["variables"]["alert_reason"]]
                 report_status = None
-                if "ale_1" in a["variables"]:
-                    status_code = "ale_"
-                    if "cre_1" in a["variables"]:
-                        status_code = "cre_"
-                    if status_code + "2" in a["variables"]:
+                if central_review:
+                    if "cre_2" in a["variables"]:
                         report_status = "confirmed"
-                    elif status_code + "4" in a["variables"]:
+                    elif "cre_3" in a["variables"]:
+                        continue
+                    else:
                         report_status = "suspected"
                 else:
-                    report_status = "suspected"
+                    if "ale_2" in a["variables"]:
+                        report_status = "confirmed"
+                    elif "ale_3" in a["variables"]:
+                        continue
+                    else:
+                        report_status = "suspected"
+                        
                 epi_week = ew.get(a["date"].isoformat())["epi_week"]
                 year_diff = end_date.year - a["date"].year
                 epi_week = epi_week - 52 * year_diff
@@ -1162,6 +1172,7 @@ class CdPublicHealth(Resource):
         ret["data"]["percent_cases_lt_5yo"] = less_5yo / total_cases * 100
         if less_5yo == 0:
             less_5yo = 1
+            
         #public health indicators
 
         medicines = query_variable.get("prc_2", "medicine",

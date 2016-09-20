@@ -89,31 +89,43 @@ class AggregateAlerts(Resource):
     """
     decorators = [require_api_key]
     
-    def get(self):
+    def get(self, central_review=False):
         args = request.args
         all_alerts = get_alerts(args)
         ret = {}
         for a in all_alerts:
             reason = a["variables"]["alert_reason"]
-            if "ale_1" in a["variables"]:
-                if "ale_2" in a["variables"]:
-                    status = "Confirmed"
-                elif "ale_3" in a["variables"]:
-                    status = "Disregarded"
-                elif "ale_4" in a["variables"]:
-                    status = "Ongoing"
-                    
+
+            if central_review:
+                if "ale_1" in a["variables"]:
+                    if "ale_2" in a["variables"]:
+                        status = "Ongoing"
+                    elif "ale_3" in a["variables"]:
+                        status = "Disregarded"
+                    elif "ale_4" in a["variables"]:
+                        status = "Ongoing"
+                        
+                    if "cre_1" in a["variables"]:
+                        if "cre_2" in a["variables"]:
+                            status = "Confirmed"
+                        elif "cre_3" in a["variables"]:
+                            status = "Disregarded"
+                        elif "cre_4" in a["variables"]:
+                            status = "Ongoing"
+                else:
+                    # We set all  without an investigation to Pending
+                    status = "Pending"
             else:
-                # We set all  without an investigation to Pending
-                status = "Pending"
-            if "cre_1" in a["variables"]:
-                # For the countries that have a central_review we overwrite the status from the alert_investigation
-                if "cre_2" in a["variables"]:
-                    status = "Confirmed"
-                elif "cre_3" in a["variables"]:
-                    status = "Disregarded"
-                elif "cre_4" in a["variables"]:
-                    status = "Ongoing"
+                if "ale_1" in a["variables"]:
+                    if "ale_2" in a["variables"]:
+                        status = "Confirmed"
+                    elif "ale_3" in a["variables"]:
+                        status = "Disregarded"
+                    elif "ale_4" in a["variables"]:
+                        status = "Ongoing"
+                else:
+                    # We set all  without an investigation to Pending
+                    status = "Pending"
             r = ret.setdefault(str(reason), {})
             r.setdefault(status, 0)
             r[status] += 1
