@@ -56,24 +56,40 @@ class AggregateYear(Resource):
     """
     decorators = [require_api_key]
     
-    def get(self, variable_id, location_id, year=datetime.today().year):
+    def get(self, variable_id, location_id, year=datetime.today().year, lim_variable=""):
         year = int(year)
         vi = str(variable_id)
         epi_week_start = epi_year_start(year)
 
         # We sum over variable grouped by epi_week
-        results = db.session.query(
-            func.sum(Data.variables[vi].astext.cast(Integer)).label('value'),
-            func.floor(
-                extract('days', Data.date -
-                        epi_week_start) / 7 + 1).label("week")
-        ).filter(Data.variables.has_key(vi),
-                 extract('year', Data.date) == year,
-                 or_(loc == location_id for loc in (Data.country,
-                                                    Data.region,
-                                                    Data.district,
-                                                    Data.clinic))
-        ).group_by("week")
+        if(lim_variable != ""):
+            results = db.session.query(
+                func.sum(Data.variables[vi].astext.cast(Integer)).label('value'),
+                func.floor(
+                    extract('days', Data.date -
+                            epi_week_start) / 7 + 1).label("week")
+            ).filter(Data.variables.has_key(vi),
+                    Data.variables.has_key(lim_variable),
+                    extract('year', Data.date) == year,
+                    or_(loc == location_id for loc in (Data.country,
+                                                        Data.region,
+                                                        Data.district,
+                                                        Data.clinic))
+            ).group_by("week")
+        else:
+            results = db.session.query(
+                func.sum(Data.variables[vi].astext.cast(Integer)).label('value'),
+                func.floor(
+                    extract('days', Data.date -
+                            epi_week_start) / 7 + 1).label("week")
+            ).filter(Data.variables.has_key(vi),
+                    extract('year', Data.date) == year,
+                    or_(loc == location_id for loc in (Data.country,
+                                                        Data.region,
+                                                        Data.district,
+                                                        Data.clinic))
+            ).group_by("week")
+
         weeks = dict((int(el[1]), el[0]) for el in results.all())
         return {"weeks": weeks, "year": sum(weeks.values())}
 
@@ -87,13 +103,14 @@ class AggregateCategory(Resource):
         category: category\n
         location: location_id\n
         year: year (defaults to the current year)\n
+        lim_variable: limit results to those with this variable\n
 
     Returns:\n
         result_dict: {variable_id: AggregateYear result_dict}\n
     """
     decorators = [require_api_key]
     
-    def get(self, category, location_id, year=datetime.today().year):
+    def get(self, category, location_id, lim_variable="", year=datetime.today().year):
         variables_instance = Variables()
         variables = variables_instance.get(category)
         aggregate_year = AggregateYear()
@@ -102,7 +119,8 @@ class AggregateCategory(Resource):
         for variable in variables.keys():
             return_data[variable] = aggregate_year.get(variable,
                                                        location_id,
-                                                       year)
+                                                       year,
+                                                       lim_variable)
         return return_data
 
     
