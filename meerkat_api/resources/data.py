@@ -102,7 +102,7 @@ class AggregateCategory(Resource):
     Args:\n
         category: category\n
         location: location_id\n
-        year: year (defaults to the current year)\n
+        year: year\n
         lim_variable: limit results to those with this variable\n
 
     Returns:\n
