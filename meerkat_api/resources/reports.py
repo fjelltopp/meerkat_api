@@ -14,6 +14,7 @@ CD Profile
 Refugee Profile
 Refugee CD Report
 Refugee Detailed Report
+Vaccination Report
 """
 
 from flask_restful import Resource
@@ -2281,3 +2282,22 @@ class Malaria(Resource):
         ret['variables'] = var 
 
         return ret
+
+class VaccinationReport(Resource):
+    """
+    Vaccination Report or "Vaccination de Routine"
+
+    This reports gives detailed tables on aspects concerning vaccination sessions.
+    As requested by Madagascar. 
+
+    Args:\n
+       location: Location to generate report for\n
+       start_date: Start date of report\n
+       end_date: End date of report\n
+    Returns:\n
+       report_data\n
+    """
+    decorators = [require_api_key]
+    
+    def get(self, location, start_date=None, end_date=None):
+        return 1
