@@ -2300,4 +2300,88 @@ class VaccinationReport(Resource):
     decorators = [require_api_key]
     
     def get(self, location, start_date=None, end_date=None):
-        return 1
+        start_date, end_date = fix_dates(start_date, end_date)
+        end_date_limit = end_date + timedelta(days=1)
+
+        ret = {}
+
+        # Meta data
+        ret["meta"] = {"uuid": str(uuid.uuid4()),
+                       "project_id": 1,
+                       "generation_timestamp": datetime.now().isoformat(),
+                       "schema_version": 0.1
+        }
+
+        # Dates and Location Information
+        ew = EpiWeek()
+        epi_week = ew.get(end_date.isoformat())["epi_week"]
+
+        ret["data"] = {"epi_week_num": epi_week,
+                       "end_date": end_date.isoformat(),
+                       "project_epoch": datetime(2015,5,20).isoformat(),
+                       "start_date": start_date.isoformat()
+        }
+
+        locs = get_locations(db.session)
+        if int(location) not in locs:
+            return None
+        location_name = locs[int(location)]
+        ret["data"]["project_region"] = location_name.name
+        ret["data"]["project_region_id"] = location
+        
+        # Actually get the data.
+        conn = db.engine.connect()
+
+        var = {}
+
+        ret['vaccination_sessions'] = get_variables_category(
+            'vaccination_sessions', 
+            start_date, 
+            end_date_limit, 
+            location, 
+            conn, 
+            use_ids=True
+        )
+        ret['vaccinated_pw'] = get_variables_category(
+            'vaccinated_pw', 
+            start_date, 
+            end_date_limit, 
+            location, 
+            conn, 
+            use_ids=True
+        )
+        ret['vaccinated_notpw'] = get_variables_category(
+            'vaccinated_notpw', 
+            start_date, 
+            end_date_limit, 
+            location, 
+            conn, 
+            use_ids=True
+        )
+        ret['vaccinated_0_11_mo_infants'] = get_variables_category(
+            'vaccinated_0_11_mo_infants', 
+            start_date, 
+            end_date_limit, 
+            location, 
+            conn, 
+            use_ids=True
+        )
+        ret['vaccinated_12_mo_infants'] = get_variables_category(
+            'vaccinated_12_mo_infantsS', 
+            start_date, 
+            end_date_limit, 
+            location, 
+            conn, 
+            use_ids=True
+        )
+
+        var.update(variables_instance.get('vaccination_sessions'))
+        var.update(variables_instance.get('vaccinated_pw'))
+        var.update(variables_instance.get('vaccinated_notpw'))
+        var.update(variables_instance.get('vaccinated_0_11_mo_infants'))
+        var.update(variables_instance.get('vaccinated_12_mo_infants'))
+        
+
+        ret['variables']=var
+
+        return ret
