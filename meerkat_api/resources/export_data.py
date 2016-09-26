@@ -31,8 +31,9 @@ class Forms(Resource):
     def get(self):
         return_data = {}
         for form in form_tables.keys():
+            print(form)
             results = db.session.query(form_tables[form]).first()
-            if results:
+            if results and results.data:
                 return_data[form] = list(results.data.keys(
                 )) + ["clinic", "district", "region"]
             else:
