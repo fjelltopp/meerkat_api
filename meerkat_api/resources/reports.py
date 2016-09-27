@@ -2367,7 +2367,7 @@ class VaccinationReport(Resource):
             use_ids=True
         )
         ret['vaccinated_12_mo_infants'] = get_variables_category(
-            'vaccinated_12_mo_infantsS', 
+            'vaccinated_12_mo_infants', 
             start_date, 
             end_date_limit, 
             location, 
