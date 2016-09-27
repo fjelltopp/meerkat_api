@@ -2333,55 +2333,56 @@ class VaccinationReport(Resource):
         conn = db.engine.connect()
 
         var = {}
+        counts = {}
 
-        ret['vaccination_sessions'] = get_variables_category(
-            'vaccination_sessions', 
-            start_date, 
-            end_date_limit, 
-            location, 
-            conn, 
-            use_ids=True
-        )
-        ret['vaccinated_pw'] = get_variables_category(
-            'vaccinated_pw', 
-            start_date, 
-            end_date_limit, 
-            location, 
-            conn, 
-            use_ids=True
-        )
-        ret['vaccinated_notpw'] = get_variables_category(
-            'vaccinated_notpw', 
-            start_date, 
-            end_date_limit, 
-            location, 
-            conn, 
-            use_ids=True
-        )
-        ret['vaccinated_0_11_mo_infants'] = get_variables_category(
-            'vaccinated_0_11_mo_infants', 
-            start_date, 
-            end_date_limit, 
-            location, 
-            conn, 
-            use_ids=True
-        )
-        ret['vaccinated_12_mo_infants'] = get_variables_category(
-            'vaccinated_12_mo_infants', 
-            start_date, 
-            end_date_limit, 
-            location, 
-            conn, 
-            use_ids=True
-        )
+        categories = [
+          'vaccination_sessions',
+          'vaccinated_pw',
+          'vaccinated_notpw',
+          'vaccinated_0_11_mo_infants',
+          'vaccinated_12_mo_infants'
+          ]
 
-        var.update(variables_instance.get('vaccination_sessions'))
-        var.update(variables_instance.get('vaccinated_pw'))
-        var.update(variables_instance.get('vaccinated_notpw'))
-        var.update(variables_instance.get('vaccinated_0_11_mo_infants'))
-        var.update(variables_instance.get('vaccinated_12_mo_infants'))
-        
+        for category in categories:
 
-        ret['variables']=var
+          counts[category] = get_variables_category(
+              category, 
+              start_date, 
+              end_date_limit, 
+              location, 
+              conn, 
+              use_ids=True
+          )
+
+        ret['data'].update({'infants':{}})
+        print(ret)
+        infant_vaccinations = []
+        category='vaccinated_0_11_mo_infants'
+        infant_vaccinations_variables = {}
+        infant_vaccinations_variables[category]=variables_instance.get(category)
+        for key in counts[category]:
+          ret['data']['infants'].update({infant_vaccinations_variables[category][key]['name']:{category:counts[category][key]}})
+
+        category='vaccinated_12_mo_infants'
+        infant_vaccinations_variables = {}
+        infant_vaccinations_variables[category]=variables_instance.get(category)
+        for key in counts[category]:
+          ret['data']['infants'][infant_vaccinations_variables[category][key]['name']].update({category:counts[category][key]})
+
+        ret['data'].update({'females':{}})
+
+        female_vaccinations = {}
+        category='vaccinated_pw'
+        female_vaccinations_variables = {}
+        female_vaccinations_variables[category]=variables_instance.get(category)
+        for key in counts[category]:
+          ret['data']['females'].update({female_vaccinations_variables[category][key]['name']:{category:counts[category][key]}})
+
+        category='vaccinated_notpw'
+        female_vaccinations_variables = {}
+        female_vaccinations_variables[category]=variables_instance.get(category)
+        for key in counts[category]:
+          ret['data']['females'][female_vaccinations_variables[category][key]['name']].update({category:counts[category][key]})
+
 
         return ret
