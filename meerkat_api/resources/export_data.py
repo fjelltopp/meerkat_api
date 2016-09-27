@@ -223,6 +223,8 @@ class ExportCategory(Resource):
                 if "icd_name$" in form_var:
                     if r[1].data["icd_code"] in icd_code_to_name[form_var]:
                         dict_row[k] = icd_code_to_name[form_var][r[1].data["icd_code"]]
+                    elif r[1].data["icd_code"].split(".")[0] in icd_code_to_name[form_var]:
+                        dict_row[k] = icd_code_to_name[form_var][r[1].data["icd_code"].split(".")[0]]
                     else:
                         dict_row[k] = None
                 elif form_var == "clinic":
@@ -264,9 +266,19 @@ class ExportCategory(Resource):
                             dict_row[k] = link_data[link][r[1].data[link_def['from_column']]][form_var.split("$")[-1]]
                     else:
                         dict_row[k] = None
+
+                #Mahoosive hack... Might be nice to add a genral "calc" keyword.
                 elif "calc$bmi" in form_var:
-                    calculation = r['results./bmi_weight'] / ((r['results./bmi_height']/100) * (r['results./bmi_height']/100))
-                    dict_row[k] = calculation
+                    weight = r[1].data['results./bmi_weight']
+                    height = r[1].data['results./bmi_height']
+                    if height and weight:
+                        height = float(height)
+                        weight = float(weight)
+                        calculation = weight/((height/100)*(height/100))
+                        dict_row[k] = calculation
+                    else:
+                        dict_row[k] = None
+
                 elif "alert_link" in form_var:
                     alert_id = r[0].uuid[-country_config["alert_id_length"]:]
                     if alert_id in alerts:
