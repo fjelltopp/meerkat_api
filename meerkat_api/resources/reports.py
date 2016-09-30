@@ -2354,6 +2354,7 @@ class VaccinationReport(Resource):
               use_ids=True
           )
 
+        ret['data'].update({'vaccination_sessions':counts['vaccination_sessions']['vac_ses']})
         ret['data'].update({'infants':{}})
         print(ret)
         infant_vaccinations = []
