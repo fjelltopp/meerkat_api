@@ -28,18 +28,18 @@ class MeerkatAPITestCase(unittest.TestCase):
         db_util.insert_codes(meerkat_api.db.session)
         db_util.insert_locations(meerkat_api.db.session)
         db_util.insert_cases(meerkat_api.db.session, "public_health_report")
-        db_util.insert_alerts(meerkat_api.db.session, "export_data")
-        db_util.insert_links(meerkat_api.db.session, "export_data")
-        data_management.table_data_from_csv("demo_case", model.form_tables["case"],
+        case_form_name = config.country_config["tables"][0]
+        data_management.table_data_from_csv("demo_case", model.form_tables[case_form_name],
                                             "meerkat_api/test/test_data/",
                                             meerkat_api.db.session, meerkat_api.db.engine,
                                             deviceids=["1", "2", "3", "4", "5", "6"],
-                                            table_name=config.country_config["tables"]["case"])
-        data_management.table_data_from_csv("demo_alert", model.form_tables["alert"],
+                                            table_name=case_form_name)
+        dr_name = config.country_config["tables"][1]
+        data_management.table_data_from_csv("demo_alert", model.form_tables[dr_name],
                                             "meerkat_api/test/test_data/",
                                             meerkat_api.db.session, meerkat_api.db.engine,
                                             deviceids=["1", "2", "3", "4", "5", "6"],
-                                            table_name=config.country_config["tables"]["alert"])
+                                            table_name=dr_name)
 
         
     def tearDown(self):
@@ -53,11 +53,11 @@ class MeerkatAPITestCase(unittest.TestCase):
 
         rv = self.app.get('/export/forms')
         self.assertEqual(rv.status_code, 200)
-        print(rv)
+
         data = json.loads(rv.data.decode("utf-8"))
-        self.assertEqual(sorted(data["alert"]), sorted(["alert_labs./return_lab","deviceid","meta/instanceID","pt./alert_id", "clinic", "region", "district"]))
-        self.assertEqual(data["register"], [])
-        self.assertEqual(sorted(data["case"]), sorted(keys))
+        self.assertEqual(sorted(data["demo_alert"]), sorted(["alert_labs./return_lab","deviceid","meta/instanceID","pt./alert_id", "clinic", "region", "district"]))
+        self.assertEqual(data["demo_register"], [])
+        self.assertEqual(sorted(data["demo_case"]), sorted(keys))
 
     
     def test_export_data(self):
@@ -83,7 +83,7 @@ class MeerkatAPITestCase(unittest.TestCase):
     def test_export_category(self):
         """ Test getting a from with category """
         
-        rv = self.app.get('/export/category/cd_tab/cd?variables=[["icd_code", "icd code"], ["icd_name$cd_tab", "Name"], ["alert_link$alert_investigation$alert_labs./return_lab", "Return Labs"], ["clinic", "Clinic"], ["meta/instanceID", "uuid"], ["end$month", "Month"], ["end$year", "Year"], ["end$epi_week", "epi_week"]]', headers={"Accept": "text/csv"})
+        rv = self.app.get('/export/category/demo_case/cd_tab/cd?variables=[["icd_code", "icd code"], ["icd_name$cd_tab", "Name"], ["code$ale_2,ale_3,ale_4$Confirmed,Disregarded,Ongoing","Alert Status"], ["clinic", "Clinic"], ["meta/instanceID", "uuid"], ["end$month", "Month"], ["end$year", "Year"], ["end$epi_week", "epi_week"]]', headers={"Accept": "text/csv"})
         self.assertEqual(rv.status_code, 200)
         lines = rv.data.decode("utf-8").strip().split("\r\n")
         self.assertEqual(len(lines), 8)
@@ -110,7 +110,6 @@ class MeerkatAPITestCase(unittest.TestCase):
                 self.assertEqual(line["Month"], "5")
                 self.assertEqual(line["Year"], "2016")
                 self.assertEqual(line["epi_week"], "18")
-                self.assertEqual(line["Return Labs"], "very_interesting_lab")
                 
                 found_uuid = True
         self.assertTrue(found_cholera)
@@ -121,7 +120,7 @@ class MeerkatAPITestCase(unittest.TestCase):
 
     def test_export_forms(self):
         """ Test the basic export form functionality """
-        rv = self.app.get('/export/form/case', headers={"Accept": "text/csv"})
+        rv = self.app.get('/export/form/demo_case', headers={"Accept": "text/csv"})
         self.assertEqual(rv.status_code, 200)
         lines = rv.data.decode("utf-8").strip().split("\r\n")
         self.assertEqual(len(lines), 11)
@@ -134,22 +133,22 @@ class MeerkatAPITestCase(unittest.TestCase):
                 self.assertEqual(line["icd_code"], "A06")
         self.assertTrue(found_uuid)
         
-        rv = self.app.get('/export/form/case?fields=icd_code,intro./module', headers={"Accept": "text/csv"})
+        rv = self.app.get('/export/form/demo_case?fields=icd_code,intro./module', headers={"Accept": "text/csv"})
         self.assertEqual(rv.status_code, 200)
         lines = rv.data.decode("utf-8").strip().split("\r\n")
         self.assertEqual(len(lines), 11)
         for line in c:
             self.assertEqual(sorted(line.keys()),
                              sorted(["icd_code", "intro./module"]))
-    def test_export_alerts(self):
-        """ Test exporting alerts """
-        rv = self.app.get('/export/alerts', headers={"Accept": "text/csv"})
-        self.assertEqual(rv.status_code, 200)
-        lines = rv.data.decode("utf-8").strip().split("\r\n")
-        self.assertEqual(len(lines), 2)
-        c = csv.DictReader(lines)
+    # def test_export_alerts(self):
+    #     """ Test exporting alerts """
+    #     rv = self.app.get('/export/alerts', headers={"Accept": "text/csv"})
+    #     self.assertEqual(rv.status_code, 200)
+    #     lines = rv.data.decode("utf-8").strip().split("\r\n")
+    #     self.assertEqual(len(lines), 2)
+    #     c = csv.DictReader(lines)
 
-        for line in c:
-            line["reason"] = "cmd_11"
-            line["alert_id"] = "ee9376"
-            line["alert_investigator"] = "Clinic 1"
+    #     for line in c:
+    #         line["reason"] = "cmd_11"
+    #         line["alert_id"] = "ee9376"
+    #         line["alert_investigator"] = "Clinic 1"

@@ -10,9 +10,8 @@ from meerkat_api import db, app
 from meerkat_abacus.util import epi_week_start_date, get_locations
 from meerkat_abacus.model import Data
 from meerkat_api.util import get_children
-from meerkat_api.resources.data import AggregateCategory, Aggregate
+from meerkat_api.resources.data import AggregateCategory
 from meerkat_api.resources.map import MapVariable
-from meerkat_api.resources.reports import get_variables_category
 from meerkat_api.resources.alerts import Alerts
 from meerkat_api.resources.reports import get_latest_category
 from meerkat_api.resources.locations import TotClinics

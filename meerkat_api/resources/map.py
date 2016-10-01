@@ -4,7 +4,7 @@ Resources for creating maps
 from flask_restful import Resource
 from flask import abort
 from geojson import Point, FeatureCollection, Feature
-from sqlalchemy import extract, func, Integer, or_
+from sqlalchemy import extract, func, Float, or_
 from datetime import datetime
 
 from meerkat_api.util import is_child, fix_dates
@@ -63,7 +63,7 @@ class MapVariable(Resource):
         year = datetime.now().year
 
         results = db.session.query(
-            func.sum( Data.variables[vi].astext.cast(Integer) ).label('value'),
+            func.sum( Data.variables[vi].astext.cast(Float) ).label('value'),
             Data.geolocation,
             Data.clinic
         ).filter( 
