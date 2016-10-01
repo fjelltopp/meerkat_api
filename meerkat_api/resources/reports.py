@@ -316,6 +316,8 @@ def refugee_disease(disease_demo):
                                  diseases[disease] / tot_n * 100))
     return ret
 
+def order_by_name(data_list):
+  return 1
 
 class NcdReport(Resource):
     """
@@ -2355,35 +2357,44 @@ class VaccinationReport(Resource):
           )
 
         ret['data'].update({'vaccination_sessions':counts['vaccination_sessions']['vac_ses']})
-        ret['data'].update({'infants':{}})
-        print(ret)
-        infant_vaccinations = []
-        category='vaccinated_0_11_mo_infants'
+        
+        ret['data'].update({'infants':[]})
+        category1='vaccinated_0_11_mo_infants'
+        category2='vaccinated_12_mo_infants'
         infant_vaccinations_variables = {}
-        infant_vaccinations_variables[category]=variables_instance.get(category)
-        for key in counts[category]:
-          ret['data']['infants'].update({infant_vaccinations_variables[category][key]['name']:{category:counts[category][key]}})
+        infant_vaccinations_variables[category1]=variables_instance.get(category1)
+        infant_vaccinations_variables[category2]=variables_instance.get(category2)
 
-        category='vaccinated_12_mo_infants'
-        infant_vaccinations_variables = {}
-        infant_vaccinations_variables[category]=variables_instance.get(category)
-        for key in counts[category]:
-          ret['data']['infants'][infant_vaccinations_variables[category][key]['name']].update({category:counts[category][key]})
+        for key in counts[category1]:
+          ret['data']['infants'].append({
+            'name': infant_vaccinations_variables[category1][key]['name']
+            ,category1:counts[category1][key]
+            })
 
-        ret['data'].update({'females':{}})
+        for key in counts[category2]:
+          for item in ret['data']['infants']:
+            if infant_vaccinations_variables[category2][key]['name']==item['name']:
+              item.update({category2:counts[category2][key]})
 
-        female_vaccinations = {}
-        category='vaccinated_pw'
+        ret['data'].update({'females':[]})
+        category1='vaccinated_pw'
+        category2='vaccinated_notpw'
         female_vaccinations_variables = {}
-        female_vaccinations_variables[category]=variables_instance.get(category)
-        for key in counts[category]:
-          ret['data']['females'].update({female_vaccinations_variables[category][key]['name']:{category:counts[category][key]}})
+        female_vaccinations_variables[category1]=variables_instance.get(category1)
+        female_vaccinations_variables[category2]=variables_instance.get(category2)
 
-        category='vaccinated_notpw'
-        female_vaccinations_variables = {}
-        female_vaccinations_variables[category]=variables_instance.get(category)
-        for key in counts[category]:
-          ret['data']['females'][female_vaccinations_variables[category][key]['name']].update({category:counts[category][key]})
+        for key in counts[category1]:
+          ret['data']['females'].append({
+            'name': female_vaccinations_variables[category1][key]['name']
+            ,category1:counts[category1][key]
+            })
 
+        for key in counts[category2]:
+          for item in ret['data']['females']:
+            if female_vaccinations_variables[category2][key]['name']==item['name']:
+              item.update({category2:counts[category2][key]})
 
+        #sort vaccination lists
+        ret['data']['infants'].sort(key=lambda tup: tup['name'])
+        ret['data']['females'].sort(key=lambda tup: tup['name'])
         return ret
