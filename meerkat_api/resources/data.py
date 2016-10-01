@@ -3,7 +3,7 @@ Resource for aggregating and querying data
 
 """
 from flask_restful import Resource
-from sqlalchemy import or_, extract, func, Integer
+from sqlalchemy import or_, extract, func, Integer, Float
 from datetime import datetime
 from flask import jsonify
 
@@ -78,7 +78,7 @@ class AggregateYear(Resource):
             ).group_by("week")
         else:
             results = db.session.query(
-                func.sum(Data.variables[vi].astext.cast(Integer)).label('value'),
+                func.sum(Data.variables[vi].astext.cast(Float)).label('value'),
                 func.floor(
                     extract('days', Data.date -
                             epi_week_start) / 7 + 1).label("week")
@@ -89,6 +89,7 @@ class AggregateYear(Resource):
                                                         Data.district,
                                                         Data.clinic))
             ).group_by("week")
+
 
         weeks = dict((int(el[1]), el[0]) for el in results.all())
         return {"weeks": weeks, "year": sum(weeks.values())}

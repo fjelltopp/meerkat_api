@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 import uuid
 import random, csv, os, logging
 
-from meerkat_api.test.test_data import codes, locations, cases, alerts, links
+from meerkat_api.test.test_data import  locations, cases
 
 from meerkat_abacus import model
 
@@ -52,10 +52,9 @@ def insert_codes(session):
     Args: 
        session: db session
     """
-    session.query(model.AggregationVariables).delete()
-    session.bulk_save_objects(codes.codes)
-    session.commit()
+    insert_codes_from_file(session, "demo_codes.csv")
 
+    
 def insert_codes_from_file(session, filename):
     """
     Import variables from codes csv-file.
@@ -68,6 +67,8 @@ def insert_codes_from_file(session, filename):
     session.commit()
 
     for row in read_csv(filename):
+        if "" in row.keys():
+            row.pop("")
         row = field_to_list(row, "category")
         session.add(model.AggregationVariables(**row))
 
@@ -177,6 +178,7 @@ def read_csv(filename):
         reader = csv.DictReader(f)
         rows = []
         for row in reader:
+
             rows.append(row)
     return rows
 
