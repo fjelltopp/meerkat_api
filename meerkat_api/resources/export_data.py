@@ -4,6 +4,7 @@ Data resource for exporting data
 from flask_restful import Resource
 from flask import request, abort, current_app
 from sqlalchemy import or_, text
+from sqlalchemy.orm import aliased
 from dateutil.parser import parse
 import json, io, csv, logging
 
@@ -133,7 +134,7 @@ class ExportCategory(Resource):
                     for c in codes:
                         icd_code_to_name[v[0]][c.strip()] = icd_name[i]["name"]
 
-            if "link$" in v[0]:
+            if "gen_link$" in v[0]:
                 have_links = True
                 link_ids.append(v[0].split("$")[1])
 
@@ -141,19 +142,27 @@ class ExportCategory(Resource):
         links_by_type, links_by_name = get_links(config_directory +
                                                  country_config["links_file"])
         # DB query, with yield_per(200) for memory reasons
-        results = db.session.query(Data, form_tables[form_name]).join(
-            form_tables[form_name], Data.uuid == form_tables[form_name].uuid)
 
+        columns = [Data, form_tables[form_name]]
+           
         link_id_index = {}
+        joins = []
         for i, l in enumerate(link_ids):
-            form = form_tables[links_by_name[l]["form"]]
-            results = results.join(form, Data.links[-1].astext == form.uuid)
-            link_id_index[l] = i
-
+            form = aliased(form_tables[links_by_name[l]["to_form"]])
+            joins.append((form, Data.links[(l,-1)].astext == form.uuid))
+            link_id_index[l] = i + 2
+            columns.append(form.data)
+            
+            
+            
+        results= db.session.query(*columns).join(
+            form_tables[form_name], Data.uuid == form_tables[form_name].uuid)
+        for join in joins:
+            results = results.outerjoin(join[0], join[1])
         results = results.filter(
             or_(Data.variables.has_key(key)
                 for key in data_keys)).yield_per(200)
-
+        print(results)
         locs = get_locations(db.session)
         dict_rows = []
 
