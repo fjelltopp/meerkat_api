@@ -24,7 +24,6 @@ class MeerkatAPITestCase(unittest.TestCase):
         db_util.insert_codes(meerkat_api.db.session)
         db_util.insert_locations(meerkat_api.db.session)
         db_util.insert_cases(meerkat_api.db.session, "frontpage")
-        db_util.insert_alerts(meerkat_api.db.session, "cd_report")
 
     def tearDown(self):
         pass
@@ -35,10 +34,10 @@ class MeerkatAPITestCase(unittest.TestCase):
         rv = self.app.get('/key_indicators')
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))
-
+        print(data)
         self.assertEqual(data["reg_1"]["year"], 1)
         self.assertEqual(data["reg_2"]["year"], 15)
-        self.assertEqual(data["tot_1"]["year"], 1)
+        self.assertEqual(data["tot_1"]["year"], 2)
 
     def test_tot_map(self):
         """ Test getting the map of cases"""
@@ -48,7 +47,7 @@ class MeerkatAPITestCase(unittest.TestCase):
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(sorted(data.keys()),
                          sorted(["7", "8",  "10", "11"]))
-        self.assertEqual(data["7"]["value"], 1)
+        self.assertEqual(data["7"]["value"], 2)
         self.assertEqual(data["8"]["value"], 0)
         self.assertEqual(data["10"]["value"], 0)
         self.assertEqual(data["11"]["value"], 0)
@@ -71,7 +70,7 @@ class MeerkatAPITestCase(unittest.TestCase):
         rv = self.app.get('/num_alerts')
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))
-        self.assertEqual(data["num_alerts"], 8)
+        self.assertEqual(data["num_alerts"], 1)
 
     def test_refugee_page(self):
         """ test the refugee page """

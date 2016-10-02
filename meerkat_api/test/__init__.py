@@ -63,13 +63,16 @@ def valid_urls(app):
         "epi_week": "2",
         "number_per_week": "5",
         "clinic_type": "Hospital",
-        "form": "case",
+        "form": "demo_case",
         "date": datetime(2015, 1, 1).isoformat(),
         "link_def": "alert_investigation",
         "alert_id": "aaaaaa",
         "link_id": "1",
+        "use_loc_ids": "1",
+        "form_name": "demo_case",
         "weekend": "5,6",
-        "use_loc_ids": "1"
+        "use_loc_ids": "1",
+        "central_review": "crl_1"
         }
     urls = []
     for url in meerkat_api.app.url_map.iter_rules():
@@ -127,12 +130,6 @@ class MeerkatAPITestCase(unittest.TestCase):
         
     def test_authentication(self):
         meerkat_api.app.config['API_KEY'] = "test-api"
-        # rv = self.app.get("/test-authentication?api_key=test-api")
-        # self.assertEqual(rv.status_code, 200)
-        # rv = self.app.get("/test-authentication")
-        # self.assertEqual(rv.status_code, 401)
-        # rv = self.app.get("/test-authentication?api_key=not-real-key")
-        # self.assertEqual(rv.status_code, 401)
         urls_without_authentication = ["/key_indicators", "/tot_map", "consultation_map", "num_alerts", "refugee_page", "/epi_week", "/epi_week_start", "/clinics", "/variables", "/variable", "/tot_clinics", "/locationtree", "/locations", "/location", "/num_clinics"]
         urls = valid_urls(meerkat_api.app)
         for url in sorted(urls, reverse=True):
