@@ -21,6 +21,9 @@ install:
 - conda update -q conda
 - conda install pandas
 - pip install -r requirements.txt
+- git clone https://github.com/meerkat-code/meerkat_auth.git
+- pip install -r meerkat_auth/requirements.txt
+- export PYTHONPATH=$HOME/meerkat_auth/meerkat_auth
 - git clone https://github.com/meerkat-code/meerkat_abacus.git
 - pip install -r meerkat_abacus/requirements.txt
 - cd meerkat_abacus

@@ -9,6 +9,7 @@ import unittest
 import meerkat_api
 from meerkat_api.test import db_util
 from meerkat_api.test.test_data.codes import codes
+from . import settings
 
 class MeerkatAPIVariablesTestCase(unittest.TestCase):
 
@@ -26,43 +27,43 @@ class MeerkatAPIVariablesTestCase(unittest.TestCase):
 
     def test_variable(self):
         """Check locations"""
-        rv = self.app.get('/variable/tot_1')
+        rv = self.app.get('/variable/tot_1', headers=headers=settings.header)
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(rv.status_code, 200)
         self.assertEqual(data["name"], "Total")
-        rv = self.app.get('/variable/gen_2')
+        rv = self.app.get('/variable/gen_2', headers=headers=settings.header)
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(rv.status_code, 200)
         self.assertEqual(data["name"], "Female")
-        rv = self.app.get('/variable/prc_6')
+        rv = self.app.get('/variable/prc_6', headers=headers=settings.header)
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(rv.status_code, 200)
         self.assertEqual(data["name"], "Injury")
         
     def test_variables(self):
         """Check locations"""
-        rv = self.app.get('/variables/gender')
+        rv = self.app.get('/variables/gender', headers=headers=settings.header)
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(rv.status_code, 200)
         self.assertEqual(sorted(data.keys()),
                          ["gen_1", "gen_2"])
         self.assertEqual(data["gen_2"]["name"], "Female")
 
-        rv = self.app.get('/variables/locations')
+        rv = self.app.get('/variables/locations', headers=headers=settings.header)
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(rv.status_code, 200)
         self.assertEqual(len(data), 11)
         self.assertEqual(data["11"]["name"], "Clinic 5")
 
 
-        rv = self.app.get('/variables/alert')
+        rv = self.app.get('/variables/alert', headers=headers=settings.header)
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(rv.status_code, 200)
         self.assertEqual(len(data), 36)
         self.assertEqual(data["cmd_1"]["name"], "Cholera")
 
         
-        rv = self.app.get('/variables/all')
+        rv = self.app.get('/variables/all', headers=headers=settings.header)
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(rv.status_code, 200)
         self.assertEqual(len(data), len(codes))

@@ -8,6 +8,7 @@ import json
 import unittest
 import meerkat_api
 from meerkat_api.test import db_util
+from . import settings
 
 class MeerkatAPIAlertsTestCase(unittest.TestCase):
 
@@ -24,7 +25,7 @@ class MeerkatAPIAlertsTestCase(unittest.TestCase):
 
     def test_link(self):
         """ test getting one link by it's id"""
-        rv = self.app.get('/link/1')
+        rv = self.app.get('/link/1', headers=headers=settings.header)
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))["link"]
         self.assertEqual(data["link_def"], "pip_followup")
@@ -35,7 +36,7 @@ class MeerkatAPIAlertsTestCase(unittest.TestCase):
     
     def test_links(self):
         """ Test getting links by type """
-        rv = self.app.get('/links/pip_followup')
+        rv = self.app.get('/links/pip_followup', headers=headers=settings.header)
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))["links"]
         self.assertEqual(len(data), 4)
@@ -44,7 +45,7 @@ class MeerkatAPIAlertsTestCase(unittest.TestCase):
         self.assertEqual(data["namru-2"]["id"], 2)
         
         
-        rv = self.app.get('/links/pip')
+        rv = self.app.get('/links/pip', headers=headers=settings.header)
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))["links"]
         self.assertEqual(len(data), 3)

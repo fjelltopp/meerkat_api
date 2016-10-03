@@ -12,7 +12,7 @@ from datetime import timedelta
 from sqlalchemy import extract
 from dateutil import parser
 import pytz
-
+from . import settings
 import meerkat_api
 from meerkat_api.test import db_util
 from meerkat_abacus import data_management
@@ -383,7 +383,7 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
             "ncd_report", "cd_report", "refugee_public_health", "refugee_detail", "refugee_cd"
             ]
         for report in reports:
-            rv = self.app.get('/reports/{}/99'.format(report))
+            rv = self.app.get('/reports/{}/99'.format(report), headers=settings.header)
             self.assertEqual(rv.status_code, 200)
             data = json.loads(rv.data.decode("utf-8"))
             self.assertEqual(data, None)
@@ -401,7 +401,7 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
             "ncd_report", "cd_report", "refugee_public_health", "refugee_detail", "refugee_cd"
         ]
         for report in reports:
-            rv = self.app.get('/reports/{}/1'.format(report))
+            rv = self.app.get('/reports/{}/1'.format(report), headers=settings.header)
             self.assertEqual(rv.status_code, 200)
             data = json.loads(rv.data.decode("utf-8"))["data"]
             self.assertEqual(data["start_date"],
@@ -411,7 +411,7 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
             # With specified dates
             end_date = datetime(2015, 8, 7).isoformat()
             start_date = datetime(2014, 2, 3).isoformat()
-            rv = self.app.get('/reports/{}/1/{}'.format(report, end_date))
+            rv = self.app.get('/reports/{}/1/{}'.format(report, end_date), headers=settings.header)
             self.assertEqual(rv.status_code, 200)
             data = json.loads(rv.data.decode("utf-8"))["data"]
             self.assertEqual(data["start_date"],
@@ -419,7 +419,7 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
             self.assertEqual(data["end_date"],
                              end_date)
             
-            rv = self.app.get('/reports/{}/1/{}/{}'.format(report, end_date, start_date))
+            rv = self.app.get('/reports/{}/1/{}/{}'.format(report, end_date, start_date), headers=settings.header)
             self.assertEqual(rv.status_code, 200)
             data = json.loads(rv.data.decode("utf-8"))["data"]
             self.assertEqual(data["start_date"],
@@ -436,7 +436,7 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
         db_util.insert_alerts(self.db.session, "public_health_report")
         end_date = datetime(2015, 12, 31).isoformat()
         start_date = datetime(2015, 1, 1).isoformat()
-        rv = self.app.get('/reports/public_health/1/{}/{}'.format(end_date, start_date))
+        rv = self.app.get('/reports/public_health/1/{}/{}'.format(end_date, start_date), headers=settings.header)
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))["data"]
 
@@ -528,7 +528,7 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
 
         # test with a different Location
 
-        rv = self.app.get('/reports/public_health/2/{}/{}'.format(end_date, start_date))
+        rv = self.app.get('/reports/public_health/2/{}/{}'.format(end_date, start_date), headers=settings.header)
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))["data"]
 
@@ -545,7 +545,7 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
 
         end_date = datetime(2015, 12, 31).isoformat()
         start_date = datetime(2015, 1, 1).isoformat()
-        rv = self.app.get('/reports/ncd_public_health/1/{}/{}'.format(end_date, start_date))
+        rv = self.app.get('/reports/ncd_public_health/1/{}/{}'.format(end_date, start_date), headers=settings.header)
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))["data"]
 
@@ -617,7 +617,7 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
 
         # test with a different Location
 
-        rv = self.app.get('/reports/ncd_public_health/2/{}/{}'.format(end_date, start_date))
+        rv = self.app.get('/reports/ncd_public_health/2/{}/{}'.format(end_date, start_date), headers=settings.header)
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))["data"]
 
@@ -633,7 +633,7 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
         db_util.insert_links(self.db.session, "public_health_report")
         end_date = datetime(2015, 12, 31).isoformat()
         start_date = datetime(2015, 1, 1).isoformat()
-        rv = self.app.get('/reports/cd_public_health/1/{}/{}'.format(end_date, start_date))
+        rv = self.app.get('/reports/cd_public_health/1/{}/{}'.format(end_date, start_date), headers=settings.header)
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))["data"]
 
@@ -696,7 +696,7 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
 
 
         # Test with a different Location
-        rv = self.app.get('/reports/cd_public_health/2/{}/{}'.format(end_date, start_date))
+        rv = self.app.get('/reports/cd_public_health/2/{}/{}'.format(end_date, start_date), headers=settings.header)
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))["data"]
 
@@ -704,7 +704,7 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
         self.assertEqual(data["clinic_num"], 3)
     # def test_cd_report(self):
     #     location = 2
-    #     rv = self.app.get('/reports/cd_report/{}'.format(location))
+    #     rv = self.app.get('/reports/cd_report/{}'.format(location), headers=settings.header)
     #     self.assertEqual(rv.status_code, 200)
     #     data = json.loads(rv.data.decode("utf-8"))
 
@@ -715,7 +715,7 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
         db_util.insert_cases(self.db.session, "ncd_report")
         end_date = datetime(2015, 12, 31).isoformat()
         start_date = datetime(2015, 1, 1).isoformat()
-        rv = self.app.get('/reports/ncd_report/1/{}/{}'.format(end_date, start_date))
+        rv = self.app.get('/reports/ncd_report/1/{}/{}'.format(end_date, start_date), headers=settings.header)
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))
 
@@ -791,7 +791,7 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
         db_util.insert_links(self.db.session, "cd_report")
         end_date = datetime(2015, 12, 31).isoformat()
         start_date = datetime(2015, 1, 1).isoformat()
-        rv = self.app.get('/reports/cd_report/1/{}/{}'.format(end_date, start_date))
+        rv = self.app.get('/reports/cd_report/1/{}/{}'.format(end_date, start_date), headers=settings.header)
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))["data"]["communicable_diseases"]
 
@@ -834,7 +834,7 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
         db_util.insert_links(self.db.session, "pip_report")
         end_date = datetime(2015, 12, 31).isoformat()
         start_date = datetime(2015, 1, 1).isoformat()
-        rv = self.app.get('/reports/pip/1/{}/{}'.format(end_date, start_date))
+        rv = self.app.get('/reports/pip/1/{}/{}'.format(end_date, start_date), headers=settings.header)
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))["data"]
 
@@ -940,7 +940,7 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
         db_util.insert_cases(self.db.session, "refugee_data")
         end_date = datetime(2015, 12, 31).isoformat()
         start_date = datetime(2015, 1, 1).isoformat()
-        rv = self.app.get('/reports/refugee_public_health/1/{}/{}'.format(end_date, start_date))
+        rv = self.app.get('/reports/refugee_public_health/1/{}/{}'.format(end_date, start_date), headers=settings.header)
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))["data"]
 
@@ -1058,7 +1058,7 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
         db_util.insert_cases(self.db.session, "refugee_data")
         end_date = datetime(2015, 12, 31).isoformat()
         start_date = datetime(2015, 1, 1).isoformat()
-        rv = self.app.get('/reports/refugee_detail/1/{}/{}'.format(end_date, start_date))
+        rv = self.app.get('/reports/refugee_detail/1/{}/{}'.format(end_date, start_date), headers=settings.header)
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))["data"]
 
@@ -1336,7 +1336,7 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
         db_util.insert_cases(self.db.session, "refugee_data")
         end_date = datetime(2015, 12, 31).isoformat()
         start_date = datetime(2015, 1, 1).isoformat()
-        rv = self.app.get('/reports/refugee_cd/1/{}/{}'.format(end_date, start_date))
+        rv = self.app.get('/reports/refugee_cd/1/{}/{}'.format(end_date, start_date), headers=settings.header)
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))["data"]
 
@@ -1372,7 +1372,7 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
         location = 1
 
         #Call the api method and check the response is 200 OK. Store the data. 
-        rv = self.app.get('/reports/epi_monitoring/{}/{}/{}'.format(location, end_date, start_date))
+        rv = self.app.get('/reports/epi_monitoring/{}/{}/{}'.format(location, end_date, start_date), headers=settings.header)
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))
 
@@ -1408,7 +1408,7 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
         start_date = datetime(2016, 1, 1).isoformat()
         location = 1
  
-        rv = self.app.get('/reports/epi_monitoring/{}/{}/{}'.format(location, end_date, start_date))
+        rv = self.app.get('/reports/epi_monitoring/{}/{}/{}'.format(location, end_date, start_date), headers=settings.header)
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))
 
@@ -1419,7 +1419,7 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
         start_date = datetime(2015, 1, 1).isoformat()
         location = 11
  
-        rv = self.app.get('/reports/epi_monitoring/{}/{}/{}'.format(location, end_date, start_date))
+        rv = self.app.get('/reports/epi_monitoring/{}/{}/{}'.format(location, end_date, start_date), headers=settings.header)
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))
 
@@ -1439,7 +1439,7 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
         location = 1
 
         #Call the api method and check the response is 200 OK. Store the data. 
-        rv = self.app.get('/reports/malaria/{}/{}/{}'.format(location, end_date, start_date))
+        rv = self.app.get('/reports/malaria/{}/{}/{}'.format(location, end_date, start_date), headers=settings.header)
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))
 
@@ -1470,7 +1470,7 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
         start_date = datetime(2016, 1, 1).isoformat()
         location = 1
  
-        rv = self.app.get('/reports/malaria/{}/{}/{}'.format(location, end_date, start_date))
+        rv = self.app.get('/reports/malaria/{}/{}/{}'.format(location, end_date, start_date), headers=settings.header)
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))
 
@@ -1481,7 +1481,7 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
         start_date = datetime(2015, 1, 1).isoformat()
         location = 11
  
-        rv = self.app.get('/reports/malaria/{}/{}/{}'.format(location, end_date, start_date))
+        rv = self.app.get('/reports/malaria/{}/{}/{}'.format(location, end_date, start_date), headers=settings.header)
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))
 
