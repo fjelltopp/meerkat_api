@@ -74,48 +74,6 @@ class ExportData(Resource):
         return {"data": dict_rows, "keys": fieldnames, "filename": "data"}
 
 
-<<<<<<< HEAD
-class ExportAlerts(Resource):
-    """
-    Export all alerts with investigation information as csv file
-
-    Returns:\n
-        csv_file: csv file with alert data\n
-    """
-    representations = {'text/csv': output_csv}
-    decorators = [authenticate]
-    
-    def get(self):
-        alerts = get_alerts({})
-        output_dicts = []
-        locs_by_deviceid = get_locations_by_deviceid(db.session)
-        locs = get_locations(db.session)
-        keys = set()
-        
-        for a in alerts.values():
-            output_dict = a["alerts"]
-            output_dict["date"] = output_dict["date"].isoformat()
-            output_dict.update(output_dict.pop("data"))
-            output_dict["clinic"] = locs[output_dict["clinic"]].name
-            if "links" in a:
-                for link in a["links"]:
-                    output_dict[link+"_date"] = a["links"][link]["to_date"].isoformat()
-                    for key in a["links"][link]["data"]:
-                        if isinstance(a["links"][link]["data"][key], list):
-                            output_dict[link + "_"+key] = ";".join(a["links"][link]["data"][key])
-                        else:
-                            output_dict[link + "_"+key] = a["links"][link]["data"][key]
-                            if key == "investigator":
-                                output_dict[link + "_"+key] = locs[locs_by_deviceid[a["links"][link]["data"][key]]].name
-            keys = keys.union(output_dict.keys())
-            output_dicts.append(output_dict)
-
-        return {"data": output_dicts, "keys": keys, "filename": "alerts"}
-
-
-
-=======
->>>>>>> master
 class ExportCategory(Resource):
     """
     Export cases from case form that matches a category
@@ -141,17 +99,12 @@ class ExportCategory(Resource):
        csv_file\n
     """
     representations = {'text/csv': output_csv}
-<<<<<<< HEAD
+
     decorators = [authenticate]
-    
-    def get(self, category, download_name):
-        app.logger.warning( "Export Category Called")
-=======
-    decorators = [require_api_key]
 
     def get(self, form_name, category, download_name):
         app.logger.warning("Export Category Called")
->>>>>>> master
+
 
         if "variables" in request.args.keys():
             variables = json.loads(request.args["variables"])
@@ -334,13 +287,8 @@ class ExportForm(Resource):
        csv-file\n
     """
     representations = {'text/csv': output_csv}
-<<<<<<< HEAD
     decorators = [authenticate]
     
-=======
-    decorators = [require_api_key]
-
->>>>>>> master
     def get(self, form):
         locations, locs_by_deviceid, regions, districts, devices = all_location_data(
             db.session)
