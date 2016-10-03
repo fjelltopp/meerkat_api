@@ -113,7 +113,7 @@ class MeerkatAPIDataTestCase(unittest.TestCase):
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(sorted(list(data.keys())),
-                         sorted(["prc_1", "prc_2", "prc_3", "prc_4", "prc_5", "prc_6", "prc_7"]))
+                         sorted(["prc_1", "prc_2", "prc_3", "prc_4",  "prc_6", "prc_7"]))
         self.assertEqual(data["prc_1"]["year"], 7)
         self.assertEqual(data["prc_2"]["year"], 2)
         self.assertEqual(data["prc_3"]["year"], 1)

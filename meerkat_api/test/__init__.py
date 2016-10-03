@@ -64,13 +64,16 @@ def valid_urls(app):
         "epi_week": "2",
         "number_per_week": "5",
         "clinic_type": "Hospital",
-        "form": "case",
+        "form": "demo_case",
         "date": datetime(2015, 1, 1).isoformat(),
         "link_def": "alert_investigation",
         "alert_id": "aaaaaa",
         "link_id": "1",
+        "use_loc_ids": "1",
+        "form_name": "demo_case",
         "weekend": "5,6",
-        "use_loc_ids": "1"
+        "use_loc_ids": "1",
+        "central_review": "crl_1"
         }
     urls = []
     for url in meerkat_api.app.url_map.iter_rules():
@@ -145,6 +148,7 @@ class MeerkatAPITestCase(unittest.TestCase):
     def test_authentication(self):
         #TODO: Test new authentication.
         self.assertTrue(True)
+
 
 if __name__ == '__main__':
     unittest.main()

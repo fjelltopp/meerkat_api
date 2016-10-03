@@ -17,6 +17,7 @@ Refugee Detailed Report
 """
 
 from flask_restful import Resource
+from flask import request
 from sqlalchemy import or_, func, desc, Integer
 from datetime import datetime, timedelta
 from dateutil import parser
@@ -26,7 +27,7 @@ from gettext import gettext
 import logging
 from meerkat_api.util import get_children, is_child, fix_dates
 from meerkat_api import db, app
-from meerkat_abacus.model import Data, Locations, Alerts, AggregationVariables
+from meerkat_abacus.model import Data, Locations, AggregationVariables
 from meerkat_api.resources.completeness import Completeness
 from meerkat_api.resources.variables import Variables
 from meerkat_api.resources.epi_week import EpiWeek, epi_week_start
@@ -97,7 +98,7 @@ def top(values, number=5):
 
 
 # A predifend query to use in get_variable_id
-qu = text("SELECT sum(CAST(data.variables ->> :variables_1 AS INTEGER)) AS sum_1  FROM data WHERE (data.variables ? :variables_2) AND data.date >= :date_1 AND data.date < :date_2 AND (data.country = :country_1 OR data.region = :region_1 OR data.district = :district_1 OR data.clinic = :clinic_1)")
+qu = text("SELECT sum(CAST(data.variables ->> :variables_1 AS FLOAT)) AS sum_1  FROM data WHERE (data.variables ? :variables_2) AND data.date >= :date_1 AND data.date < :date_2 AND (data.country = :country_1 OR data.region = :region_1 OR data.district = :district_1 OR data.clinic = :clinic_1)")
 
 
 def get_variable_id(variable_id, start_date, end_date, location, conn):
@@ -518,7 +519,12 @@ class CdReport(Resource):
 
         # To get this data we loop through every alert and determine it's status
         # and which week it belongs to. We then assemble this data in the return dict.
-        
+
+        central_review = False
+        if "other" in request.args:
+            if request.args["other"] == "central_review":
+                central_review = True
+            
         all_alerts = alerts.get_alerts({"location": location})
         data = {}
         ewg = ew.get(start_date.isoformat())
@@ -546,22 +552,27 @@ class CdReport(Resource):
         for v in variable_query.all():
             variable_names[v.id] = v.name
         # The loop through all alerts
-        for a in all_alerts.values():
-            if a["alerts"]["date"] <= end_date and a["alerts"]["date"] >= start_date:
-                reason = variable_names[a["alerts"]["reason"]]
+        for a in all_alerts:
+            if a["date"] <= end_date and a["date"] >= start_date:
+                reason = variable_names[a["variables"]["alert_reason"]]
                 report_status = None
-                if "links" in a and "alert_investigation" in a["links"]:
-                    status = a["links"]["alert_investigation"]["data"]["status"]
-                    if "central_review" in a["links"]:
-                        status = a["links"]["central_review"]["data"]["status"]
-                    if status == "Confirmed":
+                if central_review:
+                    if "cre_2" in a["variables"]:
                         report_status = "confirmed"
-                    elif status != "Disregarded":
+                    elif "cre_3" in a["variables"]:
+                        continue
+                    else:
                         report_status = "suspected"
                 else:
-                    report_status = "suspected"
-                epi_week = ew.get(a["alerts"]["date"].isoformat())["epi_week"]
-                year_diff = end_date.year - a["alerts"]["date"].year
+                    if "ale_2" in a["variables"]:
+                        report_status = "confirmed"
+                    elif "ale_3" in a["variables"]:
+                        continue
+                    else:
+                        report_status = "suspected"
+                        
+                epi_week = ew.get(a["date"].isoformat())["epi_week"]
+                year_diff = end_date.year - a["date"].year
                 epi_week = epi_week - 52 * year_diff
                 if report_status:
                     data.setdefault(reason, {"weeks": nice_weeks,
@@ -652,9 +663,15 @@ class Pip(Resource):
                                          start_date=start_date.isoformat(),
                                          only_loc=location,
                                          use_ids=True)
-        if pip_cat == {}:
+
+        pip_labs = query_variable.get(sari_code, "pip_lab",
+                                     end_date=end_date.isoformat(),
+                                     start_date=start_date.isoformat(),
+                                     only_loc=location,
+                                     use_ids=True)
+        if pip_labs == {}:
             return ret
-        weeks = sorted(pip_cat[sari_code]["weeks"].keys(), key=float)
+        weeks = sorted(pip_cat["pip_2"]["weeks"].keys(), key=float)
         nice_weeks = []
         for w in weeks:
             i = 0
@@ -669,10 +686,10 @@ class Pip(Resource):
             "suspected": [pip_cat[sari_code]["weeks"][k] if k in pip_cat[sari_code]["weeks"] else 0 for k in weeks],
             "weeks": nice_weeks,
             "confirmed": {
-                gettext("B"): [0 for w in weeks],
-                gettext("H3"): [0 for w in weeks],
-                gettext("H1N1"): [0 for w in weeks],
-                gettext("Mixed"): [0 for w in weeks]
+                gettext("B"): [pip_labs["pil_6"]["weeks"][w] for w in weeks],
+                gettext("H3"): [pip_labs["pil_4"]["weeks"][w] for w in weeks],
+                gettext("H1N1"): [pip_labs["pil_5"]["weeks"][w] for w in weeks],
+                gettext("Mixed"): [pip_labs["pil_7"]["weeks"][w] for w in weeks],
                 }
             }
 
@@ -681,53 +698,35 @@ class Pip(Resource):
         ret["data"]["cases_chronic"] = pip_cat["pip_3"]["total"]
         
         # Lab links and follow up links
-        lab_links = db.session.query(model.Links).filter(model.Links.link_def == "pip")
         total_lab_links = 0
         lab_types = {
-            gettext("B"): 0,
-            gettext("H3"): 0,
-            gettext("H1N1"): 0,
-            gettext("Mixed"): 0
+            gettext("B"): pip_labs["pil_6"]["total"],
+            gettext("H3"): pip_labs["pil_4"]["total"],
+            gettext("H1N1"): pip_labs["pil_5"]["total"],
+            gettext("Mixed"): pip_labs["pil_7"]["total"]
         }
         # Assembling the timeline with suspected cases and the confirmed cases
         # from the lab linkage
-        for link in lab_links:
-            if link.from_date > start_date and link.from_date <= end_date:
-                total_lab_links += 1
-                epi_week = ew.get(link.from_date.isoformat())["epi_week"]
-                t = link.data["type"]
-                if t:
-                    if epi_week in weeks:
-                        ret["data"]["timeline"]["confirmed"][t][weeks.index(epi_week)] += 1
-                    lab_types[t] += 1
-        tl = ret["data"]["timeline"]["confirmed"]
-        ret["data"]["timeline"]["confirmed"] = [
-            {"title": key, "values": list(tl[key])} for key in sorted(tl, key=lambda k: (-sum(tl[k]), k))
-        ]
-                                                 
+       
+
+        total_lab_links = pip_labs["pil_2"]["total"] + pip_labs["pil_3"]["total"]
         ret["data"]["cases_pcr"] = total_lab_links
-        
         ret["data"]["flu_type"] = []
         for l in ["B", "H3", "H1N1", "Mixed"]:
             ret["data"]["flu_type"].append(
                 make_dict(l, lab_types[l], (lab_types[l]/total_cases) * 100)
             )
 
-        #Followup indicators
-        followup_links = db.session.query(model.Links).filter(model.Links.link_def == "pip_followup")
-        total_followup = 0
-        icu = 0
-        ventilated = 0
-        mortality = 0
-        for link in followup_links:
-            total_followup += 1
-            if link.data["outcome"] == "death":
-                mortality += 1
-            if link.data["ventilated"] == "yes":
-                ventilated += 1
-            if link.data["admitted_to_icu"] == "yes":
-                icu += 1
-
+        pip_followup = query_variable.get(sari_code, "pip_followup",
+                                         end_date=end_date.isoformat(),
+                                         start_date=start_date.isoformat(),
+                                         only_loc=location,
+                                         use_ids=True)
+        print(pip_followup)
+        total_followup = pip_followup["pif_1"]["total"]
+        icu = pip_followup["pif_3"]["total"]
+        ventilated = pip_followup["pif_4"]["total"]
+        mortality = pip_followup["pif_5"]["total"]
         ret["data"]["pip_indicators"].append(
             make_dict(gettext("Patients followed up"), total_followup, total_followup / total_cases * 100))
         ret["data"]["pip_indicators"].append(
@@ -951,17 +950,20 @@ class PublicHealth(Resource):
 
         #Alerts
         alerts = db.session.query(
-            Alerts.reason, func.count(Alerts.id).label("count")).filter(
-                Alerts.date >= start_date,
-                Alerts.date < end_date_limit).group_by(Alerts.reason).order_by(desc("count")).limit(5)
+            Data.variables["alert_reason"], func.count(Data.uuid).label("count")).filter(
+                Data.date >= start_date,
+                Data.date < end_date_limit,
+                Data.variables.has_key("alert")).group_by(Data.variables["alert_reason"]).order_by(desc("count")).limit(5)
         ret["data"]["alerts"]=[]
         for a in alerts.all():
             ret["data"]["alerts"].append(
                 {"subject": a[0],
                  "quantity": a[1]})
-        all_alerts = db.session.query(func.count(Alerts.id)).filter(
-                Alerts.date >= start_date,
-                Alerts.date < end_date_limit)
+        all_alerts = db.session.query(func.count(Data.uuid)).filter(
+            Data.date >= start_date,
+            Data.date < end_date_limit,
+            Data.variables.has_key("alert")
+        )
         ret["data"]["alerts_total"] = all_alerts.first()[0]
 
         #Gender
@@ -1170,6 +1172,7 @@ class CdPublicHealth(Resource):
         ret["data"]["percent_cases_lt_5yo"] = less_5yo / total_cases * 100
         if less_5yo == 0:
             less_5yo = 1
+            
         #public health indicators
 
         medicines = query_variable.get("prc_2", "medicine",
@@ -1195,11 +1198,11 @@ class CdPublicHealth(Resource):
         all_alerts = alerts.get_alerts({"location": location})
         tot_alerts = 0
         investigated_alerts = 0
-        for a in all_alerts.values():
-            if a["alerts"]["date"] <= end_date and a["alerts"]["date"] > start_date:
+        for a in all_alerts:
+            if a["date"] <= end_date and a["date"] > start_date:
                 tot_alerts += 1
                 report_status = False
-                if "links" in a and "alert_investigation" in a["links"]:
+                if "ale_1" in a["variables"]:
                     investigated_alerts += 1
         ret["data"]["public_health_indicators"].append(
             make_dict(gettext("Alerts generated"),
@@ -2173,10 +2176,10 @@ class WeeklyEpiMonitoring(Resource):
         tot_alerts = 0
         investigated_alerts = 0
 
-        for a in all_alerts.values():
+        for a in all_alerts:
                 tot_alerts += 1
                 report_status = False
-                if "links" in a and "alert_investigation" in a["links"]:
+                if "ale_1" in a["variables"]:
                     investigated_alerts += 1
 
 

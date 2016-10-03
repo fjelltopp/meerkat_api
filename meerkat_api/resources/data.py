@@ -3,7 +3,7 @@ Resource for aggregating and querying data
 
 """
 from flask_restful import Resource
-from sqlalchemy import or_, extract, func, Integer
+from sqlalchemy import or_, extract, func, Integer, Float
 from datetime import datetime
 from flask import jsonify
 
@@ -63,7 +63,7 @@ class AggregateYear(Resource):
 
         # We sum over variable grouped by epi_week
         results = db.session.query(
-            func.sum(Data.variables[vi].astext.cast(Integer)).label('value'),
+            func.sum(Data.variables[vi].astext.cast(Float)).label('value'),
             func.floor(
                 extract('days', Data.date -
                         epi_week_start) / 7 + 1).label("week")

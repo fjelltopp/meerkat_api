@@ -4,18 +4,20 @@ Data resource for exporting data
 from flask_restful import Resource
 from flask import request, abort, current_app
 from sqlalchemy import or_, text
+from sqlalchemy.orm import aliased
 from dateutil.parser import parse
+import json
 import json, io, csv, logging
 
 from meerkat_api.util import row_to_dict
 from meerkat_api import db, app, output_csv
-from meerkat_abacus.model import Data, form_tables, Links
+from meerkat_abacus.model import Data, form_tables
 from meerkat_abacus.util import all_location_data
-from meerkat_abacus.config import country_config, links
+from meerkat_abacus.config import country_config, config_directory
 from meerkat_api.resources.variables import Variables
 from meerkat_api.resources.epi_week import EpiWeek
 from meerkat_api.authentication import authenticate
-from meerkat_abacus.util import get_locations, get_locations_by_deviceid
+from meerkat_abacus.util import get_locations, get_locations_by_deviceid, get_links
 from meerkat_api.resources.alerts import get_alerts
 
 
@@ -31,13 +33,16 @@ class Forms(Resource):
     def get(self):
         return_data = {}
         for form in form_tables.keys():
+            print(form)
             results = db.session.query(form_tables[form]).first()
-            if results:
-                return_data[form] = list(results.data.keys()) + ["clinic", "district", "region"]
+            if results and results.data:
+                return_data[form] = list(results.data.keys(
+                )) + ["clinic", "district", "region"]
             else:
                 return_data[form] = []
         return return_data
-            
+
+
 class ExportData(Resource):
     """
     Export data table from db
@@ -55,7 +60,8 @@ class ExportData(Resource):
         for row in results:
             variables = variables.union(set(row.variables.keys()))
         fieldnames = ["id", "country", "region", "district", "clinic",
-                      "clinic_type", "geolocation", "date", "uuid"] + list(variables)
+                      "clinic_type", "geolocation", "date", "uuid"
+                      ] + list(variables)
         dict_rows = []
         for row in results:
             dict_row = row_to_dict(row)
@@ -68,6 +74,7 @@ class ExportData(Resource):
         return {"data": dict_rows, "keys": fieldnames, "filename": "data"}
 
 
+<<<<<<< HEAD
 class ExportAlerts(Resource):
     """
     Export all alerts with investigation information as csv file
@@ -107,6 +114,8 @@ class ExportAlerts(Resource):
 
 
 
+=======
+>>>>>>> master
 class ExportCategory(Resource):
     """
     Export cases from case form that matches a category
@@ -132,10 +141,17 @@ class ExportCategory(Resource):
        csv_file\n
     """
     representations = {'text/csv': output_csv}
+<<<<<<< HEAD
     decorators = [authenticate]
     
     def get(self, category, download_name):
         app.logger.warning( "Export Category Called")
+=======
+    decorators = [require_api_key]
+
+    def get(self, form_name, category, download_name):
+        app.logger.warning("Export Category Called")
+>>>>>>> master
 
         if "variables" in request.args.keys():
             variables = json.loads(request.args["variables"])
@@ -152,12 +168,13 @@ class ExportCategory(Resource):
         icd_code_to_name = {}
         link_ids = []
         have_links = False
+
+        min_translation = {}
+        
         #Set up icd_code_to_name if needed and determine if alert_links are included
         for v in variables:
             return_keys.append(v[1])
-            translation_dict[v[1]] = v[0]
-            if "alert_link" in v[0]:
-                alert = True
+
             if "icd_name$" in v[0]:
                 category = v[0].split("$")[1]
                 icd_name = var.get(category)
@@ -171,47 +188,43 @@ class ExportCategory(Resource):
                         codes = [condition]
                     for c in codes:
                         icd_code_to_name[v[0]][c.strip()] = icd_name[i]["name"]
-
+            if "$translate" in v[0]:
+                split = v[0].split("$")
+                field = "$".join(split[:-1])
+                trans = split[-1]
+                tr_dict = json.loads(trans.split(";")[1].replace("'",'"'))
+                min_translation[v[1]] = tr_dict
+                v[0] = field
+                print(min_translation)
             if "gen_link$" in v[0]:
                 have_links = True
-                link_ids.append( v[0].split("$")[1] )
-
-               
-        # Sort out alerts
-        if alert:
-            alerts = get_alerts({})
-            link_tables = {}
-            for l in links.links:
-                link_tables[l["id"]] = l["to_table"]
-          
-        #Ordered link definitions so we can definitions easily when adding linked data.  
-        ordered_links = {}
-        for link in links.links:
-            ordered_links[link["id"]] = link
+                link_ids.append(v[0].split("$")[1])
+            translation_dict[v[1]] = v[0]
+            
         link_ids = set(link_ids)
-
-        # Need to get all the links from the DB first due to speed issues
-        if have_links:
-            link_data = {}
-            for link in link_ids:
-                link_def = ordered_links[link]
-                table = form_tables[link_def['to_table']]
-                links_values = db.session.query(Links.to_id).filter(Links.link_def == link).all()
-                to_ids = []
-                for l in links_values:
-                    to_ids.append(l[0])
-                to_data = db.session.query(table).filter(table.uuid.in_(to_ids))
-                link_data_by_value = {}
-                for d in to_data:
-                    link_data_by_value[d.data[link_def["to_column"]]]= d.data
-                link_data[link] = link_data_by_value
-
-                
+        links_by_type, links_by_name = get_links(config_directory +
+                                                 country_config["links_file"])
         # DB query, with yield_per(200) for memory reasons
-        results = db.session.query(Data,form_tables["case"]).join(form_tables["case"], Data.uuid==form_tables["case"].uuid).filter(
-            or_(Data.variables.has_key(key) for key in data_keys)
-        ).yield_per(200)
-        
+
+        columns = [Data, form_tables[form_name]]
+           
+        link_id_index = {}
+        joins = []
+        for i, l in enumerate(link_ids):
+            form = aliased(form_tables[links_by_name[l]["to_form"]])
+            joins.append((form, Data.links[(l,-1)].astext == form.uuid))
+            link_id_index[l] = i + 2
+            columns.append(form.data)
+            
+            
+            
+        results= db.session.query(*columns).join(
+            form_tables[form_name], Data.uuid == form_tables[form_name].uuid)
+        for join in joins:
+            results = results.outerjoin(join[0], join[1])
+        results = results.filter(
+            or_(Data.variables.has_key(key)
+                for key in data_keys)).yield_per(200)
         locs = get_locations(db.session)
         dict_rows = []
 
@@ -222,9 +235,8 @@ class ExportCategory(Resource):
                 form_var = translation_dict[k]
                 if "icd_name$" in form_var:
                     if r[1].data["icd_code"] in icd_code_to_name[form_var]:
-                        dict_row[k] = icd_code_to_name[form_var][r[1].data["icd_code"]]
-                    elif r[1].data["icd_code"].split(".")[0] in icd_code_to_name[form_var]:
-                        dict_row[k] = icd_code_to_name[form_var][r[1].data["icd_code"].split(".")[0]]
+                        dict_row[k] = icd_code_to_name[form_var][r[1].data[
+                            "icd_code"]]
                     else:
                         dict_row[k] = None
                 elif form_var == "clinic":
@@ -232,7 +244,7 @@ class ExportCategory(Resource):
                 elif form_var == "region":
                     dict_row[k] = locs[r[0].region].name
                 elif form_var == "district":
-                    if r[0].district: 
+                    if r[0].district:
                         dict_row[k] = locs[r[0].district].name
                     else:
                         dict_row[k] = None
@@ -242,7 +254,7 @@ class ExportCategory(Resource):
                         dict_row[k] = parse(r[1].data[field]).year
                     else:
                         dict_row[k] = None
-                elif "$month" in form_var: 
+                elif "$month" in form_var:
                     field = form_var.split("$")[0]
                     if field in r[1].data and r[1].data[field]:
                         dict_row[k] = parse(r[1].data[field]).month
@@ -260,51 +272,49 @@ class ExportCategory(Resource):
                 #link$<link id>$<linked form field>
                 elif "gen_link$" in form_var:
                     link = form_var.split("$")[1]
-                    link_def = ordered_links[link]
-                    if link_data[link]:
-                        if r[1].data[link_def['from_column']] in link_data[link]:
-                            dict_row[k] = link_data[link][r[1].data[link_def['from_column']]][form_var.split("$")[-1]]
+                    link_index = link_id_index[link]
+                    if r[link_index]:
+                        dict_row[k] = r[link_index][form_var.split("$")[-1]]
                     else:
                         dict_row[k] = None
 
-                #Mahoosive hack... Might be nice to add a genral "calc" keyword.
-                elif "calc$bmi" in form_var:
-                    weight = r[1].data['results./bmi_weight']
-                    height = r[1].data['results./bmi_height']
-                    if height and weight:
-                        height = float(height)
-                        weight = float(weight)
-                        calculation = weight/((height/100)*(height/100))
-                        dict_row[k] = calculation
+                elif "code" == form_var.split("$")[0]:
+                    # code$cod_1,cod_2,Text_1,Text_2$default_value
+                    split = form_var.split("$")
+                    codes = split[1].split(",")
+                    text = split[2].split(",")
+                    if len(split) > 3:
+                        default_value = split[3]
                     else:
-                        dict_row[k] = None
+                        default_value = None
+                    final_text = []
+                    for i in range(len(codes)):
+                        if codes[i] in r[0].variables:
+                            final_text.append(text[i])
+                    if len(final_text) > 0:
+                        dict_row[k] = " ".join(final_text)
+                    else :
+                        dict_row[k] = default_value
 
-                elif "alert_link" in form_var:
-                    alert_id = r[0].uuid[-country_config["alert_id_length"]:]
-                    if alert_id in alerts:
-                        link, field = form_var.split("$")[-2:]
-                        alert = alerts[alert_id]
-                        if "links" in alert:
-                            if link in alert["links"]:
-                                to_uuid = alert["links"][link]["to_id"]
-                                table = form_tables[link_tables[link]]
-                                result = db.session.query(table).filter(
-                                    table.uuid == to_uuid).one()
-                                if field in result.data:
-                                    dict_row[k] = result.data[field]
-                                else:
-                                    dict_row[k] = None
-                            else:
-                                dict_row[k] = None
-                        else:
-                            dict_row[k] = None
+                elif "code_value" == form_var.split("$")[0]:
+                    code = form_var.split("$")[1]
+                    if code in r[0].variables:
+                        dict_row[k] = r[0].variables[code]
                     else:
                         dict_row[k] = None
+                elif "value" == form_var.split(":")[0]:
+                    dict_row[k] = form_var.split(":")[1]
                 else:
                     if form_var in r[1].data:
                         dict_row[k] = r[1].data[form_var]
                     else:
                         dict_row[k] = None
+
+                if min_translation and k in min_translation:
+                    tr_dict = min_translation[k]
+                    if dict_row[k] in tr_dict.keys():
+                        dict_row[k] = tr_dict[dict_row[k]]
+                                         
             dict_rows.append(dict_row)
         #app.logger.warning(str(dict_rows))
         return {"data": dict_rows,
@@ -324,16 +334,25 @@ class ExportForm(Resource):
        csv-file\n
     """
     representations = {'text/csv': output_csv}
+<<<<<<< HEAD
     decorators = [authenticate]
     
+=======
+    decorators = [require_api_key]
+
+>>>>>>> master
     def get(self, form):
-        locations, locs_by_deviceid, regions, districts, devices = all_location_data(db.session)
+        locations, locs_by_deviceid, regions, districts, devices = all_location_data(
+            db.session)
         if "fields" in request.args.keys():
             specified_keys = True
             keys = request.args["fields"].split(",")
         else:
             keys = ["clinic", "region", "district"]
-            sql = text("SELECT DISTINCT(jsonb_object_keys(data)) from {}".format(form_tables[form].__tablename__))
+            if form not in form_tables:
+                return {"filename": form, "file": io.StringIO()}
+            sql = text("SELECT DISTINCT(jsonb_object_keys(data)) from {}".
+                       format(form_tables[form].__tablename__))
             result = db.engine.execute(sql)
             for r in result:
                 keys.append(r[0])
@@ -352,11 +371,14 @@ class ExportForm(Resource):
                     dict_row["clinic"] = locations[clinic_id].name
                     # Sort out district and region
                     if locations[clinic_id].parent_location in districts:
-                        dict_row["district"] = locations[locations[clinic_id].parent_location].name
-                        dict_row["region"] = locations[locations[locations[clinic_id].parent_location].parent_location].name
+                        dict_row["district"] = locations[locations[clinic_id]
+                                                         .parent_location].name
+                        dict_row["region"] = locations[locations[locations[
+                            clinic_id].parent_location].parent_location].name
                     elif locations[clinic_id].parent_location in regions:
                         dict_row["district"] = ""
-                        dict_row["region"] = locations[locations[clinic_id].parent_location].name
+                        dict_row["region"] = locations[locations[clinic_id]
+                                                       .parent_location].name
                 else:
                     dict_row["clinic"] = ""
                     dict_row["district"] = ""
@@ -371,5 +393,4 @@ class ExportForm(Resource):
 #                    app.logger.info(i)
                 i += 1
             csv_writer.writerows(dict_rows)
-            return {"filename": form,
-                    "file": f}
+            return {"filename": form, "file": f}

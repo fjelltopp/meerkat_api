@@ -84,8 +84,8 @@ from meerkat_api.resources.epi_week import EpiWeek, EpiWeekStart
 from meerkat_api.resources.completeness import Completeness, NonReporting
 from meerkat_api.resources.reports import PublicHealth, CdReport, CdPublicHealth, CdPublicHealthMad, NcdPublicHealth,RefugeePublicHealth, RefugeeCd,RefugeeDetail, NcdReport, Pip, WeeklyEpiMonitoring, Malaria
 from meerkat_api.resources.frontpage import KeyIndicators, TotMap, NumAlerts, ConsultationMap, RefugeePage, NumClinics
-from meerkat_api.resources.export_data import ExportData, ExportForm, ExportAlerts, Forms, ExportCategory
-from meerkat_api.resources.links import Link, Links
+from meerkat_api.resources.export_data import ExportData, ExportForm, Forms, ExportCategory
+#from meerkat_api.resources.links import Link, Links
 
 # All urls
 
@@ -106,13 +106,12 @@ api.add_resource(RefugeePage, "/refugee_page")
 api.add_resource(ExportData, "/export/data",
                  "/export/data/<use_loc_ids>")
 api.add_resource(ExportForm, "/export/form/<form>")
-api.add_resource(ExportAlerts, "/export/alerts")
 api.add_resource(Forms, "/export/forms")
-api.add_resource(ExportCategory, "/export/category/<category>/<download_name>")
+api.add_resource(ExportCategory, "/export/category/<form_name>/<category>/<download_name>")
 
 # Links
-api.add_resource(Link, "/link/<link_id>")
-api.add_resource(Links, "/links/<link_def>")
+# api.add_resource(Link, "/link/<link_id>")
+# api.add_resource(Links, "/links/<link_def>")
 
 # Location urls
 api.add_resource(Locations, "/locations")
@@ -126,7 +125,8 @@ api.add_resource(Variable, "/variable/<variable_id>")
 
 # Aggregate Data
 api.add_resource(Aggregate, "/aggregate/<variable_id>/<location_id>")
-api.add_resource(AggregateAlerts, "/aggregate_alerts")
+api.add_resource(AggregateAlerts, "/aggregate_alerts",
+                 "/aggregate_alerts/<central_review>")
 api.add_resource(AggregateYear,
                  "/aggregate_year/<variable_id>/<location_id>",
                  "/aggregate_year/<variable_id>/<location_id>/<year>")
