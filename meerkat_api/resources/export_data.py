@@ -6,6 +6,7 @@ from flask import request, abort, current_app
 from sqlalchemy import or_, text
 from sqlalchemy.orm import aliased
 from dateutil.parser import parse
+import json
 import json, io, csv, logging
 
 from meerkat_api.util import row_to_dict
@@ -116,10 +117,12 @@ class ExportCategory(Resource):
         link_ids = []
         have_links = False
 
+        min_translation = {}
+        
         #Set up icd_code_to_name if needed and determine if alert_links are included
         for v in variables:
             return_keys.append(v[1])
-            translation_dict[v[1]] = v[0]
+
             if "icd_name$" in v[0]:
                 category = v[0].split("$")[1]
                 icd_name = var.get(category)
@@ -133,11 +136,19 @@ class ExportCategory(Resource):
                         codes = [condition]
                     for c in codes:
                         icd_code_to_name[v[0]][c.strip()] = icd_name[i]["name"]
-
+            if "$translate" in v[0]:
+                split = v[0].split("$")
+                field = "$".join(split[:-1])
+                trans = split[-1]
+                tr_dict = json.loads(trans.split(";")[1].replace("'",'"'))
+                min_translation[v[1]] = tr_dict
+                v[0] = field
+                print(min_translation)
             if "gen_link$" in v[0]:
                 have_links = True
                 link_ids.append(v[0].split("$")[1])
-
+            translation_dict[v[1]] = v[0]
+            
         link_ids = set(link_ids)
         links_by_type, links_by_name = get_links(config_directory +
                                                  country_config["links_file"])
@@ -217,18 +228,22 @@ class ExportCategory(Resource):
                         dict_row[k] = None
 
                 elif "code" == form_var.split("$")[0]:
-                    # code$cod_1,cod_2$Text_1$Text_2
-                    codes = form_var.split("$")[1].split(",")
-                    text = form_var.split("$")[2].split(",")
-
+                    # code$cod_1,cod_2,Text_1,Text_2$default_value
+                    split = form_var.split("$")
+                    codes = split[1].split(",")
+                    text = split[2].split(",")
+                    if len(split) > 3:
+                        default_value = split[3]
+                    else:
+                        default_value = None
                     final_text = []
                     for i in range(len(codes)):
                         if codes[i] in r[0].variables:
                             final_text.append(text[i])
                     if len(final_text) > 0:
                         dict_row[k] = " ".join(final_text)
-                    else:
-                        dict_row[k] = None
+                    else :
+                        dict_row[k] = default_value
 
                 elif "code_value" == form_var.split("$")[0]:
                     code = form_var.split("$")[1]
@@ -236,11 +251,20 @@ class ExportCategory(Resource):
                         dict_row[k] = r[0].variables[code]
                     else:
                         dict_row[k] = None
+                elif "value" == form_var.split(":")[0]:
+                    dict_row[k] = form_var.split(":")[1]
                 else:
                     if form_var in r[1].data:
                         dict_row[k] = r[1].data[form_var]
                     else:
                         dict_row[k] = None
+
+                if min_translation and k in min_translation:
+                    tr_dict = min_translation[k]
+                    print(dict_row[k], tr_dict, form_var)
+                    if dict_row[k] in tr_dict.keys():
+                        dict_row[k] = tr_dict[dict_row[k]]
+                                         
             dict_rows.append(dict_row)
         #app.logger.warning(str(dict_rows))
         return {"data": dict_rows,
