@@ -83,7 +83,8 @@ class MeerkatAPITestCase(unittest.TestCase):
     def test_export_category(self):
         """ Test getting a from with category """
         
-        rv = self.app.get('/export/category/demo_case/cd_tab/cd?variables=[["icd_code", "icd code"], ["icd_name$cd_tab", "Name"], ["code$ale_2,ale_3,ale_4$Confirmed,Disregarded,Ongoing","Alert Status"], ["clinic", "Clinic"], ["meta/instanceID", "uuid"], ["end$month", "Month"], ["end$year", "Year"], ["end$epi_week", "epi_week"]]', headers={"Accept": "text/csv"}, **settings.header})
+        rv = self.app.get('/export/category/demo_case/cd_tab/cd?variables=[["icd_code", "icd code"], ["icd_name$cd_tab", "Name"], ["code$ale_2,ale_3,ale_4$Confirmed,Disregarded,Ongoing","Alert Status"], ["clinic", "Clinic"], ["meta/instanceID", "uuid"], ["end$month", "Month"], ["end$year", "Year"], ["end$epi_week", "epi_week"]]', 
+headers={**{"Accept": "text/csv"}, **settings.header})
 
         self.assertEqual(rv.status_code, 200)
         lines = rv.data.decode("utf-8").strip().split("\r\n")
@@ -121,7 +122,7 @@ class MeerkatAPITestCase(unittest.TestCase):
 
     def test_export_forms(self):
         """ Test the basic export form functionality """
-        rv = self.app.get('/export/form/demo_case', headers={"Accept": "text/csv"}, **settings.header})
+        rv = self.app.get('/export/form/demo_case', headers={{"Accept": "text/csv"}, **settings.header})
 
         self.assertEqual(rv.status_code, 200)
         lines = rv.data.decode("utf-8").strip().split("\r\n")
@@ -135,7 +136,7 @@ class MeerkatAPITestCase(unittest.TestCase):
                 self.assertEqual(line["icd_code"], "A06")
         self.assertTrue(found_uuid)
         
-        rv = self.app.get('/export/form/demo_case?fields=icd_code,intro./module', headers={"Accept": "text/csv"}, **settings.header})
+        rv = self.app.get('/export/form/demo_case?fields=icd_code,intro./module', headers={{"Accept": "text/csv"}, **settings.header})
 
         self.assertEqual(rv.status_code, 200)
         lines = rv.data.decode("utf-8").strip().split("\r\n")
