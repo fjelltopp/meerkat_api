@@ -26,7 +26,7 @@ class MeerkatAPILocationTestCase(unittest.TestCase):
 
     def test_locations(self):
         """Check locations"""
-        rv = self.app.get('/locations', headers=headers=settings.header)
+        rv = self.app.get('/locations', headers=settings.header)
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(len(data), 11)
@@ -40,12 +40,12 @@ class MeerkatAPILocationTestCase(unittest.TestCase):
 
     def test_location(self):
         """Check location"""
-        rv = self.app.get('/location/11', headers=headers=settings.header)
+        rv = self.app.get('/location/11', headers=settings.header)
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(data["name"], "Clinic 5")
         self.assertEqual(data["parent_location"], 6)
-        rv = self.app.get('/location/7', headers=headers=settings.header)
+        rv = self.app.get('/location/7', headers=settings.header)
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(data["name"], "Clinic 1")
@@ -54,15 +54,15 @@ class MeerkatAPILocationTestCase(unittest.TestCase):
         
     def test_tot_clinics(self):
         """Check tot_clinics"""
-        rv = self.app.get('/tot_clinics/1', headers=headers=settings.header)
+        rv = self.app.get('/tot_clinics/1', headers=settings.header)
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(rv.status_code, 200)
         self.assertEqual(data["total"], 4)
-        rv = self.app.get('/tot_clinics/2', headers=headers=settings.header)
+        rv = self.app.get('/tot_clinics/2', headers=settings.header)
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(rv.status_code, 200)
         self.assertEqual(data["total"], 3)
-        rv = self.app.get('/tot_clinics/3', headers=headers=settings.header)
+        rv = self.app.get('/tot_clinics/3', headers=settings.header)
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(rv.status_code, 200)
         self.assertEqual(data["total"], 1)
@@ -76,7 +76,7 @@ class MeerkatAPILocationTestCase(unittest.TestCase):
 
     def test_location_tree(self):
         """ Test the location tree """
-        rv = self.app.get('/locationtree', headers=headers=settings.header)
+        rv = self.app.get('/locationtree', headers=settings.header)
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(data["text"], "Demo")
