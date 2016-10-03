@@ -173,7 +173,6 @@ class ExportCategory(Resource):
         results = results.filter(
             or_(Data.variables.has_key(key)
                 for key in data_keys)).yield_per(200)
-        print(results)
         locs = get_locations(db.session)
         dict_rows = []
 
@@ -261,7 +260,6 @@ class ExportCategory(Resource):
 
                 if min_translation and k in min_translation:
                     tr_dict = min_translation[k]
-                    print(dict_row[k], tr_dict, form_var)
                     if dict_row[k] in tr_dict.keys():
                         dict_row[k] = tr_dict[dict_row[k]]
                                          
