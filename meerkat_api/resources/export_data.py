@@ -17,7 +17,7 @@ from meerkat_abacus.config import country_config, config_directory
 from meerkat_api.resources.variables import Variables
 from meerkat_api.resources.epi_week import EpiWeek
 from meerkat_api.authentication import authenticate
-from meerkat_abacus.util import get_locations, get_locations_by_deviceid, get_links
+from meerkat_abacus.util import get_locations, get_locations_by_deviceid
 from meerkat_api.resources.alerts import get_alerts
 
 
