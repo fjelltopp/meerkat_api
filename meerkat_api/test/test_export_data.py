@@ -122,7 +122,7 @@ headers={**{"Accept": "text/csv"}, **settings.header})
 
     def test_export_forms(self):
         """ Test the basic export form functionality """
-        rv = self.app.get('/export/form/demo_case', headers={{"Accept": "text/csv"}, **settings.header})
+        rv = self.app.get('/export/form/demo_case', headers={**{"Accept": "text/csv"}, **settings.header})
 
         self.assertEqual(rv.status_code, 200)
         lines = rv.data.decode("utf-8").strip().split("\r\n")
@@ -136,7 +136,7 @@ headers={**{"Accept": "text/csv"}, **settings.header})
                 self.assertEqual(line["icd_code"], "A06")
         self.assertTrue(found_uuid)
         
-        rv = self.app.get('/export/form/demo_case?fields=icd_code,intro./module', headers={{"Accept": "text/csv"}, **settings.header})
+        rv = self.app.get('/export/form/demo_case?fields=icd_code,intro./module', headers={**{"Accept": "text/csv"}, **settings.header})
 
         self.assertEqual(rv.status_code, 200)
         lines = rv.data.decode("utf-8").strip().split("\r\n")

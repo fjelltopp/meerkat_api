@@ -4,7 +4,7 @@ Meerkat API Tests
 
 Unit tests for the Meerkat API
 """
-import json
+import json, os
 import unittest
 from datetime import datetime
 from datetime import timedelta
@@ -13,6 +13,15 @@ import meerkat_api
 import meerkat_abacus.manage as manage
 import meerkat_abacus.config as config
 import meerkat_abacus.model as model
+
+#Check if auth requirements have been installed
+try:
+    #Test by importing package that will only ever be required in auth (touch wood). 
+    __import__('passlib')
+    print( "Authentication requirements installed." )
+except ImportError:
+    print( "Authentication requirements not installed.  Installing them now." )
+    os.system('pip install -r /var/www/meerkat_auth/requirements.txt') 
 
 from . import settings
 from meerkat_api.test.test_alerts import *
@@ -102,16 +111,6 @@ def get_url(app, url):
     else:
         rv = app.get(url, headers=settings.header)
     return rv
-
-def setUp():
-    #Check if auth requirements have been installed
-    try:
-        #Test by importing package that will only ever be required in auth (touch wood). 
-        return __import__('passlib')
-        print( "Authentication requirements installed." )
-    except ImportError:
-        print( "Authentication requirements not installed.  Installing them now." )
-        os.system('pip install -r /var/www/meerkat_auth/requirements.txt') 
 
 class MeerkatAPITestCase(unittest.TestCase):
 
