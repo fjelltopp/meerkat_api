@@ -16,7 +16,7 @@ token_payload = {
     }, 
     u'data': {u'name': u'Testy McTestface'}, 
     u'usr': u'testUser', 
-    u'exp': calendar.timegm( time.gmtime() ) + 500,  #Lasts for 500 seconds
+    u'exp': calendar.timegm( time.gmtime() ) + 1000,  #Lasts for 1000 seconds
     u'email': u'test@test.org.uk'
 }
 token = jwt.encode(token_payload, JWT_SECRET_KEY, algorithm=JWT_ALGORITHM).decode("utf-8")
