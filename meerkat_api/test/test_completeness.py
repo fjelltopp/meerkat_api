@@ -9,7 +9,7 @@ import unittest
 from datetime import datetime, timedelta, date
 from sqlalchemy import extract
 import pandas as pd
-
+from . import settings
 import meerkat_api
 from meerkat_api.test import db_util
 import meerkat_abacus.config as config
@@ -31,23 +31,23 @@ class MeerkatAPIDataTestCase(unittest.TestCase):
     
     def test_non_reporting(self):
         """Check non_reporting"""
-        rv = self.app.get('/non_reporting/reg_1/1')
+        rv = self.app.get('/non_reporting/reg_1/1', headers=settings.header)
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(rv.status_code, 200)
         self.assertEqual(sorted(data["clinics"]), [10,11])
-        rv = self.app.get('/non_reporting/reg_2/1')
+        rv = self.app.get('/non_reporting/reg_2/1', headers=settings.header)
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(rv.status_code, 200)
         self.assertEqual(sorted(data["clinics"]), [7,8,10,11])
-        rv = self.app.get('/non_reporting/reg_1/2')
+        rv = self.app.get('/non_reporting/reg_1/2', headers=settings.header)
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(rv.status_code, 200)
         self.assertEqual(sorted(data["clinics"]), [10])
-        rv = self.app.get('/non_reporting/reg_1/4')
+        rv = self.app.get('/non_reporting/reg_1/4', headers=settings.header)
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(rv.status_code, 200)
         self.assertEqual(sorted(data["clinics"]), [])
-        rv = self.app.get('/non_reporting/reg_1/6')
+        rv = self.app.get('/non_reporting/reg_1/6', headers=settings.header)
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(rv.status_code, 200)
         self.assertEqual(sorted(data["clinics"]), [11])
@@ -55,7 +55,7 @@ class MeerkatAPIDataTestCase(unittest.TestCase):
 
     def test_completness(self):
         """Test completeness"""
-        rv = self.app.get('completeness/reg_1/1/5')
+        rv = self.app.get('completeness/reg_1/1/5', headers=settings.header)
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(sorted(data.keys()),
@@ -90,7 +90,7 @@ class MeerkatAPIDataTestCase(unittest.TestCase):
         self.assertAlmostEqual(data["timeline"]["2"]["values"][-2], 1 / 2)
 
 
-        rv = self.app.get('completeness/reg_1/4/5')
+        rv = self.app.get('completeness/reg_1/4/5', headers=settings.header)
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(data["score"]["4"], 4 / 10 *100)
@@ -110,7 +110,7 @@ class MeerkatAPIDataTestCase(unittest.TestCase):
 
         
         
-        rv = self.app.get('completeness/reg_1/7/5')
+        rv = self.app.get('completeness/reg_1/7/5', headers=settings.header)
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(data["clinic_score"], {})
@@ -128,7 +128,7 @@ class MeerkatAPIDataTestCase(unittest.TestCase):
         for d in dates_to_check.to_pydatetime():
             if d.weekday() not in [5, 6] and d not in record_dates:
                 self.assertIn(d.isoformat(), data["dates_not_reported"])
-        rv = self.app.get('completeness/reg_1/7/5/4,5')
+        rv = self.app.get('completeness/reg_1/7/5/4,5', headers=settings.header)
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))
         for d in dates_to_check.to_pydatetime():

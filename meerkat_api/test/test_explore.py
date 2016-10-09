@@ -8,6 +8,7 @@ import json
 import unittest
 from datetime import datetime
 import pytz
+from . import settings
 import meerkat_api
 from meerkat_api.test import db_util
 from meerkat_api.resources import explore
@@ -84,7 +85,10 @@ class MeerkatAPITestCase(unittest.TestCase):
     def test_query_variable(self):
         date_start = datetime(2015, 1, 1)
         date_end = datetime(2015, 12, 31)
-        rv = self.app.get('/query_variable/tot_1/gender/{}/{}'.format(date_start.isoformat(),date_end.isoformat()))
+        rv = self.app.get(
+            '/query_variable/tot_1/gender/{}/{}'.format(date_start.isoformat(),date_end.isoformat()),           
+            headers=settings.header
+        )
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(sorted(data.keys()),
@@ -94,8 +98,10 @@ class MeerkatAPITestCase(unittest.TestCase):
         self.assertEqual(data["Female"]["weeks"]["22"], 1)
         self.assertEqual(data["Male"]["total"], 3)
         self.assertEqual(data["Male"]["weeks"]["18"], 3)
-
-        rv = self.app.get('/query_variable/tot_1/gender/{}/{}?use_ids=1'.format(date_start.isoformat(),date_end.isoformat()))
+        rv = self.app.get(
+            '/query_variable/tot_1/gender/{}/{}?use_ids=1'.format(date_start.isoformat(),date_end.isoformat()),
+            headers=settings.header
+        )
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(sorted(data.keys()),
@@ -107,7 +113,10 @@ class MeerkatAPITestCase(unittest.TestCase):
         self.assertEqual(data["gen_1"]["weeks"]["18"], 3)
 
         # Only Region 2
-        rv = self.app.get('/query_variable/tot_1/gender/{}/{}?only_loc=3'.format(date_start.isoformat(),date_end.isoformat()))
+        rv = self.app.get(
+            '/query_variable/tot_1/gender/{}/{}?only_loc=3'.format(date_start.isoformat(),date_end.isoformat()),
+            headers=settings.header
+        )
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(sorted(data.keys()),
@@ -124,7 +133,10 @@ class MeerkatAPITestCase(unittest.TestCase):
                          sorted([str(i) for i in range(1, 54)]))
 
         new_date_start = datetime(2014, 1, 1)
-        rv = self.app.get('/query_variable/tot_1/gender/{}/{}?only_loc=3'.format(new_date_start.isoformat(),date_end.isoformat()))
+        rv = self.app.get(
+            '/query_variable/tot_1/gender/{}/{}?only_loc=3'.format(new_date_start.isoformat(),date_end.isoformat()), 
+            headers=settings.header
+        )
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(sorted(data["Female"]["weeks"].keys()),
@@ -135,7 +147,10 @@ class MeerkatAPITestCase(unittest.TestCase):
         """Test with variable = location"""
         date_start = datetime(2015, 1, 1)
         date_end = datetime(2015, 12, 31)
-        rv = self.app.get('/query_variable/location:3/gender/{}/{}'.format(date_start.isoformat(),date_end.isoformat()))
+        rv = self.app.get(
+            '/query_variable/location:3/gender/{}/{}'.format(date_start.isoformat(),date_end.isoformat()),
+            headers=settings.header
+        )
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(sorted(data.keys()),
@@ -150,7 +165,10 @@ class MeerkatAPITestCase(unittest.TestCase):
         """Test with group_by = locations"""
         date_start = datetime(2015, 1, 1)
         date_end = datetime(2015, 12, 31)
-        rv = self.app.get('/query_variable/gen_2/locations:region/{}/{}'.format(date_start.isoformat(),date_end.isoformat()))
+        rv = self.app.get(
+            '/query_variable/gen_2/locations:region/{}/{}'.format(date_start.isoformat(),date_end.isoformat()),
+            headers=settings.header
+        )
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(sorted(data.keys()),
@@ -161,7 +179,13 @@ class MeerkatAPITestCase(unittest.TestCase):
         self.assertEqual(data["Region 2"]["weeks"]["18"], 3)
         self.assertEqual(data["Region 2"]["weeks"]["22"], 1)
 
-        rv = self.app.get('/query_variable/gen_2/locations:clinic/{}/{}?only_loc=2'.format(date_start.isoformat(),date_end.isoformat()))
+        rv = self.app.get(
+            '/query_variable/gen_2/locations:clinic/{}/{}?only_loc=2'.format(
+                date_start.isoformat(),
+                date_end.isoformat()
+            ), 
+            headers=settings.header
+        )
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))
  
@@ -174,7 +198,10 @@ class MeerkatAPITestCase(unittest.TestCase):
 
         date_start = datetime(2015, 1, 1)
         date_end = datetime(2015, 12, 31)
-        rv = self.app.get('/query_category/gender/pc/{}/{}'.format(date_start.isoformat(),date_end.isoformat()))
+        rv = self.app.get(
+            '/query_category/gender/pc/{}/{}'.format(date_start.isoformat(),date_end.isoformat()), 
+            headers=settings.header
+        )
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(sorted(data.keys()),
@@ -188,7 +215,10 @@ class MeerkatAPITestCase(unittest.TestCase):
         self.assertEqual(data["Male"]["Mental Health"], 0)
 
         # With only_loc
-        rv = self.app.get('/query_category/gender/pc/{}/{}?only_loc=3'.format(date_start.isoformat(),date_end.isoformat()))
+        rv = self.app.get(
+            '/query_category/gender/pc/{}/{}?only_loc=3'.format(date_start.isoformat(),date_end.isoformat()),
+            headers=settings.header
+        )
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(sorted(data.keys()),
@@ -204,7 +234,10 @@ class MeerkatAPITestCase(unittest.TestCase):
         date_end = datetime(2015, 12, 31)
 
         # With use ids
-        rv = self.app.get('/query_category/gender/pc/{}/{}?use_ids=1'.format(date_start.isoformat(),date_end.isoformat()))
+        rv = self.app.get(
+            '/query_category/gender/pc/{}/{}?use_ids=1'.format(date_start.isoformat(),date_end.isoformat()),            
+            headers=settings.header
+        )
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(sorted(data.keys()),
@@ -219,7 +252,13 @@ class MeerkatAPITestCase(unittest.TestCase):
 
 
         # With use ids and locations
-        rv = self.app.get('/query_category/gender/locations:region/{}/{}?use_ids=1'.format(date_start.isoformat(),date_end.isoformat()))
+        rv = self.app.get(
+            '/query_category/gender/locations:region/{}/{}?use_ids=1'.format(
+                date_start.isoformat(),
+                date_end.isoformat()
+            ),
+            headers=settings.header
+        )
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(sorted(data.keys()),
@@ -228,7 +267,13 @@ class MeerkatAPITestCase(unittest.TestCase):
         self.assertEqual(data["gen_2"]["3"], 4)
         self.assertEqual(data["gen_1"]["2"], 3)
         self.assertEqual(data["gen_1"]["3"], 0)
-        rv = self.app.get('/query_category/locations:region/gender/{}/{}?use_ids=1'.format(date_start.isoformat(),date_end.isoformat()))
+        rv = self.app.get(
+            '/query_category/locations:region/gender/{}/{}?use_ids=1'.format(
+                date_start.isoformat(),
+                date_end.isoformat()
+            ),
+            headers=settings.header
+        )
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(sorted(data.keys()),
@@ -237,7 +282,13 @@ class MeerkatAPITestCase(unittest.TestCase):
         self.assertEqual(data["3"]["gen_2"], 4)
         self.assertEqual(data["2"]["gen_1"], 3)
         self.assertEqual(data["3"]["gen_1"], 0)
-        rv = self.app.get('/query_category/locations:clinic/gender/{}/{}?use_ids=1&only_loc=3'.format(date_start.isoformat(),date_end.isoformat()))
+        rv = self.app.get(
+            '/query_category/locations:clinic/gender/{}/{}?use_ids=1&only_loc=3'.format(
+                date_start.isoformat(),
+                date_end.isoformat()
+            ), 
+            headers=settings.header
+        )
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(sorted(data.keys()),

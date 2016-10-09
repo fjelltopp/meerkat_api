@@ -8,7 +8,7 @@ import json
 import unittest
 from datetime import datetime
 from sqlalchemy import extract
-
+from . import settings
 import meerkat_api
 from meerkat_api.test import db_util
 import meerkat_abacus.config as config
@@ -30,57 +30,57 @@ class MeerkatAPIDataTestCase(unittest.TestCase):
     
     def test_aggregate(self):
         """Check aggregate"""
-        rv = self.app.get('/aggregate/tot_1/1')
+        rv = self.app.get('/aggregate/tot_1/1', headers=settings.header)
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(rv.status_code, 200)
         self.assertEqual(data["value"], 11)
 
-        rv = self.app.get('/aggregate/reg_2/1')
+        rv = self.app.get('/aggregate/reg_2/1', headers=settings.header)
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(rv.status_code, 200)
         self.assertEqual(data["value"], 15)
 
-        rv = self.app.get('/aggregate/gen_2/1')
+        rv = self.app.get('/aggregate/gen_2/1', headers=settings.header)
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(rv.status_code, 200)
         self.assertEqual(data["value"], 8)
 
-        rv = self.app.get('/aggregate/gen_2/2')
+        rv = self.app.get('/aggregate/gen_2/2', headers=settings.header)
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(rv.status_code, 200)
         self.assertEqual(data["value"], 3)
 
-        rv = self.app.get('/aggregate/gen_2/3')
+        rv = self.app.get('/aggregate/gen_2/3', headers=settings.header)
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(rv.status_code, 200)
         self.assertEqual(data["value"], 5)
 
-        rv = self.app.get('/aggregate/gen_2/5')
+        rv = self.app.get('/aggregate/gen_2/5', headers=settings.header)
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(rv.status_code, 200)
         self.assertEqual(data["value"], 1)
 
-        rv = self.app.get('/aggregate/gen_2/8')
+        rv = self.app.get('/aggregate/gen_2/8', headers=settings.header)
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(rv.status_code, 200)
         self.assertEqual(data["value"], 2)
 
     def test_aggregate_yearly(self):
         """Test for aggregate Yearly"""
-        rv = self.app.get('/aggregate_year/tot_1/1/2015')
+        rv = self.app.get('/aggregate_year/tot_1/1/2015', headers=settings.header)
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(data["year"], 10)
         self.assertEqual(data["weeks"]["18"], 9)
         self.assertEqual(data["weeks"]["22"], 1)
 
-        rv = self.app.get('/aggregate_year/gen_1/1/2015')
+        rv = self.app.get('/aggregate_year/gen_1/1/2015', headers=settings.header)
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(data["year"], 3)
         self.assertEqual(data["weeks"]["18"], 3)
 
-        rv = self.app.get('/aggregate_year/gen_2/3/2015')
+        rv = self.app.get('/aggregate_year/gen_2/3/2015', headers=settings.header)
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(rv.status_code, 200)
         self.assertEqual(data["year"], 4)
@@ -89,7 +89,7 @@ class MeerkatAPIDataTestCase(unittest.TestCase):
         
     def test_aggregate_category(self):
         """Test for aggregate Category """
-        rv = self.app.get('/aggregate_category/gender/1/2015')
+        rv = self.app.get('/aggregate_category/gender/1/2015', headers=settings.header)
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(sorted(list(data.keys())), sorted(["gen_1", "gen_2"]))
@@ -99,7 +99,7 @@ class MeerkatAPIDataTestCase(unittest.TestCase):
         self.assertEqual(data["gen_2"]["weeks"]["18"], 6)
         self.assertEqual(data["gen_2"]["weeks"]["22"], 1)
 
-        rv = self.app.get('/aggregate_category/gender/3/2015')
+        rv = self.app.get('/aggregate_category/gender/3/2015', headers=settings.header)
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(sorted(list(data.keys())), sorted(["gen_1", "gen_2"]))
@@ -109,7 +109,7 @@ class MeerkatAPIDataTestCase(unittest.TestCase):
         self.assertEqual(data["gen_2"]["weeks"]["18"], 3)
         self.assertEqual(data["gen_2"]["weeks"]["22"], 1)
 
-        rv = self.app.get('/aggregate_category/pc/1/2015')
+        rv = self.app.get('/aggregate_category/pc/1/2015', headers=settings.header)
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(sorted(list(data.keys())),
@@ -117,24 +117,27 @@ class MeerkatAPIDataTestCase(unittest.TestCase):
         self.assertEqual(data["prc_1"]["year"], 7)
         self.assertEqual(data["prc_2"]["year"], 2)
         self.assertEqual(data["prc_3"]["year"], 1)
-        rv = self.app.get('/aggregate_category/no_category/1/2015')
+        rv = self.app.get('/aggregate_category/no_category/1/2015', headers=settings.header)
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(sorted(list(data.keys())), [])
         
     def test_records(self):
         """Test records function """
-        rv = self.app.get('/records/prc_1/1')
+        rv = self.app.get('/records/prc_1/1', headers=settings.header)
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(len(data["records"]), 7)
 
-        rv = self.app.get('/records/prc_1/3')
+        rv = self.app.get('/records/prc_1/3', headers=settings.header)
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(len(data["records"]), 1)
-        self.assertEqual(data["records"][0]["variables"],
-                         {"tot_1":1, "gen_2": 1, "age_4": 1 , "age_10": 1, "nat_2": 1, "sta_1": 1, "prc_1": 1, "cmd_1": 1, "icb_1": 1})
+        self.assertEqual(
+            data["records"][0]["variables"],
+            { "tot_1":1, "gen_2": 1, "age_4": 1, "age_10": 1, 
+              "nat_2": 1, "sta_1": 1, "prc_1": 1, "cmd_1": 1, "icb_1": 1 }
+        )
         self.assertEqual(data["records"][0]["clinic_type"], "Hospital")
         self.assertEqual(data["records"][0]["uuid"], "uuid:2d14ec68-c5b3-47d5-90db-eee510ee9376")
         

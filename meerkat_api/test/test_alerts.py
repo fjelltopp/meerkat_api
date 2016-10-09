@@ -4,9 +4,8 @@ Meerkat API Tests
 
 Unit tests for the alerts resource in Meerkat API
 """
-import json
-import unittest
-import meerkat_api
+import json, unittest, meerkat_api
+from . import settings
 from datetime import datetime
 from meerkat_api.test import db_util
 
@@ -26,7 +25,7 @@ class MeerkatAPIAlertsTestCase(unittest.TestCase):
     
     def test_alert(self):
         """test alert"""
-        rv = self.app.get('/alert/ce9341')
+        rv = self.app.get('/alert/ce9341', headers=settings.header)
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(data["variables"]["alert_id"], "ce9341")
@@ -43,7 +42,7 @@ class MeerkatAPIAlertsTestCase(unittest.TestCase):
 
     def test_aggregate_alert(self):
         """test aggregate_alerts"""
-        rv = self.app.get('/aggregate_alerts')
+        rv = self.app.get('/aggregate_alerts', headers=settings.header)
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(data["total"], 8)
@@ -57,19 +56,19 @@ class MeerkatAPIAlertsTestCase(unittest.TestCase):
         self.assertEqual(data["cmd_19"], {"Pending": 1})
 
         # Now with a subset of clinics
-        rv = self.app.get('/aggregate_alerts?location=3')
+        rv = self.app.get('/aggregate_alerts?location=3', headers=settings.header)
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(data["total"], 1)
         self.assertEqual(data["cmd_19"], {"Pending": 1})
         self.assertEqual(sorted(list(data.keys())),
                          sorted(["cmd_19", "total"]))
-        rv = self.app.get('/aggregate_alerts?location=2')
+        rv = self.app.get('/aggregate_alerts?location=2', headers=settings.header)
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(data["total"], 7)
         # With only one reason
-        rv = self.app.get('/aggregate_alerts?reason=cmd_19')
+        rv = self.app.get('/aggregate_alerts?reason=cmd_19', headers=settings.header)
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(data["total"], 1)
@@ -80,12 +79,12 @@ class MeerkatAPIAlertsTestCase(unittest.TestCase):
     
     def test_alerts(self):
         """test alerts"""
-        rv = self.app.get('/alerts')
+        rv = self.app.get('/alerts', headers=settings.header)
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(len(data["alerts"]), 8)
 
-        rv = self.app.get('/alerts?reason=cmd_1')
+        rv = self.app.get('/alerts?reason=cmd_1', headers=settings.header)
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(len(data["alerts"]), 1)
@@ -93,17 +92,17 @@ class MeerkatAPIAlertsTestCase(unittest.TestCase):
                          "uuid:b013c24a-4790-43d6-8b43-4d28a4ce934d")
         self.assertEqual(data["alerts"][0]["region"], 2)
 
-        rv = self.app.get('/alerts?reason=cmd_11')
+        rv = self.app.get('/alerts?reason=cmd_11', headers=settings.header)
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(len(data["alerts"]), 4)
 
     
-        rv = self.app.get('/alerts?location=11')
+        rv = self.app.get('/alerts?location=11', headers=settings.header)
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(len(data["alerts"]), 1)
-        rv = self.app.get('/alerts?location=1')
+        rv = self.app.get('/alerts?location=1', headers=settings.header)
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(len(data["alerts"]),8)
@@ -111,7 +110,7 @@ class MeerkatAPIAlertsTestCase(unittest.TestCase):
         #Test the date filter
         start = datetime(2015, 3, 1, 0, 0).isoformat()
         end = datetime(2015, 4, 23, 0, 0).isoformat()
-        rv = self.app.get('/alerts?start_date=' + start + '&end_date=' + end)
+        rv = self.app.get('/alerts?start_date=' + start + '&end_date=' + end, headers=settings.header)
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(len(data["alerts"]),2)

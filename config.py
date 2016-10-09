@@ -12,6 +12,9 @@ class Config(object):
     SQLALCHEMY_DATABASE_URI = (
         'postgresql+psycopg2://postgres:postgres@db/meerkat_db')
     API_KEY = "test-api"
+    AUTH = {
+        'default': [['registered'],['demo']]
+    }
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     APPLICATION_ROOT = "/api"
     PROPAGATE_EXCEPTIONS = True

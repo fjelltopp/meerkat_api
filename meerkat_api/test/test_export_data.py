@@ -8,7 +8,7 @@ import json
 import unittest
 from datetime import datetime
 import csv
-
+from . import settings
 import meerkat_api
 from meerkat_api.test import db_util
 from meerkat_abacus import data_management, model, config
@@ -51,7 +51,7 @@ class MeerkatAPITestCase(unittest.TestCase):
 
         keys = ["SubmissionDate","child_age","deviceid","end", "icd_code", "index", "intro./visit", "intro_module", "meta/instanceID", "nationality", "pregnancy_complications", "pregnant", "pt./visit_date","pt1./age", "pt1./gender", "pt1./status", "start", "clinic", "district", "region"]
 
-        rv = self.app.get('/export/forms')
+        rv = self.app.get('/export/forms', headers=settings.header)
         self.assertEqual(rv.status_code, 200)
 
         data = json.loads(rv.data.decode("utf-8"))
@@ -62,7 +62,7 @@ class MeerkatAPITestCase(unittest.TestCase):
     
     def test_export_data(self):
         """ Test the export of the data table """
-        rv = self.app.get('/export/data', headers={"Accept": "text/csv"})
+        rv = self.app.get('/export/data', headers={**{"Accept": "text/csv"}, **settings.header})
         self.assertEqual(rv.status_code, 200)
         lines = rv.data.decode("utf-8").strip().split("\r\n")
         self.assertEqual(len(lines), 13)
@@ -83,7 +83,9 @@ class MeerkatAPITestCase(unittest.TestCase):
     def test_export_category(self):
         """ Test getting a from with category """
         
-        rv = self.app.get('/export/category/demo_case/cd_tab/cd?variables=[["icd_code", "icd code"], ["icd_name$cd_tab", "Name"], ["code$ale_2,ale_3,ale_4$Confirmed,Disregarded,Ongoing","Alert Status"], ["clinic", "Clinic"], ["meta/instanceID", "uuid"], ["end$month", "Month"], ["end$year", "Year"], ["end$epi_week", "epi_week"]]', headers={"Accept": "text/csv"})
+        rv = self.app.get('/export/category/demo_case/cd_tab/cd?variables=[["icd_code", "icd code"], ["icd_name$cd_tab", "Name"], ["code$ale_2,ale_3,ale_4$Confirmed,Disregarded,Ongoing","Alert Status"], ["clinic", "Clinic"], ["meta/instanceID", "uuid"], ["end$month", "Month"], ["end$year", "Year"], ["end$epi_week", "epi_week"]]', 
+headers={**{"Accept": "text/csv"}, **settings.header})
+
         self.assertEqual(rv.status_code, 200)
         lines = rv.data.decode("utf-8").strip().split("\r\n")
         self.assertEqual(len(lines), 8)
@@ -120,7 +122,8 @@ class MeerkatAPITestCase(unittest.TestCase):
 
     def test_export_forms(self):
         """ Test the basic export form functionality """
-        rv = self.app.get('/export/form/demo_case', headers={"Accept": "text/csv"})
+        rv = self.app.get('/export/form/demo_case', headers={**{"Accept": "text/csv"}, **settings.header})
+
         self.assertEqual(rv.status_code, 200)
         lines = rv.data.decode("utf-8").strip().split("\r\n")
         self.assertEqual(len(lines), 11)
@@ -133,13 +136,15 @@ class MeerkatAPITestCase(unittest.TestCase):
                 self.assertEqual(line["icd_code"], "A06")
         self.assertTrue(found_uuid)
         
-        rv = self.app.get('/export/form/demo_case?fields=icd_code,intro./module', headers={"Accept": "text/csv"})
+        rv = self.app.get('/export/form/demo_case?fields=icd_code,intro./module', headers={**{"Accept": "text/csv"}, **settings.header})
+
         self.assertEqual(rv.status_code, 200)
         lines = rv.data.decode("utf-8").strip().split("\r\n")
         self.assertEqual(len(lines), 11)
         for line in c:
             self.assertEqual(sorted(line.keys()),
                              sorted(["icd_code", "intro./module"]))
+
     # def test_export_alerts(self):
     #     """ Test exporting alerts """
     #     rv = self.app.get('/export/alerts', headers={"Accept": "text/csv"})
@@ -152,3 +157,4 @@ class MeerkatAPITestCase(unittest.TestCase):
     #         line["reason"] = "cmd_11"
     #         line["alert_id"] = "ee9376"
     #         line["alert_investigator"] = "Clinic 1"
+

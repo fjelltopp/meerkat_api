@@ -12,7 +12,7 @@ from meerkat_api import db, app
 from meerkat_abacus import model
 from meerkat_abacus.model import Data
 from meerkat_abacus.util import get_locations
-from meerkat_api.authentication import require_api_key
+from meerkat_api.authentication import authenticate
 
 class Clinics(Resource):
     """
@@ -52,7 +52,7 @@ class MapVariable(Resource):
     Returns:\n
         map_data: [{value:0, geolocation: .., clinic:name},...]\n
     """
-    decorators = [require_api_key]
+    decorators = [authenticate]
     
     def get(self, variable_id, location=1, 
             start_date=None, end_date=None, include_all_clinics=False):

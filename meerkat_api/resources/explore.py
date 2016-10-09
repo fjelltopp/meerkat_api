@@ -17,7 +17,7 @@ from meerkat_abacus.model import Data
 from meerkat_abacus.util import get_locations, epi_week_start_date
 from meerkat_api.resources.variables import Variables
 from meerkat_api.resources.epi_week import EpiWeek
-from meerkat_api.authentication import require_api_key
+from meerkat_api.authentication import authenticate
 
 def sort_date(start_date, end_date):
     """
@@ -122,7 +122,7 @@ class QueryVariable(Resource):
     Returns:\n
         data: {variable_1: {total: X, weeks: {12:X,13:X}}....}\n
     """
-    decorators = [require_api_key]
+    decorators = [authenticate]
 
     def get(self, variable, group_by, start_date=None, end_date=None, only_loc=None, use_ids=None):
         # We first construct the conditions for our database query. Need to take special care if the 
@@ -239,7 +239,7 @@ class QueryCategory(Resource):
         data: {variable_11: {variable_21: number, variable_22: number ...}, 
                variable_12: {....\n
     """
-    decorators = [require_api_key]
+    decorators = [authenticate]
     def get(self, group_by1, group_by2, start_date=None, end_date=None, only_loc=None):
         # We first construct the conditions for our database query. Need to take special care if any of the categories are locations
         # locations as they need to be handeld differently. 

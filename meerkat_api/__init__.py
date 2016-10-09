@@ -11,6 +11,7 @@ from datetime import datetime
 import io
 import csv
 import resource
+from meerkat_api.authentication import authenticate
 
 # Create the Flask app
 app = Flask(__name__)
@@ -85,8 +86,6 @@ from meerkat_api.resources.reports import PublicHealth, CdReport, CdPublicHealth
 from meerkat_api.resources.frontpage import KeyIndicators, TotMap, NumAlerts, ConsultationMap, RefugeePage, NumClinics
 from meerkat_api.resources.export_data import ExportData, ExportForm, Forms, ExportCategory
 #from meerkat_api.resources.links import Link, Links
-
-from meerkat_api.authentication import require_api_key
 
 # All urls
 
@@ -215,6 +214,6 @@ def hello_world():
 
 
 @app.route('/test-authentication')
-@require_api_key
+@authenticate
 def test_authentication():
     return "Authenticated"
