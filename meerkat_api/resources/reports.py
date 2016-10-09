@@ -2302,7 +2302,7 @@ class VaccinationReport(Resource):
     Returns:\n
        report_data\n
     """
-    decorators = [require_api_key]
+    decorators = [authenticate]
     
     def get(self, location, start_date=None, end_date=None):
         start_date, end_date = fix_dates(start_date, end_date)
