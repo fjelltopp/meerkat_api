@@ -10,6 +10,7 @@ from flask_restful import Api
 from datetime import datetime
 import io
 import csv
+import os
 import resource
 from meerkat_api.authentication import authenticate
 
@@ -17,6 +18,10 @@ from meerkat_api.authentication import authenticate
 app = Flask(__name__)
 app.config.from_object('config.Config')
 app.config.from_envvar('MEERKAT_API_SETTINGS', silent=True)
+if os.environ.get("MEERKAT_API_DB_SETTINGS"):
+    app.config["SQLALCHEMY_DATABASE_URL"] = os.environ.get("MEERKAT_API_DB_URL")
+
+
 db = SQLAlchemy(app)
 api = Api(app)
 
