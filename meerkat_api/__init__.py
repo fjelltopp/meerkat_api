@@ -132,7 +132,8 @@ api.add_resource(AggregateYear,
                  "/aggregate_year/<variable_id>/<location_id>/<year>")
 api.add_resource(AggregateCategory,
                  "/aggregate_category/<category>/<location_id>",
-                 "/aggregate_category/<category>/<location_id>/<year>")
+                 "/aggregate_category/<category>/<location_id>/<year>",
+                 "/aggregate_category/<category>/<location_id>/<year>/<lim_variable>")
 # Alerts
 api.add_resource(Alert, "/alert/<alert_id>")
 api.add_resource(Alerts, "/alerts")
