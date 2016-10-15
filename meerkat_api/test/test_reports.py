@@ -1495,10 +1495,6 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
             self.assertEqual(rv.status_code, 200)
             data = json.loads(rv.data.decode("utf-8"))
 
-
-            print('data')
-            print(data)
-
             self.assertEqual(data["data"]["vaccination_sessions"],expected)
 
             for item in data["data"]["infants"]: 
@@ -1511,8 +1507,6 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
                 self.assertEqual(item["vaccinated_12_mo_infants"], expected)
 
             for item in data["data"]["females"]: 
-                print('female_item')
-                print(item)
                 if( item["vaccinated_pw"] != expected or item["vaccinated_notpw"] != expected):
                     print( "FAILED ASSERTION | Item name: {}  Value: {} Should be {}."
                            .format( item["name"], item["vaccinated_pw"], expected ) )
