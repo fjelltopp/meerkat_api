@@ -1495,30 +1495,40 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
             self.assertEqual(rv.status_code, 200)
             data = json.loads(rv.data.decode("utf-8"))
 
+
+            print('data')
+            print(data)
+
             self.assertEqual(data["data"]["vaccination_sessions"],expected)
 
             for item in data["data"]["infants"]: 
+                print('infant_item')
+                print(item)
                 if( item["vaccinated_0_11_mo_infants"] != expected or item["vaccinated_12_mo_infants"] != expected):
                     print( "FAILED ASSERTION | Item name: {}  Value: {} Should be {}."
                            .format( item["name"], item["vaccinated_0_11_mo_infants"], expected ) )
                 self.assertEqual(item["vaccinated_0_11_mo_infants"], expected)
+                self.assertEqual(item["vaccinated_12_mo_infants"], expected)
 
             for item in data["data"]["females"]: 
+                print('female_item')
+                print(item)
                 if( item["vaccinated_pw"] != expected or item["vaccinated_notpw"] != expected):
                     print( "FAILED ASSERTION | Item name: {}  Value: {} Should be {}."
                            .format( item["name"], item["vaccinated_pw"], expected ) )
                 self.assertEqual(item["vaccinated_pw"], expected)
+                self.assertEqual(item["vaccinated_notpw"], expected)
 
         #Run data checks with different parameters
 
         check_data(
-            end_date=datetime(2015, 1, 7).isoformat(),
+            end_date=datetime(2015, 7, 1).isoformat(),
             start_date=datetime(2015, 1, 1).isoformat(), 
             location=1, 
             expected=0)
 
         check_data(
-            end_date=datetime(2016, 1, 7).isoformat(),
+            end_date=datetime(2016, 7, 1).isoformat(),
             start_date=datetime(2016, 1, 1).isoformat(), 
             location=1, 
             expected=1)
