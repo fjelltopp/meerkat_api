@@ -16,7 +16,6 @@ def authenticate(f):
     def decorated(*args, **kwargs):
 
         #Load the authentication rule from configs, based on the request url_rule.
-        logging.warning( "Requested url: {}".format(request.url_rule) )
         auth_rule = current_app.config['AUTH'].get( 
             str(request.url_rule),
             current_app.config['AUTH'].get( 'default', [['BROKEN'],['']] ) #Default rule when no specific rule

@@ -10,6 +10,7 @@ from flask_restful import Api
 from datetime import datetime
 import io
 import csv
+import os
 import resource
 from meerkat_api.authentication import authenticate
 
@@ -17,6 +18,10 @@ from meerkat_api.authentication import authenticate
 app = Flask(__name__)
 app.config.from_object('config.Config')
 app.config.from_envvar('MEERKAT_API_SETTINGS', silent=True)
+if os.environ.get("MEERKAT_API_DB_SETTINGS"):
+    app.config["SQLALCHEMY_DATABASE_URL"] = os.environ.get("MEERKAT_API_DB_URL")
+
+
 db = SQLAlchemy(app)
 api = Api(app)
 
@@ -132,7 +137,8 @@ api.add_resource(AggregateYear,
                  "/aggregate_year/<variable_id>/<location_id>/<year>")
 api.add_resource(AggregateCategory,
                  "/aggregate_category/<category>/<location_id>",
-                 "/aggregate_category/<category>/<location_id>/<year>")
+                 "/aggregate_category/<category>/<location_id>/<year>",
+                 "/aggregate_category/<category>/<location_id>/<year>/<lim_variable>")
 # Alerts
 api.add_resource(Alert, "/alert/<alert_id>")
 api.add_resource(Alerts, "/alerts")

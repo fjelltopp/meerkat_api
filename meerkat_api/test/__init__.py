@@ -82,6 +82,7 @@ def valid_urls(app):
         "form_name": "demo_case",
         "weekend": "5,6",
         "use_loc_ids": "1",
+        "lim_variable": "tot_1",
         "central_review": "crl_1"
         }
     urls = []
