@@ -143,50 +143,13 @@ cd_report = [
 vaccination_report = [
     Data(**{
         'uuid': 'uuid:2d14ec68-c5b3-47d5-90db-eee510ee9377', 'clinic_type': 'Hospital', 'district': 6,
-        "variables":{
-            "vac_ses":0,
-            "vac_pw_vat1":0,
-            "vac_pw_vat2":0,
-            "vac_pw_vat3":0,
-            "vac_pw_vat4":0,
-            "vac_pw_vat5":0,
-            "vac_i0_bcg":0,
-            "vac_i0_vpi":0,
-            "vac_i12_bcg":0,
-            "vac_i0_dtc1":0,
-            "vac_i0_dtc2":0,
-            "vac_i0_dtc3":0,
-            "vac_i0_pcv1":0,
-            "vac_i0_pcv2":0,
-            "vac_i0_pcv3":0,
-            "vac_i12_vpi":0,
-            "vac_i0_vpo0":0,
-            "vac_i0_vpo1":0,
-            "vac_i0_vpo2":0,
-            "vac_i0_vpo3":0,
-            "vac_notpw_vat1":0,
-            "vac_notpw_vat2":0,
-            "vac_notpw_vat3":0,
-            "vac_notpw_vat4":0,
-            "vac_notpw_vat5":0,
-            "vac_i12_dtc1":0,
-            "vac_i12_dtc2":0,
-            "vac_i12_dtc3":0,
-            "vac_i12_pcv1":0,
-            "vac_i12_pcv2":0,
-            "vac_i12_pcv3":0,
-            "vac_i0_rota1":0,
-            "vac_i0_rota2":0,
-            "vac_i0_rota3":0,
-            "vac_i12_vpo0":0,
-            "vac_i12_vpo1":0,
-            "vac_i12_vpo2":0,
-            "vac_i12_vpo3":0,
-            "vac_i12_rota1":0,
-            "vac_i12_rota2":0,
-            "vac_i12_rota3":0
+        "variables":{"vac_ses":0,"vac_pw_vat1":0,"vac_pw_vat2":0,"vac_pw_vat3":0,"vac_pw_vat4":0,"vac_pw_vat5":0,"vac_i0_bcg":0,"vac_i0_vpi":0,"vac_i12_bcg":0,"vac_i0_dtc1":0,"vac_i0_dtc2":0,"vac_i0_dtc3":0,"vac_i0_pcv1":0,"vac_i0_pcv2":0,"vac_i0_pcv3":0,"vac_i12_vpi":0,"vac_i0_vpo0":0,"vac_i0_vpo1":0,"vac_i0_vpo2":0,"vac_i0_vpo3":0,"vac_notpw_vat1":0,"vac_notpw_vat2":0,"vac_notpw_vat3":0,"vac_notpw_vat4":0,"vac_notpw_vat5":0,"vac_i12_dtc1":0,"vac_i12_dtc2":0,"vac_i12_dtc3":0,"vac_i12_pcv1":0,"vac_i12_pcv2":0,"vac_i12_pcv3":0,"vac_i0_rota1":0,"vac_i0_rota2":0,"vac_i0_rota3":0,"vac_i12_vpo0":0,"vac_i12_vpo1":0,"vac_i12_vpo2":0,"vac_i12_vpo3":0,"vac_i12_rota1":0,"vac_i12_rota2":0,"vac_i12_rota3":0
+        },'clinic': 11, 'geolocation': '-0.1,0.4', 'id': 1, 'region': 2, 'country': 1, 'date': datetime.datetime(2015, 4, 30, 23, 54, 16, 49059)}),
+    Data(**{
+        'uuid': 'uuid:2d14ec68-c5b3-47d5-90db-eee510ee9378', 'clinic_type': 'Hospital', 'district': 6,
+        "variables":{"vac_ses":1,"vac_pw_vat1":1,"vac_pw_vat2":1,"vac_pw_vat3":1,"vac_pw_vat4":1,"vac_pw_vat5":1,"vac_i0_bcg":1,"vac_i0_vpi":1,"vac_i12_bcg":1,"vac_i0_dtc1":1,"vac_i0_dtc2":1,"vac_i0_dtc3":1,"vac_i0_pcv1":1,"vac_i0_pcv2":1,"vac_i0_pcv3":1,"vac_i12_vpi":1,"vac_i0_vpo0":1,"vac_i0_vpo1":1,"vac_i0_vpo2":1,"vac_i0_vpo3":1,"vac_notpw_vat1":1,"vac_notpw_vat2":1,"vac_notpw_vat3":1,"vac_notpw_vat4":1,"vac_notpw_vat5":1,"vac_i12_dtc1":1,"vac_i12_dtc2":1,"vac_i12_dtc3":1,"vac_i12_pcv1":1,"vac_i12_pcv2":1,"vac_i12_pcv3":1,"vac_i0_rota1":1,"vac_i0_rota2":1,"vac_i0_rota3":1,"vac_i12_vpo0":1,"vac_i12_vpo1":1,"vac_i12_vpo2":1,"vac_i12_vpo3":1,"vac_i12_rota1":1,"vac_i12_rota2":1,"vac_i12_rota3":1
+        },'clinic': 11, 'geolocation': '-0.1,0.4', 'id': 1, 'region': 2, 'country': 1, 'date': datetime.datetime(2016, 4, 30, 23, 54, 16, 49059)}),
 
-        },'clinic': 11, 'geolocation': '-0.1,0.4', 'id': 1, 'region': 2, 'country': 1, 'date': datetime.datetime(2015, 4, 30, 23, 54, 16, 49059)})
 ]
 
 date = datetime.date.today()
