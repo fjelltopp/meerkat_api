@@ -2360,9 +2360,6 @@ class VaccinationReport(Resource):
               use_ids=True
           )
 
-        print("counts")
-        print(counts)
-
         try:
           ret['data'].update({'vaccination_sessions':counts['vaccination_sessions']['vac_ses']})
           
