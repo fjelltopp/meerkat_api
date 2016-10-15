@@ -1478,7 +1478,59 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))
 
-        check_data( data, 1 )     
+        check_data( data, 1 )  
+
+    def test_vaccination(self):
+        """ Test vaccination report"""
+
+        #Load the test data.
+        db_util.insert_locations(self.db.session)
+        db_util.insert_codes_from_file(self.db.session, "codes.csv")
+        db_util.insert_cases(self.db.session, "vaccination_report")
+
+        #Select report params
+        end_date = datetime(2015, 1, 7).isoformat()
+        start_date = datetime(2015, 1, 1).isoformat()
+        location = 1
+
+        #Call the api method and check the response is 200 OK. Store the data. 
+        rv = self.app.get('/reports/vaccination/{}/{}/{}'.format(location, end_date, start_date), headers=settings.header)
+        self.assertEqual(rv.status_code, 200)
+        data = json.loads(rv.data.decode("utf-8"))
+
+        assert False
+        #Refactorisation: check the data is returned is as expected
+        """def check_data( data, expected ): 
+            
+            test_dict = {
+                **data["infants"],
+                **data["females"]
+            }
+
+            for key, value in test_dict.items(): 
+
+                if( value != expected ):
+                    print( "FAILED ASSERTION | Key: {}  Value: {} Should be {}."
+                           .format( key, value, expected ) )
+                self.assertEqual(value, expected)
+
+                if( key not in data["variables"] ):
+                    print( "KEY NOT INCLUDED IN VARIABLES | Key: {}".format(key) )
+                self.assertTrue( key in data["variables"] )
+
+        #The data is set up to equal 2 everywhere, so check this is the case.
+        check_data( data, 0 )
+
+        #Change the dates and check we get what's expected.
+        end_date = datetime(2016, 1, 7).isoformat()
+        start_date = datetime(2016, 1, 1).isoformat()
+        location = 1
+ 
+        rv = self.app.get('/reports/vaccination/{}/{}/{}'.format(location, end_date, start_date), headers=settings.header)
+        self.assertEqual(rv.status_code, 200)
+        data = json.loads(rv.data.decode("utf-8"))
+
+        check_data( data, 0 ) """   
 
 if __name__ == '__main__':
     unittest.main()

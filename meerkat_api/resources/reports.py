@@ -24,6 +24,7 @@ from datetime import datetime, timedelta
 from dateutil import parser
 from sqlalchemy.sql import text
 import uuid
+import traceback
 from gettext import gettext
 import logging
 from meerkat_api.util import get_children, is_child, fix_dates
@@ -2359,45 +2360,52 @@ class VaccinationReport(Resource):
               use_ids=True
           )
 
-        ret['data'].update({'vaccination_sessions':counts['vaccination_sessions']['vac_ses']})
-        
-        ret['data'].update({'infants':[]})
-        category1='vaccinated_0_11_mo_infants'
-        category2='vaccinated_12_mo_infants'
-        infant_vaccinations_variables = {}
-        infant_vaccinations_variables[category1]=variables_instance.get(category1)
-        infant_vaccinations_variables[category2]=variables_instance.get(category2)
+        print("counts")
+        print(counts)
 
-        for key in counts[category1]:
-          ret['data']['infants'].append({
-            'name': infant_vaccinations_variables[category1][key]['name']
-            ,category1:counts[category1][key]
-            })
+        try:
+          ret['data'].update({'vaccination_sessions':counts['vaccination_sessions']['vac_ses']})
+          
+          ret['data'].update({'infants':[]})
+          category1='vaccinated_0_11_mo_infants'
+          category2='vaccinated_12_mo_infants'
+          infant_vaccinations_variables = {}
+          infant_vaccinations_variables[category1]=variables_instance.get(category1)
+          infant_vaccinations_variables[category2]=variables_instance.get(category2)
 
-        for key in counts[category2]:
-          for item in ret['data']['infants']:
-            if infant_vaccinations_variables[category2][key]['name']==item['name']:
-              item.update({category2:counts[category2][key]})
+          for key in counts[category1]:
+            ret['data']['infants'].append({
+              'name': infant_vaccinations_variables[category1][key]['name']
+              ,category1:counts[category1][key]
+              })
 
-        ret['data'].update({'females':[]})
-        category1='vaccinated_pw'
-        category2='vaccinated_notpw'
-        female_vaccinations_variables = {}
-        female_vaccinations_variables[category1]=variables_instance.get(category1)
-        female_vaccinations_variables[category2]=variables_instance.get(category2)
+          for key in counts[category2]:
+            for item in ret['data']['infants']:
+              if infant_vaccinations_variables[category2][key]['name']==item['name']:
+                item.update({category2:counts[category2][key]})
 
-        for key in counts[category1]:
-          ret['data']['females'].append({
-            'name': female_vaccinations_variables[category1][key]['name']
-            ,category1:counts[category1][key]
-            })
+          ret['data'].update({'females':[]})
+          category1='vaccinated_pw'
+          category2='vaccinated_notpw'
+          female_vaccinations_variables = {}
+          female_vaccinations_variables[category1]=variables_instance.get(category1)
+          female_vaccinations_variables[category2]=variables_instance.get(category2)
 
-        for key in counts[category2]:
-          for item in ret['data']['females']:
-            if female_vaccinations_variables[category2][key]['name']==item['name']:
-              item.update({category2:counts[category2][key]})
+          for key in counts[category1]:
+            ret['data']['females'].append({
+              'name': female_vaccinations_variables[category1][key]['name']
+              ,category1:counts[category1][key]
+              })
 
-        #sort vaccination lists
-        ret['data']['infants'].sort(key=lambda tup: tup['name'])
-        ret['data']['females'].sort(key=lambda tup: tup['name'])
+          for key in counts[category2]:
+            for item in ret['data']['females']:
+              if female_vaccinations_variables[category2][key]['name']==item['name']:
+                item.update({category2:counts[category2][key]})
+
+          #sort vaccination lists
+          ret['data']['infants'].sort(key=lambda tup: tup['name'])
+          ret['data']['females'].sort(key=lambda tup: tup['name'])
+        except KeyError:
+          traceback.print_stack()
+          ret['data'] = {'message':'invalid data'}
         return ret
