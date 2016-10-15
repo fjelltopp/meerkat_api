@@ -1488,49 +1488,40 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
         db_util.insert_codes_from_file(self.db.session, "codes.csv")
         db_util.insert_cases(self.db.session, "vaccination_report")
 
-        #Select report params
-        end_date = datetime(2015, 1, 7).isoformat()
-        start_date = datetime(2015, 1, 1).isoformat()
-        location = 1
-
-        #Call the api method and check the response is 200 OK. Store the data. 
-        rv = self.app.get('/reports/vaccination/{}/{}/{}'.format(location, end_date, start_date), headers=settings.header)
-        self.assertEqual(rv.status_code, 200)
-        data = json.loads(rv.data.decode("utf-8"))
-
-        assert False
-        #Refactorisation: check the data is returned is as expected
-        """def check_data( data, expected ): 
+        #Check the data is returned is as expected
+        def check_data( end_date, start_date, location, expected ): 
             
-            test_dict = {
-                **data["infants"],
-                **data["females"]
-            }
+            rv = self.app.get('/reports/vaccination/{}/{}/{}'.format(location, end_date, start_date), headers=settings.header)
+            self.assertEqual(rv.status_code, 200)
+            data = json.loads(rv.data.decode("utf-8"))
 
-            for key, value in test_dict.items(): 
+            self.assertEqual(data["data"]["vaccination_sessions"],expected)
 
-                if( value != expected ):
-                    print( "FAILED ASSERTION | Key: {}  Value: {} Should be {}."
-                           .format( key, value, expected ) )
-                self.assertEqual(value, expected)
+            for item in data["data"]["infants"]: 
+                if( item["vaccinated_0_11_mo_infants"] != expected or item["vaccinated_12_mo_infants"] != expected):
+                    print( "FAILED ASSERTION | Item name: {}  Value: {} Should be {}."
+                           .format( item["name"], item["vaccinated_0_11_mo_infants"], expected ) )
+                self.assertEqual(item["vaccinated_0_11_mo_infants"], expected)
 
-                if( key not in data["variables"] ):
-                    print( "KEY NOT INCLUDED IN VARIABLES | Key: {}".format(key) )
-                self.assertTrue( key in data["variables"] )
+            for item in data["data"]["females"]: 
+                if( item["vaccinated_pw"] != expected or item["vaccinated_notpw"] != expected):
+                    print( "FAILED ASSERTION | Item name: {}  Value: {} Should be {}."
+                           .format( item["name"], item["vaccinated_pw"], expected ) )
+                self.assertEqual(item["vaccinated_pw"], expected)
 
-        #The data is set up to equal 2 everywhere, so check this is the case.
-        check_data( data, 0 )
+        #Run data checks with different parameters
 
-        #Change the dates and check we get what's expected.
-        end_date = datetime(2016, 1, 7).isoformat()
-        start_date = datetime(2016, 1, 1).isoformat()
-        location = 1
- 
-        rv = self.app.get('/reports/vaccination/{}/{}/{}'.format(location, end_date, start_date), headers=settings.header)
-        self.assertEqual(rv.status_code, 200)
-        data = json.loads(rv.data.decode("utf-8"))
+        check_data(
+            end_date=datetime(2015, 1, 7).isoformat(),
+            start_date=datetime(2015, 1, 1).isoformat(), 
+            location=1, 
+            expected=0)
 
-        check_data( data, 0 ) """   
+        check_data(
+            end_date=datetime(2016, 1, 7).isoformat(),
+            start_date=datetime(2016, 1, 1).isoformat(), 
+            location=1, 
+            expected=1)
 
 if __name__ == '__main__':
     unittest.main()
