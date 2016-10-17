@@ -1608,7 +1608,7 @@ class RefugeePublicHealth(Resource):
     decorators = [authenticate]
     
     def get(self, location, start_date=None, end_date=None):
-        if not app.config["TESTING"] and "refugee" not in model.form_tables:
+        if not app.config["TESTING"] and "jor_refugee" not in model.form_tables:
             return {}
         start_date, end_date = fix_dates(start_date, end_date)
         end_date_limit = end_date + timedelta(days=1)
@@ -1755,6 +1755,8 @@ class RefugeePublicHealth(Resource):
         ret["data"]["demographics"] = []
       
         age_order = ["0-1", "1-4", "5-14", "15-44", "45-64", ">65"]
+        ret["data"]["age"] = []
+        
         for a in age_order:
             if a in age_gender.keys():
                 a_sum = sum(age_gender[a].values())
@@ -1769,7 +1771,12 @@ class RefugeePublicHealth(Resource):
                                "percent": age_gender[a]["female"]/float(a_sum)*100
                      }
                 })
-
+                ret["data"]["age"].append({
+                    "age": a,
+                    "quantity": a_sum,
+                    "percent": a_sum / tot_pop * 100
+                    })
+        
         ret["data"]["gender"] = [
             make_dict("Female",
                       female,
@@ -1810,7 +1817,7 @@ class RefugeeDetail(Resource):
     decorators = [authenticate]
     
     def get(self, location, start_date=None, end_date=None):
-        if not app.config["TESTING"] and "refugee" not in model.form_tables:
+        if not app.config["TESTING"] and "jor_refugee" not in model.form_tables:
             return {}
         start_date, end_date = fix_dates(start_date, end_date)
         end_date_limit = end_date + timedelta(days=1)
@@ -1847,7 +1854,8 @@ class RefugeeDetail(Resource):
         age_gender = {}
         no_clinicians = 0
         for clinic in refugee_clinics:
-            clinic_data = get_latest_category("population", clinic, start_date, end_date_limit)
+            clinic_data = get_latest_category("population", clinic,
+                                              start_date, end_date_limit)
             for age in clinic_data:
                 age_gender.setdefault(age, {})
                 for gender in clinic_data[age]:
@@ -1874,7 +1882,6 @@ class RefugeeDetail(Resource):
             u5 = 0
         if u5 == 0:
             u5 = 1
-
         #1. Population
         age_gender["total"] = tot_pop
         ret["data"]["population"] = {"Refugee Population": age_gender}
@@ -1969,7 +1976,7 @@ class RefugeeCd(Resource):
     decorators = [authenticate]
 
     def get(self, location, start_date=None, end_date=None):
-        if not app.config["TESTING"] and "refugee" not in model.form_tables:
+        if not app.config["TESTING"] and "jor_refugee" not in model.form_tables:
             return {}
         start_date, end_date = fix_dates(start_date, end_date)
         end_date_limit = end_date + timedelta(days=1)

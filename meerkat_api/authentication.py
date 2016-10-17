@@ -15,14 +15,16 @@ def authenticate(f):
     @wraps(f)
     def decorated(*args, **kwargs):
 
-        #Load the authentication rule from configs, based on the request url_rule.
-        auth_rule = current_app.config['AUTH'].get( 
+        # Load the authentication rule from configs,
+        # based on the request url_rule.
+        auth_rule = current_app.config['AUTH'].get(
             str(request.url_rule),
-            current_app.config['AUTH'].get( 'default', [['BROKEN'],['']] ) #Default rule when no specific rule
+            current_app.config['AUTH'].get('default', [['BROKEN'], ['']])
+            # Default rule when no specific rule
         )
-        logging.warning( "Url requires access: {}".format(auth_rule) )
+        logging.warning("Url requires access: {}".format(auth_rule))
 
-        auth.check_auth( *auth_rule )
+        auth.check_auth(*auth_rule)
 
         return f(*args, **kwargs)
     return decorated

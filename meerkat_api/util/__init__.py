@@ -7,6 +7,21 @@ from flask import jsonify
 from datetime import datetime, timedelta
 from dateutil import parser
 
+def series_to_json_dict(series):
+    """
+    Takes pandas series and turns into a dict with string keys
+
+    Args: 
+        series: pandas series
+    
+    Returns: 
+       dict: dict
+    """
+    if series is not None:
+        return dict( (str(key), value) for key, value in series.to_dict().items())
+    else:
+        return {}
+
 def fix_dates(start_date, end_date):
     """
     We parse the start and end date and remove any timezone information
