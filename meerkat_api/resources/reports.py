@@ -1175,7 +1175,7 @@ class CdPublicHealth(Resource):
             
         #public health indicators
 
-        medicines = query_variable.get("prc_2", "medicine",
+        medicines = query_variable.get("prc_1", "medicine",
                                      end_date=end_date_limit.isoformat(),
                                      start_date=start_date.isoformat(),
                                      only_loc=location, use_ids=True)
@@ -1209,8 +1209,10 @@ class CdPublicHealth(Resource):
                       tot_alerts,
                       100)
         )
+        ret["data"]["alerts_total"] = tot_alerts
         if tot_alerts == 0:
             tot_alerts = 1
+
         ret["data"]["public_health_indicators"].append(
             make_dict(gettext("Alerts investigated"),
                       investigated_alerts,
@@ -1232,7 +1234,7 @@ class CdPublicHealth(Resource):
                               num / total_cases * 100))
 
 
-        ret["data"]["alerts_total"] = tot_alerts
+
 
 
         #Demographics
