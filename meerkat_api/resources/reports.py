@@ -14,6 +14,7 @@ CD Profile
 Refugee Profile
 Refugee CD Report
 Refugee Detailed Report
+Vaccination Report
 """
 
 from flask_restful import Resource
@@ -23,6 +24,7 @@ from datetime import datetime, timedelta
 from dateutil import parser
 from sqlalchemy.sql import text
 import uuid
+import traceback
 from gettext import gettext
 import logging
 from meerkat_api.util import get_children, is_child, fix_dates
@@ -316,6 +318,8 @@ def refugee_disease(disease_demo):
                                  diseases[disease] / tot_n * 100))
     return ret
 
+def order_by_name(data_list):
+  return 1
 
 class NcdReport(Resource):
     """
@@ -2292,4 +2296,122 @@ class Malaria(Resource):
 
         ret['variables'] = var 
 
+        return ret
+
+class VaccinationReport(Resource):
+    """
+    Vaccination Report or "Vaccination de Routine"
+
+    This reports gives detailed tables on aspects concerning vaccination sessions.
+    As requested by Madagascar. 
+
+    Args:\n
+       location: Location to generate report for\n
+       start_date: Start date of report\n
+       end_date: End date of report\n
+    Returns:\n
+       report_data\n
+    """
+    decorators = [authenticate]
+    
+    def get(self, location, start_date=None, end_date=None):
+        start_date, end_date = fix_dates(start_date, end_date)
+        end_date_limit = end_date + timedelta(days=1)
+
+        ret = {}
+
+        # Meta data
+        ret["meta"] = {"uuid": str(uuid.uuid4()),
+                       "project_id": 1,
+                       "generation_timestamp": datetime.now().isoformat(),
+                       "schema_version": 0.1
+        }
+
+        # Dates and Location Information
+        ew = EpiWeek()
+        epi_week = ew.get(end_date.isoformat())["epi_week"]
+
+        ret["data"] = {"epi_week_num": epi_week,
+                       "end_date": end_date.isoformat(),
+                       "project_epoch": datetime(2015,5,20).isoformat(),
+                       "start_date": start_date.isoformat()
+        }
+
+        locs = get_locations(db.session)
+        if int(location) not in locs:
+            return None
+        location_name = locs[int(location)]
+        ret["data"]["project_region"] = location_name.name
+        ret["data"]["project_region_id"] = location
+        
+        # Actually get the data.
+        conn = db.engine.connect()
+
+        var = {}
+        counts = {}
+
+        categories = [
+          'vaccination_sessions',
+          'vaccinated_pw',
+          'vaccinated_notpw',
+          'vaccinated_0_11_mo_infants',
+          'vaccinated_12_mo_infants'
+          ]
+
+        for category in categories:
+
+          counts[category] = get_variables_category(
+              category, 
+              start_date, 
+              end_date_limit, 
+              location, 
+              conn, 
+              use_ids=True
+          )
+
+        try:
+          ret['data'].update({'vaccination_sessions':counts['vaccination_sessions']['vac_ses']})
+          
+          ret['data'].update({'infants':[]})
+          category1='vaccinated_0_11_mo_infants'
+          category2='vaccinated_12_mo_infants'
+          infant_vaccinations_variables = {}
+          infant_vaccinations_variables[category1]=variables_instance.get(category1)
+          infant_vaccinations_variables[category2]=variables_instance.get(category2)
+
+          for key in counts[category1]:
+            ret['data']['infants'].append({
+              'name': infant_vaccinations_variables[category1][key]['name']
+              ,category1:counts[category1][key]
+              })
+
+          for key in counts[category2]:
+            for item in ret['data']['infants']:
+              if infant_vaccinations_variables[category2][key]['name']==item['name']:
+                item.update({category2:counts[category2][key]})
+
+          ret['data'].update({'females':[]})
+          category1='vaccinated_pw'
+          category2='vaccinated_notpw'
+          female_vaccinations_variables = {}
+          female_vaccinations_variables[category1]=variables_instance.get(category1)
+          female_vaccinations_variables[category2]=variables_instance.get(category2)
+
+          for key in counts[category1]:
+            ret['data']['females'].append({
+              'name': female_vaccinations_variables[category1][key]['name']
+              ,category1:counts[category1][key]
+              })
+
+          for key in counts[category2]:
+            for item in ret['data']['females']:
+              if female_vaccinations_variables[category2][key]['name']==item['name']:
+                item.update({category2:counts[category2][key]})
+
+          #sort vaccination lists
+          ret['data']['infants'].sort(key=lambda tup: tup['name'])
+          ret['data']['females'].sort(key=lambda tup: tup['name'])
+        except KeyError:
+          traceback.print_stack()
+          ret['data'] = {'message':'invalid data'}
         return ret

@@ -1478,7 +1478,54 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))
 
-        check_data( data, 1 )     
+        check_data( data, 1 )  
+
+    def test_vaccination(self):
+        """ Test vaccination report"""
+
+        #Load the test data.
+        db_util.insert_locations(self.db.session)
+        db_util.insert_codes_from_file(self.db.session, "codes.csv")
+        db_util.insert_cases(self.db.session, "vaccination_report")
+
+        #Check the data is returned is as expected
+        def check_data( end_date, start_date, location, expected ): 
+            
+            rv = self.app.get('/reports/vaccination/{}/{}/{}'.format(location, end_date, start_date), headers=settings.header)
+            self.assertEqual(rv.status_code, 200)
+            data = json.loads(rv.data.decode("utf-8"))
+
+            self.assertEqual(data["data"]["vaccination_sessions"],expected)
+
+            for item in data["data"]["infants"]: 
+                print('infant_item')
+                print(item)
+                if( item["vaccinated_0_11_mo_infants"] != expected or item["vaccinated_12_mo_infants"] != expected):
+                    print( "FAILED ASSERTION | Item name: {}  Value: {} Should be {}."
+                           .format( item["name"], item["vaccinated_0_11_mo_infants"], expected ) )
+                self.assertEqual(item["vaccinated_0_11_mo_infants"], expected)
+                self.assertEqual(item["vaccinated_12_mo_infants"], expected)
+
+            for item in data["data"]["females"]: 
+                if( item["vaccinated_pw"] != expected or item["vaccinated_notpw"] != expected):
+                    print( "FAILED ASSERTION | Item name: {}  Value: {} Should be {}."
+                           .format( item["name"], item["vaccinated_pw"], expected ) )
+                self.assertEqual(item["vaccinated_pw"], expected)
+                self.assertEqual(item["vaccinated_notpw"], expected)
+
+        #Run data checks with different parameters
+
+        check_data(
+            end_date=datetime(2015, 7, 1).isoformat(),
+            start_date=datetime(2015, 1, 1).isoformat(), 
+            location=1, 
+            expected=0)
+
+        check_data(
+            end_date=datetime(2016, 7, 1).isoformat(),
+            start_date=datetime(2016, 1, 1).isoformat(), 
+            location=1, 
+            expected=1)
 
 if __name__ == '__main__':
     unittest.main()

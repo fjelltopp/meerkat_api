@@ -21,7 +21,7 @@ try:
     print( "Authentication requirements installed." )
 except ImportError:
     print( "Authentication requirements not installed.  Installing them now." )
-    os.system('pip install -r /var/www/meerkat_auth/requirements.txt') 
+    os.system('pip3 install -r /var/www/meerkat_auth/requirements.txt') 
 
 from . import settings
 from meerkat_api.test.test_alerts import *

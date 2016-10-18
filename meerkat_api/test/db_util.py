@@ -70,6 +70,8 @@ def insert_codes_from_file(session, filename):
         if "" in row.keys():
             row.pop("")
         row = field_to_list(row, "category")
+        keys = model.AggregationVariables.__table__.columns._data.keys()
+        row = {key: row[key] for key in keys if key in row}
         session.add(model.AggregationVariables(**row))
 
     session.commit()
