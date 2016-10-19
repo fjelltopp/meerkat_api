@@ -2,7 +2,7 @@
 Data resource for exporting data
 """
 from flask_restful import Resource
-from flask import request, abort, current_app
+from flask import request, abort, current_app, abort
 from sqlalchemy import or_, text
 from sqlalchemy.orm import aliased
 from dateutil.parser import parse
@@ -308,13 +308,18 @@ class ExportForm(Resource):
         csv_writer = csv.DictWriter(f, keys, extrasaction='ignore')
         csv_writer.writeheader()
         i = 0
+        if locs_by_deviceid is None:
+            app.logger.warn(locations)
+            abort(500)
+        
         if form in form_tables.keys():
             results = db.session.query(form_tables[form].data).yield_per(1000)
             dict_rows = []
             for row in results:
-
                 dict_row = row.data
-                clinic_id = locs_by_deviceid.get(row.data["deviceid"], None)
+                if not dict_row:
+                    continue
+                clinic_id = locs_by_deviceid.get(dict_row["deviceid"], None)
                 if clinic_id:
                     dict_row["clinic"] = locations[clinic_id].name
                     # Sort out district and region
