@@ -113,5 +113,5 @@ class MeerkatAPIAlertsTestCase(unittest.TestCase):
         rv = self.app.get('/alerts?start_date=' + start + '&end_date=' + end, headers=settings.header)
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))
-        self.assertEqual(len(data["alerts"]),2)
+        self.assertEqual(len(data["alerts"]), 2)
         

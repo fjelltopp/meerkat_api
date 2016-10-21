@@ -1,4 +1,4 @@
-from meerkat_abacus.model import Data
+from meerkat_abacus.model import Data, DisregardedData
 import datetime
 
 public_health_report = [
@@ -119,7 +119,7 @@ alerts = [
     
     Data(**{'uuid': 'uuid:b013c24a-4790-43d6-8b43-4d28a4ce934d', 'clinic_type': 'Hospital', 'district': 6, 'variables': {"alert": 1, "alert_id": "ce93s1", "alert_reason": "cmd_2", "alert_gender": "female", "alert_age": '33', "ale_1": 1, "ale_4": 1}, 'clinic': 7, 'geolocation': '-0.1,0.4', 'id': 4, 'region': 2, 'country': 1, 'date': datetime.datetime(2015, 4, 30, 23, 54, 16, 49059)}) ,
     
-    Data(**{'uuid': 'uuid:b013c24a-4790-43d6-8b43-4d28a4ce934d', 'clinic_type': 'Hospital', 'district': 6, 'variables': {"alert": 1, "alert_id": "ce93s1", "alert_reason": "cmd_11", "alert_gender": "female", "alert_age": '33', "ale_1": 1213, "ale_3": 1}, 'clinic': 7, 'geolocation': '-0.1,0.4', 'id': 5, 'region': 2, 'country': 1, 'date': datetime.datetime(2015, 4, 30, 23, 54, 16, 49059)}) ,
+    DisregardedData(**{'uuid': 'uuid:b013c24a-4790-43d6-8b43-4d28a4ce934d', 'clinic_type': 'Hospital', 'district': 6, 'variables': {"alert": 1, "alert_id": "ce93s1", "alert_reason": "cmd_11", "alert_gender": "female", "alert_age": '33', "ale_1": 1213, "ale_3": 1}, 'clinic': 7, 'geolocation': '-0.1,0.4', 'id': 5, 'region': 2, 'country': 1, 'date': datetime.datetime(2015, 4, 30, 23, 54, 16, 49059)}) ,
     
     Data(**{'uuid': 'uuid:b013c24a-4790-43d6-8b43-4d28a4ce934d', 'clinic_type': 'Hospital', 'district': 6, 'variables': {"alert": 1, "alert_id": "ce93s1", "alert_reason": "cmd_11", "alert_gender": "female", "alert_age": '33', }, 'clinic': 7, 'geolocation': '-0.1,0.4', 'id': 6, 'region': 2, 'country': 1, 'date': datetime.datetime(2015, 3, 4, 23, 54, 16, 49059)}) ,
     
