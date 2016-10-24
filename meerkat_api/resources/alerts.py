@@ -24,10 +24,15 @@ class Alert(Resource):
     decorators = [authenticate]
 
     def get(self, alert_id):
-        result = db.session.query(model.Data).filter(model.Data.variables["alert_id"].astext == alert_id).first()
-        if result: 
+        result = db.session.query(model.Data).filter(
+            model.Data.variables["alert_id"].astext == alert_id).first()
+        if result:
             return jsonify(row_to_dict(result))
         else:
+            result = db.session.query(model.DisregardedData).filter(
+                model.DisregardedData.variables["alert_id"].astext == alert_id).first()
+            if result:
+                return jsonify(row_to_dict(result))
             return {}
 
 
@@ -39,7 +44,7 @@ class Alerts(Resource):
         alerts\n
     """
     decorators = [authenticate]
-    
+
     def get(self):
         args = request.args
         return jsonify({"alerts": get_alerts(args)})
@@ -60,24 +65,35 @@ def get_alerts(args):
        alerts(list): a list of alerts. \n
     """
     conditions = [model.Data.variables.has_key("alert")]
+    disregarded_conditions = [model.DisregardedData.variables.has_key("alert")]
     if "reason" in args.keys():
-        conditions.append(model.Data.variables["alert_reason"].astext == args["reason"])
+        conditions.append(
+            model.Data.variables["alert_reason"].astext == args["reason"])
+        disregarded_conditions.append(
+            model.DisregardedData.variables["alert_reason"].astext ==
+            args["reason"])
     if "location" in args.keys():
         locations = get_locations(db.session)
         children = get_children(int(args["location"]), locations)
         conditions.append(model.Data.clinic.in_(children))
+        disregarded_conditions.append(
+            model.DisregardedData.clinic.in_(children))
     if "start_date" in args.keys():
-        conditions.append( model.Data.date >= args["start_date"] )
+        conditions.append(model.Data.date >= args["start_date"])
+        disregarded_conditions.append(
+            model.DisregardedData.date >= args["start_date"])
     if "end_date" in args.keys():
-        conditions.append( model.Data.date < args["end_date"] )
+        conditions.append(model.Data.date < args["end_date"])
+        disregarded_conditions.append(
+            model.DisregardedData.date < args["end_date"])
+
+    results = db.session.query(model.Data).filter(*conditions).all()
+    results += db.session.query(model.DisregardedData).filter(
+        *disregarded_conditions).all()
+
+    return rows_to_dicts(results)
 
 
-
-    results = db.session.query(model.Data).filter(*conditions)
-    alerts = {}
-
-    return rows_to_dicts(results.all())
-    
 class AggregateAlerts(Resource):
     """
     Aggregates all alerts based on reason and status in the following format:
@@ -88,7 +104,7 @@ class AggregateAlerts(Resource):
         alerts(dict): Aggregagated alerts by reason and status\n
     """
     decorators = [authenticate]
-    
+
     def get(self, central_review=False):
         args = request.args
         all_alerts = get_alerts(args)
@@ -104,7 +120,7 @@ class AggregateAlerts(Resource):
                         status = "Disregarded"
                     elif "ale_4" in a["variables"]:
                         status = "Ongoing"
-                        
+
                     if "cre_1" in a["variables"]:
                         if "cre_2" in a["variables"]:
                             status = "Confirmed"
@@ -129,6 +145,6 @@ class AggregateAlerts(Resource):
             r = ret.setdefault(str(reason), {})
             r.setdefault(status, 0)
             r[status] += 1
-            
+
         ret["total"] = len(all_alerts)
         return jsonify(ret)
