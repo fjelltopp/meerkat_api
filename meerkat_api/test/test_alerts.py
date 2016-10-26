@@ -27,7 +27,7 @@ class MeerkatAPIAlertsTestCase(unittest.TestCase):
         """test alert"""
         rv = self.app.get('/alert/ce9341', headers=settings.header)
         self.assertEqual(rv.status_code, 200)
-        data = json.loads(rv.data.decode("utf-8"))
+        data = json.loads(rv.data.decode("utf-8"))["alert"]
         self.assertEqual(data["variables"]["alert_id"], "ce9341")
         self.assertEqual(data["variables"]["alert_reason"], "cmd_11")
         self.assertEqual(data["clinic"], 7)

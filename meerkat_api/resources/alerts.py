@@ -27,12 +27,25 @@ class Alert(Resource):
         result = db.session.query(model.Data).filter(
             model.Data.variables["alert_id"].astext == alert_id).first()
         if result:
-            return jsonify(row_to_dict(result))
+            if result.variables.get("alert_type", None) == "threshold":
+                alert_links = result.variables.get("linked_alerts", [])
+                if alert_links:
+                    other_data = rows_to_dicts(
+                        db.session.query(model.Data).filter(
+                            model.Data.uuid.in_(alert_links)).all())
+                else:
+                    other_data = {}
+            else:
+                other_data = {}
+            return jsonify({"alert": row_to_dict(result),
+                            "linked_alerts": other_data})
         else:
             result = db.session.query(model.DisregardedData).filter(
-                model.DisregardedData.variables["alert_id"].astext == alert_id).first()
+                model.DisregardedData.variables["alert_id"].astext ==
+                alert_id).first()
             if result:
-                return jsonify(row_to_dict(result))
+                return jsonify({"alert": row_to_dict(result),
+                                "linked_alerts": {}})
             return {}
 
 
