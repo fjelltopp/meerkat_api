@@ -97,6 +97,7 @@ class AggregateAlerts(Resource):
             reason = a["variables"]["alert_reason"]
 
             if central_review:
+                status = "Pending"
                 if "ale_1" in a["variables"]:
                     if "ale_2" in a["variables"]:
                         status = "Ongoing"
@@ -104,17 +105,19 @@ class AggregateAlerts(Resource):
                         status = "Disregarded"
                     elif "ale_4" in a["variables"]:
                         status = "Ongoing"
+                    else:
+                        status = "Ongoing"
                         
-                    if "cre_1" in a["variables"]:
-                        if "cre_2" in a["variables"]:
-                            status = "Confirmed"
-                        elif "cre_3" in a["variables"]:
-                            status = "Disregarded"
-                        elif "cre_4" in a["variables"]:
-                            status = "Ongoing"
-                else:
-                    # We set all  without an investigation to Pending
-                    status = "Pending"
+                if "cre_1" in a["variables"]:
+                    if "cre_2" in a["variables"]:
+                        status = "Confirmed"
+                    elif "cre_3" in a["variables"]:
+                        status = "Disregarded"
+                    elif "cre_4" in a["variables"]:
+                        status = "Ongoing"
+                    else:
+                        status = "Ongoing"
+
             else:
                 if "ale_1" in a["variables"]:
                     if "ale_2" in a["variables"]:
