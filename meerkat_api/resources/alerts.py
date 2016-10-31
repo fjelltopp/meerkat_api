@@ -31,8 +31,9 @@ class Alert(Resource):
                 alert_links = result.variables.get("linked_alerts", [])
                 if alert_links:
                     other_data = rows_to_dicts(
-                        db.session.query(model.Data).filter(
-                            model.Data.uuid.in_(alert_links)).all())
+                        db.session.query(model.Data)
+                        .filter(model.Data.variables["master_alert"].astext ==
+                                result.uuid).all())
                 else:
                     other_data = {}
             else:
