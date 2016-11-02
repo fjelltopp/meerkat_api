@@ -87,7 +87,7 @@ from meerkat_api.resources.alerts import Alert, Alerts, AggregateAlerts
 from meerkat_api.resources.explore import QueryVariable, QueryCategory
 from meerkat_api.resources.epi_week import EpiWeek, EpiWeekStart
 from meerkat_api.resources.completeness import Completeness, NonReporting
-from meerkat_api.resources.reports import PublicHealth, CdReport, CdPublicHealth, CdPublicHealthMad, NcdPublicHealth,RefugeePublicHealth, RefugeeCd,RefugeeDetail, NcdReport, Pip, WeeklyEpiMonitoring, Malaria, VaccinationReport
+from meerkat_api.resources.reports import PublicHealth, CdReport, CdPublicHealth, CdPublicHealthMad, NcdPublicHealth,RefugeePublicHealth, RefugeeCd,RefugeeDetail, NcdReport, Pip, WeeklyEpiMonitoring, Malaria, VaccinationReport, AFROBulletin
 from meerkat_api.resources.frontpage import KeyIndicators, TotMap, NumAlerts, ConsultationMap, RefugeePage, NumClinics
 from meerkat_api.resources.export_data import ExportData, ExportForm, Forms, ExportCategory
 #from meerkat_api.resources.links import Link, Links
@@ -206,6 +206,9 @@ api.add_resource(Malaria, "/reports/malaria/<location>",
 api.add_resource(VaccinationReport, "/reports/vaccination/<location>",
                  "/reports/vaccination/<location>/<end_date>",
                  "/reports/vaccination/<location>/<end_date>/<start_date>")
+api.add_resource(AFROBulletin, "/reports/afro/<location>",
+                 "/reports/afro/<location>/<end_date>",
+                 "/reports/afro/<location>/<end_date>/<start_date>")
 
 # Misc
 api.add_resource(NonReporting, "/non_reporting/<variable>/<location>")
@@ -217,7 +220,6 @@ api.add_resource(Records, "/records/<variable>/<location_id>")
 @app.route('/')
 def hello_world():
     return "WHO"
-
 
 @app.route('/test-authentication')
 @authenticate

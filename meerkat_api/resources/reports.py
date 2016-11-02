@@ -2415,3 +2415,55 @@ class VaccinationReport(Resource):
           traceback.print_stack()
           ret['data'] = {'message':'invalid data'}
         return ret
+
+
+class AFROBulletin(Resource):
+    """
+    AFRO Bulletin
+
+    This reports gives a comple summary of the state of the system. 
+
+    Args:\n
+       location: Location to generate report for\n
+       start_date: Start date of report\n
+       end_date: End date of report\n
+    Returns:\n
+       report_data\n
+    """
+    decorators = [authenticate]
+    
+    def get(self, location, start_date=None, end_date=None):
+
+        #Initialise some stuff.
+        start_date, end_date = fix_dates(start_date, end_date)
+        end_date_limit = end_date + timedelta(days=1)
+        ret = {}
+
+        # Meta data.
+        ret["meta"] = {"uuid": str(uuid.uuid4()),
+                       "project_id": 1,
+                       "generation_timestamp": datetime.now().isoformat(),
+                       "schema_version": 0.1
+        }
+
+        # Dates and Location Information
+        ew = EpiWeek()
+        epi_week = ew.get(end_date.isoformat())["epi_week"]
+        ret["data"] = {"epi_week_num": epi_week,
+                       "end_date": end_date.isoformat(),
+                       "project_epoch": datetime(2015,5,20).isoformat(),
+                       "start_date": start_date.isoformat()
+        }
+        locs = get_locations(db.session)
+        if int(location) not in locs:
+            return None
+        location_name = locs[int(location)]
+        ret["data"]["project_region"] = location_name.name
+        ret["data"]["project_region_id"] = location
+        
+        # Actually get the data.
+        conn = db.engine.connect()
+
+
+
+        return ret
