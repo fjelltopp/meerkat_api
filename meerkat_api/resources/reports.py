@@ -2506,6 +2506,6 @@ class AFROBulletin(Resource):
 
         ret['data']['summary'].update({'malaria': malaria})
 
-        ret['data']['summary'].update({'communicable_diseases': cd_tab['cmd_15']})
+        ret['data']['summary'].update({'communicable_diseases': cd_tab})
 
         return ret
