@@ -2464,6 +2464,48 @@ class AFROBulletin(Resource):
         # Actually get the data.
         conn = db.engine.connect()
 
+        tot_mortality = get_variables_category(
+            "tot_mortality", 
+            start_date, 
+            end_date_limit, 
+            location, 
+            conn, 
+            use_ids=True
+        )
 
+        mat_mortality = get_variables_category(
+            "mat_mortality", 
+            start_date, 
+            end_date_limit, 
+            location, 
+            conn, 
+            use_ids=True
+        )
+
+        malaria = get_variables_category(
+            "malaria_situation", 
+            start_date, 
+            end_date_limit, 
+            location, 
+            conn, 
+            use_ids=True
+        )
+
+        cd_tab = get_variables_category(
+            "cd_tab", 
+            start_date, 
+            end_date_limit, 
+            location, 
+            conn, 
+            use_ids=True
+        )
+
+        ret['data']['summary'] = {}
+        ret['data']['summary'].update({'mortality': tot_mortality})
+        ret['data']['summary']['mortality'].update(mat_mortality)
+
+        ret['data']['summary'].update({'malaria': malaria})
+
+        ret['data']['summary'].update({'communicable_diseases': cd_tab['cmd_15']})
 
         return ret
