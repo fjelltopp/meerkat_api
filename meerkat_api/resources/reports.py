@@ -2486,7 +2486,8 @@ class AFROBulletin(Resource):
         ret["data"]["weekly_highlights"]["comp_week"] = comp["score"][str(location)]
         ret["data"]["weekly_highlights"]["comp_year"] = 100 * sum(timeline) / len(timeline) 
         
-        #Get multi-variable figures. Assign them the key "var_id1_var_id2", e.g. "cmd_21_ale_1"
+        #Get multi-variable figures. 
+        #Assign them the key "var_id1_var_id2", e.g. "cmd_21_ale_1"
         multi_vars = [
             ['cmd_21', 'ale_1'],
             ['cmd_22', 'ale_1'],
