@@ -26,12 +26,12 @@ from sqlalchemy.sql import text
 import uuid
 import traceback
 from gettext import gettext
-import logging
+import logging, json, operator
 from meerkat_api.util import get_children, is_child, fix_dates
 from meerkat_api import db, app
 from meerkat_abacus.model import Data, Locations, AggregationVariables
 from meerkat_api.resources.completeness import Completeness
-from meerkat_api.resources.variables import Variables
+from meerkat_api.resources.variables import Variables, Variable
 from meerkat_api.resources.epi_week import EpiWeek, epi_week_start
 from meerkat_api.resources.locations import TotClinics
 from meerkat_api.resources import alerts
@@ -135,7 +135,7 @@ def get_variable_id(variable_id, start_date, end_date, location, conn):
 variables_instance = Variables()
 
 
-def map_variable( variable_id, start_date, end_date, location, conn ):
+def map_variable( variable_id, start_date, end_date, location, conn, group_by="clinic" ):
     """
     Map a given variable between dates and with location
 
@@ -154,7 +154,7 @@ def map_variable( variable_id, start_date, end_date, location, conn ):
     results = db.session.query(
         func.sum( Data.variables[variable_id].astext.cast(Integer) ).label('value'),
         Data.geolocation,
-        Data.clinic
+        getattr(Data, group_by)
     ).filter( 
         Data.variables.has_key(variable_id ),
         Data.date >= start_date, 
@@ -165,14 +165,14 @@ def map_variable( variable_id, start_date, end_date, location, conn ):
                                          Data.district,
                                          Data.clinic)  
         )
-    ).group_by("clinic", "geolocation")
+    ).group_by(group_by, "geolocation")
 
     locations = get_locations(db.session)
     ret = {}
     for r in results.all():
         if r[1]:
             ret[r[2]] = {"value": r[0], "geolocation": r[1].split(","),
-                         "clinic": locations[r[2]].name}
+                         group_by: locations[r[2]].name}
 
     return ret
 
@@ -2464,6 +2464,112 @@ class AFROBulletin(Resource):
         # Actually get the data.
         conn = db.engine.connect()
 
+        #WEEKLY HIGHLIGHTS-----------------------------------------------------------------
 
+        #Get single variables
+        ret["data"]["weekly_highlights"] =  get_variables_category(
+            'afro', 
+            start_date, 
+            end_date_limit, 
+            location, 
+            conn, 
+            use_ids=True
+        )
 
+        #Get number of clinics
+        tot_clinics = TotClinics()
+        ret["data"]["weekly_highlights"]["clinic_num"] = tot_clinics.get(location)["total"]
+
+        #Get completeness figures, assuming 5 registers to be submitted a week. 
+        comp = json.loads( Completeness().get( 'reg_1', location, 5 ).data.decode('UTF-8') )
+        timeline = comp["timeline"][str(location)]['values'] 
+        ret["data"]["weekly_highlights"]["comp_week"] = comp["score"][str(location)]
+        ret["data"]["weekly_highlights"]["comp_year"] = 100 * sum(timeline) / len(timeline) 
+        
+        #Get multi-variable figures. Assign them the key "var_id1_var_id2", e.g. "cmd_21_ale_1"
+        multi_vars = [
+            ['cmd_21', 'ale_1'],
+            ['cmd_22', 'ale_1'],
+            ['cmd_15', 'ale_1'],
+            ['cmd_7', 'ale_1'],
+            ['cmd_15', 'ale_2'],
+            ['cmd_10', 'ale_2'],
+            ['cmd_11', 'ale_2'],
+            ['cmd_7',  'ale_2'],
+            ['cmd_15', 'age_1']
+        ]
+        for vars_list in multi_vars:
+            ret["data"]["weekly_highlights"]["_".join( vars_list )] = query_ids( 
+                vars_list, 
+                start_date, 
+                end_date 
+            )
+
+        #Calculate percentages. Assign them key "var_id1_perc_var_id2" e.g. "mls_3_perc_mls_2".
+        #Each element in list is 2 element list of a numerator and denominator for a perc calc.
+        perc_vars = [
+            ['mls_3','mls_2'],
+            ['cmd_17','mls_2'],
+            ['mls_48','cmd_17'],
+            ['cmd_15_ale_1','cmd_15'],
+            ['cmd_15_ale_2','cmd_15'],
+            ['cmd_15_age_1','cmd_15'],
+            ['cmd_10_ale_2', 'cmd_10'],
+            ['cmd_7_ale_1','cmd_7'],
+            ['cmd_7_ale_2','cmd_7']
+        ]
+        for perc in perc_vars:
+            numer = ret["data"]["weekly_highlights"][perc[0]]
+            denom = ret["data"]["weekly_highlights"][perc[1]]
+            try: 
+                ret["data"]["weekly_highlights"][perc[0]+"_perc_"+perc[1]] = (numer/denom)*100
+            except ZeroDivisionError:
+                ret["data"]["weekly_highlights"][perc[0]+"_perc_"+perc[1]] = 0        
+    
+        #Top 3 regions of malnutrition.
+        nutri = map_variable( 
+            'icb_50',
+            start_date, 
+            end_date_limit, 
+            location, 
+            conn,
+            group_by="region"           
+        )
+        #Sort the regions by counts of malnutrtion
+        nutri = sorted(nutri.values(), key=lambda k: k['value'] )[-3:]
+        #For each of the top three regions, structure the data.
+        nutri_top = []
+        for reg in nutri:
+            nutri_top.insert( 0, {
+                'region': reg['region'],
+                'number': reg['value']
+            })
+        ret["data"]["weekly_highlights"]["malnutrition"] = nutri_top
+
+        #Top 3 causes of mortality. 
+        mort = get_variables_category(
+            'deaths', 
+            start_date, 
+            end_date_limit, 
+            location, 
+            conn, 
+            use_ids=True
+        )
+        #Sort mortality counts and slice off top three.
+        mort = sorted(mort.items(), key=operator.itemgetter(1))[-3:]
+        #For each count get the name of the disease that caused it, and structure the data.
+        mort_top = []
+        for var in mort:
+            #Extract the cause's id from the count variables name e.g. mor_1 name is "Deaths icd_17"
+            mort_var = Variable().get( var[0] )
+            cause_var = Variable().get( mort_var['name'][7:] )
+            #Only return if there are more than zero deaths.
+            if var[1] > 0:
+                mort_top.insert( 0, {
+                    'id': cause_var['id'],
+                    'name': cause_var['name'],
+                    'number': var[1]
+                })
+        ret["data"]["weekly_highlights"]["mortality"] = mort_top
+        
         return ret
