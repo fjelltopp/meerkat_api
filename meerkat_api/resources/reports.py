@@ -2572,5 +2572,34 @@ class AFROBulletin(Resource):
                     'number': var[1]
                 })
         ret["data"]["weekly_highlights"]["mortality"] = mort_top
-        
+
+
+        #FIGURE 1: COMPLETENESS BY DISTRICT-----------------------------------------------------------
+
+        #Get completeness figures, assuming 5 registers to be submitted a week. 
+        #comp = json.loads( Completeness().get( 'reg_1', location, 5 ).data.decode('UTF-8') )
+        #timeline = comp["timeline"][str(location)]['values'] 
+        #ret["data"]["weekly_highlights"]["comp_week"] = comp["score"][str(location)]
+        #ret["data"]["weekly_highlights"]["comp_year"] = 100 * sum(timeline) / len(timeline) 
+
+        #get only districts
+        districts = [loc for loc in locs.keys() if locs[loc].parent_location == 1]
+
+        ret["data"]["figure_1"] = []
+        for loc in districts:
+          
+          try:
+            timeline = comp["timeline"][str(loc)]['values'] 
+            ret["data"]["figure_1"].append({
+              "id": int(loc),
+              "name": locs[loc].name,
+              "completeness": 100 * sum(timeline) / len(timeline) 
+            })
+          except KeyError:
+            ret["data"]["figure_1"].append({
+              "id": int(loc),
+              "name": locs[loc].name,
+              "completeness": 0 
+            })
+
         return ret
