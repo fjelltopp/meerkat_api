@@ -2481,10 +2481,13 @@ class AFROBulletin(Resource):
         ret["data"]["weekly_highlights"]["clinic_num"] = tot_clinics.get(location)["total"]
 
         #Get completeness figures, assuming 5 registers to be submitted a week. 
-        comp = json.loads( Completeness().get( 'reg_1', location, 5 ).data.decode('UTF-8') )
-        timeline = comp["timeline"][str(location)]['values'] 
-        ret["data"]["weekly_highlights"]["comp_week"] = comp["score"][str(location)]
-        ret["data"]["weekly_highlights"]["comp_year"] = 100 * sum(timeline) / len(timeline) 
+        try:
+          comp = json.loads( Completeness().get( 'reg_1', location, 5 ).data.decode('UTF-8') )
+          timeline = comp["timeline"][str(location)]['values'] 
+          ret["data"]["weekly_highlights"]["comp_week"] = comp["score"][str(location)]
+          ret["data"]["weekly_highlights"]["comp_year"] = 100 * sum(timeline) / len(timeline) 
+        except AttributeError:
+          comp = {"Error": "No data available"}
         
         #Get multi-variable figures. 
         #Assign them the key "var_id1_var_id2", e.g. "cmd_21_ale_1"
@@ -2576,30 +2579,63 @@ class AFROBulletin(Resource):
 
         #FIGURE 1: COMPLETENESS BY DISTRICT-----------------------------------------------------------
 
-        #Get completeness figures, assuming 5 registers to be submitted a week. 
-        #comp = json.loads( Completeness().get( 'reg_1', location, 5 ).data.decode('UTF-8') )
-        #timeline = comp["timeline"][str(location)]['values'] 
-        #ret["data"]["weekly_highlights"]["comp_week"] = comp["score"][str(location)]
-        #ret["data"]["weekly_highlights"]["comp_year"] = 100 * sum(timeline) / len(timeline) 
+        #get regions
+        regions = [loc for loc in locs.keys() if locs[loc].parent_location == 1]
 
-        #get only districts
-        districts = [loc for loc in locs.keys() if locs[loc].parent_location == 1]
+        #get districts
+        districts = [loc for loc in locs.keys() if locs[loc].parent_location in regions]
 
-        ret["data"]["figure_1"] = []
+        ret["data"]["figure_completeness"] = {}
+
         for loc in districts:
+          loc_s=str(loc)
           
           try:
-            timeline = comp["timeline"][str(loc)]['values'] 
-            ret["data"]["figure_1"].append({
-              "id": int(loc),
-              "name": locs[loc].name,
-              "completeness": 100 * sum(timeline) / len(timeline) 
-            })
+            timeline = comp["timeline"][loc_s]['values'] 
+            ret["data"]["figure_completeness"].update({loc_s:{
+              "district": locs[loc].name,
+              "value": 100 * sum(timeline) / len(timeline) #TODO: Mean of actual weeks, not weeks with reports
+            }})
           except KeyError:
-            ret["data"]["figure_1"].append({
-              "id": int(loc),
-              "name": locs[loc].name,
-              "completeness": 0 
-            })
+            ret["data"]["figure_completeness"].update({loc_s:{
+              "district": locs[loc].name,
+              "value": 0 
+            }})
+
+        #FIGURE 2: CUMULATIVE REPORTED MATERNAL DEATHS BY DISTRICT
+
+        first_day_of_year = datetime(year=datetime.now().year,month=1,day=1)
+
+        mat_deaths = map_variable( 
+            'cmd_21',
+            first_day_of_year, 
+            end_date_limit, 
+            location, 
+            conn,
+            group_by="district"           
+        )
+
+        #fill the rest of the districts with zeroes
+        '''for loc in districts:
+          loc_s=str(loc)
+          if not loc_s in mat_deaths.keys():
+            mat_deaths.update({loc_s:{
+              "district":locs[loc].name,
+              "geolocation":locs[loc].geolocation,
+              "value": 0 
+            }})'''
+
+        ret["data"].update({"figure_mat_deaths":mat_deaths})
+
+        #FIGURE 3: INCIDENCE OF CONFIRMED MALARIA CASES BY TYPE
+
+        #for vars_list in multi_vars:
+        #  ret["data"]["weekly_highlights"]["_".join( vars_list )] = query_ids( 
+        #      vars_list, 
+        #      start_date, 
+        #      end_date 
+        #  )
+
+
 
         return ret
