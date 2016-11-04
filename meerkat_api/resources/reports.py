@@ -32,8 +32,9 @@ from meerkat_api import db, app
 from meerkat_abacus.model import Data, Locations, AggregationVariables
 from meerkat_api.resources.completeness import Completeness
 from meerkat_api.resources.variables import Variables, Variable
-from meerkat_api.resources.epi_week import EpiWeek, epi_week_start
+from meerkat_api.resources.epi_week import EpiWeek, epi_week_start, epi_year_start
 from meerkat_api.resources.locations import TotClinics
+from meerkat_api.resources.data import AggregateYear
 from meerkat_api.resources import alerts
 from meerkat_api.resources.explore import QueryVariable, query_ids
 from meerkat_abacus.util import get_locations, all_location_data
@@ -2437,6 +2438,7 @@ class AFROBulletin(Resource):
         #Initialise some stuff.
         start_date, end_date = fix_dates(start_date, end_date)
         end_date_limit = end_date + timedelta(days=1)
+        first_day_of_year = datetime(year=datetime.now().year,month=1,day=1)
         ret = {}
 
         # Meta data.
@@ -2458,6 +2460,10 @@ class AFROBulletin(Resource):
         if int(location) not in locs:
             return None
         location_name = locs[int(location)]
+
+        regions = [loc for loc in locs.keys() if locs[loc].parent_location == 1]
+        districts = [loc for loc in locs.keys() if locs[loc].parent_location in regions]
+
         ret["data"]["project_region"] = location_name.name
         ret["data"]["project_region_id"] = location
         
@@ -2577,13 +2583,7 @@ class AFROBulletin(Resource):
         ret["data"]["weekly_highlights"]["mortality"] = mort_top
 
 
-        #FIGURE 1: COMPLETENESS BY DISTRICT-----------------------------------------------------------
-
-        #get regions
-        regions = [loc for loc in locs.keys() if locs[loc].parent_location == 1]
-
-        #get districts
-        districts = [loc for loc in locs.keys() if locs[loc].parent_location in regions]
+        #FIGURE 1: COMPLETENESS BY DISTRICT
 
         ret["data"]["figure_completeness"] = {}
 
@@ -2602,9 +2602,8 @@ class AFROBulletin(Resource):
               "value": 0 
             }})
 
-        #FIGURE 2: CUMULATIVE REPORTED MATERNAL DEATHS BY DISTRICT
 
-        first_day_of_year = datetime(year=datetime.now().year,month=1,day=1)
+        #FIGURE 2: CUMULATIVE REPORTED MATERNAL DEATHS BY DISTRICT (MAP)
 
         mat_deaths = map_variable( 
             'cmd_21',
@@ -2627,15 +2626,71 @@ class AFROBulletin(Resource):
 
         ret["data"].update({"figure_mat_deaths":mat_deaths})
 
-        #FIGURE 3: INCIDENCE OF CONFIRMED MALARIA CASES BY TYPE
 
-        #for vars_list in multi_vars:
-        #  ret["data"]["weekly_highlights"]["_".join( vars_list )] = query_ids( 
-        #      vars_list, 
-        #      start_date, 
-        #      end_date 
-        #  )
+        #FIGURE 3: INCIDENCE OF CONFIRMED MALARIA CASES BY TYPE AND WEEK
 
+        aggregate_year=AggregateYear()
+
+        simple_malaria=aggregate_year.get(variable_id="mls_12",location_id=location)
+        severe_malaria=aggregate_year.get(variable_id="mls_24",location_id=location)
+
+        reported_fever=aggregate_year.get(variable_id="mls_2",location_id=location)
+
+        positivity_rate = {"weeks":{}}
+        for week in reported_fever['weeks'].keys():
+          try:
+            sim_mal = simple_malaria["weeks"][week]
+          except KeyError:
+            sim_mal=0
+          try:
+           sev_mal = severe_malaria["weeks"][week]
+          except KeyError:
+            sev_mal=0
+
+          try:
+            positivity_rate["weeks"].update({
+              week:(sim_mal + sev_mal) / reported_fever["weeks"][week]
+            })
+          except ZeroDivisionError:
+            positivity_rate["weeks"].update({
+              week:0
+            })
+
+
+        ret["data"].update({"figure_malaria":{ #TODO: per 100,000 pop
+          "simple_malaria":simple_malaria,
+          "severe_malaria":severe_malaria,
+          "positivity_rate":positivity_rate,
+          }})
+
+
+
+        #FIGURE 4: INCIDENCE OF CONFIRMED MALARIA CASES BY REGION (MAP)
+
+        simple_malaria = map_variable( 
+            'mls_12',
+            first_day_of_year, 
+            end_date_limit, 
+            location, 
+            conn,
+            group_by="region"           
+        )
+
+        severe_malaria = map_variable( 
+            'mls_24',
+            first_day_of_year, 
+            end_date_limit, 
+            location, 
+            conn,
+            group_by="region"           
+        )
+
+        ret["data"].update({"figure_malaria_map":{ #TODO: per 100,000 pop
+          "simple_malaria":simple_malaria,
+          "severe_malaria":severe_malaria
+          }})
+        
+        #FIGURE 5: TREND OF SUSPECTED MEASLES CASES BY AGE GROUP
 
 
         return ret
