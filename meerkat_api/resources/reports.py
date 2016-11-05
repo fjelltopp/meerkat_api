@@ -2693,4 +2693,75 @@ class AFROBulletin(Resource):
         #FIGURE 5: TREND OF SUSPECTED MEASLES CASES BY AGE GROUP
 
 
+        measles_under_5yo =aggregate_year.get(variable_id="cmd_15",location_id=location) #TODO: AGE GROUPS
+        
+        ret["data"].update({"figure_measles":{
+          "measles_under_5yo": measles_under_5yo,
+          "measles_over_5yo": measles_under_5yo
+          }})
+
+
+        #FIGURE 6: TREND OF REPORTED SEVERE MALNUTRITION CASES IN UNDER FIVES
+
+        malnutrition = aggregate_year.get(variable_id="cmd_24",location_id=location) #TODO: AGE GROUPS
+        
+        ret["data"].update({"figure_malnutrition":{
+          "malnutrition": malnutrition,
+          }})
+
+
+        #TABLE 1: Reported Priority Diseases, Conditions and Events by District, week X TODO: What are priority diseases?
+
+        ret["data"]['table_priority_diseases']={}
+        priority_diseases=['mls_24']
+
+        for region in regions:
+          mort = get_variables_category(
+              'deaths', 
+              start_date, 
+              end_date_limit, 
+              region, 
+              conn, 
+              use_ids=True
+          )
+          #sort causes of mortality
+          mort = sorted(mort.items(), key=operator.itemgetter(1))
+
+          mort_cause = []
+          for var in mort:
+              #Extract the cause's id from the count variables name e.g. mor_1 name is "Deaths icd_17"
+              mort_var = Variable().get( var[0] )
+              cause_var = Variable().get( mort_var['name'][7:] )
+              #Only return if there are more than zero deaths.
+              if var[1] > 0:
+                  mort_cause.insert( 0, {
+                      'id': cause_var['id'],
+                      'name': cause_var['name'],
+                      'number': var[1]
+                  })
+
+
+        for disease in priority_diseases:
+          priority_disease_cases = map_variable( 
+            disease,
+            start_date, 
+            end_date_limit, 
+            region, 
+            conn,
+            group_by="region"           
+          )
+
+        #priority_disease_mort=0
+
+        #for item in mort_cause:
+        #  print(item)
+        #  if item["id"] is disease:
+        #    priority_disease_mort=item["number"]
+
+          ret["data"]['table_priority_diseases'].update({disease:{
+            "cases":priority_disease_cases
+          }})
+
+
+
         return ret
