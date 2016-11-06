@@ -30,7 +30,7 @@ import logging, json, operator
 from meerkat_api.util import get_children, is_child, fix_dates
 from meerkat_api import db, app
 from meerkat_abacus.model import Data, Locations, AggregationVariables
-from meerkat_api.resources.completeness import Completeness
+from meerkat_api.resources.completeness import Completeness, NonReporting
 from meerkat_api.resources.variables import Variables, Variable
 from meerkat_api.resources.epi_week import EpiWeek, epi_week_start, epi_year_start
 from meerkat_api.resources.locations import TotClinics
@@ -2624,7 +2624,7 @@ class AFROBulletin(Resource):
               "value": 0 
             }})'''
 
-        ret["data"].update({"figure_mat_deaths":mat_deaths})
+        ret["data"].update({"figure_mat_deaths_map":mat_deaths})
 
 
         #FIGURE 3: INCIDENCE OF CONFIRMED MALARIA CASES BY TYPE AND WEEK
@@ -2692,6 +2692,7 @@ class AFROBulletin(Resource):
         
         #FIGURE 5: TREND OF SUSPECTED MEASLES CASES BY AGE GROUP
 
+        qv = QueryVariable()
 
         measles_under_5yo =aggregate_year.get(variable_id="cmd_15",location_id=location) #TODO: AGE GROUPS
         
@@ -2710,58 +2711,178 @@ class AFROBulletin(Resource):
           }})
 
 
-        #TABLE 1: Reported Priority Diseases, Conditions and Events by District, week X TODO: What are priority diseases?
+        #TABLE 1: Reported Priority Diseases, Conditions and Events by District, week X TODO: Connect cmd_codes to mortality
 
         ret["data"]['table_priority_diseases']={}
-        priority_diseases=['mls_24']
+        priority_diseases=['cmd_1','cmd_2','cmd_3','cmd_4','cmd_5','cmd_6','cmd_7','cmd_8','cmd_9','cmd_10','cmd_11','cmd_12','cmd_13','cmd_14',
+          'cmd_15','cmd_16','cmd_17','cmd_18','cmd_19','cmd_20','cmd_21','cmd_22','cmd_23','cmd_24','cmd_25','cmd_26','cmd_27','cmd_28']
 
-        for region in regions:
-          mort = get_variables_category(
+
+        mort = get_variables_category(
               'deaths', 
               start_date, 
               end_date_limit, 
-              region, 
+              location, 
               conn, 
               use_ids=True
           )
-          #sort causes of mortality
-          mort = sorted(mort.items(), key=operator.itemgetter(1))
 
-          mort_cause = []
-          for var in mort:
-              #Extract the cause's id from the count variables name e.g. mor_1 name is "Deaths icd_17"
-              mort_var = Variable().get( var[0] )
-              cause_var = Variable().get( mort_var['name'][7:] )
-              #Only return if there are more than zero deaths.
-              if var[1] > 0:
-                  mort_cause.insert( 0, {
-                      'id': cause_var['id'],
-                      'name': cause_var['name'],
-                      'number': var[1]
-                  })
+        #insert disease names
+        for disease in priority_diseases:
+           ret["data"]['table_priority_diseases'].update({disease:{"name":Variable().get(disease)["name"]}})
 
+        #insert mortality figures
+        mort = sorted(mort.items(), key=operator.itemgetter(1))
+        mort_cause = {}
+        for var in mort:
+          #Extract the cause's id from the count variables name e.g. mor_1 name is "Deaths icd_17"
+          mort_var = Variable().get( var[0] )
+          cause_var = Variable().get( mort_var['name'][7:] )
+          #Only return if there are more than zero deaths.
+          if var[1] > 0 and cause_var["id"] in priority_diseases:
+            ret["data"]['table_priority_diseases'].update({
+              cause_var["id"]:{
+                "name":cause_var['name'],
+                "mortality":var[1]
+              }})
 
+        #insert case figures
         for disease in priority_diseases:
           priority_disease_cases = map_variable( 
             disease,
             start_date, 
             end_date_limit, 
-            region, 
+            location, 
             conn,
             group_by="region"           
+          )   
+          priority_disease_cases_total = map_variable( 
+            disease,
+            start_date, 
+            end_date_limit, 
+            location, 
+            conn,
+            group_by="country"           
+          )          
+
+          #add regional case brakdown
+          if priority_disease_cases:
+            try:
+              ret["data"]["table_priority_diseases"][disease].update({"cases":priority_disease_cases})
+            except KeyError:
+              ret["data"]['table_priority_diseases'].update({disease:{"cases":priority_disease_cases}})
+
+          #add total case breakdown
+          try:
+            ret["data"]["table_priority_diseases"][disease].update({"cases_total":priority_disease_cases_total})
+          except KeyError:
+            ret["data"]['table_priority_diseases'].update({disease:{"cases_total":priority_disease_cases_total}})
+
+        #TABLE 2: Summary of Priority Diseases, Conditions and Events for Weeks 1 to X, 2016
+
+        ret["data"]["table_priority_diseases_cumulative"]={}
+
+        for disease in priority_diseases:
+          ret["data"]["table_priority_diseases_cumulative"][disease]={}
+          priority_disease_cases_cumulative = map_variable( 
+            disease,
+            first_day_of_year, 
+            end_date_limit, 
+            location, 
+            conn,
+            group_by="country"           
+          )          
+          priority_disease_cases_total = map_variable( 
+            disease,
+            start_date, 
+            end_date_limit, 
+            location, 
+            conn,
+            group_by="country"           
+          )      
+
+          ret["data"]["table_priority_diseases_cumulative"][disease].update({"cases":priority_disease_cases_total})
+          ret["data"]["table_priority_diseases_cumulative"][disease].update({"cases":priority_disease_cases_cumulative})
+
+
+        mort = get_variables_category(
+              'deaths', 
+              first_day_of_year, 
+              end_date_limit, 
+              location, 
+              conn, 
+              use_ids=True
           )
 
-        #priority_disease_mort=0
+                #insert mortality figures
+        mort = sorted(mort.items(), key=operator.itemgetter(1))
+        mort_cause = {}
+        for var in mort:
+          #Extract the cause's id from the count variables name e.g. mor_1 name is "Deaths icd_17"
+          mort_var = Variable().get( var[0] )
+          cause_var = Variable().get( mort_var['name'][7:] )
+          #Only return if there are more than zero deaths.
+          if var[1] > 0 and cause_var["id"] in priority_diseases:
+            try:
+              ret["data"]['table_priority_diseases_cumulative'][cause_var["id"]].update({
+                  "mortality":var[1]
+                })
+            except KeyError:
+              ret["data"]['table_priority_diseases_cumulative'].update({
+                cause_var["id"]:
+                  {"mortality":var[1]}
+                })
 
-        #for item in mort_cause:
-        #  print(item)
-        #  if item["id"] is disease:
-        #    priority_disease_mort=item["number"]
 
-          ret["data"]['table_priority_diseases'].update({disease:{
-            "cases":priority_disease_cases
-          }})
+        #TABLE 3: Timeliness and Completeness of reporting for Week X, 2016
+        ret["data"]["table_timeliness_completeness"] = {"test":"test"}
+
+        for district in districts:
+          # District names
+          ret["data"]["table_timeliness_completeness"].update({str(district):{"name":locs[district].name}})
+
+          # Number of clinics in district
+          try: 
+            ret["data"]["table_timeliness_completeness"][str(district)].update({
+                "clinics":tot_clinics.get(district)["total"]
+              })
+          except KeyError:
+            ret["data"]["table_timeliness_completeness"][str(district)].update({
+                "clinics":"Error: Data not available"
+              })
+
+          # Number of clinics that reported
+          try: 
+            ret["data"]["table_timeliness_completeness"][str(district)].update({
+                "clinics_reported":tot_clinics.get(district)["total"] - len(NonReporting().get("reg_1", district,num_weeks=1))
+              })
+          except:
+            ret["data"]["table_timeliness_completeness"][str(district)].update({
+                "clinics_reported":"Error: Data not available"
+              })
+
+          # District completeness
+          try:
+            comp = json.loads( Completeness().get( 'reg_1', district, 5 ).data.decode('UTF-8') )
+            ret["data"]["table_timeliness_completeness"][str(district)].update({
+                "completeness":comp["score"][str(district)]
+            })
+          except AttributeError:
+            ret["data"]['table_timeliness_completeness'][str(district)].update({
+                "completeness":"Error: Data not available"
+              })
+
+          # District timeliness
+          try:
+            ret["data"]["table_timeliness_completeness"][str(district)].update({
+                "timeliness":1
+            })
+          except AttributeError:
+            ret["data"]['table_timeliness_completeness'][str(district)].update({
+                "timeliness":"Error: Data not available"
+              })
 
 
 
         return ret
+
