@@ -8,6 +8,7 @@ from flask.json import JSONEncoder
 from flask_sqlalchemy import SQLAlchemy
 from flask_restful import Api
 from datetime import datetime
+# from werkzeug.contrib.profiler import ProfilerMiddleware
 import io
 import csv
 import os
@@ -24,6 +25,8 @@ if os.environ.get("MEERKAT_API_DB_SETTINGS"):
 
 db = SQLAlchemy(app)
 api = Api(app)
+
+# app.wsgi_app = ProfilerMiddleware(app.wsgi_app, restrictions=[30])
 
 class CustomJSONEncoder(JSONEncoder):
     """
@@ -82,7 +85,7 @@ from meerkat_api.resources.locations import Location, Locations, LocationTree, T
 from meerkat_api.resources.variables import Variables, Variable
 from meerkat_api.resources.data import Aggregate, AggregateYear
 from meerkat_api.resources.data import AggregateCategory, Records
-from meerkat_api.resources.map import Clinics, MapVariable
+from meerkat_api.resources.map import Clinics, MapVariable, IncidenceMap
 from meerkat_api.resources.alerts import Alert, Alerts, AggregateAlerts
 from meerkat_api.resources.explore import QueryVariable, QueryCategory
 from meerkat_api.resources.epi_week import EpiWeek, EpiWeekStart
@@ -90,7 +93,10 @@ from meerkat_api.resources.completeness import Completeness, NonReporting
 from meerkat_api.resources.reports import PublicHealth, CdReport, CdPublicHealth, CdPublicHealthMad, NcdPublicHealth,RefugeePublicHealth, RefugeeCd,RefugeeDetail, NcdReport, Pip, WeeklyEpiMonitoring, Malaria, VaccinationReport
 from meerkat_api.resources.frontpage import KeyIndicators, TotMap, NumAlerts, ConsultationMap, RefugeePage, NumClinics
 from meerkat_api.resources.export_data import ExportData, ExportForm, Forms, ExportCategory
+from meerkat_api.resources.incidence import IncidenceRate
 #from meerkat_api.resources.links import Link, Links
+
+
 
 # All urls
 
@@ -152,6 +158,13 @@ api.add_resource(MapVariable, "/map/<variable_id>",
                  "/map/<variable_id>/<location>",
                  "/map/<variable_id>/<location>/<end_date>",
                  "/map/<variable_id>/<location>/<end_date>/<start_date>" )
+api.add_resource(IncidenceMap, "/incidence_map/<variable_id>")
+
+# IncidenceRate
+api.add_resource(IncidenceRate, "/incidence_rate/<variable_id>/<level>",
+                 "/incidence_rate/<variable_id>/<level>/<mult_factor>")
+
+
 
 # Explore data
 api.add_resource(QueryVariable,
