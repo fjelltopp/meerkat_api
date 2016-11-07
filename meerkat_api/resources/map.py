@@ -11,6 +11,7 @@ from meerkat_api.util import is_child, fix_dates
 from meerkat_api import db, app
 from meerkat_abacus import model
 from meerkat_abacus.model import Data
+from meerkat_api.resources.incidence import IncidenceRate
 from meerkat_abacus.util import get_locations
 from meerkat_api.authentication import authenticate
 
@@ -94,3 +95,36 @@ class MapVariable(Resource):
                                    "clinic": row.name}
         return ret
 
+class IncidenceMap(Resource):
+    """
+    Want to map a variable id by clinic (only include case reporting clinics)
+
+    Args:\n
+       variable_id: variable to map\n
+       interval: the time interval to aggregate over (default=year)\n
+       location: If we should restrict on location\n
+       include_all_clinics: If true we include all clinics even with no cases\n
+
+    Returns:\n
+        map_data: [{value:0, geolocation: .., clinic:name},...]\n
+    """
+    decorators = [authenticate]
+    
+    def get(self, variable_id):
+
+        ir = IncidenceRate()
+
+        incidence_rates = ir.get(variable_id, "clinic")
+        
+        locations = get_locations(db.session)
+        ret = {}
+        for clinic in incidence_rates.keys():
+            if incidence_rates[clinic]:
+                geo = locations[clinic].geolocation
+                if geo:
+                    
+                    ret[clinic] = {"value": incidence_rates[clinic],
+                                   "geolocation": geo.split(","),
+                                   "clinic": locations[clinic].name}
+
+        return ret
