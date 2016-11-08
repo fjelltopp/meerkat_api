@@ -2674,7 +2674,7 @@ class AFROBulletin(Resource):
         reported_fever=aggregate_year.get(variable_id="mls_2",location_id=location)
 
         positivity_rate = {"weeks":{}}
-        for week in reported_fever['weeks'].keys():
+        for week in simple_malaria['weeks'].keys():
           try:
             sim_mal = simple_malaria["weeks"][week]
           except KeyError:
@@ -2689,6 +2689,10 @@ class AFROBulletin(Resource):
               week:(sim_mal + sev_mal) / reported_fever["weeks"][week]
             })
           except ZeroDivisionError:
+            positivity_rate["weeks"].update({
+              week:0
+            })
+          except KeyError:
             positivity_rate["weeks"].update({
               week:0
             })
@@ -2721,6 +2725,24 @@ class AFROBulletin(Resource):
             conn,
             group_by="region"           
         )
+
+        #Fill in geolocations with no malaria cases
+        for region in regions:
+          if region not in simple_malaria:
+            simple_malaria.update({
+              region:{
+                "region":locs[region].name,
+                "geolocation":get_geolocation(conn=conn,location=region),
+                "value":0
+              }})
+
+          if region not in severe_malaria:
+            severe_malaria.update({
+              region:{
+                "region":locs[region].name,
+                "geolocation":get_geolocation(conn=conn,location=region),
+                "value":0
+              }})
 
         ret["data"].update({"figure_malaria_map":{ #TODO: per 100,000 pop
           "simple_malaria":simple_malaria,
