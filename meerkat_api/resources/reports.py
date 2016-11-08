@@ -136,6 +136,41 @@ def get_variable_id(variable_id, start_date, end_date, location, conn):
 variables_instance = Variables()
 
 
+def get_geolocation (location, conn):
+    """
+    Map a given variable between dates and with location
+
+    Args: 
+       variable_id: the variable to be mapped
+       start_date: the start date for the aggregation
+       end_date: the end_date for the aggregation
+       location: the location to incldue
+       conn: db.connection
+       use_ids: we use ids instead of names as keys for the return dict
+
+    Returns: 
+       dict
+    """
+    results = db.session.query(
+        Data.geolocation
+    ).filter( 
+        or_(
+            loc == location for loc in ( Data.country,
+                                         Data.region,
+                                         Data.district,
+                                         Data.clinic)  
+        )
+    ).group_by("geolocation")
+
+    locations = get_locations(db.session)
+    ret = {}
+    for r in results.all():
+        if r[0]:
+            ret = {"geolocation": r[0].split(",")}
+
+    return ret
+
+
 def map_variable( variable_id, start_date, end_date, location, conn, group_by="clinic" ):
     """
     Map a given variable between dates and with location
@@ -2615,14 +2650,16 @@ class AFROBulletin(Resource):
         )
 
         #fill the rest of the districts with zeroes
-        '''for loc in districts:
-          loc_s=str(loc)
-          if not loc_s in mat_deaths.keys():
-            mat_deaths.update({loc_s:{
-              "district":locs[loc].name,
-              "geolocation":locs[loc].geolocation,
+        print(districts)
+        print(mat_deaths.keys())
+        for district in districts:
+          if not district in mat_deaths:
+            print(locs[district])
+            mat_deaths.update({district:{
+              "district":locs[district].name,
+              "geolocation":get_geolocation(conn=conn,location=district),#locs[district].geolocation,
               "value": 0 
-            }})'''
+            }})
 
         ret["data"].update({"figure_mat_deaths_map":mat_deaths})
 
