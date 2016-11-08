@@ -2650,11 +2650,8 @@ class AFROBulletin(Resource):
         )
 
         #fill the rest of the districts with zeroes
-        print(districts)
-        print(mat_deaths.keys())
         for district in districts:
           if not district in mat_deaths:
-            print(locs[district])
             mat_deaths.update({district:{
               "district":locs[district].name,
               "geolocation":get_geolocation(conn=conn,location=district),#locs[district].geolocation,
@@ -2752,14 +2749,31 @@ class AFROBulletin(Resource):
         #FIGURE 5: TREND OF SUSPECTED MEASLES CASES BY AGE GROUP
 
         qv = QueryVariable()
+        measles=qv.get(variable="cmd_15", group_by="age")
 
-        measles_under_5yo =aggregate_year.get(variable_id="cmd_15",location_id=location) #TODO: AGE GROUPS
-        
         ret["data"].update({"figure_measles":{
-          "measles_under_5yo": measles_under_5yo,
-          "measles_over_5yo": measles_under_5yo
+            "measles_under_5yo":{},
+            "measles_over_5yo":{"weeks":{}},
           }})
 
+        # Aggregate over age groups
+        try:
+          for age_group in measles:
+            if age_group == '<5':
+              print("age group <5 met")
+              ret["data"]["figure_measles"]["measles_under_5yo"].update(measles[age_group])
+            else:
+              print("age group >5 met")
+              if "total" in ret["data"]["figure_measles"]["measles_over_5yo"]:
+                ret["data"]["figure_measles"]["measles_over_5yo"]["total"]+=measles[age_group]["total"]
+                for week in measles[age_group]["weeks"]:
+                  ret["data"]["figure_measles"]["measles_over_5yo"]["weeks"][week]+=measles[age_group]["weeks"][week]
+              else:
+                ret["data"]["figure_measles"]["measles_over_5yo"].update({"total":measles[age_group]["total"]})
+                for week in measles[age_group]["weeks"]:
+                  ret["data"]["figure_measles"]["measles_over_5yo"]["weeks"].update({week:measles[age_group]["weeks"][week]})
+        except KeyError:
+          logging.warn("Measles data unavailable")
 
         #FIGURE 6: TREND OF REPORTED SEVERE MALNUTRITION CASES IN UNDER FIVES
 
