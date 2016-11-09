@@ -24,8 +24,6 @@ except ImportError:
     os.system('pip3 install -r /var/www/meerkat_auth/requirements.txt') 
 
 from . import settings
-from meerkat_api.test.test_alerts import *
-from meerkat_api.test.test_reports import *
 
 def need_csv_representation(url):
     """ 
