@@ -2584,23 +2584,22 @@ class AFROBulletin(Resource):
 
 
         #FIGURE 1: COMPLETENESS BY DISTRICT
-
-        ret["data"]["figure_completeness"] = {}
+        ret["data"]["figure_completeness"] = []
 
         for loc in districts:
           loc_s=str(loc)
           
           try:
             timeline = comp["timeline"][loc_s]['values'] 
-            ret["data"]["figure_completeness"].update({loc_s:{
+            ret["data"]["figure_completeness"].append({
               "district": locs[loc].name,
               "value": 100 * sum(timeline) / len(timeline) #TODO: Mean of actual weeks, not weeks with reports
-            }})
+            })
           except KeyError:
-            ret["data"]["figure_completeness"].update({loc_s:{
+            ret["data"]["figure_completeness"].append({
               "district": locs[loc].name,
               "value": 0 
-            }})
+            })
 
 
         #FIGURE 2: CUMULATIVE REPORTED MATERNAL DEATHS BY DISTRICT (MAP)
@@ -2697,9 +2696,9 @@ class AFROBulletin(Resource):
         measles_under_5yo =aggregate_year.get(variable_id="cmd_15",location_id=location) #TODO: AGE GROUPS
         
         ret["data"].update({"figure_measles":{
-          "measles_under_5yo": measles_under_5yo,
-          "measles_over_5yo": measles_under_5yo
-          }})
+            "measles_under_5yo": measles_under_5yo,
+            "measles_over_5yo": measles_under_5yo
+        }})
 
 
         #FIGURE 6: TREND OF REPORTED SEVERE MALNUTRITION CASES IN UNDER FIVES
