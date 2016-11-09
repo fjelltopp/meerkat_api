@@ -136,6 +136,41 @@ def get_variable_id(variable_id, start_date, end_date, location, conn):
 variables_instance = Variables()
 
 
+def get_geolocation (location, conn):
+    """
+    Map a given variable between dates and with location
+
+    Args: 
+       variable_id: the variable to be mapped
+       start_date: the start date for the aggregation
+       end_date: the end_date for the aggregation
+       location: the location to incldue
+       conn: db.connection
+       use_ids: we use ids instead of names as keys for the return dict
+
+    Returns: 
+       dict
+    """
+    results = db.session.query(
+        Data.geolocation
+    ).filter( 
+        or_(
+            loc == location for loc in ( Data.country,
+                                         Data.region,
+                                         Data.district,
+                                         Data.clinic)  
+        )
+    ).group_by("geolocation")
+
+    locations = get_locations(db.session)
+    ret = {}
+    for r in results.all():
+        if r[0]:
+            ret = {"geolocation": r[0].split(",")}
+
+    return ret
+
+
 def map_variable( variable_id, start_date, end_date, location, conn, group_by="clinic" ):
     """
     Map a given variable between dates and with location
@@ -2614,14 +2649,13 @@ class AFROBulletin(Resource):
         )
 
         #fill the rest of the districts with zeroes
-        '''for loc in districts:
-          loc_s=str(loc)
-          if not loc_s in mat_deaths.keys():
-            mat_deaths.update({loc_s:{
-              "district":locs[loc].name,
-              "geolocation":locs[loc].geolocation,
+        for district in districts:
+          if not district in mat_deaths:
+            mat_deaths.update({district:{
+              "district":locs[district].name,
+              "geolocation":get_geolocation(conn=conn,location=district),#locs[district].geolocation,
               "value": 0 
-            }})'''
+            }})
 
         ret["data"].update({"figure_mat_deaths_map":mat_deaths})
 
@@ -2636,7 +2670,7 @@ class AFROBulletin(Resource):
         reported_fever=aggregate_year.get(variable_id="mls_2",location_id=location)
 
         positivity_rate = {"weeks":{}}
-        for week in reported_fever['weeks'].keys():
+        for week in simple_malaria['weeks'].keys():
           try:
             sim_mal = simple_malaria["weeks"][week]
           except KeyError:
@@ -2651,6 +2685,10 @@ class AFROBulletin(Resource):
               week:(sim_mal + sev_mal) / reported_fever["weeks"][week]
             })
           except ZeroDivisionError:
+            positivity_rate["weeks"].update({
+              week:0
+            })
+          except KeyError:
             positivity_rate["weeks"].update({
               week:0
             })
@@ -2684,6 +2722,24 @@ class AFROBulletin(Resource):
             group_by="region"           
         )
 
+        #Fill in geolocations with no malaria cases
+        for region in regions:
+          if region not in simple_malaria:
+            simple_malaria.update({
+              region:{
+                "region":locs[region].name,
+                "geolocation":get_geolocation(conn=conn,location=region),
+                "value":0
+              }})
+
+          if region not in severe_malaria:
+            severe_malaria.update({
+              region:{
+                "region":locs[region].name,
+                "geolocation":get_geolocation(conn=conn,location=region),
+                "value":0
+              }})
+
         ret["data"].update({"figure_malaria_map":{ #TODO: per 100,000 pop
           "simple_malaria":simple_malaria,
           "severe_malaria":severe_malaria
@@ -2692,14 +2748,33 @@ class AFROBulletin(Resource):
         #FIGURE 5: TREND OF SUSPECTED MEASLES CASES BY AGE GROUP
 
         qv = QueryVariable()
+        measles=qv.get(variable="cmd_15", group_by="age")
 
         measles_under_5yo =aggregate_year.get(variable_id="cmd_15",location_id=location) #TODO: AGE GROUPS
-        
+
         ret["data"].update({"figure_measles":{
             "measles_under_5yo": measles_under_5yo,
             "measles_over_5yo": measles_under_5yo
         }})
 
+        # Aggregate over age groups
+        try:
+          for age_group in measles:
+            if age_group == '<5':
+              print("age group <5 met")
+              ret["data"]["figure_measles"]["measles_under_5yo"].update(measles[age_group])
+            else:
+              print("age group >5 met")
+              if "total" in ret["data"]["figure_measles"]["measles_over_5yo"]:
+                ret["data"]["figure_measles"]["measles_over_5yo"]["total"]+=measles[age_group]["total"]
+                for week in measles[age_group]["weeks"]:
+                  ret["data"]["figure_measles"]["measles_over_5yo"]["weeks"][week]+=measles[age_group]["weeks"][week]
+              else:
+                ret["data"]["figure_measles"]["measles_over_5yo"].update({"total":measles[age_group]["total"]})
+                for week in measles[age_group]["weeks"]:
+                  ret["data"]["figure_measles"]["measles_over_5yo"]["weeks"].update({week:measles[age_group]["weeks"][week]})
+        except KeyError:
+          logging.warn("Measles data unavailable")
 
         #FIGURE 6: TREND OF REPORTED SEVERE MALNUTRITION CASES IN UNDER FIVES
 
