@@ -28,14 +28,10 @@ class Alert(Resource):
             model.Data.variables["alert_id"].astext == alert_id).first()
         if result:
             if result.variables.get("alert_type", None) == "threshold":
-                alert_links = result.variables.get("linked_alerts", [])
-                if alert_links:
-                    other_data = rows_to_dicts(
-                        db.session.query(model.Data)
-                        .filter(model.Data.variables["master_alert"].astext ==
-                                result.uuid).all())
-                else:
-                    other_data = {}
+                other_data = rows_to_dicts(
+                    db.session.query(model.Data)
+                    .filter(model.Data.variables["master_alert"].astext ==
+                            result.uuid).all())
             else:
                 other_data = {}
             return jsonify({"alert": row_to_dict(result),
