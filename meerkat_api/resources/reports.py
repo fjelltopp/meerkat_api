@@ -680,7 +680,7 @@ class Pip(Resource):
                                     start_date=start_date.isoformat(),
                                     only_loc=location)
         total_cases = get_variable_id(sari_code, start_date, end_date_limit, location, conn)
-        ret["data"]["total_cases"] = total_cases
+        ret["data"]["total_cases"] = int(round(total_cases))
         ret["data"]["pip_indicators"] = [make_dict(gettext("Total Cases"), total_cases, 100)]
         if total_cases == 0:
             # So the future divsions by total_cases does not break in case of zero cases
@@ -917,13 +917,13 @@ class PublicHealth(Resource):
         
         ret["data"]["global_clinic_num"] = tot_clinics.get(1)["total"]
         total_cases = get_variable_id("tot_1", start_date, end_date_limit, location, conn)
-        ret["data"]["total_cases"] = total_cases
+        ret["data"]["total_cases"] = int(round(total_cases))
         # We need to divded by total cases(and some other numbers) so we make sure we don't divide
         # by zero in cases of no cases. 
         if total_cases == 0:
             total_cases = 1
         total_consultations = get_variable_id("reg_2", start_date, end_date_limit, location, conn)
-        ret["data"]["total_consultations"] = total_consultations
+        ret["data"]["total_consultations"] = int(round(total_consultations))
         female = get_variable_id("gen_2", start_date, end_date_limit, location, conn)
         male = get_variable_id("gen_1", start_date, end_date_limit, location, conn)
         ret["data"]["percent_cases_male"] = male / total_cases*100
@@ -1171,11 +1171,11 @@ class CdPublicHealth(Resource):
         ret["data"]["global_clinic_num"] = tot_clinics.get(1)["total"]
 
         total_consultations = get_variable_id("tot_1", start_date, end_date_limit, location, conn)
-        ret["data"]["total_consultations"] = total_consultations
+        ret["data"]["total_consultations"] = int(round(total_consultations))
         total_cases = get_variable_id("prc_1", start_date, end_date_limit, location, conn)
-        ret["data"]["total_cases"] = total_cases
+        ret["data"]["total_cases"] = int(round(total_cases))
         total_deaths = get_variable_id("dea_1", start_date, end_date_limit, location, conn)
-        ret["data"]["total_deaths"] = total_deaths
+        ret["data"]["total_deaths"] = int(round(total_deaths))
 
         ret["data"]["public_health_indicators"] = [
             make_dict(gettext("Cases Reported"), total_cases, 100)]
@@ -1384,9 +1384,9 @@ class CdPublicHealthMad(Resource):
 
         #Other values required for the email.
         ret['email'] = {
-            'cases': get_variable_id( 'tot_1', start_date, end_date_limit, location, conn ),
-            'consultations': get_variable_id( 'reg_2', start_date, end_date_limit, location, conn ),
-            'clinics': TotClinics().get(location)["total"]
+            'cases': int(round(get_variable_id( 'tot_1', start_date, end_date_limit, location, conn ))),
+            'consultations': int(round(get_variable_id( 'reg_2', start_date, end_date_limit, location, conn ))),
+            'clinics': int(round(TotClinics().get(location)["total"]))
         }
 
         #Delete unwanted indicators.
@@ -1450,7 +1450,7 @@ class NcdPublicHealth(Resource):
         ret["data"]["global_clinic_num"] = tot_clinics.get(1)["total"]
 
         total_cases = get_variable_id("prc_2", start_date, end_date_limit, location, conn)
-        ret["data"]["total_cases"] = total_cases
+        ret["data"]["total_cases"] = int(round(total_cases))
         if total_cases == 0:
             total_cases = 1
         query_variable = QueryVariable()
@@ -1711,7 +1711,7 @@ class RefugeePublicHealth(Resource):
         ret["data"]["total_population"] = tot_pop
         # Demographic and overview information
         total_consultations = get_variable_id("ref_13", start_date, end_date_limit, location, conn)
-        ret["data"]["total_consultations"] = total_consultations
+        ret["data"]["total_consultations"] = int(round(total_consultations))
         if tot_pop == 0:
             tot_pop = 1
         if "0-1" in age_gender and "1-4" in age_gender:
@@ -1741,7 +1741,7 @@ class RefugeePublicHealth(Resource):
         morbidity_injury_no = sum(morbidity_injury.values())
         morbidity_mh_no = sum(morbidity_mh.values())
         total_cases = morbidity_cd_no + morbidity_ncd_no + morbidity_injury_no + morbidity_mh_no
-        ret["data"]["total_cases"] = total_cases
+        ret["data"]["total_cases"] = int(round(total_cases))
         if total_cases == 0:
             total_cases = 1
         ret["data"]["percent_morbidity_communicable"] = morbidity_cd_no / total_cases * 100
@@ -2181,7 +2181,9 @@ class WeeklyEpiMonitoring(Resource):
             conn, 
             use_ids=True
         )
-
+        for key, value in ret['tot_mortality'].items():
+            if type( value ) == float:
+                ret['tot_mortality'][key] = int(round(value))
         var.update( variables_instance.get('tot_mortality') )
 
         ret['mat_mortality'] = get_variables_category(
@@ -2203,7 +2205,9 @@ class WeeklyEpiMonitoring(Resource):
             conn, 
             use_ids=True
         )
-
+        for key, value in ret['deaths'].items():
+            if type( value ) == float:
+                ret['deaths'][key] = int(round(value))
         var.update( variables_instance.get('deaths') )
 
         ret['epi_monitoring'] = get_variables_category(
@@ -2214,6 +2218,9 @@ class WeeklyEpiMonitoring(Resource):
             conn, 
             use_ids=True
         )
+        for key, value in ret['epi_monitoring'].items():
+            if type( value ) == float:
+                ret['epi_monitoring'][key] = int(round(value))
 
         #Alerts
         all_alerts = alerts.get_alerts({
@@ -2239,8 +2246,8 @@ class WeeklyEpiMonitoring(Resource):
       
         #Other values required for the email.
         ret['email'] = {
-            'cases': get_variable_id( 'tot_1', start_date, end_date_limit, location, conn ),
-            'consultations': get_variable_id( 'reg_2', start_date, end_date_limit, location, conn ),
+            'cases': int(round(get_variable_id( 'tot_1', start_date, end_date_limit, location, conn ))),
+            'consultations': int(round(get_variable_id( 'reg_2', start_date, end_date_limit, location, conn ))),
             'clinics': TotClinics().get(location)["total"]
         }
 
@@ -2309,6 +2316,9 @@ class Malaria(Resource):
             conn, 
             use_ids=True
         )
+        for key, value in ret['malaria_situation'].items():
+            if type( value ) == float:
+                ret['malaria_situation'][key] = int(round(value))
 
         var.update( variables_instance.get('malaria_situation') )
 
@@ -2320,6 +2330,9 @@ class Malaria(Resource):
             conn, 
             use_ids=True
         )
+        for key, value in ret['malaria_prevention'].items():
+            if type( value ) == float:
+                ret['malaria_prevention'][key] = int(round(value))
 
         var.update( variables_instance.get('malaria_prevention') )
 
