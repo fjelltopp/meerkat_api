@@ -2534,8 +2534,8 @@ class AFROBulletin(Resource):
         tot_clinics = TotClinics()
         ret["data"]["weekly_highlights"]["clinic_num"] = tot_clinics.get(location)["total"]
 
-        comp = json.loads( Completeness().get( 'reg_1', location, 5 ).data.decode('UTF-8') )
-        #Get completeness figures, assuming 5 registers to be submitted a week. 
+        comp = json.loads( Completeness().get( 'reg_1', location, 4 ).data.decode('UTF-8') )
+        #Get completeness figures, assuming 4 registers to be submitted a week. 
         try:
           timeline = comp["timeline"][str(location)]['values'] 
           ret["data"]["weekly_highlights"]["comp_week"] = comp["score"][str(location)]
@@ -2636,8 +2636,8 @@ class AFROBulletin(Resource):
 
         comp_reg = {}
         for reg in regions:
-            try: #TODO if data is completely missing there is no iformation for districts in the region
-                comp_reg = json.loads( Completeness().get( 'reg_1', reg, 5 ).data.decode('UTF-8') )
+            try: #If data is completely missing there is no iformation for districts in the region
+                comp_reg = json.loads( Completeness().get( 'reg_1', reg, 4 ).data.decode('UTF-8') )
                 for loc_s in comp_reg["yearly_score"].keys():
                     try:
                         ret["data"]["figure_completeness"].append({
@@ -2969,7 +2969,7 @@ class AFROBulletin(Resource):
 
         for district in districts:
             try:
-                comp_comp = json.loads( Completeness().get( 'reg_1', district, 5 ).data.decode('UTF-8') )
+                comp_comp = json.loads( Completeness().get( 'reg_1', district, 4 ).data.decode('UTF-8') )
                 comp_time = json.loads( Completeness().get( 'reg_5', district, 5 ).data.decode('UTF-8') )
                 # District names
                 ret["data"]["table_timeliness_completeness"].update({str(district):{"name":locs[district].name}})
