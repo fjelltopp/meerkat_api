@@ -2647,12 +2647,15 @@ class AFROBulletin(Resource):
             conn,
             group_by="district"           
         )
+        for death in mat_deaths:
+            mat_deaths[death]["name"] = mat_deaths[death]["district"]
+            del mat_deaths[death]["district"]
 
         #fill the rest of the districts with zeroes
         for district in districts:
           if not district in mat_deaths:
             mat_deaths.update({district:{
-              "district":locs[district].name,
+              "name":locs[district].name,
               "geolocation":get_geolocation(conn=conn,location=district),#locs[district].geolocation,
               "value": 0 
             }})
@@ -2740,10 +2743,16 @@ class AFROBulletin(Resource):
                 "value":0
               }})
 
-        ret["data"].update({"figure_malaria_map":{ #TODO: per 100,000 pop
-          "simple_malaria":simple_malaria,
-          "severe_malaria":severe_malaria
-          }})
+        malaria = {**simple_malaria, **severe_malaria}
+
+        for case in malaria:
+            logging.warning( malaria[case] )
+            malaria[case]["name"] = malaria[case]["region"]
+            del malaria[case]["region"]
+
+        ret["data"].update({
+            "figure_malaria_map": malaria #TODO: per 100,000 pop 
+        })
         
         #FIGURE 5: TREND OF SUSPECTED MEASLES CASES BY AGE GROUP
 
@@ -2781,8 +2790,8 @@ class AFROBulletin(Resource):
         malnutrition = aggregate_year.get(variable_id="cmd_24",location_id=location) #TODO: AGE GROUPS
         
         ret["data"].update({"figure_malnutrition":{
-          "malnutrition": malnutrition,
-          }})
+            "malnutrition": malnutrition,
+        }})
 
 
         #TABLE 1: Reported Priority Diseases, Conditions and Events by District, week X TODO: Connect cmd_codes to mortality
