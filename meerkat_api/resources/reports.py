@@ -2911,6 +2911,15 @@ class AFROBulletin(Resource):
         #TABLE 3: Timeliness and Completeness of reporting for Week X, 2016
         ret["data"]["table_timeliness_completeness"] = {"test":"test"}
 
+        timeliness = map_variable( 
+          "reg_5",
+          start_date, 
+          end_date_limit, 
+          location, 
+          conn,
+          group_by="district"           
+        )  
+
         for district in districts:
           # District names
           ret["data"]["table_timeliness_completeness"].update({str(district):{"name":locs[district].name}})
@@ -2947,6 +2956,9 @@ class AFROBulletin(Resource):
               })
 
           # District timeliness
+
+
+
           try:
             ret["data"]["table_timeliness_completeness"][str(district)].update({
                 "timeliness":1
