@@ -2812,23 +2812,16 @@ class AFROBulletin(Resource):
               use_ids=True
           )
 
-        #insert disease names
+        #insert disease names and regions
         for disease in priority_diseases:
-           ret["data"]['table_priority_diseases'].update({disease:{"name":Variable().get(disease)["name"]}})
-
-        #insert mortality figures
-        mort = sorted(mort.items(), key=operator.itemgetter(1))
-        mort_cause = {}
-        for var in mort:
-          #Extract the cause's id from the count variables name e.g. mor_1 name is "Deaths icd_17"
-          mort_var = Variable().get( var[0] )
-          cause_var = Variable().get( mort_var['name'][7:] )
-          #Only return if there are more than zero deaths.
-          if var[1] > 0 and cause_var["id"] in priority_diseases:
-            ret["data"]['table_priority_diseases'].update({
-              cause_var["id"]:{
-                "name":cause_var['name'],
-                "mortality":var[1]
+          ret["data"]['table_priority_diseases'].update({disease:{
+            "name":Variable().get(disease)["name"],
+            "mortality": 0,
+            "cfr": 0
+            }})
+          for region in regions:
+            ret["data"]['table_priority_diseases'][disease].update({str(region):{
+              "cases":0
               }})
 
         #insert case figures
@@ -2850,20 +2843,19 @@ class AFROBulletin(Resource):
             group_by="country"           
           )          
 
-          #add regional case brakdown
-          if priority_disease_cases:
+          #add regional case breakdown
+          print("priority_disease_cases")
+          print(priority_disease_cases)
+          for region in priority_disease_cases:
             try:
-              ret["data"]["table_priority_diseases"][disease].update({"cases":priority_disease_cases})
+              ret["data"]["table_priority_diseases"][disease][str(region)]["cases"]=priority_disease_cases[region]["value"]
             except KeyError:
-              ret["data"]['table_priority_diseases'].update({disease:{"cases":priority_disease_cases}})
+              logging.warning("Error: Data not available for disease " + disease)
 
           #add total case breakdown
-          try:
-            ret["data"]["table_priority_diseases"][disease].update({"cases_total":priority_disease_cases_total})
-          except KeyError:
-            ret["data"]['table_priority_diseases'].update({disease:{"cases_total":priority_disease_cases_total}})
-
-
+          for country in priority_disease_cases_total:
+            ret["data"]["table_priority_diseases"][disease].update({"cases_total":
+              priority_disease_cases_total[country]["value"]})
 
         #TABLE 2: Summary of Priority Diseases, Conditions and Events for Weeks 1 to X, 2016
 
@@ -2875,8 +2867,8 @@ class AFROBulletin(Resource):
             "cases_cumulative":0,
             "mortality":0,
             "mortality_cumulative":0,
-            "cre":0,
-            "cre_cumulative":0}})
+            "cfr":0,
+            "cfr_cumulative":0}})
 
           priority_disease_cases_cumulative = map_variable( 
             disease,
@@ -2945,11 +2937,11 @@ class AFROBulletin(Resource):
         #insert case fatality rate
         for disease in ret["data"]['table_priority_diseases_cumulative']:
           try:
-            ret["data"]['table_priority_diseases_cumulative'][disease].update({"cre":
+            ret["data"]['table_priority_diseases_cumulative'][disease].update({"cfr":
               ret["data"]['table_priority_diseases_cumulative'][disease]["mortality"] / 
               ret["data"]['table_priority_diseases_cumulative'][disease]["cases"]})
           except ZeroDivisionError:
-            ret["data"]['table_priority_diseases_cumulative'][disease].update({"cre":0})
+            ret["data"]['table_priority_diseases_cumulative'][disease].update({"cfr":0})
 
 
         #TABLE 3: Timeliness and Completeness of reporting for Week X, 2016
