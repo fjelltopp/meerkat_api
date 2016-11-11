@@ -2777,10 +2777,8 @@ class AFROBulletin(Resource):
         try:
           for age_group in measles:
             if age_group == '<5':
-              print("age group <5 met")
               ret["data"]["figure_measles"]["measles_under_5yo"].update(measles[age_group])
             else:
-              print("age group >5 met")
               if "total" in ret["data"]["figure_measles"]["measles_over_5yo"]:
                 ret["data"]["figure_measles"]["measles_over_5yo"]["total"]+=measles[age_group]["total"]
                 for week in measles[age_group]["weeks"]:
@@ -2868,12 +2866,21 @@ class AFROBulletin(Resource):
           except KeyError:
             ret["data"]['table_priority_diseases'].update({disease:{"cases_total":priority_disease_cases_total}})
 
+
+
         #TABLE 2: Summary of Priority Diseases, Conditions and Events for Weeks 1 to X, 2016
 
         ret["data"]["table_priority_diseases_cumulative"]={}
 
         for disease in priority_diseases:
-          ret["data"]["table_priority_diseases_cumulative"][disease]={}
+          ret["data"]["table_priority_diseases_cumulative"].update({disease:{
+            "cases":0, 
+            "cases_cumulative":0,
+            "mortality":0,
+            "mortality_cumulative":0,
+            "cre":0,
+            "cre_cumulative":0}})
+
           priority_disease_cases_cumulative = map_variable( 
             disease,
             first_day_of_year, 
@@ -2882,6 +2889,7 @@ class AFROBulletin(Resource):
             conn,
             group_by="country"           
           )          
+
           priority_disease_cases_total = map_variable( 
             disease,
             start_date, 
@@ -2889,13 +2897,24 @@ class AFROBulletin(Resource):
             location, 
             conn,
             group_by="country"           
-          )      
+          )     
 
-          ret["data"]["table_priority_diseases_cumulative"][disease].update({"cases":priority_disease_cases_total})
-          ret["data"]["table_priority_diseases_cumulative"][disease].update({"cases":priority_disease_cases_cumulative})
+          for key in priority_disease_cases_total:
+            ret["data"]["table_priority_diseases_cumulative"][disease].update({"cases":priority_disease_cases_total[key]["value"]})
+            ret["data"]["table_priority_diseases_cumulative"][disease].update({"cases_cumulative":priority_disease_cases_cumulative[key]["value"]})
 
+        #insert mortality figures
 
         mort = get_variables_category(
+              'deaths', 
+              start_date, 
+              end_date_limit, 
+              location, 
+              conn, 
+              use_ids=True
+          )
+
+        mort_cumulative = get_variables_category(
               'deaths', 
               first_day_of_year, 
               end_date_limit, 
@@ -2904,7 +2923,6 @@ class AFROBulletin(Resource):
               use_ids=True
           )
 
-                #insert mortality figures
         mort = sorted(mort.items(), key=operator.itemgetter(1))
         mort_cause = {}
         for var in mort:
@@ -2922,6 +2940,19 @@ class AFROBulletin(Resource):
                 cause_var["id"]:
                   {"mortality":var[1]}
                 })
+        #fill with zeroes
+        for disease in ret["data"]['table_priority_diseases_cumulative']:
+          if "mortality" not in ret["data"]['table_priority_diseases_cumulative'][disease]:
+            ret["data"]['table_priority_diseases_cumulative'][disease].update({"mortality":0})
+
+        #insert case fatality rate
+        for disease in ret["data"]['table_priority_diseases_cumulative']:
+          try:
+            ret["data"]['table_priority_diseases_cumulative'][disease].update({"cre":
+              ret["data"]['table_priority_diseases_cumulative'][disease]["mortality"] / 
+              ret["data"]['table_priority_diseases_cumulative'][disease]["cases"]})
+          except ZeroDivisionError:
+            ret["data"]['table_priority_diseases_cumulative'][disease].update({"cre":0})
 
 
         #TABLE 3: Timeliness and Completeness of reporting for Week X, 2016
@@ -2947,7 +2978,6 @@ class AFROBulletin(Resource):
                 ret["data"]["table_timeliness_completeness"][str(district)].update({
                     "clinics":tot_clinics.get(district)["total"]
                 })
-
                 # Number of clinics that reported
                 ret["data"]["table_timeliness_completeness"][str(district)].update({
                     "clinics_reported":tot_clinics.get(district)["total"] - len(NonReporting().get("reg_1", district,num_weeks=1))
@@ -2964,8 +2994,6 @@ class AFROBulletin(Resource):
                 })
             except AttributeError:
                 pass
-
-
 
         return ret
 
