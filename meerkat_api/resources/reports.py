@@ -2534,12 +2534,12 @@ class AFROBulletin(Resource):
         tot_clinics = TotClinics()
         ret["data"]["weekly_highlights"]["clinic_num"] = tot_clinics.get(location)["total"]
 
+        comp = json.loads( Completeness().get( 'reg_1', location, 5 ).data.decode('UTF-8') )
         #Get completeness figures, assuming 5 registers to be submitted a week. 
         try:
-          comp = json.loads( Completeness().get( 'reg_1', location, 5 ).data.decode('UTF-8') )
           timeline = comp["timeline"][str(location)]['values'] 
           ret["data"]["weekly_highlights"]["comp_week"] = comp["score"][str(location)]
-          ret["data"]["weekly_highlights"]["comp_year"] = 100 * sum(timeline) / len(timeline) 
+          ret["data"]["weekly_highlights"]["comp_year"] = comp["yearly_score"][str(location)]
         except AttributeError:
           comp = {"Error": "No data available"}
         
@@ -2634,20 +2634,23 @@ class AFROBulletin(Resource):
         #FIGURE 1: COMPLETENESS BY DISTRICT
         ret["data"]["figure_completeness"] = []
 
-        for loc in districts:
-          loc_s=str(loc)
-          
-          try:
-            timeline = comp["timeline"][loc_s]['values'] 
-            ret["data"]["figure_completeness"].append({
-              "district": locs[loc].name,
-              "value": 100 * sum(timeline) / len(timeline) #TODO: Mean of actual weeks, not weeks with reports
-            })
-          except KeyError:
-            ret["data"]["figure_completeness"].append({
-              "district": locs[loc].name,
-              "value": 0 
-            })
+        comp_reg = {}
+        for reg in regions:
+            try: #TODO if data is completely missing there is no iformation for districts in the region
+                comp_reg = json.loads( Completeness().get( 'reg_1', reg, 5 ).data.decode('UTF-8') )
+                for loc_s in comp_reg["yearly_score"].keys():
+                    try:
+                        ret["data"]["figure_completeness"].append({
+                        "district": locs[int(loc_s)].name,
+                        "value": comp_reg["yearly_score"][loc_s]
+                        })
+                    except KeyError:
+                        ret["data"]["figure_completeness"].append({
+                        "district": locs[int(loc_s)].name,
+                        "value": -1
+                        })
+            except AttributeError:
+                pass
 
 
         #FIGURE 2: CUMULATIVE REPORTED MATERNAL DEATHS BY DISTRICT (MAP)
@@ -2922,7 +2925,7 @@ class AFROBulletin(Resource):
 
 
         #TABLE 3: Timeliness and Completeness of reporting for Week X, 2016
-        ret["data"]["table_timeliness_completeness"] = {"test":"test"}
+        ret["data"]["table_timeliness_completeness"] = {}
 
         timeliness = map_variable( 
           "reg_5",
@@ -2934,52 +2937,33 @@ class AFROBulletin(Resource):
         )  
 
         for district in districts:
-          # District names
-          ret["data"]["table_timeliness_completeness"].update({str(district):{"name":locs[district].name}})
+            try:
+                comp_comp = json.loads( Completeness().get( 'reg_1', district, 5 ).data.decode('UTF-8') )
+                comp_time = json.loads( Completeness().get( 'reg_5', district, 5 ).data.decode('UTF-8') )
+                # District names
+                ret["data"]["table_timeliness_completeness"].update({str(district):{"name":locs[district].name}})
 
-          # Number of clinics in district
-          try: 
-            ret["data"]["table_timeliness_completeness"][str(district)].update({
-                "clinics":tot_clinics.get(district)["total"]
-              })
-          except KeyError:
-            ret["data"]["table_timeliness_completeness"][str(district)].update({
-                "clinics":"Error: Data not available"
-              })
+                # Number of clinics in district
+                ret["data"]["table_timeliness_completeness"][str(district)].update({
+                    "clinics":tot_clinics.get(district)["total"]
+                })
 
-          # Number of clinics that reported
-          try: 
-            ret["data"]["table_timeliness_completeness"][str(district)].update({
-                "clinics_reported":tot_clinics.get(district)["total"] - len(NonReporting().get("reg_1", district,num_weeks=1))
-              })
-          except:
-            ret["data"]["table_timeliness_completeness"][str(district)].update({
-                "clinics_reported":"Error: Data not available"
-              })
+                # Number of clinics that reported
+                ret["data"]["table_timeliness_completeness"][str(district)].update({
+                    "clinics_reported":tot_clinics.get(district)["total"] - len(NonReporting().get("reg_1", district,num_weeks=1))
+                })
 
-          # District completeness
-          try:
-            comp = json.loads( Completeness().get( 'reg_1', district, 5 ).data.decode('UTF-8') )
-            ret["data"]["table_timeliness_completeness"][str(district)].update({
-                "completeness":comp["score"][str(district)]
-            })
-          except AttributeError:
-            ret["data"]['table_timeliness_completeness'][str(district)].update({
-                "completeness":"Error: Data not available"
-              })
+                # District completeness
+                ret["data"]["table_timeliness_completeness"][str(district)].update({
+                    "completeness":comp_comp["score"][str(district)]
+                })
 
-          # District timeliness
-
-
-
-          try:
-            ret["data"]["table_timeliness_completeness"][str(district)].update({
-                "timeliness":1
-            })
-          except AttributeError:
-            ret["data"]['table_timeliness_completeness'][str(district)].update({
-                "timeliness":"Error: Data not available"
-              })
+                # District timeliness
+                ret["data"]["table_timeliness_completeness"][str(district)].update({
+                    "timeliness":comp_time["score"][str(district)]
+                })
+            except AttributeError:
+                pass
 
 
 
