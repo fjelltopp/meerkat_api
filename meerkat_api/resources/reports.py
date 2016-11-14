@@ -2823,9 +2823,8 @@ class AFROBulletin(Resource):
             "cfr": 0
             }})
           for region in regions:
-            ret["data"]['table_priority_diseases'][disease].update({str(region):{
-              "cases":0
-              }})
+            ret["data"]['table_priority_diseases'][disease].update({locs[region].name:0
+              })
 
         #insert case figures
         for disease in priority_diseases:
@@ -2851,7 +2850,7 @@ class AFROBulletin(Resource):
           print(priority_disease_cases)
           for region in priority_disease_cases:
             try:
-              ret["data"]["table_priority_diseases"][disease][str(region)]["cases"]=priority_disease_cases[region]["value"]
+              ret["data"]["table_priority_diseases"][disease][locs[region].name]=priority_disease_cases[region]["value"]
             except KeyError:
               logging.warning("Error: Data not available for disease " + disease)
 
