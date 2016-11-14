@@ -2937,14 +2937,49 @@ class AFROBulletin(Resource):
           if "mortality" not in ret["data"]['table_priority_diseases_cumulative'][disease]:
             ret["data"]['table_priority_diseases_cumulative'][disease].update({"mortality":0})
 
+
+        #cumulative mortality
+        mort_cumulative = sorted(mort_cumulative.items(), key=operator.itemgetter(1))
+        mort_cumulative_cause = {}
+        for var in mort_cumulative:
+          #Extract the cause's id from the count variables name e.g. mor_1 name is "Deaths icd_17"
+          mort_cumulative_var = Variable().get( var[0] )
+          cause_var = Variable().get( mort_cumulative_var['name'][7:] )
+          #Only return if there are more than zero deaths.
+          if var[1] > 0 and cause_var["id"] in priority_diseases:
+            try:
+              ret["data"]['table_priority_diseases_cumulative'][cause_var["id"]].update({
+                  "mortality_cumulative":var[1]
+                })
+            except KeyError:
+              ret["data"]['table_priority_diseases_cumulative'].update({
+                cause_var["id"]:
+                  {"mortality_cumulative":var[1]}
+                })
+        #fill with zeroes
+        for disease in ret["data"]['table_priority_diseases_cumulative']:
+          if "mortality_cumulative" not in ret["data"]['table_priority_diseases_cumulative'][disease]:
+            ret["data"]['table_priority_diseases_cumulative'][disease].update({"mortality_cumulative":0})
+
+
         #insert case fatality rate
         for disease in ret["data"]['table_priority_diseases_cumulative']:
           try:
             ret["data"]['table_priority_diseases_cumulative'][disease].update({"cfr":
-              ret["data"]['table_priority_diseases_cumulative'][disease]["mortality"] / 
+              100 * ret["data"]['table_priority_diseases_cumulative'][disease]["mortality"] / 
               ret["data"]['table_priority_diseases_cumulative'][disease]["cases"]})
           except ZeroDivisionError:
             ret["data"]['table_priority_diseases_cumulative'][disease].update({"cfr":0})
+
+        for disease in ret["data"]['table_priority_diseases_cumulative']:
+          try:
+            ret["data"]['table_priority_diseases_cumulative'][disease].update({"cfr_cumulative":
+              100 * ret["data"]['table_priority_diseases_cumulative'][disease]["mortality_cumulative"] /
+              ret["data"]['table_priority_diseases_cumulative'][disease]["cases_cumulative"]})
+          except ZeroDivisionError:
+            ret["data"]['table_priority_diseases_cumulative'][disease].update({"cfr_cumulative":0})
+
+
 
 
         #TABLE 3: Timeliness and Completeness of reporting for Week X, 2016
