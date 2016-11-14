@@ -4,7 +4,7 @@ Meerkat API Tests
 
 Unit tests for the data resource in Meerkat API
 """
-import json
+import json, logging
 import unittest
 from datetime import datetime, timedelta, date
 from sqlalchemy import extract
@@ -58,8 +58,10 @@ class MeerkatAPIDataTestCase(unittest.TestCase):
         rv = self.app.get('completeness/reg_1/1/5', headers=settings.header)
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))
-        self.assertEqual(sorted(data.keys()),
-                         ["clinic_score", "dates_not_reported", "score", "timeline"])
+        self.assertEqual( 
+            sorted(data.keys()),
+            ["clinic_score", "clinic_yearly_score", "dates_not_reported", "score", "timeline", "yearly_score"]
+        )
         self.assertEqual(data["score"]["1"], 4 / 10 * 100)
         self.assertAlmostEqual(data["score"]["2"], 4 / 10 *100)
 
@@ -67,11 +69,10 @@ class MeerkatAPIDataTestCase(unittest.TestCase):
         self.assertEqual(data["clinic_score"]["8"], 20)
         today = date.today()
         today = datetime(today.year, today.month, today.day)
+        freq = "W-MON"
         if today.year == 2016:
-            freq = "W-FRI"
             epi_year_weekday = 4
         elif today.year == 2017:
-            freq = "W-SUN"
             epi_year_weekday = 6
         start = datetime(today.year, 1, 1)
         

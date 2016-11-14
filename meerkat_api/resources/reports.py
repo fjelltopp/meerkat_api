@@ -680,7 +680,7 @@ class Pip(Resource):
                                     start_date=start_date.isoformat(),
                                     only_loc=location)
         total_cases = get_variable_id(sari_code, start_date, end_date_limit, location, conn)
-        ret["data"]["total_cases"] = total_cases
+        ret["data"]["total_cases"] = int(round(total_cases))
         ret["data"]["pip_indicators"] = [make_dict(gettext("Total Cases"), total_cases, 100)]
         if total_cases == 0:
             # So the future divsions by total_cases does not break in case of zero cases
@@ -917,13 +917,13 @@ class PublicHealth(Resource):
         
         ret["data"]["global_clinic_num"] = tot_clinics.get(1)["total"]
         total_cases = get_variable_id("tot_1", start_date, end_date_limit, location, conn)
-        ret["data"]["total_cases"] = total_cases
+        ret["data"]["total_cases"] = int(round(total_cases))
         # We need to divded by total cases(and some other numbers) so we make sure we don't divide
         # by zero in cases of no cases. 
         if total_cases == 0:
             total_cases = 1
         total_consultations = get_variable_id("reg_2", start_date, end_date_limit, location, conn)
-        ret["data"]["total_consultations"] = total_consultations
+        ret["data"]["total_consultations"] = int(round(total_consultations))
         female = get_variable_id("gen_2", start_date, end_date_limit, location, conn)
         male = get_variable_id("gen_1", start_date, end_date_limit, location, conn)
         ret["data"]["percent_cases_male"] = male / total_cases*100
@@ -1171,11 +1171,11 @@ class CdPublicHealth(Resource):
         ret["data"]["global_clinic_num"] = tot_clinics.get(1)["total"]
 
         total_consultations = get_variable_id("tot_1", start_date, end_date_limit, location, conn)
-        ret["data"]["total_consultations"] = total_consultations
+        ret["data"]["total_consultations"] = int(round(total_consultations))
         total_cases = get_variable_id("prc_1", start_date, end_date_limit, location, conn)
-        ret["data"]["total_cases"] = total_cases
+        ret["data"]["total_cases"] = int(round(total_cases))
         total_deaths = get_variable_id("dea_1", start_date, end_date_limit, location, conn)
-        ret["data"]["total_deaths"] = total_deaths
+        ret["data"]["total_deaths"] = int(round(total_deaths))
 
         ret["data"]["public_health_indicators"] = [
             make_dict(gettext("Cases Reported"), total_cases, 100)]
@@ -1384,9 +1384,9 @@ class CdPublicHealthMad(Resource):
 
         #Other values required for the email.
         ret['email'] = {
-            'cases': get_variable_id( 'tot_1', start_date, end_date_limit, location, conn ),
-            'consultations': get_variable_id( 'reg_2', start_date, end_date_limit, location, conn ),
-            'clinics': TotClinics().get(location)["total"]
+            'cases': int(round(get_variable_id( 'tot_1', start_date, end_date_limit, location, conn ))),
+            'consultations': int(round(get_variable_id( 'reg_2', start_date, end_date_limit, location, conn ))),
+            'clinics': int(round(TotClinics().get(location)["total"]))
         }
 
         #Delete unwanted indicators.
@@ -1450,7 +1450,7 @@ class NcdPublicHealth(Resource):
         ret["data"]["global_clinic_num"] = tot_clinics.get(1)["total"]
 
         total_cases = get_variable_id("prc_2", start_date, end_date_limit, location, conn)
-        ret["data"]["total_cases"] = total_cases
+        ret["data"]["total_cases"] = int(round(total_cases))
         if total_cases == 0:
             total_cases = 1
         query_variable = QueryVariable()
@@ -1711,7 +1711,7 @@ class RefugeePublicHealth(Resource):
         ret["data"]["total_population"] = tot_pop
         # Demographic and overview information
         total_consultations = get_variable_id("ref_13", start_date, end_date_limit, location, conn)
-        ret["data"]["total_consultations"] = total_consultations
+        ret["data"]["total_consultations"] = int(round(total_consultations))
         if tot_pop == 0:
             tot_pop = 1
         if "0-1" in age_gender and "1-4" in age_gender:
@@ -1741,7 +1741,7 @@ class RefugeePublicHealth(Resource):
         morbidity_injury_no = sum(morbidity_injury.values())
         morbidity_mh_no = sum(morbidity_mh.values())
         total_cases = morbidity_cd_no + morbidity_ncd_no + morbidity_injury_no + morbidity_mh_no
-        ret["data"]["total_cases"] = total_cases
+        ret["data"]["total_cases"] = int(round(total_cases))
         if total_cases == 0:
             total_cases = 1
         ret["data"]["percent_morbidity_communicable"] = morbidity_cd_no / total_cases * 100
@@ -2181,7 +2181,9 @@ class WeeklyEpiMonitoring(Resource):
             conn, 
             use_ids=True
         )
-
+        for key, value in ret['tot_mortality'].items():
+            if type( value ) == float:
+                ret['tot_mortality'][key] = int(round(value))
         var.update( variables_instance.get('tot_mortality') )
 
         ret['mat_mortality'] = get_variables_category(
@@ -2203,7 +2205,9 @@ class WeeklyEpiMonitoring(Resource):
             conn, 
             use_ids=True
         )
-
+        for key, value in ret['deaths'].items():
+            if type( value ) == float:
+                ret['deaths'][key] = int(round(value))
         var.update( variables_instance.get('deaths') )
 
         ret['epi_monitoring'] = get_variables_category(
@@ -2214,6 +2218,9 @@ class WeeklyEpiMonitoring(Resource):
             conn, 
             use_ids=True
         )
+        for key, value in ret['epi_monitoring'].items():
+            if type( value ) == float:
+                ret['epi_monitoring'][key] = int(round(value))
 
         #Alerts
         all_alerts = alerts.get_alerts({
@@ -2239,8 +2246,8 @@ class WeeklyEpiMonitoring(Resource):
       
         #Other values required for the email.
         ret['email'] = {
-            'cases': get_variable_id( 'tot_1', start_date, end_date_limit, location, conn ),
-            'consultations': get_variable_id( 'reg_2', start_date, end_date_limit, location, conn ),
+            'cases': int(round(get_variable_id( 'tot_1', start_date, end_date_limit, location, conn ))),
+            'consultations': int(round(get_variable_id( 'reg_2', start_date, end_date_limit, location, conn ))),
             'clinics': TotClinics().get(location)["total"]
         }
 
@@ -2309,6 +2316,9 @@ class Malaria(Resource):
             conn, 
             use_ids=True
         )
+        for key, value in ret['malaria_situation'].items():
+            if type( value ) == float:
+                ret['malaria_situation'][key] = int(round(value))
 
         var.update( variables_instance.get('malaria_situation') )
 
@@ -2320,6 +2330,9 @@ class Malaria(Resource):
             conn, 
             use_ids=True
         )
+        for key, value in ret['malaria_prevention'].items():
+            if type( value ) == float:
+                ret['malaria_prevention'][key] = int(round(value))
 
         var.update( variables_instance.get('malaria_prevention') )
 
@@ -2521,12 +2534,12 @@ class AFROBulletin(Resource):
         tot_clinics = TotClinics()
         ret["data"]["weekly_highlights"]["clinic_num"] = tot_clinics.get(location)["total"]
 
-        #Get completeness figures, assuming 5 registers to be submitted a week. 
+        comp = json.loads( Completeness().get( 'reg_1', location, 4 ).data.decode('UTF-8') )
+        #Get completeness figures, assuming 4 registers to be submitted a week. 
         try:
-          comp = json.loads( Completeness().get( 'reg_1', location, 5 ).data.decode('UTF-8') )
           timeline = comp["timeline"][str(location)]['values'] 
           ret["data"]["weekly_highlights"]["comp_week"] = comp["score"][str(location)]
-          ret["data"]["weekly_highlights"]["comp_year"] = 100 * sum(timeline) / len(timeline) 
+          ret["data"]["weekly_highlights"]["comp_year"] = comp["yearly_score"][str(location)]
         except AttributeError:
           comp = {"Error": "No data available"}
         
@@ -2621,20 +2634,23 @@ class AFROBulletin(Resource):
         #FIGURE 1: COMPLETENESS BY DISTRICT
         ret["data"]["figure_completeness"] = []
 
-        for loc in districts:
-          loc_s=str(loc)
-          
-          try:
-            timeline = comp["timeline"][loc_s]['values'] 
-            ret["data"]["figure_completeness"].append({
-              "district": locs[loc].name,
-              "value": 100 * sum(timeline) / len(timeline) #TODO: Mean of actual weeks, not weeks with reports
-            })
-          except KeyError:
-            ret["data"]["figure_completeness"].append({
-              "district": locs[loc].name,
-              "value": 0 
-            })
+        comp_reg = {}
+        for reg in regions:
+            try: #If data is completely missing there is no iformation for districts in the region
+                comp_reg = json.loads( Completeness().get( 'reg_1', reg, 4 ).data.decode('UTF-8') )
+                for loc_s in comp_reg["yearly_score"].keys():
+                    try:
+                        ret["data"]["figure_completeness"].append({
+                        "district": locs[int(loc_s)].name,
+                        "value": comp_reg["yearly_score"][loc_s]
+                        })
+                    except KeyError:
+                        ret["data"]["figure_completeness"].append({
+                        "district": locs[int(loc_s)].name,
+                        "value": -1
+                        })
+            except AttributeError:
+                pass
 
 
         #FIGURE 2: CUMULATIVE REPORTED MATERNAL DEATHS BY DISTRICT (MAP)
@@ -2770,10 +2786,8 @@ class AFROBulletin(Resource):
         try:
           for age_group in measles:
             if age_group == '<5':
-              print("age group <5 met")
               ret["data"]["figure_measles"]["measles_under_5yo"].update(measles[age_group])
             else:
-              print("age group >5 met")
               if "total" in ret["data"]["figure_measles"]["measles_over_5yo"]:
                 ret["data"]["figure_measles"]["measles_over_5yo"]["total"]+=measles[age_group]["total"]
                 for week in measles[age_group]["weeks"]:
@@ -2810,24 +2824,16 @@ class AFROBulletin(Resource):
               use_ids=True
           )
 
-        #insert disease names
+        #insert disease names and regions
         for disease in priority_diseases:
-           ret["data"]['table_priority_diseases'].update({disease:{"name":Variable().get(disease)["name"]}})
-
-        #insert mortality figures
-        mort = sorted(mort.items(), key=operator.itemgetter(1))
-        mort_cause = {}
-        for var in mort:
-          #Extract the cause's id from the count variables name e.g. mor_1 name is "Deaths icd_17"
-          mort_var = Variable().get( var[0] )
-          cause_var = Variable().get( mort_var['name'][7:] )
-          #Only return if there are more than zero deaths.
-          if var[1] > 0 and cause_var["id"] in priority_diseases:
-            ret["data"]['table_priority_diseases'].update({
-              cause_var["id"]:{
-                "name":cause_var['name'],
-                "mortality":var[1]
-              }})
+          ret["data"]['table_priority_diseases'].update({disease:{
+            "name":Variable().get(disease)["name"],
+            "mortality": 0,
+            "cfr": 0
+            }})
+          for region in regions:
+            ret["data"]['table_priority_diseases'][disease].update({locs[region].name:0
+              })
 
         #insert case figures
         for disease in priority_diseases:
@@ -2848,25 +2854,34 @@ class AFROBulletin(Resource):
             group_by="country"           
           )          
 
-          #add regional case brakdown
-          if priority_disease_cases:
+          #add regional case breakdown
+          print("priority_disease_cases")
+          print(priority_disease_cases)
+          for region in priority_disease_cases:
             try:
-              ret["data"]["table_priority_diseases"][disease].update({"cases":priority_disease_cases})
+              ret["data"]["table_priority_diseases"][disease][locs[region].name]=priority_disease_cases[region]["value"]
             except KeyError:
-              ret["data"]['table_priority_diseases'].update({disease:{"cases":priority_disease_cases}})
+              logging.warning("Error: Data not available for disease " + disease)
 
           #add total case breakdown
-          try:
-            ret["data"]["table_priority_diseases"][disease].update({"cases_total":priority_disease_cases_total})
-          except KeyError:
-            ret["data"]['table_priority_diseases'].update({disease:{"cases_total":priority_disease_cases_total}})
+          for country in priority_disease_cases_total:
+            ret["data"]["table_priority_diseases"][disease].update({"cases_total":
+              priority_disease_cases_total[country]["value"]})
 
         #TABLE 2: Summary of Priority Diseases, Conditions and Events for Weeks 1 to X, 2016
 
         ret["data"]["table_priority_diseases_cumulative"]={}
 
         for disease in priority_diseases:
-          ret["data"]["table_priority_diseases_cumulative"][disease]={}
+          ret["data"]["table_priority_diseases_cumulative"].update({disease:{
+            "name":Variable().get(disease)["name"],
+            "cases":0, 
+            "cases_cumulative":0,
+            "mortality":0,
+            "mortality_cumulative":0,
+            "cfr":0,
+            "cfr_cumulative":0}})
+
           priority_disease_cases_cumulative = map_variable( 
             disease,
             first_day_of_year, 
@@ -2875,6 +2890,7 @@ class AFROBulletin(Resource):
             conn,
             group_by="country"           
           )          
+
           priority_disease_cases_total = map_variable( 
             disease,
             start_date, 
@@ -2882,13 +2898,24 @@ class AFROBulletin(Resource):
             location, 
             conn,
             group_by="country"           
-          )      
+          )     
 
-          ret["data"]["table_priority_diseases_cumulative"][disease].update({"cases":priority_disease_cases_total})
-          ret["data"]["table_priority_diseases_cumulative"][disease].update({"cases":priority_disease_cases_cumulative})
+          for key in priority_disease_cases_total:
+            ret["data"]["table_priority_diseases_cumulative"][disease].update({"cases":priority_disease_cases_total[key]["value"]})
+            ret["data"]["table_priority_diseases_cumulative"][disease].update({"cases_cumulative":priority_disease_cases_cumulative[key]["value"]})
 
+        #insert mortality figures
 
         mort = get_variables_category(
+              'deaths', 
+              start_date, 
+              end_date_limit, 
+              location, 
+              conn, 
+              use_ids=True
+          )
+
+        mort_cumulative = get_variables_category(
               'deaths', 
               first_day_of_year, 
               end_date_limit, 
@@ -2897,7 +2924,6 @@ class AFROBulletin(Resource):
               use_ids=True
           )
 
-                #insert mortality figures
         mort = sorted(mort.items(), key=operator.itemgetter(1))
         mort_cause = {}
         for var in mort:
@@ -2915,57 +2941,95 @@ class AFROBulletin(Resource):
                 cause_var["id"]:
                   {"mortality":var[1]}
                 })
+        #fill with zeroes
+        for disease in ret["data"]['table_priority_diseases_cumulative']:
+          if "mortality" not in ret["data"]['table_priority_diseases_cumulative'][disease]:
+            ret["data"]['table_priority_diseases_cumulative'][disease].update({"mortality":0})
+
+
+        #cumulative mortality
+        mort_cumulative = sorted(mort_cumulative.items(), key=operator.itemgetter(1))
+        mort_cumulative_cause = {}
+        for var in mort_cumulative:
+          #Extract the cause's id from the count variables name e.g. mor_1 name is "Deaths icd_17"
+          mort_cumulative_var = Variable().get( var[0] )
+          cause_var = Variable().get( mort_cumulative_var['name'][7:] )
+          #Only return if there are more than zero deaths.
+          if var[1] > 0 and cause_var["id"] in priority_diseases:
+            try:
+              ret["data"]['table_priority_diseases_cumulative'][cause_var["id"]].update({
+                  "mortality_cumulative":var[1]
+                })
+            except KeyError:
+              ret["data"]['table_priority_diseases_cumulative'].update({
+                cause_var["id"]:
+                  {"mortality_cumulative":var[1]}
+                })
+        #fill with zeroes
+        for disease in ret["data"]['table_priority_diseases_cumulative']:
+          if "mortality_cumulative" not in ret["data"]['table_priority_diseases_cumulative'][disease]:
+            ret["data"]['table_priority_diseases_cumulative'][disease].update({"mortality_cumulative":0})
+
+
+        #insert case fatality rate
+        for disease in ret["data"]['table_priority_diseases_cumulative']:
+          try:
+            ret["data"]['table_priority_diseases_cumulative'][disease].update({"cfr":
+              100 * ret["data"]['table_priority_diseases_cumulative'][disease]["mortality"] / 
+              ret["data"]['table_priority_diseases_cumulative'][disease]["cases"]})
+          except ZeroDivisionError:
+            ret["data"]['table_priority_diseases_cumulative'][disease].update({"cfr":0})
+
+        for disease in ret["data"]['table_priority_diseases_cumulative']:
+          try:
+            ret["data"]['table_priority_diseases_cumulative'][disease].update({"cfr_cumulative":
+              100 * ret["data"]['table_priority_diseases_cumulative'][disease]["mortality_cumulative"] /
+              ret["data"]['table_priority_diseases_cumulative'][disease]["cases_cumulative"]})
+          except ZeroDivisionError:
+            ret["data"]['table_priority_diseases_cumulative'][disease].update({"cfr_cumulative":0})
+
+
 
 
         #TABLE 3: Timeliness and Completeness of reporting for Week X, 2016
-        ret["data"]["table_timeliness_completeness"] = {"test":"test"}
+        ret["data"]["table_timeliness_completeness"] = {}
+
+        timeliness = map_variable( 
+          "reg_5",
+          start_date, 
+          end_date_limit, 
+          location, 
+          conn,
+          group_by="district"           
+        )  
 
         for district in districts:
-          # District names
-          ret["data"]["table_timeliness_completeness"].update({str(district):{"name":locs[district].name}})
+            try:
+                comp_comp = json.loads( Completeness().get( 'reg_1', district, 4 ).data.decode('UTF-8') )
+                comp_time = json.loads( Completeness().get( 'reg_5', district, 5 ).data.decode('UTF-8') )
+                # District names
+                ret["data"]["table_timeliness_completeness"].update({str(district):{"name":locs[district].name}})
 
-          # Number of clinics in district
-          try: 
-            ret["data"]["table_timeliness_completeness"][str(district)].update({
-                "clinics":tot_clinics.get(district)["total"]
-              })
-          except KeyError:
-            ret["data"]["table_timeliness_completeness"][str(district)].update({
-                "clinics":"Error: Data not available"
-              })
+                # Number of clinics in district
+                ret["data"]["table_timeliness_completeness"][str(district)].update({
+                    "clinics":tot_clinics.get(district)["total"]
+                })
+                # Number of clinics that reported
+                ret["data"]["table_timeliness_completeness"][str(district)].update({
+                    "clinics_reported":tot_clinics.get(district)["total"] - len(NonReporting().get("reg_1", district,num_weeks=1))
+                })
 
-          # Number of clinics that reported
-          try: 
-            ret["data"]["table_timeliness_completeness"][str(district)].update({
-                "clinics_reported":tot_clinics.get(district)["total"] - len(NonReporting().get("reg_1", district,num_weeks=1))
-              })
-          except:
-            ret["data"]["table_timeliness_completeness"][str(district)].update({
-                "clinics_reported":"Error: Data not available"
-              })
+                # District completeness
+                ret["data"]["table_timeliness_completeness"][str(district)].update({
+                    "completeness":comp_comp["score"][str(district)]
+                })
 
-          # District completeness
-          try:
-            comp = json.loads( Completeness().get( 'reg_1', district, 5 ).data.decode('UTF-8') )
-            ret["data"]["table_timeliness_completeness"][str(district)].update({
-                "completeness":comp["score"][str(district)]
-            })
-          except AttributeError:
-            ret["data"]['table_timeliness_completeness'][str(district)].update({
-                "completeness":"Error: Data not available"
-              })
-
-          # District timeliness
-          try:
-            ret["data"]["table_timeliness_completeness"][str(district)].update({
-                "timeliness":1
-            })
-          except AttributeError:
-            ret["data"]['table_timeliness_completeness'][str(district)].update({
-                "timeliness":"Error: Data not available"
-              })
-
-
+                # District timeliness
+                ret["data"]["table_timeliness_completeness"][str(district)].update({
+                    "timeliness":comp_time["score"][str(district)]
+                })
+            except AttributeError:
+                pass
 
         return ret
 

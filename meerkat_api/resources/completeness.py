@@ -44,7 +44,7 @@ class Completeness(Resource):
         number_per_week: expected number per week\n
         weekend: specified weekend days in a comma separated string 0=Mon
     Returns:\n
-        completness data: {score: score, timeline: timeline, clinic_score: clinic:score, dates_not_reported: dated_not_reported}\n
+        completness data: {score: score, timeline: timeline, clinic_score: clinic:score, clinic_yearly_score: clinic:yearly_score, dates_not_reported: dated_not_reported, yearly_score: yearly_score}\n
     """
     decorators = [authenticate]
     def get(self, variable, location, number_per_week, weekend=None):
@@ -137,13 +137,17 @@ class Completeness(Resource):
             # Find last two weeks 
             idx = pd.IndexSlice
             last_two_weeks = location_completeness_per_week.index[-1:]
+            last_year= location_completeness_per_week.index[:]
 
             # Get sublocation completeness for last two weeks as a percentage
             completeness_last_two_weeks = sublocations_completeness_per_week.loc[idx[:, last_two_weeks]]
             score = completeness_last_two_weeks.groupby(level=0).mean() / number_per_week * 100
+            completeness_last_year= sublocations_completeness_per_week.loc[idx[:, last_year]]
+            yearly_score = completeness_last_year.groupby(level=0).mean() / number_per_week * 100
 
             # Add current location 
             score[location] = location_completeness_per_week[last_two_weeks].mean() / number_per_week * 100
+            yearly_score[location]= location_completeness_per_week.mean() / number_per_week * 100
 
             # Sort the timeline data 
             timeline = {}
@@ -161,6 +165,8 @@ class Completeness(Resource):
             # Calculate completness score for each clinic
             clinic_completeness_last_two_weeks = completeness.loc[idx[:,:,last_two_weeks]]
             clinic_scores = clinic_completeness_last_two_weeks.groupby(level=1).mean() / number_per_week * 100
+            clinic_completeness_last_year = completeness.loc[idx[:,:,:]]
+            clinic_yearly_scores = clinic_completeness_last_year.groupby(level=1).mean() / number_per_week * 100
             dates_not_reported = [] # Not needed for this level
             
         else:
@@ -181,8 +187,10 @@ class Completeness(Resource):
                 "values": [float(v) for v in completeness.values]}
             }
             last_two_weeks = completeness.index[-1:]
-            score = pd.Series() 
+            score = pd.Series()
             score.loc[location] = completeness[last_two_weeks].mean() / number_per_week * 100
+            yearly_score = pd.Series()
+            yearly_score.loc[location] = completeness.mean() / number_per_week * 100
 
             # Sort out the dates on which nothing was reported
             # Can specify on which weekdays we expect a record
@@ -207,11 +215,14 @@ class Completeness(Resource):
             ).to_pydatetime()
             dates_not_reported = [ d.isoformat() for d in dates_not_reported]
             clinic_scores = None # Not needed for this level
+            clinic_yearly_scores = None # Not needed for this level
             
         return jsonify({"score": series_to_json_dict(score),
                         "timeline": timeline,
                         "clinic_score": series_to_json_dict(clinic_scores),
-                        "dates_not_reported": dates_not_reported})
+                        "clinic_yearly_score": series_to_json_dict(clinic_yearly_scores),
+                        "dates_not_reported": dates_not_reported,
+                        "yearly_score": series_to_json_dict(yearly_score)})
 
 class NonReporting(Resource):
     """
