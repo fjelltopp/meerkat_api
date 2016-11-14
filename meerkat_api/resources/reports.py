@@ -2866,6 +2866,7 @@ class AFROBulletin(Resource):
 
         for disease in priority_diseases:
           ret["data"]["table_priority_diseases_cumulative"].update({disease:{
+            "name":Variable().get(disease)["name"],
             "cases":0, 
             "cases_cumulative":0,
             "mortality":0,
