@@ -10,7 +10,7 @@ from datetime import datetime
 from datetime import timedelta
 from sqlalchemy import extract
 import meerkat_api
-import meerkat_abacus.manage as manage
+import meerkat_abacus.data_management as manage
 import meerkat_abacus.config as config
 import meerkat_abacus.model as model
 
