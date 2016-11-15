@@ -20,6 +20,7 @@ def insert_cases(session, variable):
        variable: name of the varible from cases.py we want
     """
     session.query(model.Data).delete()
+    session.query(model.DisregardedData).delete()
     session.bulk_save_objects(getattr(cases, variable))
     session.commit()
 
