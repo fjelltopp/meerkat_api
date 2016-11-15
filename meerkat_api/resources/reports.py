@@ -2427,4 +2427,20 @@ class VaccinationReport(Resource):
         except KeyError:
           traceback.print_stack()
           ret['data'] = {'message':'invalid data'}
+
+        #vials used
+        vials = {
+          "BCG": 20,
+          "DTCHepHib": 10,
+          "PCV10": 2,
+          "ROTARIX": 1,
+          "VPO": 20,
+          "VPI": 5,
+          "VAR": 10,
+          "VAT": 20,
+        }
+
+        ret['data']['vials']={}
+        
+
         return ret
