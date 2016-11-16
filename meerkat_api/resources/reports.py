@@ -2815,7 +2815,7 @@ class AFROBulletin(Resource):
         ret["data"]['table_priority_diseases']={}
         priority_diseases=['cmd_1','cmd_2','cmd_3','cmd_4','cmd_5','cmd_6','cmd_7','cmd_8','cmd_9','cmd_10','cmd_11','cmd_12','cmd_13','cmd_14',
           'cmd_15','cmd_16','cmd_17','cmd_18','cmd_19','cmd_20','cmd_23','cmd_24','cmd_25','cmd_26','cmd_27','cmd_28']
-        mortality_codes:{
+        mortality_codes={
           'cmd_1':'mor_18',
           'cmd_2':'',
           'cmd_3':'',
@@ -2842,7 +2842,6 @@ class AFROBulletin(Resource):
           'cmd_26':'mor_15',
           'cmd_27':'mor_9',
           'cmd_28':'mor_23'
-
         }
 
         #insert disease names and regions
