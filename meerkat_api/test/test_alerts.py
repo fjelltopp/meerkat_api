@@ -32,7 +32,7 @@ class MeerkatAPIAlertsTestCase(unittest.TestCase):
         self.assertEqual(data["variables"]["alert_reason"], "cmd_11")
         self.assertEqual(data["clinic"], 7)
         self.assertEqual(data["region"], 2)
-        self.assertEqual(data["uuid"], "uuid:b013c24a-4790-43d6-8b43-4d28a4ce934d")
+        self.assertEqual(data["uuid"], "uuid:b013c24a-4790-43d6-8b43-4d28a4ce9341")
         self.assertEqual(data["variables"]["alert_gender"],  "female")
         self.assertEqual(data["variables"]["alert_age"], "33")
         self.assertIn( "ale_2", data["variables"])
@@ -89,7 +89,7 @@ class MeerkatAPIAlertsTestCase(unittest.TestCase):
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(len(data["alerts"]), 1)
         self.assertEqual(data["alerts"][0]["uuid"],
-                         "uuid:b013c24a-4790-43d6-8b43-4d28a4ce934d")
+                         "uuid:b013c24a-4790-43d6-8b43-4d28a4ce9342")
         self.assertEqual(data["alerts"][0]["region"], 2)
 
         rv = self.app.get('/alerts?reason=cmd_11', headers=settings.header)

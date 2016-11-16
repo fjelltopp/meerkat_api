@@ -34,6 +34,7 @@ class MeerkatAPITestCase(unittest.TestCase):
                                             meerkat_api.db.session, meerkat_api.db.engine,
                                             deviceids=["1", "2", "3", "4", "5", "6"],
                                             table_name=case_form_name)
+
         dr_name = config.country_config["tables"][1]
         data_management.table_data_from_csv("demo_alert", model.form_tables[dr_name],
                                             "meerkat_api/test/test_data/",
@@ -73,8 +74,8 @@ class MeerkatAPITestCase(unittest.TestCase):
             if line["uuid"] == "uuid:2d14ec68-c5b3-47d5-90db-eee510ee9375":
                 has_found = True
                 self.assertEqual(line["sta_1"], "1")
-                self.assertEqual(line["gen_1"], "1")
-                self.assertEqual(line["gen_2"], "")
+                self.assertEqual(line["gen_2"], "1")
+                self.assertEqual(line["gen_1"], "")
                 self.assertEqual(line["clinic"], "Clinic 1")
 
         self.assertTrue(has_found)
@@ -106,7 +107,7 @@ headers={**{"Accept": "text/csv"}, **settings.header})
                 self.assertEqual(line["Name"], "Bloody diarrhoea")
 
             if line["uuid"] == "uuid:2d14ec68-c5b3-47d5-90db-eee510ee9376":
-                self.assertEqual(line["Clinic"], "Clinic 5")
+                self.assertEqual(line["Clinic"], "Clinic 1")
                 self.assertEqual(line["icd code"], "A06")
                 self.assertEqual(line["Name"], "")
                 self.assertEqual(line["Month"], "5")
@@ -123,7 +124,6 @@ headers={**{"Accept": "text/csv"}, **settings.header})
     def test_export_forms(self):
         """ Test the basic export form functionality """
         rv = self.app.get('/export/form/demo_case', headers={**{"Accept": "text/csv"}, **settings.header})
-
         self.assertEqual(rv.status_code, 200)
         lines = rv.data.decode("utf-8").strip().split("\r\n")
         self.assertEqual(len(lines), 11)
