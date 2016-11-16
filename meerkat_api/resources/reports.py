@@ -2666,7 +2666,7 @@ class AFROBulletin(Resource):
                 pass
 
 
-        #FIGURE 2: CUMULATIVE REPORTED MATERNAL DEATHS BY DISTRICT (MAP)
+        #FIGURE 2: CUMULATIVE REPORTED MATERNAL DEATHS BY DISTRICT (MAP) ---------------------------
 
         mat_deaths = map_variable( 
             'cmd_21',
@@ -2691,8 +2691,25 @@ class AFROBulletin(Resource):
 
         ret["data"].update({"figure_mat_deaths_map":mat_deaths})
 
+        #FIGURE 3: INCIDENCE OF CONFIRMED MALARIA CASES BY REGION (MAP) ----------------------------
+        ir = IncidenceRate()
+        mal_incidence = ir.get( 'epi_1', 'region' )
+        mapped_mal_incidence = {}
 
-        #FIGURE 3: INCIDENCE OF CONFIRMED MALARIA CASES BY TYPE AND WEEK
+        #Structure the data.
+        for region in regions:
+            if region not in mal_incidence:
+                mal_incidence[region] = 0
+            mapped_mal_incidence[region] = {
+                "name":locs[region].name,
+                "value": mal_incidence[region]
+            }
+
+        ret["data"].update({
+            "figure_malaria_map": mapped_mal_incidence
+        })
+
+        #FIGURE 4: INCIDENCE OF CONFIRMED MALARIA CASES BY TYPE AND WEEK --------------------------
 
         aggregate_year=AggregateYear()
 
@@ -2725,34 +2742,13 @@ class AFROBulletin(Resource):
               week:0
             })
 
-
         ret["data"].update({"figure_malaria":{ #TODO: per 100,000 pop
-          "simple_malaria":simple_malaria,
-          "severe_malaria":severe_malaria,
-          "positivity_rate":positivity_rate,
-          }})
+            "simple_malaria":simple_malaria,
+            "severe_malaria":severe_malaria,
+            "positivity_rate":positivity_rate,
+        }})
 
-
-
-        #FIGURE 4: INCIDENCE OF CONFIRMED MALARIA CASES BY REGION (MAP)
-        mal_incidence = IncidenceRate().get( 'epi_1', 'region' )
-        mapped_mal_incidence = {}
-
-        #Structure the data.
-        for region in regions:
-            if region not in mal_incidence:
-                mal_incidence[region] = 0
-            mapped_mal_incidence[region] = {
-                "name":locs[region].name,
-                "value": mal_incidence[region]
-            }
-
-        ret["data"].update({
-            "figure_malaria_map": mapped_mal_incidence
-        })
-        
-        #FIGURE 5: TREND OF SUSPECTED MEASLES CASES BY AGE GROUP
-
+        #FIGURE 5: TREND OF SUSPECTED MEASLES CASES BY AGE GROUP -----------------------------------
         qv = QueryVariable()
         measles=qv.get(variable="cmd_15", group_by="age")
 
@@ -2778,16 +2774,16 @@ class AFROBulletin(Resource):
                     for week in measles[age_group]["weeks"]:
                         ret["data"]["figure_measles"]["measles_over_5yo"]["weeks"].update({week:measles[age_group]["weeks"][week]})
 
-        #FIGURE 6: TREND OF REPORTED SEVERE MALNUTRITION CASES IN UNDER FIVES
-
-        malnutrition = aggregate_year.get(variable_id="cmd_24",location_id=location) #TODO: AGE GROUPS
-        
+        #FIGURE 6: TREND OF REPORTED SEVERE MALNUTRITION CASES IN UNDER FIVES---------------------
+        #Epi 8 tracks severe malnutrition in under 5s. epi_8
+        malnutrition = aggregate_year.get(variable_id="epi_8",location_id=location)
         ret["data"].update({"figure_malnutrition":{
             "malnutrition": malnutrition,
         }})
 
 
-        #TABLE 1: Reported Priority Diseases, Conditions and Events by District, week X TODO: Connect cmd_codes to mortality
+        #TABLE 1: Reported Priority Diseases, Conditions and Events by District, week X -----------
+        #TODO: Connect cmd_codes to mortality
 
 # Required priority diseases:
 # cmd_13 A94    Arbovirus    Arbovirose suspecte
@@ -2876,7 +2872,7 @@ class AFROBulletin(Resource):
             ret["data"]["table_priority_diseases"][disease].update({"cases_total":
               priority_disease_cases_total[country]["value"]})
 
-        #TABLE 2: Summary of Priority Diseases, Conditions and Events for Weeks 1 to X, 2016
+        #TABLE 2: Summary of Priority Diseases, Conditions and Events for Weeks 1 to X, 2016 -----------
 
         ret["data"]["table_priority_diseases_cumulative"]={}
 
@@ -2999,7 +2995,7 @@ class AFROBulletin(Resource):
 
 
 
-        #TABLE 3: Timeliness and Completeness of reporting for Week X, 2016
+        #TABLE 3: Timeliness and Completeness of reporting for Week X, 2016 --------------------------------
         ret["data"]["table_timeliness_completeness"] = {}
 
         timeliness = map_variable( 

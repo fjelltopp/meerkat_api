@@ -93,7 +93,7 @@ from meerkat_api.resources.completeness import Completeness, NonReporting
 from meerkat_api.resources.reports import PublicHealth, CdReport, CdPublicHealth, CdPublicHealthMad, NcdPublicHealth,RefugeePublicHealth, RefugeeCd,RefugeeDetail, NcdReport, Pip, WeeklyEpiMonitoring, Malaria, VaccinationReport, AFROBulletin
 from meerkat_api.resources.frontpage import KeyIndicators, TotMap, NumAlerts, ConsultationMap, RefugeePage, NumClinics
 from meerkat_api.resources.export_data import ExportData, ExportForm, Forms, ExportCategory
-from meerkat_api.resources.incidence import IncidenceRate
+from meerkat_api.resources.incidence import IncidenceRate, WeeklyIncidenceRate
 #from meerkat_api.resources.links import Link, Links
 
 
@@ -161,9 +161,17 @@ api.add_resource(MapVariable, "/map/<variable_id>",
 api.add_resource(IncidenceMap, "/incidence_map/<variable_id>")
 
 # IncidenceRate
-api.add_resource(IncidenceRate, "/incidence_rate/<variable_id>/<level>",
-                 "/incidence_rate/<variable_id>/<level>/<mult_factor>")
-
+api.add_resource(
+    IncidenceRate, 
+    "/incidence_rate/<variable_id>/<level>",
+    "/incidence_rate/<variable_id>/<level>/<mult_factor>"
+)
+api.add_resource(
+    WeeklyIncidenceRate, 
+    "/weekly_incidence/<variable_id>/<loc_id>",
+    "/weekly_incidence/<variable_id>/<loc_id>/<year>",
+    "/weekly_incidence/<variable_id>/<loc_id>/<year>/<mult_factor>"
+)
 
 
 # Explore data
