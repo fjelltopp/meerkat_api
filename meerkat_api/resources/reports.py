@@ -2756,29 +2756,27 @@ class AFROBulletin(Resource):
         qv = QueryVariable()
         measles=qv.get(variable="cmd_15", group_by="age")
 
-        measles_under_5yo =aggregate_year.get(variable_id="cmd_15",location_id=location) #TODO: AGE GROUPS
+        measles_under_5yo =aggregate_year.get(variable_id="cmd_15",location_id=location)
 
         ret["data"].update({"figure_measles":{
             "measles_under_5yo": measles_under_5yo,
-            "measles_over_5yo": measles_under_5yo
+            "measles_over_5yo": {}
         }})
 
         # Aggregate over age groups
-        try:
-          for age_group in measles:
+        for age_group in measles:
             if age_group == '<5':
-              ret["data"]["figure_measles"]["measles_under_5yo"].update(measles[age_group])
+                ret["data"]["figure_measles"]["measles_under_5yo"].update(measles[age_group])
             else:
-              if "total" in ret["data"]["figure_measles"]["measles_over_5yo"]:
-                ret["data"]["figure_measles"]["measles_over_5yo"]["total"]+=measles[age_group]["total"]
-                for week in measles[age_group]["weeks"]:
-                  ret["data"]["figure_measles"]["measles_over_5yo"]["weeks"][week]+=measles[age_group]["weeks"][week]
-              else:
-                ret["data"]["figure_measles"]["measles_over_5yo"].update({"total":measles[age_group]["total"]})
-                for week in measles[age_group]["weeks"]:
-                  ret["data"]["figure_measles"]["measles_over_5yo"]["weeks"].update({week:measles[age_group]["weeks"][week]})
-        except KeyError:
-          logging.warn("Measles data unavailable")
+                if "total" in ret["data"]["figure_measles"]["measles_over_5yo"]:
+                    ret["data"]["figure_measles"]["measles_over_5yo"]["total"]+=measles[age_group]["total"]
+                    for week in measles[age_group]["weeks"]:
+                        ret["data"]["figure_measles"]["measles_over_5yo"]["weeks"][week]+=measles[age_group]["weeks"][week]
+                else:
+                    ret["data"]["figure_measles"]["measles_over_5yo"].update({"total":measles[age_group]["total"]})
+                    ret["data"]["figure_measles"]["measles_over_5yo"].update({"weeks":{}})
+                    for week in measles[age_group]["weeks"]:
+                        ret["data"]["figure_measles"]["measles_over_5yo"]["weeks"].update({week:measles[age_group]["weeks"][week]})
 
         #FIGURE 6: TREND OF REPORTED SEVERE MALNUTRITION CASES IN UNDER FIVES
 
@@ -2791,9 +2789,36 @@ class AFROBulletin(Resource):
 
         #TABLE 1: Reported Priority Diseases, Conditions and Events by District, week X TODO: Connect cmd_codes to mortality
 
+# Required priority diseases:
+# cmd_13 A94    Arbovirus    Arbovirose suspecte
+# cmd_28 !00    Other / Unusual or Alert    Autre évènement inhabituel nécessitant une alerte
+# cmd_2  A00    Cholera    Choléra
+# cmd_1  A09.0    Acute Watery Diarrhoea    Diarrhée aiguë aqueuse
+# cmd_4  A03    Bloody diarrhoea    Diarrhée sanglante
+# cmd_19   T61    Seafood poisoning    Episode d’Intoxication par consommation d’animaux marins (ICAM)
+# cmd_14    A99    Acute Haemorrhagic Fever    Fièvre hémorragique aiguë
+# cmd_3  A01    Typhoid fever    Fièvre typhoïde
+# cmd_26 B74.0    Lymphatic Filariasis    Filariose lymphatique
+# cmd_16 B19    Acute Jaundice Syndrome    Ictère
+# cmd_25 J06.9    Acute Respiratory Tract Infection    Infection respiratoire aiguë (IRA)
+# cmd_20 A64    Sexually Transmitted Infection    Infection sexuellement transmissible (IST) 
+# cmd_8  A30    Leprosy    Lèpre
+# cmd_23 E46    Moderate malnutrition    Malnutrition aigue modérée (MAM)
+# cmd_24 E43    Severe malnutrition    Malnutrition aigue sévère (MAS)
+# cmd_12 A87.9    Meningitis    Méningite
+# cmd_27 T14.1    Animal bite    Morsure ou griffure (animal à sang chaud)
+# cmd_17 B54    Malaria    Paludisme
+# cmd_10 A80.10    Acute Flaccid Paralysis    Paralysie flasque aiguë (PFA)
+# cmd_7     A20    Plague    Peste
+# cmd_11    A82    Rabies    Rage humaine
+# cmd_15    B05.06    Measles / Rubella    Rougeole / Rubéole
+# cmd_18    J11    Influenza-like lllness    Syndrome grippal
+# cmd_9  A33    Neonatal Tetanus    Tétanos néonatal
+# cmd_5 A05    Foodborne disease    Toxi Infection Alimentaire collective (TIAC)
+# cmd_6  A16.9    Tuberculosis    Tuberculose
         ret["data"]['table_priority_diseases']={}
-        priority_diseases=['cmd_1','cmd_2','cmd_3','cmd_4','cmd_5','cmd_6','cmd_7','cmd_8','cmd_9','cmd_10','cmd_11','cmd_12','cmd_13','cmd_14',
-          'cmd_15','cmd_16','cmd_17','cmd_18','cmd_19','cmd_20','cmd_21','cmd_22','cmd_23','cmd_24','cmd_25','cmd_26','cmd_27','cmd_28']
+        priority_diseases=['cmd_1','cmd_2','cmd_3','cmd_4','cmd_5','cmd_6','cmd_7','cmd_8','cmd_9','cmd_10','cmd_11','cmd_12','cmd_14',
+          'cmd_15','cmd_16','cmd_17','cmd_18','cmd_19','cmd_20','cmd_23','cmd_24','cmd_25','cmd_26','cmd_27','cmd_28']
 
 
         mort = get_variables_category(
@@ -2836,8 +2861,10 @@ class AFROBulletin(Resource):
           )          
 
           #add regional case breakdown
-          print("priority_disease_cases")
+          print("priority_disease_cases for " + disease)
           print(priority_disease_cases)
+          print("priority_disease_cases_total")
+          print(priority_disease_cases_total)
           for region in priority_disease_cases:
             try:
               ret["data"]["table_priority_diseases"][disease][locs[region].name]=priority_disease_cases[region]["value"]
