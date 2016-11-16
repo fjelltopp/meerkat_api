@@ -2785,46 +2785,36 @@ class AFROBulletin(Resource):
         #TABLE 1: Reported Priority Diseases, Conditions and Events by District, week X -----------
         #TODO: Connect cmd_codes to mortality
 
-# Required priority diseases:
-# cmd_13 A94    Arbovirus    Arbovirose suspecte
-# cmd_28 !00    Other / Unusual or Alert    Autre évènement inhabituel nécessitant une alerte
-# cmd_2  A00    Cholera    Choléra
-# cmd_1  A09.0    Acute Watery Diarrhoea    Diarrhée aiguë aqueuse
-# cmd_4  A03    Bloody diarrhoea    Diarrhée sanglante
-# cmd_19   T61    Seafood poisoning    Episode d’Intoxication par consommation d’animaux marins (ICAM)
-# cmd_14    A99    Acute Haemorrhagic Fever    Fièvre hémorragique aiguë
-# cmd_3  A01    Typhoid fever    Fièvre typhoïde
-# cmd_26 B74.0    Lymphatic Filariasis    Filariose lymphatique
-# cmd_16 B19    Acute Jaundice Syndrome    Ictère
-# cmd_25 J06.9    Acute Respiratory Tract Infection    Infection respiratoire aiguë (IRA)
-# cmd_20 A64    Sexually Transmitted Infection    Infection sexuellement transmissible (IST) 
-# cmd_8  A30    Leprosy    Lèpre
-# cmd_23 E46    Moderate malnutrition    Malnutrition aigue modérée (MAM)
-# cmd_24 E43    Severe malnutrition    Malnutrition aigue sévère (MAS)
-# cmd_12 A87.9    Meningitis    Méningite
-# cmd_27 T14.1    Animal bite    Morsure ou griffure (animal à sang chaud)
-# cmd_17 B54    Malaria    Paludisme
-# cmd_10 A80.10    Acute Flaccid Paralysis    Paralysie flasque aiguë (PFA)
-# cmd_7     A20    Plague    Peste
-# cmd_11    A82    Rabies    Rage humaine
-# cmd_15    B05.06    Measles / Rubella    Rougeole / Rubéole
-# cmd_18    J11    Influenza-like lllness    Syndrome grippal
-# cmd_9  A33    Neonatal Tetanus    Tétanos néonatal
-# cmd_5 A05    Foodborne disease    Toxi Infection Alimentaire collective (TIAC)
-# cmd_6  A16.9    Tuberculosis    Tuberculose
+        # Required priority diseases:
+        # cmd_13 A94    Arbovirus    Arbovirose suspecte
+        # cmd_28 !00    Other / Unusual or Alert    Autre évènement inhabituel nécessitant une alerte
+        # cmd_2  A00    Cholera    Choléra
+        # cmd_1  A09.0    Acute Watery Diarrhoea    Diarrhée aiguë aqueuse
+        # cmd_4  A03    Bloody diarrhoea    Diarrhée sanglante
+        # cmd_19   T61    Seafood poisoning    Episode d’Intoxication par consommation d’animaux marins (ICAM)
+        # cmd_14    A99    Acute Haemorrhagic Fever    Fièvre hémorragique aiguë
+        # cmd_3  A01    Typhoid fever    Fièvre typhoïde
+        # cmd_26 B74.0    Lymphatic Filariasis    Filariose lymphatique
+        # cmd_16 B19    Acute Jaundice Syndrome    Ictère
+        # cmd_25 J06.9    Acute Respiratory Tract Infection    Infection respiratoire aiguë (IRA)
+        # cmd_20 A64    Sexually Transmitted Infection    Infection sexuellement transmissible (IST) 
+        # cmd_8  A30    Leprosy    Lèpre
+        # cmd_23 E46    Moderate malnutrition    Malnutrition aigue modérée (MAM)
+        # cmd_24 E43    Severe malnutrition    Malnutrition aigue sévère (MAS)
+        # cmd_12 A87.9    Meningitis    Méningite
+        # cmd_27 T14.1    Animal bite    Morsure ou griffure (animal à sang chaud)
+        # cmd_17 B54    Malaria    Paludisme
+        # cmd_10 A80.10    Acute Flaccid Paralysis    Paralysie flasque aiguë (PFA)
+        # cmd_7     A20    Plague    Peste
+        # cmd_11    A82    Rabies    Rage humaine
+        # cmd_15    B05.06    Measles / Rubella    Rougeole / Rubéole
+        # cmd_18    J11    Influenza-like lllness    Syndrome grippal
+        # cmd_9  A33    Neonatal Tetanus    Tétanos néonatal
+        # cmd_5 A05    Foodborne disease    Toxi Infection Alimentaire collective (TIAC)
+        # cmd_6  A16.9    Tuberculosis    Tuberculose
         ret["data"]['table_priority_diseases']={}
         priority_diseases=['cmd_1','cmd_2','cmd_3','cmd_4','cmd_5','cmd_6','cmd_7','cmd_8','cmd_9','cmd_10','cmd_11','cmd_12','cmd_14',
           'cmd_15','cmd_16','cmd_17','cmd_18','cmd_19','cmd_20','cmd_23','cmd_24','cmd_25','cmd_26','cmd_27','cmd_28']
-
-
-        mort = get_variables_category(
-              'deaths', 
-              start_date, 
-              end_date_limit, 
-              location, 
-              conn, 
-              use_ids=True
-          )
 
         #insert disease names and regions
         for disease in priority_diseases:
@@ -2871,6 +2861,12 @@ class AFROBulletin(Resource):
           for country in priority_disease_cases_total:
             ret["data"]["table_priority_diseases"][disease].update({"cases_total":
               priority_disease_cases_total[country]["value"]})
+
+
+          #disease mortality
+          mort = query_ids([disease, "dea_0"], start_date, end_date_limit)
+          ret["data"]["table_priority_diseases"][disease].update({"mortality":mort})
+
 
         #TABLE 2: Summary of Priority Diseases, Conditions and Events for Weeks 1 to X, 2016 -----------
 
