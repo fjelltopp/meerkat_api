@@ -37,6 +37,7 @@ from meerkat_api.resources.locations import TotClinics
 from meerkat_api.resources.data import AggregateYear
 from meerkat_api.resources import alerts
 from meerkat_api.resources.explore import QueryVariable, query_ids
+from meerkat_api.resources.incidence import IncidenceRate
 from meerkat_abacus.util import get_locations, all_location_data
 from meerkat_abacus import model
 from meerkat_api.authentication import authenticate
@@ -2483,6 +2484,17 @@ class AFROBulletin(Resource):
     
     def get(self, location, start_date=None, end_date=None):
 
+        #Set default date values to last epi week. 
+        today = datetime.now()
+        epi_week = EpiWeek().get()
+        #Calulation for start date is: month_day - ( week_day-week_offset % 7) - 7
+        #The offset is the #days into the current epi week.
+        offset = (today.weekday() - epi_week["offset"]) % 7 
+        #Start date is today minus the offset minus one week.
+        start_date = (datetime(today.year, today.month, today.day) - timedelta(days=offset + 7)).isoformat()
+        #End date is today minus the offset, minus 1 day (because our end date is "inclusive")
+        end_date = (datetime(today.year, today.month, today.day) - timedelta(days=offset + 1)).isoformat()
+
         #Initialise some stuff.
         start_date, end_date = fix_dates(start_date, end_date)
         end_date_limit = end_date + timedelta(days=1)
@@ -2549,7 +2561,7 @@ class AFROBulletin(Resource):
             ['cmd_21', 'ale_1'],
             ['cmd_22', 'ale_1'],
             ['cmd_15', 'ale_1'],
-            ['cmd_7', 'ale_1'],
+            ['cmd_7',  'ale_1'],
             ['cmd_15', 'ale_2'],
             ['cmd_10', 'ale_2'],
             ['cmd_11', 'ale_2'],
@@ -2636,6 +2648,7 @@ class AFROBulletin(Resource):
 
         comp_reg = {}
         for reg in regions:
+            logging.warning( reg)
             try: #If data is completely missing there is no iformation for districts in the region
                 comp_reg = json.loads( Completeness().get( 'reg_1', reg, 4 ).data.decode('UTF-8') )
                 for loc_s in comp_reg["yearly_score"].keys():
@@ -2722,52 +2735,20 @@ class AFROBulletin(Resource):
 
 
         #FIGURE 4: INCIDENCE OF CONFIRMED MALARIA CASES BY REGION (MAP)
+        mal_incidence = IncidenceRate().get( 'epi_1', 'region' )
+        mapped_mal_incidence = {}
 
-        simple_malaria = map_variable( 
-            'mls_12',
-            first_day_of_year, 
-            end_date_limit, 
-            location, 
-            conn,
-            group_by="region"           
-        )
-
-        severe_malaria = map_variable( 
-            'mls_24',
-            first_day_of_year, 
-            end_date_limit, 
-            location, 
-            conn,
-            group_by="region"           
-        )
-
-        #Fill in geolocations with no malaria cases
+        #Structure the data.
         for region in regions:
-          if region not in simple_malaria:
-            simple_malaria.update({
-              region:{
-                "region":locs[region].name,
-                "geolocation":get_geolocation(conn=conn,location=region),
-                "value":0
-              }})
-
-          if region not in severe_malaria:
-            severe_malaria.update({
-              region:{
-                "region":locs[region].name,
-                "geolocation":get_geolocation(conn=conn,location=region),
-                "value":0
-              }})
-
-        malaria = {**simple_malaria, **severe_malaria}
-
-        for case in malaria:
-            logging.warning( malaria[case] )
-            malaria[case]["name"] = malaria[case]["region"]
-            del malaria[case]["region"]
+            if region not in mal_incidence:
+                mal_incidence[region] = 0
+            mapped_mal_incidence[region] = {
+                "name":locs[region].name,
+                "value": mal_incidence[region]
+            }
 
         ret["data"].update({
-            "figure_malaria_map": malaria #TODO: per 100,000 pop 
+            "figure_malaria_map": mapped_mal_incidence
         })
         
         #FIGURE 5: TREND OF SUSPECTED MEASLES CASES BY AGE GROUP
