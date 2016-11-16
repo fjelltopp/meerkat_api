@@ -2813,8 +2813,37 @@ class AFROBulletin(Resource):
         # cmd_5 A05    Foodborne disease    Toxi Infection Alimentaire collective (TIAC)
         # cmd_6  A16.9    Tuberculosis    Tuberculose
         ret["data"]['table_priority_diseases']={}
-        priority_diseases=['cmd_1','cmd_2','cmd_3','cmd_4','cmd_5','cmd_6','cmd_7','cmd_8','cmd_9','cmd_10','cmd_11','cmd_12','cmd_14',
+        priority_diseases=['cmd_1','cmd_2','cmd_3','cmd_4','cmd_5','cmd_6','cmd_7','cmd_8','cmd_9','cmd_10','cmd_11','cmd_12','cmd_13','cmd_14',
           'cmd_15','cmd_16','cmd_17','cmd_18','cmd_19','cmd_20','cmd_23','cmd_24','cmd_25','cmd_26','cmd_27','cmd_28']
+        mortality_codes:{
+          'cmd_1':'mor_18',
+          'cmd_2':'',
+          'cmd_3':'',
+          'cmd_4':'mor_1',
+          'cmd_5':'mor_6',
+          'cmd_6':'mor_20',
+          'cmd_7':'mor_5',
+          'cmd_8':'mor_14',
+          'cmd_9':'mor_12',
+          'cmd_10':'mor_11',
+          'cmd_11':'mor_10',
+          'cmd_12':'mor_4',
+          'cmd_13':'mor_3',
+          'cmd_14':'',
+          'cmd_15':'mor_13',
+          'cmd_16':'mor_8',
+          'cmd_17':'mor_16',
+          'cmd_18':'mor_2',
+          'cmd_19':'mor_7',
+          'cmd_20':'mor_19',
+          'cmd_23':'mor_21',
+          'cmd_24':'mor_22',
+          'cmd_25':'mor_17',
+          'cmd_26':'mor_15',
+          'cmd_27':'mor_9',
+          'cmd_28':'mor_23'
+
+        }
 
         #insert disease names and regions
         for disease in priority_diseases:
