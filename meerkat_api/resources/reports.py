@@ -1134,7 +1134,7 @@ class CdPublicHealth(Resource):
         
         ret["data"]["global_clinic_num"] = tot_clinics.get(1)["total"]
 
-        total_consultations = get_variable_id("tot_1", start_date, end_date_limit, location, conn)
+        total_consultations = get_variable_id("reg_2", start_date, end_date_limit, location, conn)
         ret["data"]["total_consultations"] = int(round(total_consultations))
         total_cases = get_variable_id("prc_1", start_date, end_date_limit, location, conn)
         ret["data"]["total_cases"] = int(round(total_cases))
@@ -2271,15 +2271,25 @@ class Malaria(Resource):
         conn = db.engine.connect()
 
         var = {}
-
-        ret['malaria_situation'] = get_variables_category(
-            'malaria_situation', 
+        query_variable = QueryVariable()
+                # get the age breakdown
+        malaria_data = query_variable.get("cmd_17", "malaria_situation",
+                                          end_date=end_date_limit.isoformat(),
+                                          start_date=start_date.isoformat(),
+                                          only_loc=location,
+                                          use_ids=True)
+        malaria_data_totals = {}
+        for key in malaria_data.keys():
+            malaria_data_totals[key] = malaria_data[key]["total"]
+        malaria_data_totals.update(get_variables_category(
+            'malaria_situation_no_case', 
             start_date, 
             end_date_limit, 
             location, 
             conn, 
             use_ids=True
-        )
+        ))
+        ret['malaria_situation'] = malaria_data_totals
         for key, value in ret['malaria_situation'].items():
             if type( value ) == float:
                 ret['malaria_situation'][key] = int(round(value))
