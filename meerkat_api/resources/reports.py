@@ -2759,46 +2759,64 @@ class AFROBulletin(Resource):
         #TABLE 1: Reported Priority Diseases, Conditions and Events by District, week X -----------
         #TODO: Connect cmd_codes to mortality
 
-# Required priority diseases:
-# cmd_13 A94    Arbovirus    Arbovirose suspecte
-# cmd_28 !00    Other / Unusual or Alert    Autre évènement inhabituel nécessitant une alerte
-# cmd_2  A00    Cholera    Choléra
-# cmd_1  A09.0    Acute Watery Diarrhoea    Diarrhée aiguë aqueuse
-# cmd_4  A03    Bloody diarrhoea    Diarrhée sanglante
-# cmd_19   T61    Seafood poisoning    Episode d’Intoxication par consommation d’animaux marins (ICAM)
-# cmd_14    A99    Acute Haemorrhagic Fever    Fièvre hémorragique aiguë
-# cmd_3  A01    Typhoid fever    Fièvre typhoïde
-# cmd_26 B74.0    Lymphatic Filariasis    Filariose lymphatique
-# cmd_16 B19    Acute Jaundice Syndrome    Ictère
-# cmd_25 J06.9    Acute Respiratory Tract Infection    Infection respiratoire aiguë (IRA)
-# cmd_20 A64    Sexually Transmitted Infection    Infection sexuellement transmissible (IST) 
-# cmd_8  A30    Leprosy    Lèpre
-# cmd_23 E46    Moderate malnutrition    Malnutrition aigue modérée (MAM)
-# cmd_24 E43    Severe malnutrition    Malnutrition aigue sévère (MAS)
-# cmd_12 A87.9    Meningitis    Méningite
-# cmd_27 T14.1    Animal bite    Morsure ou griffure (animal à sang chaud)
-# cmd_17 B54    Malaria    Paludisme
-# cmd_10 A80.10    Acute Flaccid Paralysis    Paralysie flasque aiguë (PFA)
-# cmd_7     A20    Plague    Peste
-# cmd_11    A82    Rabies    Rage humaine
-# cmd_15    B05.06    Measles / Rubella    Rougeole / Rubéole
-# cmd_18    J11    Influenza-like lllness    Syndrome grippal
-# cmd_9  A33    Neonatal Tetanus    Tétanos néonatal
-# cmd_5 A05    Foodborne disease    Toxi Infection Alimentaire collective (TIAC)
-# cmd_6  A16.9    Tuberculosis    Tuberculose
+        # Required priority diseases:
+        # cmd_13 A94    Arbovirus    Arbovirose suspecte
+        # cmd_28 !00    Other / Unusual or Alert    Autre évènement inhabituel nécessitant une alerte
+        # cmd_2  A00    Cholera    Choléra
+        # cmd_1  A09.0    Acute Watery Diarrhoea    Diarrhée aiguë aqueuse
+        # cmd_4  A03    Bloody diarrhoea    Diarrhée sanglante
+        # cmd_19   T61    Seafood poisoning    Episode d’Intoxication par consommation d’animaux marins (ICAM)
+        # cmd_14    A99    Acute Haemorrhagic Fever    Fièvre hémorragique aiguë
+        # cmd_3  A01    Typhoid fever    Fièvre typhoïde
+        # cmd_26 B74.0    Lymphatic Filariasis    Filariose lymphatique
+        # cmd_16 B19    Acute Jaundice Syndrome    Ictère
+        # cmd_25 J06.9    Acute Respiratory Tract Infection    Infection respiratoire aiguë (IRA)
+        # cmd_20 A64    Sexually Transmitted Infection    Infection sexuellement transmissible (IST) 
+        # cmd_8  A30    Leprosy    Lèpre
+        # cmd_23 E46    Moderate malnutrition    Malnutrition aigue modérée (MAM)
+        # cmd_24 E43    Severe malnutrition    Malnutrition aigue sévère (MAS)
+        # cmd_12 A87.9    Meningitis    Méningite
+        # cmd_27 T14.1    Animal bite    Morsure ou griffure (animal à sang chaud)
+        # cmd_17 B54    Malaria    Paludisme
+        # cmd_10 A80.10    Acute Flaccid Paralysis    Paralysie flasque aiguë (PFA)
+        # cmd_7     A20    Plague    Peste
+        # cmd_11    A82    Rabies    Rage humaine
+        # cmd_15    B05.06    Measles / Rubella    Rougeole / Rubéole
+        # cmd_18    J11    Influenza-like lllness    Syndrome grippal
+        # cmd_9  A33    Neonatal Tetanus    Tétanos néonatal
+        # cmd_5 A05    Foodborne disease    Toxi Infection Alimentaire collective (TIAC)
+        # cmd_6  A16.9    Tuberculosis    Tuberculose
         ret["data"]['table_priority_diseases']={}
-        priority_diseases=['cmd_1','cmd_2','cmd_3','cmd_4','cmd_5','cmd_6','cmd_7','cmd_8','cmd_9','cmd_10','cmd_11','cmd_12','cmd_14',
+        priority_diseases=['cmd_1','cmd_2','cmd_3','cmd_4','cmd_5','cmd_6','cmd_7','cmd_8','cmd_9','cmd_10','cmd_11','cmd_12','cmd_13','cmd_14',
           'cmd_15','cmd_16','cmd_17','cmd_18','cmd_19','cmd_20','cmd_23','cmd_24','cmd_25','cmd_26','cmd_27','cmd_28']
-
-
-        mort = get_variables_category(
-              'deaths', 
-              start_date, 
-              end_date_limit, 
-              location, 
-              conn, 
-              use_ids=True
-          )
+        mortality_codes={
+          'cmd_1':'mor_18',
+          'cmd_2':'mor_26',
+          'cmd_3':'mor_28',
+          'cmd_4':'mor_1',
+          'cmd_5':'mor_6',
+          'cmd_6':'mor_20',
+          'cmd_7':'mor_5',
+          'cmd_8':'mor_14',
+          'cmd_9':'mor_12',
+          'cmd_10':'mor_11',
+          'cmd_11':'mor_10',
+          'cmd_12':'mor_4',
+          'cmd_13':'mor_3',
+          'cmd_14':'mor_29',
+          'cmd_15':'mor_13',
+          'cmd_16':'mor_8',
+          'cmd_17':'mor_16',
+          'cmd_18':'mor_2',
+          'cmd_19':'mor_7',
+          'cmd_20':'mor_19',
+          'cmd_23':'mor_21',
+          'cmd_24':'mor_22',
+          'cmd_25':'mor_17',
+          'cmd_26':'mor_15',
+          'cmd_27':'mor_9',
+          'cmd_28':'mor_23'
+        }
 
         #insert disease names and regions
         for disease in priority_diseases:
@@ -2810,6 +2828,16 @@ class AFROBulletin(Resource):
           for region in regions:
             ret["data"]['table_priority_diseases'][disease].update({locs[region].name:0
               })
+
+        #disease mortality
+        mort = get_variables_category(
+          'deaths', 
+          start_date, 
+          end_date_limit, 
+          location, 
+          conn, 
+          use_ids=True
+        )
 
         #insert case figures
         for disease in priority_diseases:
@@ -2846,9 +2874,45 @@ class AFROBulletin(Resource):
             ret["data"]["table_priority_diseases"][disease].update({"cases_total":
               priority_disease_cases_total[country]["value"]})
 
+          #add mortality
+          try:
+            ret["data"]["table_priority_diseases"][disease]["mortality"] = mort[mortality_codes[disease]]
+          except KeyError:
+            ret["data"]["table_priority_diseases"][disease]["mortality"] = 0
+
+          #add cfr
+          try:
+            ret["data"]["table_priority_diseases"][disease]["cfr"] = ret["data"]["table_priority_diseases"][disease]["mortality"] / ret["data"]["table_priority_diseases"][disease]["cases_total"]
+          except KeyError:
+            ret["data"]["table_priority_diseases"][disease]["cfr"] = 'N/A'
+          except ZeroDivisionError:
+            ret["data"]["table_priority_diseases"][disease]["cfr"] = 'N/A'
+
+
+
         #TABLE 2: Summary of Priority Diseases, Conditions and Events for Weeks 1 to X, 2016 -----------
 
         ret["data"]["table_priority_diseases_cumulative"]={}
+
+
+        mort = get_variables_category(
+              'deaths', 
+              start_date, 
+              end_date_limit, 
+              location, 
+              conn, 
+              use_ids=True
+          )
+
+        mort_cumulative = get_variables_category(
+              'deaths', 
+              first_day_of_year, 
+              end_date_limit, 
+              location, 
+              conn, 
+              use_ids=True
+          )
+
 
         for disease in priority_diseases:
           ret["data"]["table_priority_diseases_cumulative"].update({disease:{
@@ -2882,91 +2946,38 @@ class AFROBulletin(Resource):
             ret["data"]["table_priority_diseases_cumulative"][disease].update({"cases":priority_disease_cases_total[key]["value"]})
             ret["data"]["table_priority_diseases_cumulative"][disease].update({"cases_cumulative":priority_disease_cases_cumulative[key]["value"]})
 
-        #insert mortality figures
-
-        mort = get_variables_category(
-              'deaths', 
-              start_date, 
-              end_date_limit, 
-              location, 
-              conn, 
-              use_ids=True
-          )
-
-        mort_cumulative = get_variables_category(
-              'deaths', 
-              first_day_of_year, 
-              end_date_limit, 
-              location, 
-              conn, 
-              use_ids=True
-          )
-
-        mort = sorted(mort.items(), key=operator.itemgetter(1))
-        mort_cause = {}
-        for var in mort:
-          #Extract the cause's id from the count variables name e.g. mor_1 name is "Deaths icd_17"
-          mort_var = Variable().get( var[0] )
-          cause_var = Variable().get( mort_var['name'][7:] )
-          #Only return if there are more than zero deaths.
-          if var[1] > 0 and cause_var["id"] in priority_diseases:
-            try:
-              ret["data"]['table_priority_diseases_cumulative'][cause_var["id"]].update({
-                  "mortality":var[1]
-                })
-            except KeyError:
-              ret["data"]['table_priority_diseases_cumulative'].update({
-                cause_var["id"]:
-                  {"mortality":var[1]}
-                })
-        #fill with zeroes
-        for disease in ret["data"]['table_priority_diseases_cumulative']:
-          if "mortality" not in ret["data"]['table_priority_diseases_cumulative'][disease]:
-            ret["data"]['table_priority_diseases_cumulative'][disease].update({"mortality":0})
-
-
-        #cumulative mortality
-        mort_cumulative = sorted(mort_cumulative.items(), key=operator.itemgetter(1))
-        mort_cumulative_cause = {}
-        for var in mort_cumulative:
-          #Extract the cause's id from the count variables name e.g. mor_1 name is "Deaths icd_17"
-          mort_cumulative_var = Variable().get( var[0] )
-          cause_var = Variable().get( mort_cumulative_var['name'][7:] )
-          #Only return if there are more than zero deaths.
-          if var[1] > 0 and cause_var["id"] in priority_diseases:
-            try:
-              ret["data"]['table_priority_diseases_cumulative'][cause_var["id"]].update({
-                  "mortality_cumulative":var[1]
-                })
-            except KeyError:
-              ret["data"]['table_priority_diseases_cumulative'].update({
-                cause_var["id"]:
-                  {"mortality_cumulative":var[1]}
-                })
-        #fill with zeroes
-        for disease in ret["data"]['table_priority_diseases_cumulative']:
-          if "mortality_cumulative" not in ret["data"]['table_priority_diseases_cumulative'][disease]:
-            ret["data"]['table_priority_diseases_cumulative'][disease].update({"mortality_cumulative":0})
-
-
-        #insert case fatality rate
-        for disease in ret["data"]['table_priority_diseases_cumulative']:
+          #add mortality
           try:
-            ret["data"]['table_priority_diseases_cumulative'][disease].update({"cfr":
-              100 * ret["data"]['table_priority_diseases_cumulative'][disease]["mortality"] / 
-              ret["data"]['table_priority_diseases_cumulative'][disease]["cases"]})
-          except ZeroDivisionError:
-            ret["data"]['table_priority_diseases_cumulative'][disease].update({"cfr":0})
+            ret["data"]["table_priority_diseases_cumulative"][disease]["mortality"] = mort[mortality_codes[disease]]
+          except KeyError:
+            ret["data"]["table_priority_diseases_cumulative"][disease]["mortality"] = 0
 
-        for disease in ret["data"]['table_priority_diseases_cumulative']:
+          #add cfr
           try:
-            ret["data"]['table_priority_diseases_cumulative'][disease].update({"cfr_cumulative":
-              100 * ret["data"]['table_priority_diseases_cumulative'][disease]["mortality_cumulative"] /
-              ret["data"]['table_priority_diseases_cumulative'][disease]["cases_cumulative"]})
+            ret["data"]["table_priority_diseases_cumulative"][disease]["cfr"] = \
+              ret["data"]["table_priority_diseases_cumulative"][disease]["mortality"] / \
+              ret["data"]["table_priority_diseases_cumulative"][disease]["cases"]
+              
+          except KeyError:
+            ret["data"]["table_priority_diseases_cumulative"][disease]["cfr"] = 'N/A'
           except ZeroDivisionError:
-            ret["data"]['table_priority_diseases_cumulative'][disease].update({"cfr_cumulative":0})
+            ret["data"]["table_priority_diseases_cumulative"][disease]["cfr"] = 'N/A'
 
+          #add cumulative mortality
+          try:
+            ret["data"]["table_priority_diseases_cumulative"][disease]["mortality_cumulative"] = mort_cumulative[mortality_codes[disease]]
+          except KeyError:
+            ret["data"]["table_priority_diseases_cumulative"][disease]["mortality_cumulative"] = 0
 
+          #add cumulative cfr
+          try:
+            ret["data"]["table_priority_diseases_cumulative"][disease]["cfr_cumulative"] = \
+              ret["data"]["table_priority_diseases_cumulative"][disease]["mortality_cumulative"] / \
+               ret["data"]["table_priority_diseases_cumulative"][disease]["cases_cumulative"]
+          except KeyError:
+            ret["data"]["table_priority_diseases_cumulative"][disease]["cfr_cumulative"] = 'N/A'
+          except ZeroDivisionError:
+            ret["data"]["table_priority_diseases_cumulative"][disease]["cfr_cumulative"] = 'N/A'
 
 
         #TABLE 3: Timeliness and Completeness of reporting for Week X, 2016 --------------------------------
