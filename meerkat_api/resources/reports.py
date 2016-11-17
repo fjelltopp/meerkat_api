@@ -2667,7 +2667,6 @@ class AFROBulletin(Resource):
 
 
         #FIGURE 2: CUMULATIVE REPORTED MATERNAL DEATHS BY DISTRICT (MAP) ---------------------------
-
         mat_deaths = map_variable( 
             'cmd_21',
             first_day_of_year, 
@@ -2709,18 +2708,22 @@ class AFROBulletin(Resource):
             "figure_malaria_map": mapped_mal_incidence
         })
 
-        #FIGURE 4: INCIDENCE OF CONFIRMED MALARIA CASES BY TYPE AND WEEK --------------------------
+        #FIGURE 4: NUMBER OF CONFIRMED MALARIA CASES BY TYPE AND WEEK --------------------------
         aggregate_year=AggregateYear()
 
-        simple_malaria=aggregate_year.get(variable_id="mls_12",location_id=location)
-        severe_malaria=aggregate_year.get(variable_id="mls_24",location_id=location)
-        confirmed_cases=aggregate_year.get(variable_id="epi_1",location_id=location)
+        simple=aggregate_year.get(variable_id="mls_12",location_id=location)['weeks']
+        severe=aggregate_year.get(variable_id="mls_24",location_id=location)['weeks']
+        rdt=aggregate_year.get(variable_id="mls_3",location_id=location)['weeks']
+        all_weeks = set(simple.keys()) | set(severe.keys()) | set(rdt.keys())
 
-        ret["data"].update({"figure_malaria":{ 
-            "simple_malaria":simple_malaria,
-            "severe_malaria":severe_malaria,
-            "confirmed_malaria": confirmed_cases,
-        }})
+        def calc_positivity(key):
+            return ( key, 100*(simple.get(key,0) + severe.get(key,0)) / rdt.get(key,0) )
+
+        ret["data"]["figure_malaria"] = { 
+            "simple_malaria": simple,
+            "severe_malaria": severe,
+            "positivity": dict(map( calc_positivity, all_weeks )),
+        }
 
         #FIGURE 5: TREND OF SUSPECTED MEASLES CASES BY AGE GROUP -----------------------------------
         qv = QueryVariable()
@@ -2739,7 +2742,7 @@ class AFROBulletin(Resource):
                 ret["data"]["figure_measles"]["measles_under_5yo"].update(measles[age_group])
             else:
                 if "total" in ret["data"]["figure_measles"]["measles_over_5yo"]:
-                    ret["data"]["figure_measles"]["measles_over_5yo"]["total"]+=measles[age_group]["total"]
+                    ret["data"]["figure_measles"]["measles_over_5yo"]["total"] += measles[age_group]["total"]
                     for week in measles[age_group]["weeks"]:
                         ret["data"]["figure_measles"]["measles_over_5yo"]["weeks"][week]+=measles[age_group]["weeks"][week]
                 else:
@@ -2786,36 +2789,46 @@ class AFROBulletin(Resource):
         # cmd_9  A33    Neonatal Tetanus    Tétanos néonatal
         # cmd_5 A05    Foodborne disease    Toxi Infection Alimentaire collective (TIAC)
         # cmd_6  A16.9    Tuberculosis    Tuberculose
+
         ret["data"]['table_priority_diseases']={}
-        priority_diseases=['cmd_1','cmd_2','cmd_3','cmd_4','cmd_5','cmd_6','cmd_7','cmd_8','cmd_9','cmd_10','cmd_11','cmd_12','cmd_13','cmd_14',
-          'cmd_15','cmd_16','cmd_17','cmd_18','cmd_19','cmd_20','cmd_23','cmd_24','cmd_25','cmd_26','cmd_27','cmd_28']
+        priority_diseases=[
+            'cmd_1', 'cmd_2', 'cmd_3',
+            'cmd_4','cmd_5','cmd_6',
+            'cmd_7','cmd_8','cmd_9',
+            'cmd_10','cmd_11','cmd_12',
+            'cmd_13','cmd_14','cmd_15',
+            'cmd_16','cmd_17','cmd_18',
+            'cmd_19','cmd_20','cmd_23',
+            'cmd_24','cmd_25','cmd_26',
+            'cmd_27','cmd_28'
+        ]
         mortality_codes={
-          'cmd_1':'mor_18',
-          'cmd_2':'mor_26',
-          'cmd_3':'mor_28',
-          'cmd_4':'mor_1',
-          'cmd_5':'mor_6',
-          'cmd_6':'mor_20',
-          'cmd_7':'mor_5',
-          'cmd_8':'mor_14',
-          'cmd_9':'mor_12',
-          'cmd_10':'mor_11',
-          'cmd_11':'mor_10',
-          'cmd_12':'mor_4',
-          'cmd_13':'mor_3',
-          'cmd_14':'mor_29',
-          'cmd_15':'mor_13',
-          'cmd_16':'mor_8',
-          'cmd_17':'mor_16',
-          'cmd_18':'mor_2',
-          'cmd_19':'mor_7',
-          'cmd_20':'mor_19',
-          'cmd_23':'mor_21',
-          'cmd_24':'mor_22',
-          'cmd_25':'mor_17',
-          'cmd_26':'mor_15',
-          'cmd_27':'mor_9',
-          'cmd_28':'mor_23'
+            'cmd_1':'mor_18',
+            'cmd_2':'mor_26',
+            'cmd_3':'mor_28',
+            'cmd_4':'mor_1',
+            'cmd_5':'mor_6',
+            'cmd_6':'mor_20',
+            'cmd_7':'mor_5',
+            'cmd_8':'mor_14',
+            'cmd_9':'mor_12',
+            'cmd_10':'mor_11',
+            'cmd_11':'mor_10',
+            'cmd_12':'mor_4',
+            'cmd_13':'mor_3',
+            'cmd_14':'mor_29',
+            'cmd_15':'mor_13',
+            'cmd_16':'mor_8',
+            'cmd_17':'mor_16',
+            'cmd_18':'mor_2',
+            'cmd_19':'mor_7',
+            'cmd_20':'mor_19',
+            'cmd_23':'mor_21',
+            'cmd_24':'mor_22',
+            'cmd_25':'mor_17',
+            'cmd_26':'mor_15',
+            'cmd_27':'mor_9',
+            'cmd_28':'mor_23'
         }
 
         #insert disease names and regions
