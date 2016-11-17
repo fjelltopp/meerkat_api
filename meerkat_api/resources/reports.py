@@ -2520,7 +2520,7 @@ class AFROBulletin(Resource):
     decorators = [authenticate]
     
     def get(self, location, start_date=None, end_date=None):
-
+        
         #Set default date values to last epi week. 
         today = datetime.now()
         epi_week = EpiWeek().get()
@@ -2528,9 +2528,11 @@ class AFROBulletin(Resource):
         #The offset is the #days into the current epi week.
         offset = (today.weekday() - epi_week["offset"]) % 7 
         #Start date is today minus the offset minus one week.
-        start_date = (datetime(today.year, today.month, today.day) - timedelta(days=offset + 7)).isoformat()
+        if not start_date:
+            start_date = (datetime(today.year, today.month, today.day) - timedelta(days=offset + 7)).isoformat()
         #End date is today minus the offset, minus 1 day (because our end date is "inclusive")
-        end_date = (datetime(today.year, today.month, today.day) - timedelta(days=offset + 1)).isoformat()
+        if not end_date:
+            end_date = (datetime(today.year, today.month, today.day) - timedelta(days=offset + 1)).isoformat()
 
         #Initialise some stuff.
         start_date, end_date = fix_dates(start_date, end_date)
@@ -2578,7 +2580,7 @@ class AFROBulletin(Resource):
             conn,
             use_ids=True
         )
-
+        logging.warning( ret["data"]["weekly_highlights"] )
         #Get number of clinics
         tot_clinics = TotClinics()
         ret["data"]["weekly_highlights"]["clinic_num"] = tot_clinics.get(location)["total"]
@@ -2612,15 +2614,21 @@ class AFROBulletin(Resource):
                 end_date
             )
 
+        #Add a figure that is the sum of simple and sever malaria to the return data.
+        #Used specifically to calulate a percentage.
+        mls = ret["data"]["weekly_highlights"]["mls_12"] + ret["data"]["weekly_highlights"]["mls_24"]
+        ret["data"]["weekly_highlights"]["mls_12_or_mls_24"] = mls
+
         #Calculate percentages. Assign them key "var_id1_perc_var_id2" e.g. "mls_3_perc_mls_2".
         #Each element in list is 2 element list of a numerator and denominator for a perc calc.
         perc_vars = [
-            ['mls_3', 'mls_2'],
-            ['cmd_17', 'mls_2'],
-            ['mls_48', 'cmd_17'],
-            ['cmd_15_ale_1', 'cmd_15'],
-            ['cmd_15_ale_2', 'cmd_15'],
-            ['cmd_15_age_1', 'cmd_15'],
+
+            ['mls_3','mls_2'],
+            ['cmd_17','mls_2'],
+            ['mls_48','mls_12_or_mls_24'],
+            ['cmd_15_ale_1','cmd_15'],
+            ['cmd_15_ale_2','cmd_15'],
+            ['cmd_15_age_1','cmd_15'],
             ['cmd_10_ale_2', 'cmd_10'],
             ['cmd_7_ale_1', 'cmd_7'],
             ['cmd_7_ale_2', 'cmd_7']
