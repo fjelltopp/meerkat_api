@@ -112,6 +112,8 @@ class Completeness(Resource):
                             start_date = begining
                         for d in pd.date_range(start_date, end_d, freq=freq):
                             tuples.append((name, clinic, d))
+            if len(tuples) == 0:
+                return {}
             new_index = pd.MultiIndex.from_tuples(tuples,
                                                   names=[sublevel, "clinic", "date"])
 
