@@ -2530,7 +2530,6 @@ class AFROBulletin(Resource):
     decorators = [authenticate]
     
     def get(self, location, start_date=None, end_date=None):
-        
         #Hack the tests for now.
         if app.config["TESTING"]:
             return {}
@@ -2599,9 +2598,7 @@ class AFROBulletin(Resource):
         tot_clinics = TotClinics()
         ret["data"]["weekly_highlights"]["clinic_num"] = tot_clinics.get(location)["total"]
 
-        comp = Completeness().get('reg_1', location, 4)
-        logging.warning( "Completeness")
-        logging.warning( comp )
+        comp = json.loads(Completeness().get('reg_1', location, 4).data.decode('UTF-8'))
         #Get completeness figures, assuming 4 registers to be submitted a week. 
         try:
             timeline = comp["timeline"][str(location)]['values'] 
@@ -2711,7 +2708,7 @@ class AFROBulletin(Resource):
         for reg in regions:
             logging.warning( reg)
             try: #If data is completely missing there is no iformation for districts in the region
-                comp_reg = Completeness().get( 'reg_1', reg, 4 ) 
+                comp_reg = json.loads( Completeness().get( 'reg_1', reg, 4 ).data.decode('UTF-8') )
                 for loc_s in comp_reg["yearly_score"].keys():
                     try:
                         ret["data"]["figure_completeness"].append({
@@ -2784,7 +2781,10 @@ class AFROBulletin(Resource):
         all_weeks = set(simple.keys()) | set(severe.keys()) | set(rdt.keys())
 
         def calc_positivity(key):
-            return ( key, 100*(simple.get(key,0) + severe.get(key,0)) / rdt.get(key,0) )
+            try:
+                return ( key, 100*(simple.get(key,0) + severe.get(key,0)) / rdt.get(key,0) )
+            except ZeroDivisionError:
+                return ( key, 0 )
 
         ret["data"]["figure_malaria"] = { 
             "simple_malaria": simple,
