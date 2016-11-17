@@ -172,7 +172,7 @@ def get_geolocation (location, conn):
     return ret
 
 
-def map_variable( variable_id, start_date, end_date, location, conn, group_by="clinic" ):
+def map_variable(variable_id, start_date, end_date, location, conn, group_by="clinic"):
     """
     Map a given variable between dates and with location
 
@@ -213,6 +213,43 @@ def map_variable( variable_id, start_date, end_date, location, conn, group_by="c
 
     return ret
 
+
+def variable_id_by_level(variable_id, start_date, end_date, location, conn, level="clinic"):
+    """
+    Map a given variable between dates and with location
+
+    Args: 
+       variable_id: the variable to be mapped
+       start_date: the start date for the aggregation
+       end_date: the end_date for the aggregation
+       location: the location to incldue
+       conn: db.connection
+       use_ids: we use ids instead of names as keys for the return dict
+
+    Returns: 
+       dict
+    """
+
+    results = db.session.query(
+        func.sum( Data.variables[variable_id].astext.cast(Integer) ).label('value'),
+        getattr(Data, level)
+    ).filter( 
+        Data.variables.has_key(variable_id ),
+        Data.date >= start_date, 
+        Data.date < end_date,
+        or_(
+            loc == location for loc in ( Data.country,
+                                         Data.region,
+                                         Data.district,
+                                         Data.clinic)  
+        )
+    ).group_by(level)
+    ret = {}
+    for r in results.all():
+        if r[1]:
+            ret[r[1]] = r[0]
+
+    return ret
 
 
 
@@ -2533,12 +2570,12 @@ class AFROBulletin(Resource):
         #WEEKLY HIGHLIGHTS-----------------------------------------------------------------
 
         #Get single variables
-        ret["data"]["weekly_highlights"] =  get_variables_category(
-            'afro', 
-            start_date, 
-            end_date_limit, 
-            location, 
-            conn, 
+        ret["data"]["weekly_highlights"] = get_variables_category(
+            'afro',
+            start_date,
+            end_date_limit,
+            location,
+            conn,
             use_ids=True
         )
 
@@ -2546,14 +2583,14 @@ class AFROBulletin(Resource):
         tot_clinics = TotClinics()
         ret["data"]["weekly_highlights"]["clinic_num"] = tot_clinics.get(location)["total"]
 
-        comp = json.loads( Completeness().get( 'reg_1', location, 4 ).data.decode('UTF-8') )
+        comp = json.loads(Completeness().get('reg_1', location, 4).data.decode('UTF-8'))
         #Get completeness figures, assuming 4 registers to be submitted a week. 
         try:
-          timeline = comp["timeline"][str(location)]['values'] 
-          ret["data"]["weekly_highlights"]["comp_week"] = comp["score"][str(location)]
-          ret["data"]["weekly_highlights"]["comp_year"] = comp["yearly_score"][str(location)]
+            timeline = comp["timeline"][str(location)]['values'] 
+            ret["data"]["weekly_highlights"]["comp_week"] = comp["score"][str(location)]
+            ret["data"]["weekly_highlights"]["comp_year"] = comp["yearly_score"][str(location)]
         except AttributeError:
-          comp = {"Error": "No data available"}
+            comp = {"Error": "No data available"}
         
         #Get multi-variable figures. 
         #Assign them the key "var_id1_var_id2", e.g. "cmd_21_ale_1"
@@ -2569,60 +2606,60 @@ class AFROBulletin(Resource):
             ['cmd_15', 'age_1']
         ]
         for vars_list in multi_vars:
-            ret["data"]["weekly_highlights"]["_".join( vars_list )] = query_ids( 
-                vars_list, 
-                start_date, 
-                end_date 
+            ret["data"]["weekly_highlights"]["_".join(vars_list)] = query_ids(
+                vars_list,
+                start_date,
+                end_date
             )
 
         #Calculate percentages. Assign them key "var_id1_perc_var_id2" e.g. "mls_3_perc_mls_2".
         #Each element in list is 2 element list of a numerator and denominator for a perc calc.
         perc_vars = [
-            ['mls_3','mls_2'],
-            ['cmd_17','mls_2'],
-            ['mls_48','cmd_17'],
-            ['cmd_15_ale_1','cmd_15'],
-            ['cmd_15_ale_2','cmd_15'],
-            ['cmd_15_age_1','cmd_15'],
+            ['mls_3', 'mls_2'],
+            ['cmd_17', 'mls_2'],
+            ['mls_48', 'cmd_17'],
+            ['cmd_15_ale_1', 'cmd_15'],
+            ['cmd_15_ale_2', 'cmd_15'],
+            ['cmd_15_age_1', 'cmd_15'],
             ['cmd_10_ale_2', 'cmd_10'],
-            ['cmd_7_ale_1','cmd_7'],
-            ['cmd_7_ale_2','cmd_7']
+            ['cmd_7_ale_1', 'cmd_7'],
+            ['cmd_7_ale_2', 'cmd_7']
         ]
         for perc in perc_vars:
             numer = ret["data"]["weekly_highlights"][perc[0]]
             denom = ret["data"]["weekly_highlights"][perc[1]]
             try: 
-                ret["data"]["weekly_highlights"][perc[0]+"_perc_"+perc[1]] = (numer/denom)*100
+                ret["data"]["weekly_highlights"][perc[0]+"_perc_" + perc[1]] = (numer / denom) * 100
             except ZeroDivisionError:
-                ret["data"]["weekly_highlights"][perc[0]+"_perc_"+perc[1]] = 0        
+                ret["data"]["weekly_highlights"][perc[0]+"_perc_"+perc[1]] = 0 
     
         #Top 3 regions of malnutrition.
-        nutri = map_variable( 
-            'icb_50',
-            start_date, 
-            end_date_limit, 
-            location, 
+        nutri = variable_id_by_level(
+            'cmd_24',
+            start_date,
+            end_date_limit,
+            location,
             conn,
-            group_by="region"           
+            level="region"
         )
         #Sort the regions by counts of malnutrtion
-        nutri = sorted(nutri.values(), key=lambda k: k['value'] )[-3:]
+        nutri_top_3 = top(nutri, 3)
         #For each of the top three regions, structure the data.
         nutri_top = []
-        for reg in nutri:
-            nutri_top.insert( 0, {
-                'region': reg['region'],
-                'number': reg['value']
+        for reg in nutri_top_3:
+            nutri_top.insert(0, {
+                'region': locs[reg].name,
+                'number': nutri[reg]
             })
         ret["data"]["weekly_highlights"]["malnutrition"] = nutri_top
 
         #Top 3 causes of mortality. 
         mort = get_variables_category(
-            'deaths', 
-            start_date, 
+            'deaths',
+            start_date,
             end_date_limit, 
-            location, 
-            conn, 
+            location,
+            conn,
             use_ids=True
         )
         #Sort mortality counts and slice off top three.
@@ -2667,26 +2704,30 @@ class AFROBulletin(Resource):
 
 
         #FIGURE 2: CUMULATIVE REPORTED MATERNAL DEATHS BY DISTRICT (MAP) ---------------------------
-        mat_deaths = map_variable( 
+        mat_deaths = {}
+        mat_deaths_ret = variable_id_by_level( 
             'cmd_21',
-            first_day_of_year, 
-            end_date_limit, 
-            location, 
+            first_day_of_year,
+            end_date_limit,
+            location,
             conn,
-            group_by="district"           
+            level="district"
         )
-        for death in mat_deaths:
-            mat_deaths[death]["name"] = mat_deaths[death]["district"]
-            del mat_deaths[death]["district"]
+        for district in mat_deaths_ret.keys():
+            mat_deaths[district] = {
+                "value": mat_deaths_ret[district]
+            }
 
         #fill the rest of the districts with zeroes
         for district in districts:
           if not district in mat_deaths:
-            mat_deaths.update({district:{
-              "name":locs[district].name,
-              "geolocation":get_geolocation(conn=conn,location=district),#locs[district].geolocation,
-              "value": 0 
-            }})
+            mat_deaths.update(
+                {
+                    district: {
+                        "value": 0 
+                    }
+                }
+            )
 
         ret["data"].update({"figure_mat_deaths_map":mat_deaths})
 
@@ -2833,73 +2874,80 @@ class AFROBulletin(Resource):
 
         #insert disease names and regions
         for disease in priority_diseases:
-          ret["data"]['table_priority_diseases'].update({disease:{
-            "name":Variable().get(disease)["name"],
-            "mortality": 0,
-            "cfr": 0
-            }})
-          for region in regions:
-            ret["data"]['table_priority_diseases'][disease].update({locs[region].name:0
-              })
+            ret["data"]['table_priority_diseases'].update(
+                {
+                    disease: {
+                        "name": Variable().get(disease)["name"],
+                        "mortality": 0,
+                        "cfr": 0
+                    }
+                })
+            for region in regions:
+                ret["data"]['table_priority_diseases'][disease].update(
+                    {
+                        locs[region].name: 0
+                    }
+                )
 
         #disease mortality
         mort = get_variables_category(
-          'deaths', 
-          start_date, 
-          end_date_limit, 
-          location, 
-          conn, 
-          use_ids=True
+            'deaths', 
+            start_date, 
+            end_date_limit, 
+            location, 
+            conn, 
+            use_ids=True
         )
 
         #insert case figures
         for disease in priority_diseases:
-          priority_disease_cases = map_variable( 
-            disease,
-            start_date, 
-            end_date_limit, 
-            location, 
-            conn,
-            group_by="region"           
-          )   
-          priority_disease_cases_total = map_variable( 
-            disease,
-            start_date, 
-            end_date_limit, 
-            location, 
-            conn,
-            group_by="country"           
-          )          
+            priority_disease_cases = variable_id_by_level( 
+                disease,
+                start_date, 
+                end_date_limit, 
+                location, 
+                conn,
+                level="region"           
+            )   
+            priority_disease_cases_total = get_variable_id( 
+                disease,
+                start_date, 
+                end_date_limit, 
+                location, 
+                conn,
+            )          
+            
+            #add regional case breakdown
+            print("priority_disease_cases for " + disease)
+            print(priority_disease_cases)
+            print("priority_disease_cases_total")
+            print(priority_disease_cases_total)
+            for region in priority_disease_cases:
+                try:
+                    ret["data"]["table_priority_diseases"][disease][locs[region].name] = priority_disease_cases[region]
+                except KeyError:
+                    logging.warning("Error: Data not available for disease " + disease)
 
-          #add regional case breakdown
-          print("priority_disease_cases for " + disease)
-          print(priority_disease_cases)
-          print("priority_disease_cases_total")
-          print(priority_disease_cases_total)
-          for region in priority_disease_cases:
+                #add total case breakdown
+            ret["data"]["table_priority_diseases"][disease].update(
+                {
+                    "cases_total": priority_disease_cases_total
+                }
+            )
+
+            #add mortality
             try:
-              ret["data"]["table_priority_diseases"][disease][locs[region].name]=priority_disease_cases[region]["value"]
+                ret["data"]["table_priority_diseases"][disease]["mortality"] = mort[mortality_codes[disease]]
             except KeyError:
-              logging.warning("Error: Data not available for disease " + disease)
+                ret["data"]["table_priority_diseases"][disease]["mortality"] = 0
 
-          #add total case breakdown
-          for country in priority_disease_cases_total:
-            ret["data"]["table_priority_diseases"][disease].update({"cases_total":
-              priority_disease_cases_total[country]["value"]})
-
-          #add mortality
-          try:
-            ret["data"]["table_priority_diseases"][disease]["mortality"] = mort[mortality_codes[disease]]
-          except KeyError:
-            ret["data"]["table_priority_diseases"][disease]["mortality"] = 0
-
-          #add cfr
-          try:
-            ret["data"]["table_priority_diseases"][disease]["cfr"] = ret["data"]["table_priority_diseases"][disease]["mortality"] / ret["data"]["table_priority_diseases"][disease]["cases_total"]
-          except KeyError:
-            ret["data"]["table_priority_diseases"][disease]["cfr"] = 'N/A'
-          except ZeroDivisionError:
-            ret["data"]["table_priority_diseases"][disease]["cfr"] = 'N/A'
+            #add cfr
+            try:
+                ret["data"]["table_priority_diseases"][disease]["cfr"] = ret["data"]["table_priority_diseases"][disease]["mortality"] / ret["data"]["table_priority_diseases"][disease]["cases_total"] * 100
+            except KeyError:
+                ret["data"]["table_priority_diseases"][disease]["cfr"] = 'N/A'
+            except ZeroDivisionError:
+                ret["data"]["table_priority_diseases"][disease]["cfr"] = 'N/A'
 
 
 
@@ -2928,69 +2976,69 @@ class AFROBulletin(Resource):
 
 
         for disease in priority_diseases:
-          ret["data"]["table_priority_diseases_cumulative"].update({disease:{
-            "name":Variable().get(disease)["name"],
-            "cases":0, 
-            "cases_cumulative":0,
-            "mortality":0,
-            "mortality_cumulative":0,
-            "cfr":0,
-            "cfr_cumulative":0}})
+            ret["data"]["table_priority_diseases_cumulative"].update({disease:{
+                "name":Variable().get(disease)["name"],
+                "cases":0, 
+                "cases_cumulative":0,
+                "mortality":0,
+                "mortality_cumulative":0,
+                "cfr":0,
+                "cfr_cumulative":0}})
+            
+            priority_disease_cases_cumulative = get_variable_id( 
+                disease,
+                first_day_of_year, 
+                end_date_limit, 
+                location, 
+                conn
+            )          
+            
+            priority_disease_cases_total = get_variable_id( 
+                disease,
+                start_date, 
+                end_date_limit, 
+                location, 
+                conn,
+            )     
+            
+            ret["data"]["table_priority_diseases_cumulative"][disease].update(
+                {
+                    "cases": priority_disease_cases_total
+                }
+            )
+            ret["data"]["table_priority_diseases_cumulative"][disease].update(
+                {
+                    "cases_cumulative":priority_disease_cases_cumulative
+                })
 
-          priority_disease_cases_cumulative = map_variable( 
-            disease,
-            first_day_of_year, 
-            end_date_limit, 
-            location, 
-            conn,
-            group_by="country"           
-          )          
+                #add mortality
+            try:
+                ret["data"]["table_priority_diseases_cumulative"][disease]["mortality"] = mort[mortality_codes[disease]]
+            except KeyError:
+                ret["data"]["table_priority_diseases_cumulative"][disease]["mortality"] = 0
 
-          priority_disease_cases_total = map_variable( 
-            disease,
-            start_date, 
-            end_date_limit, 
-            location, 
-            conn,
-            group_by="country"           
-          )     
+            #add cfr
+            try:
+                ret["data"]["table_priority_diseases_cumulative"][disease]["cfr"] = ret["data"]["table_priority_diseases_cumulative"][disease]["mortality"] / ret["data"]["table_priority_diseases_cumulative"][disease]["cases"] * 100
+                
+            except KeyError:
+                ret["data"]["table_priority_diseases_cumulative"][disease]["cfr"] = 'N/A'
+            except ZeroDivisionError:
+                ret["data"]["table_priority_diseases_cumulative"][disease]["cfr"] = 'N/A'
 
-          for key in priority_disease_cases_total:
-            ret["data"]["table_priority_diseases_cumulative"][disease].update({"cases":priority_disease_cases_total[key]["value"]})
-            ret["data"]["table_priority_diseases_cumulative"][disease].update({"cases_cumulative":priority_disease_cases_cumulative[key]["value"]})
+            #add cumulative mortality
+            try:
+                ret["data"]["table_priority_diseases_cumulative"][disease]["mortality_cumulative"] = mort_cumulative[mortality_codes[disease]]
+            except KeyError:
+                ret["data"]["table_priority_diseases_cumulative"][disease]["mortality_cumulative"] = 0
 
-          #add mortality
-          try:
-            ret["data"]["table_priority_diseases_cumulative"][disease]["mortality"] = mort[mortality_codes[disease]]
-          except KeyError:
-            ret["data"]["table_priority_diseases_cumulative"][disease]["mortality"] = 0
-
-          #add cfr
-          try:
-            ret["data"]["table_priority_diseases_cumulative"][disease]["cfr"] = \
-              ret["data"]["table_priority_diseases_cumulative"][disease]["mortality"] / \
-              ret["data"]["table_priority_diseases_cumulative"][disease]["cases"]
-              
-          except KeyError:
-            ret["data"]["table_priority_diseases_cumulative"][disease]["cfr"] = 'N/A'
-          except ZeroDivisionError:
-            ret["data"]["table_priority_diseases_cumulative"][disease]["cfr"] = 'N/A'
-
-          #add cumulative mortality
-          try:
-            ret["data"]["table_priority_diseases_cumulative"][disease]["mortality_cumulative"] = mort_cumulative[mortality_codes[disease]]
-          except KeyError:
-            ret["data"]["table_priority_diseases_cumulative"][disease]["mortality_cumulative"] = 0
-
-          #add cumulative cfr
-          try:
-            ret["data"]["table_priority_diseases_cumulative"][disease]["cfr_cumulative"] = \
-              ret["data"]["table_priority_diseases_cumulative"][disease]["mortality_cumulative"] / \
-               ret["data"]["table_priority_diseases_cumulative"][disease]["cases_cumulative"]
-          except KeyError:
-            ret["data"]["table_priority_diseases_cumulative"][disease]["cfr_cumulative"] = 'N/A'
-          except ZeroDivisionError:
-            ret["data"]["table_priority_diseases_cumulative"][disease]["cfr_cumulative"] = 'N/A'
+            #add cumulative cfr
+            try:
+                ret["data"]["table_priority_diseases_cumulative"][disease]["cfr_cumulative"] = ret["data"]["table_priority_diseases_cumulative"][disease]["mortality_cumulative"] / ret["data"]["table_priority_diseases_cumulative"][disease]["cases_cumulative"] * 100
+            except KeyError:
+                ret["data"]["table_priority_diseases_cumulative"][disease]["cfr_cumulative"] = 'N/A'
+            except ZeroDivisionError:
+                ret["data"]["table_priority_diseases_cumulative"][disease]["cfr_cumulative"] = 'N/A'
 
 
         #TABLE 3: Timeliness and Completeness of reporting for Week X, 2016 --------------------------------
