@@ -2595,7 +2595,9 @@ class AFROBulletin(Resource):
         tot_clinics = TotClinics()
         ret["data"]["weekly_highlights"]["clinic_num"] = tot_clinics.get(location)["total"]
 
-        comp = json.loads(Completeness().get('reg_1', location, 4).data.decode('UTF-8'))
+        comp = Completeness().get('reg_1', location, 4)
+        logging.warning( "Completeness")
+        logging.warning( comp )
         #Get completeness figures, assuming 4 registers to be submitted a week. 
         try:
             timeline = comp["timeline"][str(location)]['values'] 
@@ -2705,7 +2707,7 @@ class AFROBulletin(Resource):
         for reg in regions:
             logging.warning( reg)
             try: #If data is completely missing there is no iformation for districts in the region
-                comp_reg = json.loads( Completeness().get( 'reg_1', reg, 4 ).data.decode('UTF-8') )
+                comp_reg = Completeness().get( 'reg_1', reg, 4 ) 
                 for loc_s in comp_reg["yearly_score"].keys():
                     try:
                         ret["data"]["figure_completeness"].append({
