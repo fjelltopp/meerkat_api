@@ -45,11 +45,12 @@ class IncidenceRate(Resource):
             pops[l.id] = l.population
             names[l.id] = l.name
         for row in results:
-            if pops[row[0]]:
-                key = row[0]
-                if location_names:
-                    key = names[key]
-                ret[key] = row[1] / pops[row[0]] * mult_factor
+            if row[0]:
+                if pops[row[0]]:
+                    key = row[0]
+                    if location_names:
+                        key = names[key]
+                    ret[key] = row[1] / pops[row[0]] * mult_factor
         return ret
 
 class WeeklyIncidenceRate(Resource):
