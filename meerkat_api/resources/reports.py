@@ -2710,42 +2710,16 @@ class AFROBulletin(Resource):
         })
 
         #FIGURE 4: INCIDENCE OF CONFIRMED MALARIA CASES BY TYPE AND WEEK --------------------------
-
         aggregate_year=AggregateYear()
 
         simple_malaria=aggregate_year.get(variable_id="mls_12",location_id=location)
         severe_malaria=aggregate_year.get(variable_id="mls_24",location_id=location)
+        confirmed_cases=aggregate_year.get(variable_id="epi_1",location_id=location)
 
-        reported_fever=aggregate_year.get(variable_id="mls_2",location_id=location)
-
-        positivity_rate = {"weeks":{}}
-        for week in simple_malaria['weeks'].keys():
-          try:
-            sim_mal = simple_malaria["weeks"][week]
-          except KeyError:
-            sim_mal=0
-          try:
-           sev_mal = severe_malaria["weeks"][week]
-          except KeyError:
-            sev_mal=0
-
-          try:
-            positivity_rate["weeks"].update({
-              week:(sim_mal + sev_mal) / reported_fever["weeks"][week]
-            })
-          except ZeroDivisionError:
-            positivity_rate["weeks"].update({
-              week:0
-            })
-          except KeyError:
-            positivity_rate["weeks"].update({
-              week:0
-            })
-
-        ret["data"].update({"figure_malaria":{ #TODO: per 100,000 pop
+        ret["data"].update({"figure_malaria":{ 
             "simple_malaria":simple_malaria,
             "severe_malaria":severe_malaria,
-            "positivity_rate":positivity_rate,
+            "confirmed_malaria": confirmed_cases,
         }})
 
         #FIGURE 5: TREND OF SUSPECTED MEASLES CASES BY AGE GROUP -----------------------------------
