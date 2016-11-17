@@ -2723,7 +2723,8 @@ class AFROBulletin(Resource):
         )
         for district in mat_deaths_ret.keys():
             mat_deaths[district] = {
-                "value": mat_deaths_ret[district]
+                "value": mat_deaths_ret[district],
+                "name": locs[district].name
             }
 
         #fill the rest of the districts with zeroes
@@ -2732,7 +2733,8 @@ class AFROBulletin(Resource):
             mat_deaths.update(
                 {
                     district: {
-                        "value": 0 
+                        "value": 0,
+                        "name": locs[district].name
                     }
                 }
             )
