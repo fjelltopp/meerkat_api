@@ -2483,7 +2483,7 @@ class AFROBulletin(Resource):
     decorators = [authenticate]
     
     def get(self, location, start_date=None, end_date=None):
-
+        
         #Set default date values to last epi week. 
         today = datetime.now()
         epi_week = EpiWeek().get()
@@ -2491,9 +2491,11 @@ class AFROBulletin(Resource):
         #The offset is the #days into the current epi week.
         offset = (today.weekday() - epi_week["offset"]) % 7 
         #Start date is today minus the offset minus one week.
-        start_date = (datetime(today.year, today.month, today.day) - timedelta(days=offset + 7)).isoformat()
+        if not start_date:
+            start_date = (datetime(today.year, today.month, today.day) - timedelta(days=offset + 7)).isoformat()
         #End date is today minus the offset, minus 1 day (because our end date is "inclusive")
-        end_date = (datetime(today.year, today.month, today.day) - timedelta(days=offset + 1)).isoformat()
+        if not end_date:
+            end_date = (datetime(today.year, today.month, today.day) - timedelta(days=offset + 1)).isoformat()
 
         #Initialise some stuff.
         start_date, end_date = fix_dates(start_date, end_date)
