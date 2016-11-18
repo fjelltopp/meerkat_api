@@ -139,5 +139,5 @@ class MeerkatAPIDataTestCase(unittest.TestCase):
               "nat_2": 1, "sta_1": 1, "prc_1": 1, "cmd_1": 1, "icb_1": 1 }
         )
         self.assertEqual(data["records"][0]["clinic_type"], "Hospital")
-        self.assertEqual(data["records"][0]["uuid"], "uuid:2d14ec68-c5b3-47d5-90db-eee510ee9376")
+        self.assertEqual(data["records"][0]["uuid"], "uuid:2d14ec68-c5b3-47d5-90db-eee510ee9377")
         

@@ -10,7 +10,7 @@ from datetime import datetime
 from datetime import timedelta
 from sqlalchemy import extract
 import meerkat_api
-import meerkat_abacus.manage as manage
+import meerkat_abacus.data_management as manage
 import meerkat_abacus.config as config
 import meerkat_abacus.model as model
 
@@ -81,8 +81,11 @@ def valid_urls(app):
         "weekend": "5,6",
         "use_loc_ids": "1",
         "lim_variable": "tot_1",
-        "central_review": "crl_1"
-        }
+        "central_review": "crl_1",
+        "mult_factor": "1000",
+        "loc_id": "1",
+        "level":"district"
+    }
     urls = []
     for url in meerkat_api.app.url_map.iter_rules():
         if "static" not in str(url):
