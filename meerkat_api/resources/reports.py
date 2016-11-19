@@ -2465,7 +2465,6 @@ class VaccinationReport(Resource):
               conn, 
               use_ids=True
           )
-
         try:
           ret['data'].update({'vaccination_sessions':counts['vaccination_sessions']['vac_ses']})
           
@@ -2511,6 +2510,89 @@ class VaccinationReport(Resource):
         except KeyError:
           traceback.print_stack()
           ret['data'] = {'message':'invalid data'}
+
+        #vials used
+        vials = {
+          "BCG": 20,
+          "DTCHepHib": 10,
+          "PCV10": 2,
+          "ROTARIX": 1,
+          "VPO": 20,
+          "VPI": 5,
+          "VAR": 10,
+          "VAT": 20,
+        }
+
+        vials_total_doses = {
+          "BCG": 0,
+          "DTCHepHib": 0,
+          "PCV10": 0,
+          "ROTARIX": 0,
+          "VPO": 0,
+          "VPI": 0,
+          "VAR": 0,
+          "VAT": 0
+        }
+
+        #Types of vaccinations:
+        vials_types ={
+            "vac_pw_vat4":"VAT",
+            "vac_pw_vat5":"VAT",
+            "vac_pw_vat3":"VAT",
+            "vac_pw_vat1":"VAT",
+            "vac_pw_vat2":"VAT",
+            "vac_i0_dtc2":"DTCHepHib",
+            "vac_i0_vpo0":"VPO",
+            "vac_i0_dtc1":"DTCHepHib",
+            "vac_i0_vpo1":"VPO",
+            "vac_i0_bcg":"BCG",
+            "vac_i0_dtc3":"DTCHepHib",
+            "vac_i0_pcv3":"PCV10",
+            "vac_i0_rota1":"ROTARIX",
+            "vac_i0_rota3":"ROTARIX",
+            "vac_i0_rota2":"ROTARIX",
+            "vac_i0_vpo2":"VPO",
+            "vac_i0_vpi":"VPI",
+            "vac_i0_vpo3":"VPO",
+            "vac_i0_pcv1":"PCV10",
+            "vac_i0_pcv2":"PCV10",
+            "vac_i12_vpi":"VPI",
+            "vac_i12_dtc1":"DTCHepHib",
+            "vac_i12_vpo1":"VPO",
+            "vac_i12_dtc3":"DTCHepHib",
+            "vac_i12_vpo3":"VPO",
+            "vac_i12_dtc2":"DTCHepHib",
+            "vac_i12_rota1":"ROTARIX",
+            "vac_i12_rota3":"ROTARIX",
+            "vac_i12_pcv3":"PCV10",
+            "vac_i12_vpo0":"VPO",
+            "vac_i12_pcv2":"PCV10",
+            "vac_i12_pcv1":"PCV10",
+            "vac_i12_vpo2":"VPO",
+            "vac_i12_bcg":"BCG",
+            "vac_i12_rota2":"ROTARIX",
+            "vac_notpw_vat3":"VAT",
+            "vac_notpw_vat4":"VAT",
+            "vac_notpw_vat5":"VAT",
+            "vac_notpw_vat1":"VAT",
+            "vac_notpw_vat2":"VAT"}
+
+        for category in counts:
+            for vacc in counts[category].keys():
+                try:
+                    vials_total_doses[vials_types[vacc]] += counts[category][vacc]
+                except:
+                    pass
+
+        ret['data']['vials']=[]
+
+        for vial_key in vials_total_doses.keys():
+            print("Key is " + vial_key)
+            doses_per_vial = vials[vial_key]
+            total_doses = vials_total_doses[vial_key]
+            no_vials = total_doses / doses_per_vial
+            ret["data"]['vials'].append({'name': vial_key, 'total_doses': total_doses, 'doses_per_vial': doses_per_vial, 'vials': no_vials  })
+
         return ret
 
 
