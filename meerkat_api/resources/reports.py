@@ -35,6 +35,7 @@ from meerkat_api.resources.variables import Variables, Variable
 from meerkat_api.resources.epi_week import EpiWeek, epi_week_start, epi_year_start
 from meerkat_api.resources.locations import TotClinics
 from meerkat_api.resources.data import AggregateYear
+from meerkat_api.resources.map import Clinics
 from meerkat_api.resources import alerts
 from meerkat_api.resources.explore import QueryVariable, query_ids
 from meerkat_api.resources.incidence import IncidenceRate
@@ -137,81 +138,81 @@ def get_variable_id(variable_id, start_date, end_date, location, conn):
 variables_instance = Variables()
 
 
-def get_geolocation (location, conn):
-    """
-    Map a given variable between dates and with location
+# def get_geolocation (location, conn):
+#     """
+#     Map a given variable between dates and with location
 
-    Args: 
-       variable_id: the variable to be mapped
-       start_date: the start date for the aggregation
-       end_date: the end_date for the aggregation
-       location: the location to incldue
-       conn: db.connection
-       use_ids: we use ids instead of names as keys for the return dict
+#     Args: 
+#        variable_id: the variable to be mapped
+#        start_date: the start date for the aggregation
+#        end_date: the end_date for the aggregation
+#        location: the location to incldue
+#        conn: db.connection
+#        use_ids: we use ids instead of names as keys for the return dict
 
-    Returns: 
-       dict
-    """
-    results = db.session.query(
-        Data.geolocation
-    ).filter( 
-        or_(
-            loc == location for loc in ( Data.country,
-                                         Data.region,
-                                         Data.district,
-                                         Data.clinic)  
-        )
-    ).group_by("geolocation")
+#     Returns: 
+#        dict
+#     """
+#     results = db.session.query(
+#         Data.geolocation
+#     ).filter( 
+#         or_(
+#             loc == location for loc in ( Data.country,
+#                                          Data.region,
+#                                          Data.district,
+#                                          Data.clinic)  
+#         )
+#     ).group_by("geolocation")
 
-    locations = get_locations(db.session)
-    ret = {}
-    for r in results.all():
-        if r[0]:
-            ret = {"geolocation": r[0].split(",")}
+#     locations = get_locations(db.session)
+#     ret = {}
+#     for r in results.all():
+#         if r[0]:
+#             ret = {"geolocation": r[0].split(",")}
 
-    return ret
+#     return ret
 
 
-def map_variable(variable_id, start_date, end_date, location, conn, group_by="clinic"):
-    """
-    Map a given variable between dates and with location
+# def map_variable(variable_id, start_date, end_date, location, conn, group_by="clinic"):
+#     """
+#     Map a given variable between dates and with location
 
-    Args: 
-       variable_id: the variable to be mapped
-       start_date: the start date for the aggregation
-       end_date: the end_date for the aggregation
-       location: the location to incldue
-       conn: db.connection
-       use_ids: we use ids instead of names as keys for the return dict
+#     Args: 
+#        variable_id: the variable to be mapped
+#        start_date: the start date for the aggregation
+#        end_date: the end_date for the aggregation
+#        location: the location to incldue
+#        conn: db.connection
+#        use_ids: we use ids instead of names as keys for the return dict
 
-    Returns: 
-       dict
-    """
+#     Returns: 
+#        dict
+#     """
 
-    results = db.session.query(
-        func.sum( Data.variables[variable_id].astext.cast(Integer) ).label('value'),
-        Data.geolocation,
-        getattr(Data, group_by)
-    ).filter( 
-        Data.variables.has_key(variable_id ),
-        Data.date >= start_date, 
-        Data.date < end_date,
-        or_(
-            loc == location for loc in ( Data.country,
-                                         Data.region,
-                                         Data.district,
-                                         Data.clinic)  
-        )
-    ).group_by(group_by, "geolocation")
+#     results = db.session.query(
+#         func.sum( Data.variables[variable_id].astext.cast(Integer) ).label('value'),
+#         Data.geolocation,
+#         getattr(Data, group_by)
+#     ).filter( 
+#         Data.variables.has_key(variable_id ),
+#         Data.date >= start_date, 
+#         Data.date < end_date,
+#         or_(
+#             loc == location for loc in ( Data.country,
+#                                          Data.region,
+#                                          Data.district,
+#                                          Data.clinic)  
+#         )
+#     ).group_by(group_by, "geolocation")
 
-    locations = get_locations(db.session)
-    ret = {}
-    for r in results.all():
-        if r[1]:
-            ret[r[2]] = {"value": r[0], "geolocation": r[1].split(","),
-                         group_by: locations[r[2]].name}
+#     locations = get_locations(db.session)
+#     ret = {}
+#     for r in results.all():
+#         if r[1]:
+#             ret[r[2]] = {"value": r[0], "geolocation": r[1].split(","),
+#                          group_by: locations[r[2]].name}
 
-    return ret
+#     return ret
 
 
 def variable_id_by_level(variable_id, start_date, end_date, location, conn, level="clinic"):
@@ -1391,6 +1392,14 @@ class CdPublicHealth(Resource):
             
         ret["data"]["morbidity_communicable_icd"] = get_disease_types("cd", start_date, end_date_limit, location, conn)
         ret["data"]["morbidity_communicable_cd_tab"] = get_disease_types("cd_tab", start_date, end_date_limit, location, conn)
+
+
+        # Map
+
+        clin = Clinics()
+        ret["data"]["map"] = clin.get(1)
+
+        
         return ret
 
 class CdPublicHealthMad(Resource):
@@ -3152,14 +3161,14 @@ class AFROBulletin(Resource):
         #TABLE 3: Timeliness and Completeness of reporting for Week X, 2016 --------------------------------
         ret["data"]["table_timeliness_completeness"] = {}
 
-        timeliness = map_variable( 
-          "reg_5",
-          start_date, 
-          end_date_limit, 
-          location, 
-          conn,
-          group_by="district"           
-        )  
+        # timeliness = map_variable( 
+        #   "reg_5",
+        #   start_date, 
+        #   end_date_limit, 
+        #   location, 
+        #   conn,
+        #   group_by="district"           
+        # )  
 
         for district in districts:
             try:
