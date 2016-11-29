@@ -55,19 +55,6 @@ class MeerkatAPITestCase(unittest.TestCase):
         self.assertEqual(sorted(list(variables.keys())),
                          sorted(["prc_1", "prc_2", "prc_3", "prc_4", "prc_6", "prc_7"]))
 
-    def test_query_ids(self):
-        """ test the query_ids function """
-        date_start = datetime(2015, 1, 1)
-        date_end = datetime(2015, 12, 31)
-        result = explore.query_ids(["tot_1"], date_start, date_end)
-        self.assertEqual(result, 10)
-        result = explore.query_ids(["tot_1", "gen_2"], date_start, date_end)
-        self.assertEqual(result, 7)
-        result = explore.query_ids(["tot_1", "gen_2"], date_start, date_end, only_loc=3)
-        self.assertEqual(result, 4)
-        result = explore.query_ids(["tot_1", "gen_2", "prc_1"], date_start, date_end)
-        self.assertEqual(result, 4)
-
     def test_get_locations_by_level(self):
         """ Test getting locations by level """
 

@@ -36,24 +36,25 @@ from meerkat_api.resources.epi_week import EpiWeek, epi_week_start, epi_year_sta
 from meerkat_api.resources.locations import TotClinics
 from meerkat_api.resources.data import AggregateYear
 from meerkat_api.resources import alerts
-from meerkat_api.resources.explore import QueryVariable, query_ids
+from meerkat_api.resources.explore import QueryVariable
+from meerkat_api.util.data_query import query_sum
 from meerkat_api.resources.incidence import IncidenceRate
 from meerkat_abacus.util import get_locations, all_location_data
 from meerkat_abacus import model
 from meerkat_api.authentication import authenticate
 
 def get_disease_types(category, start_date, end_date, location, conn):
-    """ 
+    """
     Get and return top five disease of a type
 
-    Args: 
+    Args:
        category: the category to get the top five disease from
        start_date: the start date for the aggregation
        end_date: the end_date for the aggregation
        location: the location to incldue
        conn: db.connection
 
-    Returns: 
+    Returns:
        top_five_disease(list): ordered list of top five disease with percentage
     
     """
@@ -70,27 +71,29 @@ def get_disease_types(category, start_date, end_date, location, conn):
                                  diseases[disease] / tot_n * 100))
     return ret
 
+
 def make_dict(title, quantity, percent):
     """
     Small utility to create dictionary with title, quantity and percent
 
-    Args: 
+    Args:
        title: The title
        quantity: quantity
        percent: percent
     
-    Returns: 
+    Returns:
        dict(dict): Dictionary
     """
     return {"title": title,
             "quantity": quantity,
             "percent": percent}
 
+
 def top(values, number=5):
     """
     Return the dict containg the top number(defaults to 5) values.
     If we ask for the top 2 and the data looks like {"A": 5, "B": 5, "C": 5}
-    we will sort on the keys and take A and B. 
+    we will sort on the keys and take A and B.
 
     Args:
        values: the dict with data
@@ -102,46 +105,46 @@ def top(values, number=5):
 
 
 # A predifend query to use in get_variable_id
-qu = text("SELECT sum(CAST(data.variables ->> :variables_1 AS FLOAT)) AS sum_1  FROM data WHERE (data.variables ? :variables_2) AND data.date >= :date_1 AND data.date < :date_2 AND (data.country = :country_1 OR data.region = :region_1 OR data.district = :district_1 OR data.clinic = :clinic_1)")
+# qu = text("SELECT sum(CAST(data.variables ->> :variables_1 AS FLOAT)) AS sum_1  FROM data WHERE (data.variables ? :variables_2) AND data.date >= :date_1 AND data.date < :date_2 AND (data.country = :country_1 OR data.region = :region_1 OR data.district = :district_1 OR data.clinic = :clinic_1)")
 
 
-def get_variable_id(variable_id, start_date, end_date, location, conn):
-    """
-    Get the sum of variable_id between start and end date with location
+# def get_variable_id(variable_id, start_date, end_date, location, conn):
+#     """
+#     Get the sum of variable_id between start and end date with location
 
-    Args: 
-       variable_id: the variable_id to aggregate
-       start_date: the start date for the aggregation
-       end_date: the end_date for the aggregation
-       location: the location to incldue
-       conn: db.connection
+#     Args: 
+#        variable_id: the variable_id to aggregate
+#        start_date: the start date for the aggregation
+#        end_date: the end_date for the aggregation
+#        location: the location to incldue
+#        conn: db.connection
 
-    Returns: 
-       result(int): result of the aggregation
-    """
+#     Returns: 
+#        result(int): result of the aggregation
+#     """
 
-    result = conn.execute(qu, variables_1=variable_id,
-                          variables_2=variable_id,
-                          date_1=start_date,
-                          date_2=end_date,
-                          country_1=location,
-                          region_1=location,
-                          district_1=location,
-                          clinic_1=location).fetchone()[0]
-    if result:
-        return result
-    else:
-        return 0
+#     result = conn.execute(qu, variables_1=variable_id,
+#                           variables_2=variable_id,
+#                           date_1=start_date,
+#                           date_2=end_date,
+#                           country_1=location,
+#                           region_1=location,
+#                           district_1=location,
+#                           clinic_1=location).fetchone()[0]
+#     if result:
+#         return result
+#     else:
+#         return 0
 
 # Common variables_instance
 variables_instance = Variables()
 
 
-def get_geolocation (location, conn):
+def get_geolocation(location, conn):
     """
     Map a given variable between dates and with location
 
-    Args: 
+    Args:
        variable_id: the variable to be mapped
        start_date: the start date for the aggregation
        end_date: the end_date for the aggregation
@@ -149,17 +152,17 @@ def get_geolocation (location, conn):
        conn: db.connection
        use_ids: we use ids instead of names as keys for the return dict
 
-    Returns: 
+    Returns:
        dict
     """
     results = db.session.query(
         Data.geolocation
-    ).filter( 
+    ).filter(
         or_(
-            loc == location for loc in ( Data.country,
-                                         Data.region,
-                                         Data.district,
-                                         Data.clinic)  
+        loc == location for loc in ( Data.country,
+                                     Data.region,
+                                     Data.district,
+                                     Data.clinic)  
         )
     ).group_by("geolocation")
 
@@ -171,85 +174,6 @@ def get_geolocation (location, conn):
 
     return ret
 
-
-def map_variable(variable_id, start_date, end_date, location, conn, group_by="clinic"):
-    """
-    Map a given variable between dates and with location
-
-    Args: 
-       variable_id: the variable to be mapped
-       start_date: the start date for the aggregation
-       end_date: the end_date for the aggregation
-       location: the location to incldue
-       conn: db.connection
-       use_ids: we use ids instead of names as keys for the return dict
-
-    Returns: 
-       dict
-    """
-
-    results = db.session.query(
-        func.sum( Data.variables[variable_id].astext.cast(Integer) ).label('value'),
-        Data.geolocation,
-        getattr(Data, group_by)
-    ).filter( 
-        Data.variables.has_key(variable_id ),
-        Data.date >= start_date, 
-        Data.date < end_date,
-        or_(
-            loc == location for loc in ( Data.country,
-                                         Data.region,
-                                         Data.district,
-                                         Data.clinic)  
-        )
-    ).group_by(group_by, "geolocation")
-
-    locations = get_locations(db.session)
-    ret = {}
-    for r in results.all():
-        if r[1]:
-            ret[r[2]] = {"value": r[0], "geolocation": r[1].split(","),
-                         group_by: locations[r[2]].name}
-
-    return ret
-
-
-def variable_id_by_level(variable_id, start_date, end_date, location, conn, level="clinic"):
-    """
-    Map a given variable between dates and with location
-
-    Args: 
-       variable_id: the variable to be mapped
-       start_date: the start date for the aggregation
-       end_date: the end_date for the aggregation
-       location: the location to incldue
-       conn: db.connection
-       use_ids: we use ids instead of names as keys for the return dict
-
-    Returns: 
-       dict
-    """
-
-    results = db.session.query(
-        func.sum( Data.variables[variable_id].astext.cast(Integer) ).label('value'),
-        getattr(Data, level)
-    ).filter( 
-        Data.variables.has_key(variable_id ),
-        Data.date >= start_date, 
-        Data.date < end_date,
-        or_(
-            loc == location for loc in ( Data.country,
-                                         Data.region,
-                                         Data.district,
-                                         Data.clinic)  
-        )
-    ).group_by(level)
-    ret = {}
-    for r in results.all():
-        if r[1]:
-            ret[r[1]] = r[0]
-
-    return ret
 
 
 
@@ -272,11 +196,11 @@ def get_variables_category(category, start_date, end_date, location, conn, use_i
 
     return_data = {}
     for variable in variables.keys():
-        r = get_variable_id(variable,
-                           start_date,
-                           end_date,
-                            location,
-                            conn)
+        r = query_sum(db, [variable],
+                      start_date,
+                      end_date,
+                      location,
+                      )["total"]
         if use_ids:
             return_data[variable] = r
         else:
@@ -522,11 +446,11 @@ class NcdReport(Resource):
                 # Get the lab breakdown
                 for new_id in ids_to_include[disease]:
                     if new_id[0]:
-                        numerator = query_ids([d_id, new_id[0]], start_date, end_date_limit, only_loc=region)
+                        numerator = query_sum(db, [d_id, new_id[0]], start_date, end_date_limit, region)["total"]
                         if new_id[1] == "tot":
                             denominator = table_two_total
                         else:
-                            denominator = query_ids([d_id, new_id[1]], start_date, end_date_limit, only_loc=region)
+                            denominator = query_sum(db, [d_id, new_id[1]], start_date, end_date_limit, region)["total"]
                         if denominator == 0:
                             denominator = 1
                         ret[disease]["complications"]["data"][i]["values"].append(
@@ -717,7 +641,7 @@ class Pip(Resource):
                                     end_date=end_date_limit.isoformat(),
                                     start_date=start_date.isoformat(),
                                     only_loc=location)
-        total_cases = get_variable_id(sari_code, start_date, end_date_limit, location, conn)
+        total_cases = query_sum(db, [sari_code], start_date, end_date_limit, location)["total"]
         ret["data"]["total_cases"] = int(round(total_cases))
         ret["data"]["pip_indicators"] = [make_dict(gettext("Total Cases"), total_cases, 100)]
         if total_cases == 0:
@@ -823,9 +747,9 @@ class Pip(Resource):
         ret["data"]["reporting_sites"] = []
         for l in locs.values():
             if is_child(location, l.id, locs) and l.case_report and l.clinic_type == "SARI":
-                num = get_variable_id(sari_code,
+                num = query_sum(db, [sari_code],
                                       start_date,
-                                      end_date_limit, l.id, conn)
+                                      end_date_limit, l.id)["total"]
                 ret["data"]["reporting_sites"].append(
                     make_dict(l.name,
                               num,
@@ -954,16 +878,16 @@ class PublicHealth(Resource):
         ret["data"]["clinic_num"] = tot_clinics.get(location)["total"]
         
         ret["data"]["global_clinic_num"] = tot_clinics.get(1)["total"]
-        total_cases = get_variable_id("tot_1", start_date, end_date_limit, location, conn)
+        total_cases = query_sum(db, ["tot_1"], start_date, end_date_limit, location)["total"]
         ret["data"]["total_cases"] = int(round(total_cases))
         # We need to divded by total cases(and some other numbers) so we make sure we don't divide
         # by zero in cases of no cases. 
         if total_cases == 0:
             total_cases = 1
-        total_consultations = get_variable_id("reg_2", start_date, end_date_limit, location, conn)
+        total_consultations = query_sum(db, ["reg_2"], start_date, end_date_limit, location)["total"]
         ret["data"]["total_consultations"] = int(round(total_consultations))
-        female = get_variable_id("gen_2", start_date, end_date_limit, location, conn)
-        male = get_variable_id("gen_1", start_date, end_date_limit, location, conn)
+        female = query_sum(db, ["gen_2"], start_date, end_date_limit, location)["total"]
+        male = query_sum(db ,["gen_1"], start_date, end_date_limit, location)["total"]
         ret["data"]["percent_cases_male"] = male / total_cases*100
         ret["data"]["percent_cases_female"] = female / total_cases*100
         less_5yo = sum(get_variables_category("under_five", start_date, end_date_limit, location, conn).values())
@@ -999,9 +923,9 @@ class PublicHealth(Resource):
             make_dict(gettext("Prescribing practice recorded"),
                       modules["Prescribing"],
                       modules["Prescribing"] / total_cases * 100))
-        smoking_prevalence = get_variable_id("smo_2", start_date, end_date_limit, location, conn)
-        smoking_prevalence_ever = get_variable_id("smo_1", start_date, end_date_limit, location, conn)
-        smoking_non_prevalence_ever = get_variable_id("smo_3", start_date, end_date_limit, location, conn)
+        smoking_prevalence = query_sum(db , ["smo_2"], start_date, end_date_limit, location)["total"]
+        smoking_prevalence_ever = query_sum(db, ["smo_1"], start_date, end_date_limit, location)["total"]
+        smoking_non_prevalence_ever = query_sum(db, ["smo_3"], start_date, end_date_limit, location)["total"]
 
         if (smoking_prevalence_ever + smoking_non_prevalence_ever) == 0:
             smoking_prevalence_ever = 1
@@ -1017,9 +941,9 @@ class PublicHealth(Resource):
             if l.level == "clinic" and l.case_report == 0:
                 continue
             if l.parent_location and int(l.parent_location) == int(location):
-                num = get_variable_id("tot_1",
-                                      start_date,
-                                      end_date_limit, l.id, conn)
+                num = query_sum(db, ["tot_1"],
+                                start_date,
+                                end_date_limit, l.id)["total"]
                 ret["data"]["reporting_sites"].append(
                     make_dict(l.name,
                               num,
@@ -1208,11 +1132,11 @@ class CdPublicHealth(Resource):
         
         ret["data"]["global_clinic_num"] = tot_clinics.get(1)["total"]
 
-        total_consultations = get_variable_id("reg_2", start_date, end_date_limit, location, conn)
+        total_consultations = query_sum(db, ["reg_2"], start_date, end_date_limit, location)["total"]
         ret["data"]["total_consultations"] = int(round(total_consultations))
-        total_cases = get_variable_id("prc_1", start_date, end_date_limit, location, conn)
+        total_cases = query_sum(db, ["prc_1"], start_date, end_date_limit, location)["total"]
         ret["data"]["total_cases"] = int(round(total_cases))
-        total_deaths = get_variable_id("dea_1", start_date, end_date_limit, location, conn)
+        total_deaths = query_sum(db, ["dea_1"], start_date, end_date_limit, location)["total"]
         ret["data"]["total_deaths"] = int(round(total_deaths))
 
         ret["data"]["public_health_indicators"] = [
@@ -1303,9 +1227,9 @@ class CdPublicHealth(Resource):
             if l.level == "clinic" and l.case_report == 0:
                 continue
             if l.parent_location and int(l.parent_location) == int(location):
-                num = get_variable_id("prc_1",
+                num = query_sum(db, ["prc_1"],
                                       start_date,
-                                      end_date_limit, l.id, conn)
+                                      end_date_limit, l.id)["total"]
                 ret["data"]["reporting_sites"].append(
                     make_dict(l.name,
                               num,
@@ -1422,8 +1346,9 @@ class CdPublicHealthMad(Resource):
 
         #Other values required for the email.
         ret['email'] = {
-            'cases': int(round(get_variable_id( 'tot_1', start_date, end_date_limit, location, conn ))),
-            'consultations': int(round(get_variable_id( 'reg_2', start_date, end_date_limit, location, conn ))),
+            'cases': int(round(query_sum(db, ['tot_1'], start_date, end_date_limit, location)["total"])),
+            'consultations': int(round(query_sum(db, ['reg_2'],
+                                                 start_date, end_date_limit, location)["total"])),
             'clinics': int(round(TotClinics().get(location)["total"]))
         }
 
@@ -1487,7 +1412,7 @@ class NcdPublicHealth(Resource):
         
         ret["data"]["global_clinic_num"] = tot_clinics.get(1)["total"]
 
-        total_cases = get_variable_id("prc_2", start_date, end_date_limit, location, conn)
+        total_cases = query_sum(db, ["prc_2"], start_date, end_date_limit, location)["total"]
         ret["data"]["total_cases"] = int(round(total_cases))
         if total_cases == 0:
             total_cases = 1
@@ -1526,17 +1451,17 @@ class NcdPublicHealth(Resource):
             less_5yo = 1
         #public health indicators
 
-        smoking = query_ids(["prc_2", "smo_4"], start_date, end_date, only_loc=location)
-        tot_diabetes = query_ids(["ncd_1"], start_date, end_date, only_loc=location)
-        tot_hypertension = query_ids(["ncd_2"], start_date, end_date, only_loc=location)
+        smoking = query_sum(db, ["prc_2", "smo_4"], start_date, end_date, location)["total"]
+        tot_diabetes = query_sum(db, ["ncd_1"], start_date, end_date, location)["total"]
+        tot_hypertension = query_sum(db, ["ncd_2"], start_date, end_date, location)["total"]
 
         if tot_diabetes == 0:
             tot_diabetes = 1
         if tot_hypertension == 0:
             tot_hypertension = 1
         
-        diabetes_with_hba1c = query_ids(["ncd_1", "lab_8"], start_date, end_date, only_loc=location)
-        hypertension_with_bp = query_ids(["ncd_2", "lab_1"], start_date, end_date, only_loc=location)
+        diabetes_with_hba1c = query_sum(db, ["ncd_1", "lab_8"], start_date, end_date,location)["total"]
+        hypertension_with_bp = query_sum(db, ["ncd_2", "lab_1"], start_date, end_date, location)["total"]
         ret["data"]["public_health_indicators"] = [
             make_dict("Cases Reported", total_cases, 100)]
 
@@ -1582,9 +1507,9 @@ class NcdPublicHealth(Resource):
             if l.parent_location and int(l.parent_location) == int(location):
                 if l.level == "clinic" and l.case_report == 0:
                     continue
-                num = get_variable_id("prc_2",
-                                      start_date,
-                                      end_date_limit, l.id, conn)
+                num = query_sum(db , ["prc_2"],
+                                start_date,
+                                end_date_limit, l.id)["total"]
                 ret["data"]["reporting_sites"].append(
                     make_dict(l.name,
                               num,
@@ -1748,7 +1673,7 @@ class RefugeePublicHealth(Resource):
         tot_pop = male + female
         ret["data"]["total_population"] = tot_pop
         # Demographic and overview information
-        total_consultations = get_variable_id("ref_13", start_date, end_date_limit, location, conn)
+        total_consultations = query_sum(db, ["ref_13"], start_date, end_date_limit, location)["total"]
         ret["data"]["total_consultations"] = int(round(total_consultations))
         if tot_pop == 0:
             tot_pop = 1
@@ -1803,14 +1728,14 @@ class RefugeePublicHealth(Resource):
         ret["data"]["public_health_indicators"].append(
             make_dict(gettext("Number of consultations per clinician per day"), total_consultations / no_clinicians / days_of_report, None)
             )
-        hospital_referrals = get_variable_id("ref_15", start_date, end_date_limit, location, conn)
+        hospital_referrals = query_sum(db, ["ref_15"], start_date, end_date_limit, location)["total"]
         ret["data"]["public_health_indicators"].append(
             make_dict(gettext("Hospitalisation rate"),
                       hospital_referrals /total_consultations, None)
         )
         ret["data"]["public_health_indicators"].append(
             make_dict(gettext("Referral rate"),
-                      (get_variable_id("ref_16", start_date, end_date_limit, location, conn) + hospital_referrals) /total_consultations, None)
+                      (query_sum(db, ["ref_16"], start_date, end_date_limit, location)["total"] + hospital_referrals) /total_consultations, None)
         )
         ret["data"]["public_health_indicators"].append(
             make_dict(gettext("Crude Mortality Rate (CMR)"),
@@ -1984,7 +1909,7 @@ class RefugeeDetail(Resource):
 
         # 3. Morbidity
         # 3.1 Staffing
-        total_consultations = get_variable_id("ref_13", start_date, end_date_limit, location, conn)
+        total_consultations = query_sum(db, ["ref_13"], start_date, end_date_limit, location)["total"]
         days_of_report = (end_date - start_date).days
         ret["data"]["staffing"] = [
             make_dict(gettext("Total Consultations"), total_consultations, None)
@@ -2021,8 +1946,8 @@ class RefugeeDetail(Resource):
         ret["data"]["injury"] = disease_breakdown(morbidity_injury)
         
         # 4 Referral
-        hospital_referrals = get_variable_id("ref_15", start_date, end_date_limit, location, conn)
-        other_referrals = get_variable_id("ref_16", start_date, end_date_limit, location, conn)
+        hospital_referrals = query_sum(db, ["ref_15"], start_date, end_date_limit, location)["total"]
+        other_referrals = query_sum(db, ["ref_16"], start_date, end_date_limit, location)["total"]
         ret["data"]["referrals"] = [
             make_dict(gettext("Hospital Referrals"), hospital_referrals, None)
             ]
@@ -2284,8 +2209,8 @@ class WeeklyEpiMonitoring(Resource):
       
         #Other values required for the email.
         ret['email'] = {
-            'cases': int(round(get_variable_id( 'tot_1', start_date, end_date_limit, location, conn ))),
-            'consultations': int(round(get_variable_id( 'reg_2', start_date, end_date_limit, location, conn ))),
+            'cases': int(round(query_sum(db, ['tot_1'], start_date, end_date_limit, location)["total"])),
+            'consultations': int(round(query_sum(db, ['reg_2'], start_date, end_date_limit, location)["total"])),
             'clinics': TotClinics().get(location)["total"]
         }
 
@@ -2703,11 +2628,12 @@ class AFROBulletin(Resource):
             ['cmd_15', 'age_1']
         ]
         for vars_list in multi_vars:
-            ret["data"]["weekly_highlights"]["_".join(vars_list)] = query_ids(
+            ret["data"]["weekly_highlights"]["_".join(vars_list)] = query_sum(
                 vars_list,
                 start_date,
-                end_date
-            )
+                end_date,
+                location                
+            )["total"]
 
         #Add a figure that is the sum of simple and sever malaria to the return data.
         #Used specifically to calulate a percentage.
@@ -3017,13 +2943,14 @@ class AFROBulletin(Resource):
                 conn,
                 level="region"           
             )   
-            priority_disease_cases_total = get_variable_id( 
-                disease,
+            priority_disease_cases_total = query_sum(
+                db,
+                [disease],
                 start_date, 
                 end_date_limit, 
                 location, 
                 conn,
-            )          
+            )["total"]
             
             #add regional case breakdown
             print("priority_disease_cases for " + disease)
@@ -3093,21 +3020,21 @@ class AFROBulletin(Resource):
                 "cfr":0,
                 "cfr_cumulative":0}})
             
-            priority_disease_cases_cumulative = get_variable_id( 
-                disease,
-                first_day_of_year, 
-                end_date_limit, 
-                location, 
-                conn
-            )          
+            priority_disease_cases_cumulative = query_sum(
+                db,
+                [disease],
+                first_day_of_year,
+                end_date_limit,
+                location
+            )["total"]
             
-            priority_disease_cases_total = get_variable_id( 
-                disease,
-                start_date, 
-                end_date_limit, 
-                location, 
-                conn,
-            )     
+            priority_disease_cases_total = query_sum(
+                db,
+                [disease],
+                start_date,
+                end_date_limit,
+                location,
+            )["total"]
             
             ret["data"]["table_priority_diseases_cumulative"][disease].update(
                 {
@@ -3151,15 +3078,6 @@ class AFROBulletin(Resource):
 
         #TABLE 3: Timeliness and Completeness of reporting for Week X, 2016 --------------------------------
         ret["data"]["table_timeliness_completeness"] = {}
-
-        timeliness = map_variable( 
-          "reg_5",
-          start_date, 
-          end_date_limit, 
-          location, 
-          conn,
-          group_by="district"           
-        )  
 
         for district in districts:
             try:

@@ -2,32 +2,31 @@
 Data resource for data exploration
 """
 from flask_restful import Resource
-from sqlalchemy import or_, extract, func, Integer
-from datetime import datetime, timedelta
+from sqlalchemy import or_, extract, func
+from datetime import datetime
 from dateutil.parser import parse
-from sqlalchemy.sql.expression import cast
 from flask import request
 
-
-
-from meerkat_api.util import row_to_dict, rows_to_dicts, is_child
+from meerkat_api.util import is_child
 from meerkat_api.resources.epi_week import epi_year_start
-from meerkat_api import db, app
+from meerkat_api import db
 from meerkat_abacus.model import Data
-from meerkat_abacus.util import get_locations, epi_week_start_date
+from meerkat_abacus.util import get_locations
 from meerkat_api.resources.variables import Variables
 from meerkat_api.resources.epi_week import EpiWeek
 from meerkat_api.authentication import authenticate
+
+import time
 
 def sort_date(start_date, end_date):
     """
     parses start and end date and remoces any timezone info
 
-    Args: 
+    Args:
        start_date: start date
        end_date: end date
     
-    Returns: 
+    Returns:
        (start_date, end_date)
     """
     if end_date:
@@ -39,13 +38,13 @@ def sort_date(start_date, end_date):
         if start_date < epi_year_start(year=start_date.year):
             start_date = epi_year_start(year=start_date.year)
     else:
-        start_date = epi_year_start(year=end_date.year) #datetime(end_date.year,1,1)
+        start_date = epi_year_start(year=end_date.year)
 
     return start_date, end_date
 
 
 def get_variables(category):
-    """ 
+    """
     Get variables with category
 
     Args:
@@ -58,34 +57,11 @@ def get_variables(category):
     names = dict((str(v), variables[v]["name"]) for v in variables.keys())
     return names
 
-def query_ids(variables, start_date, end_date, only_loc=None):
-    """
-    Finds the number of records that has all the variable ids in variables
-
-    Args:
-        variables: list of variable ids the records should have
-        start_date: start date
-        end_date: end date
-        only_loc: If given it restricts to that location
-
-    Returns:
-       The number of records that have all variables
-    """
-    conditions = [Data.date >= start_date, Data.date < end_date]
-    for variable in variables:
-        conditions.append(Data.variables.has_key(variable))
-    if only_loc:
-        conditions += [or_(loc == only_loc for loc in (
-            Data.country, Data.region, Data.district, Data.clinic))]
-    res = db.session.query(func.count(Data.id)).filter(*conditions).one()
-    return res[0]
-
-
 
 def get_locations_by_level(level, only_loc):
     """
     Returns all the locations with the given level. If only_loc is
-    given we only include children of only_loc.If we ask for the clinic 
+    given we only include children of only_loc.If we ask for the clinic
     level we also require that the clinic sends case reports
 
     Args:
@@ -102,7 +78,7 @@ def get_locations_by_level(level, only_loc):
             and (not only_loc or is_child(only_loc, l.id, locations))
             and (level != "clinic" or l.case_report)
         ):
-            names[l.id] = l.name 
+            names[l.id] = l.name
     return names
 
 
@@ -111,23 +87,31 @@ class QueryVariable(Resource):
     Create a table where all records have the variable, and is broken down by
     group_by. Start and end data gives option to specifiy time period
 
+
+        We first construct the conditions for our database query.
+        Need to take special care if the
+        variable or the group_by is given in terms of locations
+        as they need to be handeld differently.
+        We then do the db-query and then assemble the return dictionary
+
+
+
     Args:\n
         variable: the variable all records need to fulfill\n
         group_by: category to group by\n
         start_date: start date\n
         end_date: end_date\n
         only_loc: If given retricts the data to that location\n
-        use_ids: If use_ids is true we use variable_ids and not the name as keys for the return\n
+        use_ids: If use_ids is true we use variable_ids and not the
+                 name as keys for the return\n
 
     Returns:\n
         data: {variable_1: {total: X, weeks: {12:X,13:X}}....}\n
     """
     decorators = [authenticate]
 
-    def get(self, variable, group_by, start_date=None, end_date=None, only_loc=None, use_ids=None):
-        # We first construct the conditions for our database query. Need to take special care if the 
-        # variable or the group_by is given in terms of locations as they need to be handeld differently. 
-        # We then do the db-query and then assemble the return dictionary
+    def get(self, variable, group_by, start_date=None,
+            end_date=None, only_loc=None, use_ids=None):
         variable = str(variable)
         start_date, end_date = sort_date(start_date, end_date)
         year = start_date.year
@@ -146,7 +130,7 @@ class QueryVariable(Resource):
             conditions = [Data.variables.has_key(variable)] + date_conditions
             if only_loc or "only_loc" in request.args:
                 if not only_loc:
-                    #only loc is in request variables
+                    # only loc is in request variables
                     only_loc = request.args["only_loc"]
                 conditions += [or_(loc == only_loc for loc in (
                     Data.country, Data.region, Data.district, Data.clinic))]
@@ -162,8 +146,8 @@ class QueryVariable(Resource):
         # in addition we create a names dict that translates ids to names
         
         if "locations" in group_by:
-            # If we have locations in group_by we also specify the level at which
-            # we want to group the locations, clinic, district or region
+            # If we have locations in group_by we also specify the level at
+            #  which we want to group the locations, clinic, district or region
             if ":" in group_by:
                 level = group_by.split(":")[1]
             else:
@@ -212,22 +196,25 @@ class QueryVariable(Resource):
             if "locations" in group_by:
                 # r[2] = location
                 ret[names[r[2]]]["total"] += r[0]
-                ret[names[r[2]]]["weeks"][int(r[1])] =int(r[0])
+                ret[names[r[2]]]["weeks"][int(r[1])] = int(r[0])
             else:
                 # r[2:] are the ids that the record has
                 for i, i_d in enumerate(ids):
                     if r[i + 2]:
                         ret[names[i_d]]["total"] += r[0]
                         ret[names[i_d]]["weeks"][int(r[1])] = int(r[0])
-
         return ret
-
 
 
 class QueryCategory(Resource):
     """
-    Create a contingency table with category1 x category2. 
-    Start and end data gives option to specifiy time period. 
+    Create a contingency table with category1 x category2.
+    Start and end data gives option to specifiy time period.
+    
+    We first construct the conditions for our database query.
+    Need to take special care if any of the categories are locations
+    locations as they need to be handeld differently.
+    We then do the db-query and then assemble the return dictionary
 
     Args:\n
         variable: the variable all records need to fulfill\n
@@ -236,15 +223,14 @@ class QueryCategory(Resource):
         end_date: end_date\n
         only_loc: restrict data to only this location\n
     Returns:\n
-        data: {variable_11: {variable_21: number, variable_22: number ...}, 
+        data: {variable_11: {variable_21: number, variable_22: number ...},
                variable_12: {....\n
     """
     decorators = [authenticate]
-    def get(self, group_by1, group_by2, start_date=None, end_date=None, only_loc=None):
-        # We first construct the conditions for our database query. Need to take special care if any of the categories are locations
-        # locations as they need to be handeld differently. 
-        # We then do the db-query and then assemble the return dictionary
-        
+    
+    def get(self, group_by1, group_by2, start_date=None,
+            end_date=None, only_loc=None):
+
         start_date, end_date = sort_date(start_date, end_date)
         use_ids = False
         if "use_ids" in request.args.keys():
@@ -258,7 +244,7 @@ class QueryCategory(Resource):
                 conditions += [or_(loc == only_loc for loc in (
                     Data.country, Data.region, Data.district, Data.clinic))]
 
-        columns_to_query = [Data.variables]
+        columns_to_query = [Data.categories[group_by1].astext, Data.categories[group_by2].astext]
         if "locations" in group_by1:
             if ":" in group_by1:
                 level = group_by1.split(":")[-1]
@@ -295,25 +281,32 @@ class QueryCategory(Resource):
             names1 = {vid: vid for vid in names1.keys()}
             names2 = {vid: vid for vid in names2.keys()}
         conditions += [Data.date >= start_date, Data.date < end_date]
-        
+
         # DB query
-        results = db.session.query(
+        conn = db.engine.connect()
+      
+        query = db.session.query(
             *tuple(columns_to_query)
         ).filter(*conditions)
+        res = conn.execute(query.statement).fetchall()
+        
         ret = {}
-
         # Assemble return dict
-        for r in results.all():
-            list_of_vars = r.variables
-            if "locations" in group_by1 or "locations" in group_by2:
-                list_of_vars[getattr(r, level, 1)] = 1
-            for i1 in list_of_vars.keys():
-                for i2 in list_of_vars.keys():
-                    if i1 in ids1 and i2 in ids2:
-                        ret.setdefault(names1[i1], {}).setdefault(
-                            names2[i2], 0)
-                        ret[names1[i1]][names2[i2]] += 1
-                        
+        # while True:
+        #     chunk = res.fetchmany(500)
+        #     if not chunk:
+        #         break
+        for row in res:
+            i1 = row[0]
+            i2 = row[1]
+            if "locations" in group_by1:
+                i1 = row[2]
+            if "locations" in group_by2:
+                i2 = row[2]
+            if i1 and i2:
+                ret.setdefault(names1[i1], {}).setdefault(
+                    names2[i2], 0)
+                ret[names1[i1]][names2[i2]] += 1
         # We also add rows and columns with zeros
         for n1 in names1.values():
             for n2 in names2.values():

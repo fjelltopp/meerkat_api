@@ -3,6 +3,8 @@ meerkat_api.py
 
 Root Flask app for the Meerkat API.
 """
+
+from werkzeug.contrib.profiler import ProfilerMiddleware
 from flask import Flask, make_response
 from flask.json import JSONEncoder
 from flask_sqlalchemy import SQLAlchemy
@@ -25,8 +27,7 @@ if os.environ.get("MEERKAT_API_DB_SETTINGS"):
 
 db = SQLAlchemy(app)
 api = Api(app)
-
-# app.wsgi_app = ProfilerMiddleware(app.wsgi_app, restrictions=[30])
+# app.wsgi_app = ProfilerMiddleware(app.wsgi_app, restrictions=[50])
 
 class CustomJSONEncoder(JSONEncoder):
     """
