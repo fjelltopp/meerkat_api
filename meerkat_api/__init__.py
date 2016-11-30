@@ -232,10 +232,12 @@ api.add_resource(AFROBulletin, "/reports/afro/<location>",
                  "/reports/afro/<location>/<end_date>/<start_date>")
 
 # Misc
-api.add_resource(NonReporting, "/non_reporting/<variable>/<location>")
+api.add_resource(NonReporting, "/non_reporting/<variable>/<location>",
+                 "/non_reporting/<variable>/<location>/<exclude>")
 api.add_resource(Completeness,
                  "/completeness/<variable>/<location>/<number_per_week>",
-                 "/completeness/<variable>/<location>/<number_per_week>/<weekend>")
+                 "/completeness/<variable>/<location>/<number_per_week>/<exclude>",
+                 "/completeness/<variable>/<location>/<number_per_week>/<exclude>/<weekend>")
 api.add_resource(Records, "/records/<variable>/<location_id>")
 
 @app.route('/')

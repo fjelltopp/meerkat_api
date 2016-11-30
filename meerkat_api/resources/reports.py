@@ -2838,7 +2838,7 @@ class AFROBulletin(Resource):
 
         #FIGURE 3: INCIDENCE OF CONFIRMED MALARIA CASES BY REGION (MAP) ----------------------------
         ir = IncidenceRate()
-        mal_incidence = ir.get( 'epi_1', 'region' )
+        mal_incidence = ir.get( 'epi_1', 'region', mult_factor=100000 )
         mapped_mal_incidence = {}
 
         #Structure the data.
@@ -2847,7 +2847,7 @@ class AFROBulletin(Resource):
                 mal_incidence[region] = 0
             mapped_mal_incidence[region] = {
                 "name":locs[region].name,
-                "value": mal_incidence[region]
+                "value": int(mal_incidence[region])
             }
 
         ret["data"].update({
