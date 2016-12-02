@@ -54,7 +54,8 @@ class Completeness(Resource):
     """
     decorators = [authenticate]
 
-    def get(self, variable, location, number_per_week, exclude=None, weekend=None):
+    def get(self, variable, location, number_per_week, exclude=None,
+            weekend=None, start_week=1):
         today = datetime.now()
         epi_year_weekday = epi_week_start_date(today.year).weekday()
         freq = ["W-MON", "W-TUE", "W-WED", "W-THU", "W-FRI", "W-SAT",
@@ -94,7 +95,7 @@ class Completeness(Resource):
             offset = 7 + offset
         end_d = today - timedelta(days=offset + 1)
 
-        begining = epi_week_start_date(today.year)
+        begining = epi_week_start(today.year, start_week)
 
         # We drop duplicates so each clinic can only have one record per day
         data = data.drop_duplicates(
