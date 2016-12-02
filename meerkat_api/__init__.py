@@ -15,7 +15,6 @@ import io
 import csv
 import os
 import resource
-from meerkat_api.authentication import authenticate
 
 # Create the Flask app
 app = Flask(__name__)
@@ -27,7 +26,7 @@ if os.environ.get("MEERKAT_API_DB_SETTINGS"):
 
 db = SQLAlchemy(app)
 api = Api(app)
-# app.wsgi_app = ProfilerMiddleware(app.wsgi_app, restrictions=[50])
+app.wsgi_app = ProfilerMiddleware(app.wsgi_app, restrictions=[50])
 
 class CustomJSONEncoder(JSONEncoder):
     """
@@ -50,9 +49,9 @@ app.json_encoder = CustomJSONEncoder
 def output_csv(data_dict, code, headers=None):
     """
     Function to write data to a csv file. If data is list of dicts we
-    use the first element's keys as csv headers. If data is a dict it should have
-    a keys key with a list of keys in the correct order. Data should then also
-    include a filename and a list of dicts for each row
+    use the first element's keys as csv headers. If data is a dict it should
+    have a keys key with a list of keys in the correct order. Data should
+    then also include a filename and a list of dicts for each row
 
     Args: 
        data: list of dicts with output data or dict with data and keys
@@ -65,14 +64,13 @@ def output_csv(data_dict, code, headers=None):
         keys = data_dict["keys"]
         filename = data_dict["filename"]
         data = data_dict["data"]
-        data_is_list = True
         output = io.StringIO()
         writer = csv.DictWriter(output, keys, extrasaction="ignore")
         writer.writeheader()
         writer.writerows(data)
     elif "file" in data_dict:
         output = data_dict["file"]
-        filename = data_dict["filename"] 
+        filename = data_dict["filename"]
     resp = make_response(str(output.getvalue()), code)
     resp.headers.extend(headers or {
         "Content-Disposition": "attachment; filename={}.csv".format(filename)})
@@ -243,7 +241,3 @@ api.add_resource(Records, "/records/<variable>/<location_id>")
 def hello_world():
     return "WHO"
 
-@app.route('/test-authentication')
-@authenticate
-def test_authentication():
-    return "Authenticated"
