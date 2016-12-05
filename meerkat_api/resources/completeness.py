@@ -56,6 +56,7 @@ class Completeness(Resource):
 
     def get(self, variable, location, number_per_week, exclude=None,
             weekend=None, start_week=1):
+        print(variable, location, number_per_week, start_week, exclude, weekend)
         today = datetime.now()
         epi_year_weekday = epi_week_start_date(today.year).weekday()
         freq = ["W-MON", "W-TUE", "W-WED", "W-THU", "W-FRI", "W-SAT",
@@ -76,10 +77,11 @@ class Completeness(Resource):
             for loc in (Data.country, Data.region, Data.district, Data.clinic))
                       ]
         if exclude:
-            conditions.append(Data.case_type != exclude)
+            conditions.append(or_(Data.case_type is not None, Data.case_type != exclude))
         if "tag" in request.args.keys():
             conditions.append(Data.tags.has_key(request.args["tag"]))
         # get the data
+
         data = pd.read_sql(
             db.session.query(Data.region, Data.district, Data.clinic,
                              Data.date,

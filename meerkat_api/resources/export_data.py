@@ -82,13 +82,9 @@ class ExportCategory(Resource):
     There are some special commands that can be given in the form field name:
 
     * icd_name$category will translate an icd code in icd_code to names given by the variables in category
-
     * clinic,region and district will give this location information
-
     * field$month, field$year, field$epi_week: will extract the month, year or epi_week from the field
-
     * alert_links$alert_investigation$field: will get the field in the correpsonding alert_investigation
-
     * calc$bmi calculates bmi as: 
       results./bmi_weight / ((results./bmi_height/100) * (results./bmi_height/100))
     
@@ -159,7 +155,7 @@ class ExportCategory(Resource):
                                                  country_config["links_file"])
         # DB query, with yield_per(200) for memory reasons
 
-        columns = [Data, form_tables[form_name]]
+        columns = [Data.clinic, Data.region, Data.district, Data.variables, form_tables[form_name].data]
            
         link_id_index = {}
         joins = []
@@ -168,107 +164,123 @@ class ExportCategory(Resource):
             joins.append((form, Data.links[(l,-1)].astext == form.uuid))
             link_id_index[l] = i + 2
             columns.append(form.data)
-            
-            
-            
         results= db.session.query(*columns).join(
             form_tables[form_name], Data.uuid == form_tables[form_name].uuid)
         for join in joins:
             results = results.outerjoin(join[0], join[1])
-        results = results.filter(
+        query = results.filter(
             or_(Data.variables.has_key(key)
-                for key in data_keys)).yield_per(200)
+                for key in data_keys))
         locs = get_locations(db.session)
         dict_rows = []
+        conn = db.engine.connect()
 
+        res = conn.execution_options(
+            stream_results=True).execute(query.statement)
         #Prepare each row
-        for r in results:
-            dict_row = {}
-            for k in return_keys:
-                form_var = translation_dict[k]
-                if "icd_name$" in form_var:
-                    if r[1].data["icd_code"] in icd_code_to_name[form_var]:
-                        dict_row[k] = icd_code_to_name[form_var][r[1].data[
-                            "icd_code"]]
-                    else:
-                        dict_row[k] = None
-                elif form_var == "clinic":
-                    dict_row[k] = locs[r[0].clinic].name
-                elif form_var == "region":
-                    dict_row[k] = locs[r[0].region].name
-                elif form_var == "district":
-                    if r[0].district:
-                        dict_row[k] = locs[r[0].district].name
-                    else:
-                        dict_row[k] = None
-                elif "$year" in form_var:
-                    field = form_var.split("$")[0]
-                    if field in r[1].data and r[1].data[field]:
-                        dict_row[k] = parse(r[1].data[field]).year
-                    else:
-                        dict_row[k] = None
-                elif "$month" in form_var:
-                    field = form_var.split("$")[0]
-                    if field in r[1].data and r[1].data[field]:
-                        dict_row[k] = parse(r[1].data[field]).month
-                    else:
-                        dict_row[k] = None
-                elif "$epi_week" in form_var:
-                    ewg = EpiWeek()
-                    field = form_var.split("$")[0]
-                    if field in r[1].data and r[1].data[field]:
-                        dict_row[k] = ewg.get(r[1].data[field])["epi_week"]
-                    else:
-                        dict_row[k] = None
 
-                #A general framework for referencing links in the download data.
-                #link$<link id>$<linked form field>
-                elif "gen_link$" in form_var:
-                    link = form_var.split("$")[1]
-                    link_index = link_id_index[link]
-                    if r[link_index]:
-                        dict_row[k] = r[link_index][form_var.split("$")[-1]]
-                    else:
-                        dict_row[k] = None
+        while True:
+            chunk = res.fetchmany(500)
+            if not chunk:
+                break
+            else:
+                for r in chunk:
+                    dict_row = {}
+                    dates = {}
+                    for k in return_keys:
+                        form_var = translation_dict[k]
+                        if "icd_name$" in form_var:
+                            if r[4]["icd_code"] in icd_code_to_name[form_var]:
+                                dict_row[k] = icd_code_to_name[form_var][r[4]["icd_code"]]
+                            else:
+                                dict_row[k] = None
+                        elif form_var == "clinic":
+                            dict_row[k] = locs[r[0]].name
+                        elif form_var == "region":
+                            dict_row[k] = locs[r[1]].name
+                        elif form_var == "district":
+                            if r[2]:
+                                dict_row[k] = locs[r[2]].name
+                            else:
+                                dict_row[k] = None
+                        elif "$year" in form_var:
+                            field = form_var.split("$")[0]
+                            if field in dates:
+                                dict_row[k] = dates[field].year
+                            else:
+                                if field in r[4] and r[4][field]:
+                                    date = parse(r[4][field])
+                                    dates[field] = date
+                                    dict_row[k] = date.year
+                                else:
+                                    dict_row[k] = None
+                        elif "$month" in form_var:
+                            field = form_var.split("$")[0]
+                            if field in dates:
+                                dict_row[k] = dates[field].month
+                            else:
+                                if field in r[4] and r[4][field]:
+                                    date = parse(r[4][field])
+                                    dates[field] = date
+                                    dict_row[k] = date.month
+                                else:
+                                    dict_row[k] = None
+                        elif "$epi_week" in form_var:
+                            ewg = EpiWeek()
+                            field = form_var.split("$")[0]
+                            if field in r[4] and r[4][field]:
+                                dict_row[k] = ewg.get(r[4][field])["epi_week"]
+                            else:
+                                dict_row[k] = None
 
-                elif "code" == form_var.split("$")[0]:
-                    # code$cod_1,cod_2,Text_1,Text_2$default_value
-                    split = form_var.split("$")
-                    codes = split[1].split(",")
-                    text = split[2].split(",")
-                    if len(split) > 3:
-                        default_value = split[3]
-                    else:
-                        default_value = None
-                    final_text = []
-                    for i in range(len(codes)):
-                        if codes[i] in r[0].variables:
-                            final_text.append(text[i])
-                    if len(final_text) > 0:
-                        dict_row[k] = " ".join(final_text)
-                    else :
-                        dict_row[k] = default_value
+                        #A general framework for referencing links in the download data.
+                        #link$<link id>$<linked form field>
+                        elif "gen_link$" in form_var:
+                            link = form_var.split("$")[1]
+                            link_index = link_id_index[link]
+                            if r[link_index]:
+                                dict_row[k] = r[link_index][form_var.split("$")[-1]]
+                            else:
+                                dict_row[k] = None
 
-                elif "code_value" == form_var.split("$")[0]:
-                    code = form_var.split("$")[1]
-                    if code in r[0].variables:
-                        dict_row[k] = r[0].variables[code]
-                    else:
-                        dict_row[k] = None
-                elif "value" == form_var.split(":")[0]:
-                    dict_row[k] = form_var.split(":")[1]
-                else:
-                    if form_var in r[1].data:
-                        dict_row[k] = r[1].data[form_var]
-                    else:
-                        dict_row[k] = None
+                        elif "code" == form_var.split("$")[0]:
+                            # code$cod_1,cod_2,Text_1,Text_2$default_value
+                            split = form_var.split("$")
+                            codes = split[1].split(",")
+                            text = split[2].split(",")
+                            if len(split) > 3:
+                                default_value = split[3]
+                            else:
+                                default_value = None
+                            final_text = []
+                            for i in range(len(codes)):
+                                if codes[i] in r[3]:
+                                    final_text.append(text[i])
+                            if len(final_text) > 0:
+                                dict_row[k] = " ".join(final_text)
+                            else:
+                                dict_row[k] = default_value
 
-                if min_translation and k in min_translation:
-                    tr_dict = min_translation[k]
-                    if dict_row[k] in tr_dict.keys():
-                        dict_row[k] = tr_dict[dict_row[k]]
-                                         
-            dict_rows.append(dict_row)
+                        elif "code_value" == form_var.split("$")[0]:
+                            code = form_var.split("$")[1]
+                            if code in r[3]:
+                                dict_row[k] = r[3][code]
+                            else:
+                                dict_row[k] = None
+                        elif "value" == form_var.split(":")[0]:
+                            dict_row[k] = form_var.split(":")[1]
+                        else:
+                            if form_var in r[4]:
+                                dict_row[k] = r[4][form_var]
+                            else:
+                                dict_row[k] = None
+
+                        if min_translation and k in min_translation:
+                            tr_dict = min_translation[k]
+                            if dict_row[k] in tr_dict.keys():
+                                dict_row[k] = tr_dict[dict_row[k]]
+
+                    dict_rows.append(dict_row)
         #app.logger.warning(str(dict_rows))
         return {"data": dict_rows,
                 "keys": return_keys,
