@@ -8,7 +8,7 @@ from flask import jsonify
 from meerkat_api import app
 
 # The epi_week start date is defined in the meerkat_abacus configs
-from meerkat_abacus.util import epi_week_start_date
+from meerkat_abacus.util import epi_week_start_date, epi_week
 
 
 def epi_year_start(year):
@@ -46,13 +46,8 @@ class EpiWeek(Resource):
             date = parse(date)
         else:
             date = datetime.datetime.today()
-
-        start_date = epi_year_start(date.year)
-        if date < start_date:
-            start_date = start_date.replace(year=start_date.year-1)
-        year = start_date.year
-        
-        return {"epi_week":(date - start_date).days // 7 + 1,
+        year, ew = epi_week(date)
+        return {"epi_week": ew,
                 "year": year,
                 "offset": start_date.weekday()}
 class EpiWeekStart(Resource):
