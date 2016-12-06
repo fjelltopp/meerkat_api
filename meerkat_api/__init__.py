@@ -96,7 +96,7 @@ from meerkat_api.resources.epi_week import EpiWeek, EpiWeekStart
 from meerkat_api.resources.completeness import Completeness, NonReporting
 from meerkat_api.resources.reports import PublicHealth, CdReport, CdPublicHealth, CdPublicHealthMad, NcdPublicHealth,RefugeePublicHealth, RefugeeCd,RefugeeDetail, NcdReport, Pip, WeeklyEpiMonitoring, Malaria, VaccinationReport, AFROBulletin
 from meerkat_api.resources.frontpage import KeyIndicators, TotMap, NumAlerts, ConsultationMap, RefugeePage, NumClinics
-from meerkat_api.resources.export_data import ExportData, ExportForm, Forms, ExportCategory, GetDownload
+from meerkat_api.resources.export_data import ExportData, ExportForm, Forms, ExportCategory, GetDownload, GetStatus
 from meerkat_api.resources.incidence import IncidenceRate, WeeklyIncidenceRate
 #from meerkat_api.resources.links import Link, Links
 
@@ -119,6 +119,7 @@ api.add_resource(RefugeePage, "/refugee_page")
 
 # Export data
 api.add_resource(GetDownload, "/export/get/<uid>")
+api.add_resource(GetStatus, "/export/get_status/<uid>")
 api.add_resource(ExportData, "/export/data",
                  "/export/data/<use_loc_ids>")
 api.add_resource(ExportForm, "/export/form/<form>")

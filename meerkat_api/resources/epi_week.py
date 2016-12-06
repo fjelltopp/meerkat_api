@@ -49,7 +49,7 @@ class EpiWeek(Resource):
         year, ew = epi_week(date)
         return {"epi_week": ew,
                 "year": year,
-                "offset": start_date.weekday()}
+                "offset": epi_week_start(date.year, 1).weekday()}
 class EpiWeekStart(Resource):
     """
     Return the start date of an epi week in the given year

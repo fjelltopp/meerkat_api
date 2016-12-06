@@ -110,14 +110,20 @@ class GetDownload(Resource):
             DownloadDataFiles.uuid == uid).first()
         return {"string": res.content, "filename": res.type}
 
+    
 class GetStatus(Resource):
     decorators = [authenticate]
     
-    def get(self):
+    def get(self, uid):
+        
         results = db.session.query(DownloadDataFiles).filter(
-            DownloadDataFiles.creation_date >= datetime.now() - timedelta(days=7))
-        return jsonify({"files": rows_to_dicts(results)})  
+            DownloadDataFiles.uuid == uid).first()
+        if results:
+            return {"status": results.status, "success": results.success}
+        else:
+            return None
 
+    
 class ExportForm(Resource):
     """
     Export a form. If fields is in the request variable we only include

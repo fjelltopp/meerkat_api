@@ -62,6 +62,17 @@ def export_data(uuid, use_loc_ids=False):
 @task
 def export_category(uuid, form_name, category, download_name, variables):
     db, session = get_db_engine()
+
+    status = DownloadDataFiles(
+        uuid=uuid,
+        content="",
+        generation_time=datetime.now(),
+        type=download_name,
+        success=0,
+        status=0
+    )
+    session.add(status)
+    session.commit()
     res = session.query(AggregationVariables).filter(
         AggregationVariables.category.has_key(category)
         )
@@ -72,16 +83,7 @@ def export_category(uuid, form_name, category, download_name, variables):
         data_keys.append(r.id)
         cat_variables[r.id] = r
     if len(data_keys) == 0:
-        session.add(
-            DownloadDataFiles(
-                uuid=uuid,
-                content="",
-                generation_time=datetime.now(),
-                type=download_name,
-                success=0,
-                status=1
-                )
-            )
+        status.status = 1
         session.commit()
     return_keys = []
     translation_dict = {}
@@ -235,16 +237,8 @@ def export_category(uuid, form_name, category, download_name, variables):
     writer = csv.DictWriter(output, return_keys, extrasaction="ignore")
     writer.writeheader()
     writer.writerows(dict_rows)
-    session.add(
-            DownloadDataFiles(
-                uuid=uuid,
-                content=output.getvalue(),
-                generation_time=datetime.now(),
-                type=download_name,
-                success=1,
-                status=1
-                )
-            )
+    status.status = 1
+    status.success = 1
     session.commit()
     return True
 
