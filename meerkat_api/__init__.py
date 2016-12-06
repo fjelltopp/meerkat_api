@@ -26,7 +26,7 @@ if os.environ.get("MEERKAT_API_DB_SETTINGS"):
 
 db = SQLAlchemy(app)
 api = Api(app)
-app.wsgi_app = ProfilerMiddleware(app.wsgi_app, restrictions=[50])
+# app.wsgi_app = ProfilerMiddleware(app.wsgi_app, restrictions=[50])
 
 class CustomJSONEncoder(JSONEncoder):
     """
@@ -68,10 +68,15 @@ def output_csv(data_dict, code, headers=None):
         writer = csv.DictWriter(output, keys, extrasaction="ignore")
         writer.writeheader()
         writer.writerows(data)
+        out_string = output.getvalue()
     elif "file" in data_dict:
         output = data_dict["file"]
         filename = data_dict["filename"]
-    resp = make_response(str(output.getvalue()), code)
+        out_string = output.getvalue()
+    elif "string" in data_dict:
+        out_string = data_dict["string"]
+        filename = data_dict["filename"]
+    resp = make_response(out_string, code)
     resp.headers.extend(headers or {
         "Content-Disposition": "attachment; filename={}.csv".format(filename)})
     # To monitor memory usage
@@ -91,7 +96,7 @@ from meerkat_api.resources.epi_week import EpiWeek, EpiWeekStart
 from meerkat_api.resources.completeness import Completeness, NonReporting
 from meerkat_api.resources.reports import PublicHealth, CdReport, CdPublicHealth, CdPublicHealthMad, NcdPublicHealth,RefugeePublicHealth, RefugeeCd,RefugeeDetail, NcdReport, Pip, WeeklyEpiMonitoring, Malaria, VaccinationReport, AFROBulletin
 from meerkat_api.resources.frontpage import KeyIndicators, TotMap, NumAlerts, ConsultationMap, RefugeePage, NumClinics
-from meerkat_api.resources.export_data import ExportData, ExportForm, Forms, ExportCategory
+from meerkat_api.resources.export_data import ExportData, ExportForm, Forms, ExportCategory, GetDownload
 from meerkat_api.resources.incidence import IncidenceRate, WeeklyIncidenceRate
 #from meerkat_api.resources.links import Link, Links
 
@@ -113,6 +118,7 @@ api.add_resource(NumClinics, "/num_clinics")
 api.add_resource(RefugeePage, "/refugee_page")
 
 # Export data
+api.add_resource(GetDownload, "/export/get/<uid>")
 api.add_resource(ExportData, "/export/data",
                  "/export/data/<use_loc_ids>")
 api.add_resource(ExportForm, "/export/form/<form>")
