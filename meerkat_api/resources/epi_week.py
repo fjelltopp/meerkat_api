@@ -10,7 +10,6 @@ from meerkat_api import app
 # The epi_week start date is defined in the meerkat_abacus configs
 from meerkat_abacus.util import epi_week_start_date, epi_week
 
-
 def epi_year_start(year):
     if app.config["TESTING"]:
         return datetime.datetime(year, 1, 1)
@@ -46,8 +45,12 @@ class EpiWeek(Resource):
             date = parse(date)
         else:
             date = datetime.datetime.today()
-        year, ew = epi_week(date)
-        return {"epi_week": ew,
+
+        start_date = epi_year_start(date.year)
+        if date < start_date:
+            start_date = start_date.replace(year=start_date.year-1)
+        year = start_date.year
+        return {"epi_week": (date - start_date).days // 7 + 1,
                 "year": year,
                 "offset": epi_week_start(date.year, 1).weekday()}
 class EpiWeekStart(Resource):

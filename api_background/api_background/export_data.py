@@ -20,8 +20,16 @@ from meerkat_abacus.config import country_config, config_directory
 
 
 @task
-
 def export_data(uuid, use_loc_ids=False):
+    """
+    Exports the data table from db
+
+    Inserts finished file in to databse
+
+    Args: 
+       uuid: uuid for download
+       use_loc_ids: If we use names are location ids
+    """
     db, session = get_db_engine()
     results = session.query(Data)
     variables = set()
@@ -61,6 +69,30 @@ def export_data(uuid, use_loc_ids=False):
 
 @task
 def export_category(uuid, form_name, category, download_name, variables):
+    """
+    We take a variable dictionary of form field name: display_name.
+    There are some special commands that can be given in the form field name:
+
+    * icd_name$category will translate an icd code in icd_code to names given
+       by the variables in category
+    * clinic,region and district will give this location information
+
+    * the $translate keyword can be used to translate row values to other ones.
+       I.e to change gender from male, female to M, F
+
+    * field$month, field$year, field$epi_week: will extract the month, year
+       or epi_week from the field
+
+    * alert_links$alert_investigation$field: will get the field in the c
+       orrepsonding alert_investigation
+
+    Inserts the resulting csv file in the database
+
+    Args:\n
+       category: category to match\n
+       variables: variable dictionary\n
+
+    """
     db, session = get_db_engine()
 
     status = DownloadDataFiles(
@@ -100,6 +132,8 @@ def export_category(uuid, form_name, category, download_name, variables):
             icd_code_to_name[v[0]] = {}
             for i in cat_variables.keys():
                 condition = cat_variables[i].condition
+                if ";" in condition:
+                    condition = condition.split(";")[0]
                 if "," in condition:
                     # If a variable have many icd codes
                     # we take all of them into account
@@ -180,7 +214,7 @@ def export_category(uuid, form_name, category, download_name, variables):
             elif "$epi_week" in form_var:
                 field = form_var.split("$")[0]
                 if field in r[1].data and r[1].data[field]:
-                    dict_row[k] = epi_week(parse(r[1].data[field]))[0]
+                    dict_row[k] = epi_week(parse(r[1].data[field]))[1]
                 else:
                     dict_row[k] = None
 
@@ -239,6 +273,7 @@ def export_category(uuid, form_name, category, download_name, variables):
     writer.writerows(dict_rows)
     status.status = 1
     status.success = 1
+    status.content = output.getvalue()
     session.commit()
     return True
 
@@ -246,6 +281,19 @@ def export_category(uuid, form_name, category, download_name, variables):
 
 @task
 def export_form(uuid, form, fields=None):
+    """
+    Export a form. If fields is in the request variable we only include
+    those fields.
+
+    Starts background export
+
+    Args:\n
+       uuid: uuid of download\n
+       form: the form to export\n
+       fields: Fileds from form to export\n
+
+    """
+    
     db, session = get_db_engine()
     (locations, locs_by_deviceid, regions,
      districts, devices) = all_location_data(session)

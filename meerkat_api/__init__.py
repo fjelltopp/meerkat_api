@@ -59,23 +59,24 @@ def output_csv(data_dict, code, headers=None):
        headers: http headers
     """
     filename = "file"
-
-    if "data" in data_dict:
-        keys = data_dict["keys"]
-        filename = data_dict["filename"]
-        data = data_dict["data"]
-        output = io.StringIO()
-        writer = csv.DictWriter(output, keys, extrasaction="ignore")
-        writer.writeheader()
-        writer.writerows(data)
-        out_string = output.getvalue()
-    elif "file" in data_dict:
-        output = data_dict["file"]
-        filename = data_dict["filename"]
-        out_string = output.getvalue()
-    elif "string" in data_dict:
-        out_string = data_dict["string"]
-        filename = data_dict["filename"]
+    out_string=""
+    if data_dict: 
+        if "data" in data_dict:
+            keys = data_dict["keys"]
+            filename = data_dict["filename"]
+            data = data_dict["data"]
+            output = io.StringIO()
+            writer = csv.DictWriter(output, keys, extrasaction="ignore")
+            writer.writeheader()
+            writer.writerows(data)
+            out_string = output.getvalue()
+        elif "file" in data_dict:
+            output = data_dict["file"]
+            filename = data_dict["filename"]
+            out_string = output.getvalue()
+        elif "string" in data_dict:
+            out_string = data_dict["string"]
+            filename = data_dict["filename"]
     resp = make_response(out_string, code)
     resp.headers.extend(headers or {
         "Content-Disposition": "attachment; filename={}.csv".format(filename)})

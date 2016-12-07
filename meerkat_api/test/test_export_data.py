@@ -11,6 +11,7 @@ import csv
 from . import settings
 import meerkat_api
 from meerkat_api.test import db_util
+from meerkat_abacus.task_queue import app as celery_app
 from meerkat_abacus import data_management, model, config
 
 
@@ -20,7 +21,7 @@ class MeerkatAPITestCase(unittest.TestCase):
         """Setup for testing"""
         meerkat_api.app.config['TESTING'] = True
         meerkat_api.app.config['API_KEY'] = ""
-        self.app = meerkat_api.app.test_client()
+        celery_app.conf.CELERY_ALWAYS_EAGER = True
         self.app = meerkat_api.app.test_client()
         for table in model.form_tables:
             meerkat_api.db.session.query(model.form_tables[table]).delete()
@@ -29,42 +30,64 @@ class MeerkatAPITestCase(unittest.TestCase):
         db_util.insert_locations(meerkat_api.db.session)
         db_util.insert_cases(meerkat_api.db.session, "public_health_report")
         case_form_name = config.country_config["tables"][0]
-        data_management.table_data_from_csv("demo_case", model.form_tables[case_form_name],
+        data_management.table_data_from_csv("demo_case",
+                                            model.form_tables[case_form_name],
                                             "meerkat_api/test/test_data/",
-                                            meerkat_api.db.session, meerkat_api.db.engine,
-                                            deviceids=["1", "2", "3", "4", "5", "6"],
+                                            meerkat_api.db.session,
+                                            meerkat_api.db.engine,
+                                            deviceids=["1", "2", "3",
+                                                       "4", "5", "6"],
                                             table_name=case_form_name)
 
         dr_name = config.country_config["tables"][1]
-        data_management.table_data_from_csv("demo_alert", model.form_tables[dr_name],
+        data_management.table_data_from_csv("demo_alert",
+                                            model.form_tables[dr_name],
                                             "meerkat_api/test/test_data/",
-                                            meerkat_api.db.session, meerkat_api.db.engine,
-                                            deviceids=["1", "2", "3", "4", "5", "6"],
+                                            meerkat_api.db.session,
+                                            meerkat_api.db.engine,
+                                            deviceids=["1", "2", "3",
+                                                       "4", "5", "6"],
                                             table_name=dr_name)
 
-        
     def tearDown(self):
         pass
-
 
     def test_forms(self):
         """ Test the getting the fields of a form"""
 
-        keys = ["SubmissionDate","child_age","deviceid","end", "icd_code", "index", "intro./visit", "intro_module", "meta/instanceID", "nationality", "pregnancy_complications", "pregnant", "pt./visit_date","pt1./age", "pt1./gender", "pt1./status", "start", "clinic", "district", "region"]
+        keys = ["SubmissionDate", "child_age", "deviceid", "end",
+                "icd_code", "index", "intro./visit", "intro_module",
+                "meta/instanceID", "nationality", "pregnancy_complications",
+                "pregnant", "pt./visit_date", "pt1./age", "pt1./gender",
+                "pt1./status", "start", "clinic", "district", "region"]
 
         rv = self.app.get('/export/forms', headers=settings.header)
         self.assertEqual(rv.status_code, 200)
 
         data = json.loads(rv.data.decode("utf-8"))
-        self.assertEqual(sorted(data["demo_alert"]), sorted(["alert_labs./return_lab","deviceid","meta/instanceID","pt./alert_id", "clinic", "region", "district"]))
+        self.assertEqual(sorted(data["demo_alert"]),
+                         sorted(["alert_labs./return_lab",
+                                 "deviceid", "meta/instanceID",
+                                 "pt./alert_id", "clinic",
+                                 "region", "district"]))
         self.assertEqual(data["demo_register"], [])
         self.assertEqual(sorted(data["demo_case"]), sorted(keys))
 
-    
     def test_export_data(self):
         """ Test the export of the data table """
-        rv = self.app.get('/export/data', headers={**{"Accept": "text/csv"}, **settings.header})
+        rv = self.app.get('/export/data', headers={**settings.header})
+
         self.assertEqual(rv.status_code, 200)
+
+        uuid = rv.data.decode("utf-8")[1:-2]
+        test = meerkat_api.db.session.query(model.DownloadDataFiles).filter(
+            model.DownloadDataFiles.uuid == uuid).all()
+        self.assertEqual(len(test), 1)
+        self.assertEqual(test[0].uuid, uuid)
+
+        rv = self.app.get('/export/get/' + uuid,
+                          headers={**{"Accept": "text/csv"},
+                                   **settings.header})
         lines = rv.data.decode("utf-8").strip().split("\r\n")
         self.assertEqual(len(lines), 13)
 
@@ -83,10 +106,20 @@ class MeerkatAPITestCase(unittest.TestCase):
         
     def test_export_category(self):
         """ Test getting a from with category """
-        
-        rv = self.app.get('/export/category/demo_case/cd_tab/cd?variables=[["icd_code", "icd code"], ["icd_name$cd_tab", "Name"], ["code$ale_2,ale_3,ale_4$Confirmed,Disregarded,Ongoing","Alert Status"], ["clinic", "Clinic"], ["meta/instanceID", "uuid"], ["end$month", "Month"], ["end$year", "Year"], ["end$epi_week", "epi_week"]]', 
-headers={**{"Accept": "text/csv"}, **settings.header})
+        rv = self.app.get('/export/category/demo_case/cd_tab/cd?variables=[["icd_code", "icd code"], ["icd_name$cd_tab", "Name"], ["code$ale_2,ale_3,ale_4$Confirmed,Disregarded,Ongoing","Alert Status"], ["clinic", "Clinic"], ["meta/instanceID", "uuid"], ["end$month", "Month"], ["end$year", "Year"], ["end$epi_week", "epi_week"]]',
+                          headers={**settings.header})
 
+        self.assertEqual(rv.status_code, 200)
+
+        uuid = rv.data.decode("utf-8")[1:-2]
+        test = meerkat_api.db.session.query(model.DownloadDataFiles).filter(
+            model.DownloadDataFiles.uuid == uuid).all()
+        self.assertEqual(len(test), 1)
+        self.assertEqual(test[0].uuid, uuid)
+
+        rv = self.app.get('/export/get/' + uuid,
+                          headers={**{"Accept": "text/csv"},
+                                   **settings.header})
         self.assertEqual(rv.status_code, 200)
         lines = rv.data.decode("utf-8").strip().split("\r\n")
         self.assertEqual(len(lines), 8)
@@ -123,8 +156,20 @@ headers={**{"Accept": "text/csv"}, **settings.header})
 
     def test_export_forms(self):
         """ Test the basic export form functionality """
-        rv = self.app.get('/export/form/demo_case', headers={**{"Accept": "text/csv"}, **settings.header})
+
+        rv = self.app.get('/export/form/demo_case', headers={**settings.header})
+
         self.assertEqual(rv.status_code, 200)
+
+        uuid = rv.data.decode("utf-8")[1:-2]
+        test = meerkat_api.db.session.query(model.DownloadDataFiles).filter(
+            model.DownloadDataFiles.uuid == uuid).all()
+        self.assertEqual(len(test), 1)
+        self.assertEqual(test[0].uuid, uuid)
+
+        rv = self.app.get('/export/get/' + uuid,
+                          headers={**{"Accept": "text/csv"},
+                                   **settings.header})
         lines = rv.data.decode("utf-8").strip().split("\r\n")
         self.assertEqual(len(lines), 11)
         c = csv.DictReader(lines)
@@ -135,10 +180,21 @@ headers={**{"Accept": "text/csv"}, **settings.header})
                 self.assertEqual(line["deviceid"], "5")
                 self.assertEqual(line["icd_code"], "A06")
         self.assertTrue(found_uuid)
-        
-        rv = self.app.get('/export/form/demo_case?fields=icd_code,intro./module', headers={**{"Accept": "text/csv"}, **settings.header})
+
+        rv = self.app.get('/export/form/demo_case?fields=icd_code,intro./module',
+                          headers={**settings.header})
 
         self.assertEqual(rv.status_code, 200)
+
+        uuid = rv.data.decode("utf-8")[1:-2]
+        test = meerkat_api.db.session.query(model.DownloadDataFiles).filter(
+            model.DownloadDataFiles.uuid == uuid).all()
+        self.assertEqual(len(test), 1)
+        self.assertEqual(test[0].uuid, uuid)
+
+        rv = self.app.get('/export/get/' + uuid,
+                          headers={**{"Accept": "text/csv"},
+                                   **settings.header})
         lines = rv.data.decode("utf-8").strip().split("\r\n")
         self.assertEqual(len(lines), 11)
         for line in c:

@@ -48,9 +48,14 @@ class Forms(Resource):
 class ExportData(Resource):
     """
     Export data table from db
-
+    
+    Starts generation of data file
+    
+    Args: 
+       use_loc_ids: If we use names are location ids
     Returns:\n
-        csv_file: with a row for each row in the data table\n
+       uuid
+
     """
     decorators = [authenticate]
 
@@ -60,33 +65,16 @@ class ExportData(Resource):
         export_data.delay(uid, use_loc_ids)
         return uid
 
-
-
 class ExportCategory(Resource):
     """
     Export cases from case form that matches a category
 
-    We take a variable dictionary of form field name: display_name.
-    There are some special commands that can be given in the form field name:
-
-    * icd_name$category will translate an icd code in icd_code to names given 
-       by the variables in category
-    * clinic,region and district will give this location information
-
-    * the $translate keyword can be used to translate row values to other ones.
-       I.e to change gender from male, female to M, F
-
-    * field$month, field$year, field$epi_week: will extract the month, year
-       or epi_week from the field
-
-    * alert_links$alert_investigation$field: will get the field in the c
-       orrepsonding alert_investigation
-
+    Starts generation of data file
     Args:\n
        category: category to match\n
        variables: variable dictionary\n
     Returns:\n
-       csv_file\n
+       uuid
     """
     decorators = [authenticate]
 
@@ -102,16 +90,30 @@ class ExportCategory(Resource):
 
 
 class GetDownload(Resource):
+    """
+    serves a pregenerated csv file
+
+    Args: 
+       uuid: uuid of download
+    """
     decorators = [authenticate]
     representations = {'text/csv': output_csv}
     
     def get(self, uid):
         res = db.session.query(DownloadDataFiles).filter(
             DownloadDataFiles.uuid == uid).first()
-        return {"string": res.content, "filename": res.type}
+        if res:
+            return {"string": res.content, "filename": res.type}
+        return {"string": "", "filename": "missing"}
 
     
 class GetStatus(Resource):
+    """
+    Checks the current status of the generation
+
+    Args:
+       uuid: uuid to check status for
+    """
     decorators = [authenticate]
     
     def get(self, uid):
@@ -129,11 +131,11 @@ class ExportForm(Resource):
     Export a form. If fields is in the request variable we only include
     those fields.
 
+    Starts background export
+
     Args:\n
        form: the form to export\n
 
-    Returns:\n
-       csv-file\n
     """
     # representations = {'text/csv': output_csv}
     decorators = [authenticate]

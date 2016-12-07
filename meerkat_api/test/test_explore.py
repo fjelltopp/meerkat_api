@@ -146,6 +146,7 @@ class MeerkatAPITestCase(unittest.TestCase):
         self.assertEqual(data["Female"]["weeks"]["18"], 3)
         self.assertEqual(data["Female"]["weeks"]["22"], 1)
         self.assertEqual(data["Male"]["total"], 0)
+        print(data)
         self.assertEqual(data["Male"]["weeks"]["18"], 0)
 
     def test_query_variable_locations(self):
