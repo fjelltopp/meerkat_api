@@ -2,25 +2,14 @@
 Data resource for exporting data
 """
 from flask_restful import Resource
-from flask import request, abort, current_app, abort
-from sqlalchemy import or_, text
-from sqlalchemy.orm import aliased
-from dateutil.parser import parse
-from datetime import datetime, timedelta
+from flask import request
 import json
 import uuid
-import json, io, csv, logging
 
-from meerkat_api.util import row_to_dict
-from meerkat_api import db, app, output_csv
-from meerkat_abacus.model import Data, form_tables, DownloadDataFiles
-from meerkat_abacus.util import all_location_data
-from meerkat_abacus.config import country_config, config_directory
-from meerkat_api.resources.variables import Variables
-from meerkat_api.resources.epi_week import EpiWeek
+from meerkat_api import db, output_csv
+from meerkat_abacus.model import form_tables, DownloadDataFiles
 from meerkat_api.authentication import authenticate
 from meerkat_abacus.task_queue import export_form, export_category, export_data
-from meerkat_abacus.util import get_locations, get_locations_by_deviceid, get_links
 
 
 class Forms(Resource):

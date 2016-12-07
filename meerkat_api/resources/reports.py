@@ -2355,7 +2355,7 @@ class VaccinationReport(Resource):
 
         ret["data"] = {"epi_week_num": epi_week,
                        "end_date": end_date.isoformat(),
-                       "project_epoch": datetime(2015,5,20).isoformat(),
+                       "project_epoch": datetime(2015, 5, 20).isoformat(),
                        "start_date": start_date.isoformat()
         }
 
@@ -2368,10 +2368,7 @@ class VaccinationReport(Resource):
         
         # Actually get the data.
         conn = db.engine.connect()
-
-        var = {}
         counts = {}
-
         categories = [
           'vaccination_sessions',
           'vaccinated_pw',
@@ -2381,62 +2378,69 @@ class VaccinationReport(Resource):
           ]
 
         for category in categories:
-
-          counts[category] = get_variables_category(
-              category, 
-              start_date, 
-              end_date_limit, 
-              location, 
-              conn, 
-              use_ids=True
-          )
+            counts[category] = get_variables_category(
+                category, 
+                start_date, 
+                end_date_limit, 
+                location, 
+                conn, 
+                use_ids=True
+            )
         try:
-          ret['data'].update({'vaccination_sessions':counts['vaccination_sessions']['vac_ses']})
+            if "vac_ses" in counts['vaccination_sessions']:
+                ret['data'].update({'vaccination_sessions':counts['vaccination_sessions']['vac_ses']})
+            else:
+                ret['data'].update({'vaccination_sessions': 0})
           
-          ret['data'].update({'infants':[]})
-          category1='vaccinated_0_11_mo_infants'
-          category2='vaccinated_12_mo_infants'
-          infant_vaccinations_variables = {}
-          infant_vaccinations_variables[category1]=variables_instance.get(category1)
-          infant_vaccinations_variables[category2]=variables_instance.get(category2)
+            ret['data'].update({'infants': []})
+            category1 = 'vaccinated_0_11_mo_infants'
+            category2 = 'vaccinated_12_mo_infants'
+            infant_vaccinations_variables = {}
+            infant_vaccinations_variables[category1] = variables_instance.get(category1)
+            infant_vaccinations_variables[category2] = variables_instance.get(category2)
 
-          for key in counts[category1]:
-            ret['data']['infants'].append({
-              'name': infant_vaccinations_variables[category1][key]['name']
-              ,category1:counts[category1][key]
-              })
+            for key in counts[category1]:
+                ret['data']['infants'].append({
+                    'name': infant_vaccinations_variables[category1][key]['name'],
+                    category1: counts[category1][key]
+                })
 
-          for key in counts[category2]:
+            for key in counts[category2]:
+                for item in ret['data']['infants']:
+                    if infant_vaccinations_variables[category2][key]['name'] == item['name']:
+                        item[category2] = counts[category2][key]
             for item in ret['data']['infants']:
-              if infant_vaccinations_variables[category2][key]['name']==item['name']:
-                item.update({category2:counts[category2][key]})
+                if category2 not in item.keys():
+                    item[category2] = 0
+            ret['data'].update({'females': []})
+            category1 = 'vaccinated_pw'
+            category2 = 'vaccinated_notpw'
+            female_vaccinations_variables = {}
+            female_vaccinations_variables[category1] = variables_instance.get(category1)
+            female_vaccinations_variables[category2] = variables_instance.get(category2)
 
-          ret['data'].update({'females':[]})
-          category1='vaccinated_pw'
-          category2='vaccinated_notpw'
-          female_vaccinations_variables = {}
-          female_vaccinations_variables[category1]=variables_instance.get(category1)
-          female_vaccinations_variables[category2]=variables_instance.get(category2)
+            for key in counts[category1]:
+                ret['data']['females'].append({
+                    'name': female_vaccinations_variables[category1][key]['name'],
+                    category1: counts[category1][key]
+                })
 
-          for key in counts[category1]:
-            ret['data']['females'].append({
-              'name': female_vaccinations_variables[category1][key]['name']
-              ,category1:counts[category1][key]
-              })
-
-          for key in counts[category2]:
+            for key in counts[category2]:
+                for item in ret['data']['females']:
+                    if female_vaccinations_variables[category2][key]['name'] == item['name']:
+                        item[category2] = counts[category2][key]
             for item in ret['data']['females']:
-              if female_vaccinations_variables[category2][key]['name']==item['name']:
-                item.update({category2:counts[category2][key]})
+                if category2 not in item.keys():
+                    item[category2] = 0
+            # sort vaccination lists
+            ret['data']['infants'].sort(key=lambda tup: tup['name'])
+            ret['data']['females'].sort(key=lambda tup: tup['name'])
+        except KeyError as e:
+            print("Error")
+            print(e)
+            ret['data'] = {'message': 'invalid data'}
 
-          #sort vaccination lists
-          ret['data']['infants'].sort(key=lambda tup: tup['name'])
-          ret['data']['females'].sort(key=lambda tup: tup['name'])
-        except KeyError:
-          traceback.print_stack()
-          ret['data'] = {'message':'invalid data'}
-
-        #vials used
+        # vials used
         vials = {
           "BCG": 20,
           "DTCHepHib": 10,
@@ -2460,47 +2464,49 @@ class VaccinationReport(Resource):
         }
 
         #Types of vaccinations:
-        vials_types ={
-            "vac_pw_vat4":"VAT",
-            "vac_pw_vat5":"VAT",
-            "vac_pw_vat3":"VAT",
-            "vac_pw_vat1":"VAT",
-            "vac_pw_vat2":"VAT",
-            "vac_i0_dtc2":"DTCHepHib",
-            "vac_i0_vpo0":"VPO",
-            "vac_i0_dtc1":"DTCHepHib",
-            "vac_i0_vpo1":"VPO",
-            "vac_i0_bcg":"BCG",
-            "vac_i0_dtc3":"DTCHepHib",
-            "vac_i0_pcv3":"PCV10",
-            "vac_i0_rota1":"ROTARIX",
-            "vac_i0_rota3":"ROTARIX",
-            "vac_i0_rota2":"ROTARIX",
-            "vac_i0_vpo2":"VPO",
-            "vac_i0_vpi":"VPI",
-            "vac_i0_vpo3":"VPO",
-            "vac_i0_pcv1":"PCV10",
-            "vac_i0_pcv2":"PCV10",
-            "vac_i12_vpi":"VPI",
-            "vac_i12_dtc1":"DTCHepHib",
-            "vac_i12_vpo1":"VPO",
-            "vac_i12_dtc3":"DTCHepHib",
-            "vac_i12_vpo3":"VPO",
-            "vac_i12_dtc2":"DTCHepHib",
-            "vac_i12_rota1":"ROTARIX",
-            "vac_i12_rota3":"ROTARIX",
-            "vac_i12_pcv3":"PCV10",
-            "vac_i12_vpo0":"VPO",
-            "vac_i12_pcv2":"PCV10",
-            "vac_i12_pcv1":"PCV10",
-            "vac_i12_vpo2":"VPO",
-            "vac_i12_bcg":"BCG",
-            "vac_i12_rota2":"ROTARIX",
-            "vac_notpw_vat3":"VAT",
-            "vac_notpw_vat4":"VAT",
-            "vac_notpw_vat5":"VAT",
-            "vac_notpw_vat1":"VAT",
-            "vac_notpw_vat2":"VAT"}
+        vials_types = {
+            "vac_pw_vat4": "VAT",
+            "vac_pw_vat5": "VAT",
+            "vac_pw_vat3": "VAT",
+            "vac_pw_vat1": "VAT",
+            "vac_pw_vat2": "VAT",
+            "vac_i0_dtc2": "DTCHepHib",
+            "vac_i0_vpo0": "VPO",
+            "vac_i0_dtc1": "DTCHepHib",
+            "vac_i0_vpo1": "VPO",
+            "vac_i0_bcg": "BCG",
+            "vac_i0_var": "VAR",
+            "vac_i0_dtc3": "DTCHepHib",
+            "vac_i0_pcv3": "PCV10",
+            "vac_i0_rota1": "ROTARIX",
+            "vac_i0_rota3": "ROTARIX",
+            "vac_i0_rota2": "ROTARIX",
+            "vac_i0_vpo2": "VPO",
+            "vac_i0_vpi": "VPI",
+            "vac_i0_vpo3": "VPO",
+            "vac_i0_pcv1": "PCV10",
+            "vac_i0_pcv2": "PCV10",
+            "vac_i12_vpi": "VPI",
+            "vac_i12_dtc1": "DTCHepHib",
+            "vac_i12_vpo1": "VPO",
+            "vac_i12_dtc3": "DTCHepHib",
+            "vac_i12_vpo3": "VPO",
+            "vac_i12_dtc2": "DTCHepHib",
+            "vac_i12_rota1": "ROTARIX",
+            "vac_i12_rota3": "ROTARIX",
+            "vac_i12_pcv3": "PCV10",
+            "vac_i12_vpo0": "VPO",
+            "vac_i12_pcv2": "PCV10",
+            "vac_i12_pcv1": "PCV10",
+            "vac_i12_vpo2": "VPO",
+            "vac_i12_bcg": "BCG",
+            "vac_i12_var": "VAR",
+            "vac_i12_rota2": "ROTARIX",
+            "vac_notpw_vat3": "VAT",
+            "vac_notpw_vat4": "VAT",
+            "vac_notpw_vat5": "VAT",
+            "vac_notpw_vat1": "VAT",
+            "vac_notpw_vat2": "VAT"}
 
         for category in counts:
             for vacc in counts[category].keys():
@@ -2509,14 +2515,19 @@ class VaccinationReport(Resource):
                 except:
                     pass
 
-        ret['data']['vials']=[]
+        ret['data']['vials'] = []
 
         for vial_key in vials_total_doses.keys():
             print("Key is " + vial_key)
             doses_per_vial = vials[vial_key]
             total_doses = vials_total_doses[vial_key]
             no_vials = total_doses / doses_per_vial
-            ret["data"]['vials'].append({'name': vial_key, 'total_doses': total_doses, 'doses_per_vial': doses_per_vial, 'vials': no_vials  })
+            ret["data"]['vials'].append(
+                {
+                    'name': vial_key, 'total_doses': total_doses,
+                    'doses_per_vial': doses_per_vial, 'vials': no_vials
+                }
+            )
 
         return ret
 
@@ -2764,7 +2775,7 @@ class AFROBulletin(Resource):
 
         #FIGURE 3: INCIDENCE OF CONFIRMED MALARIA CASES BY REGION (MAP) ----------------------------
         ir = IncidenceRate()
-        mal_incidence = ir.get( 'epi_1', 'region' )
+        mal_incidence = ir.get( 'epi_1', 'region', mult_factor=100000 )
         mapped_mal_incidence = {}
 
         #Structure the data.
@@ -2773,7 +2784,7 @@ class AFROBulletin(Resource):
                 mal_incidence[region] = 0
             mapped_mal_incidence[region] = {
                 "name":locs[region].name,
-                "value": mal_incidence[region]
+                "value": int(mal_incidence[region])
             }
 
         ret["data"].update({

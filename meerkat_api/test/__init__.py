@@ -85,7 +85,9 @@ def valid_urls(app):
         "mult_factor": "1000",
         "loc_id": "1",
         "level": "district",
-        "uid": "1"
+        "uid": "1",
+        "start_week": "1",
+        "exclude": "mental"
     }
     urls = []
     for url in meerkat_api.app.url_map.iter_rules():
