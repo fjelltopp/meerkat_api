@@ -124,14 +124,16 @@ class MeerkatAPIDataTestCase(unittest.TestCase):
             offset = 7 + offset
         record_dates = []
         for i in [1, 2, 3, 8]:
-            record_dates.append(today - timedelta(days=i+ offset))
+            record_dates.append(today - timedelta(days=i + offset))
         dates_to_check = pd.date_range(start2, end, freq="D")
         for d in dates_to_check.to_pydatetime():
             if d.weekday() not in [5, 6] and d not in record_dates:
                 self.assertIn(d.isoformat(), data["dates_not_reported"])
-        rv = self.app.get('completeness/reg_1/7/5/4,5', headers=settings.header)
+        rv = self.app.get('completeness/reg_1/7/5/1/uff/4,5',
+                          headers=settings.header)
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))
+        print(data)
         for d in dates_to_check.to_pydatetime():
             if d.weekday() not in [4, 5] and d not in record_dates:
                 self.assertIn(d.isoformat(), data["dates_not_reported"])
