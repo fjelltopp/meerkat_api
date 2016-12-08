@@ -17,6 +17,7 @@ def epi_year_start(year):
     else:
         return epi_week_start_date(year)
 
+
 def epi_week_start(year, epi_week):
     """
     Calculates the start of an epi week:
@@ -51,10 +52,12 @@ class EpiWeek(Resource):
         if date < start_date:
             start_date = start_date.replace(year=start_date.year-1)
         year = start_date.year
-        
+
         return {"epi_week": (date - start_date).days // 7 + 1,
                 "year": year,
-                "offset": start_date.weekday()}
+                "offset": epi_week_start(date.year, 1).weekday()}
+
+
 class EpiWeekStart(Resource):
     """
     Return the start date of an epi week in the given year

@@ -37,7 +37,7 @@ def need_csv_representation(url):
     Returns:
        is_csv: True has csv representation
     """
-    csv_representations = ["export/data", "export/form/", "export/alerts"]
+    csv_representations = ["export/get"]
     for r in csv_representations:
         if r in url:
             return True
@@ -85,6 +85,7 @@ def valid_urls(app):
         "mult_factor": "1000",
         "loc_id": "1",
         "level": "district",
+        "uid": "1",
         "start_week": "1",
         "exclude": "mental"
     }
