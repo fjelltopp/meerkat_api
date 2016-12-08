@@ -21,6 +21,7 @@ def query_sum(db, var_ids, start_date, end_date, location, level=None, weeks=Fal
         end_date: End date
         location: Location to restrict to
         level: Level to brea down the total by
+        weeks: True if we want a breakdwon by weeks.
     Returns:
        result(dict): Dictionary with results. Always has total key, and if
                      level was given there is a level key with the data

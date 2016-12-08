@@ -16,7 +16,7 @@ class IncidenceRate(Resource):
     Calculate the incidence rate for level and variable id
     
     Args:\n
-        variable: variable_id\nX
+        variable: variable_id\n
         level: clinic,district or region\n
 
     Returns:\n
