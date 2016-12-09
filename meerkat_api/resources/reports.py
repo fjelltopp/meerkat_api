@@ -2640,7 +2640,7 @@ class AFROBulletin(Resource):
                 vars_list,
                 start_date,
                 end_date,
-                location                
+                location
             )["total"]
 
         # Add a figure that is the sum of simple and sever malaria to the return data.
@@ -2742,7 +2742,7 @@ class AFROBulletin(Resource):
                     district_completeness_data[loc_s] = comp_reg["score"][loc_s]
                 for loc_s in time_reg["score"].keys():
                     district_timeliness_data[loc_s] = time_reg["score"][loc_s]
-                        
+
             except AttributeError:
                 pass
 
@@ -2758,22 +2758,20 @@ class AFROBulletin(Resource):
             level="district"
         )["district"]
         for district in mat_deaths_ret.keys():
-            mat_deaths[district] = {
-                "value": mat_deaths_ret[district],
-                "name": locs[district].name
+            mat_deaths[locs[district].name] = {
+                "value": mat_deaths_ret[district]
             }
 
         # fill the rest of the districts with zeroes
         for district in districts:
-            if not district in mat_deaths:
+            if not locs[district].name in mat_deaths:
                 mat_deaths.update(
                     {
-                        district: {
-                            "value": 0,
-                            "name": locs[district].name
+                        locs[district].name: {
+                            "value": 0
+                        }
                     }
-                }
-            )
+                )
 
         ret["data"].update({"figure_mat_deaths_map": mat_deaths})
 
@@ -2786,16 +2784,15 @@ class AFROBulletin(Resource):
         for region in regions:
             if region not in mal_incidence:
                 mal_incidence[region] = 0
-            mapped_mal_incidence[region] = {
-                "name": locs[region].name,
-                "value": int(mal_incidence[region])
+            mapped_mal_incidence[locs[region].name] = {
+                'value': int(mal_incidence[region])
             }
 
         ret["data"].update({
-            "figure_malaria_map": mapped_mal_incidence
+            "figure_malaria_map":  mapped_mal_incidence
         })
 
-        # FIGURE 4: NUMBER OF CONFIRMED MALARIA CASES BY TYPE AND WEEK 
+        # FIGURE 4: NUMBER OF CONFIRMED MALARIA CASES BY TYPE AND WEEK
         aggregate_year = AggregateYear()
 
         simple = aggregate_year.get(variable_id="mls_12",
@@ -2962,7 +2959,7 @@ class AFROBulletin(Resource):
                 start_date,
                 end_date_limit,
                 location,
-                level="region"       
+                level="region"
             )["region"]
             priority_disease_cases_total = query_sum(
                 db,
@@ -2971,10 +2968,10 @@ class AFROBulletin(Resource):
                 end_date_limit,
                 location,
             )["total"]
-            
+
             # add regional case breakdown
 
-      
+
             for region in priority_disease_cases:
                 try:
                     ret["data"]["table_priority_diseases"][disease][locs[region].name] = priority_disease_cases[region]
@@ -3037,7 +3034,7 @@ class AFROBulletin(Resource):
                 "mortality_cumulative": 0,
                 "cfr": 0,
                 "cfr_cumulative": 0}})
-            
+
             priority_disease_cases_cumulative = query_sum(
                 db,
                 [disease],
@@ -3045,7 +3042,7 @@ class AFROBulletin(Resource):
                 end_date_limit,
                 location
             )["total"]
-            
+
             priority_disease_cases_total = query_sum(
                 db,
                 [disease],
@@ -3053,7 +3050,7 @@ class AFROBulletin(Resource):
                 end_date_limit,
                 location,
             )["total"]
-            
+
 
             ret["data"]["table_priority_diseases_cumulative"][disease].update(
                 {
