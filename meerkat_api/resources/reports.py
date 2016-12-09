@@ -2544,20 +2544,25 @@ class AFROBulletin(Resource):
         # Set default date values to last epi week.
         today = datetime.now()
         epi_week = EpiWeek().get()
-        # Calulation for start date is: month_day - ( week_day-week_offset % 7) - 7
+        # Calulation for start date is:
+        # month_day - ( week_day-week_offset % 7) - 7
         # The offset is the # days into the current epi week.
         offset = (today.weekday() - epi_week["offset"]) % 7
         # Start date is today minus the offset minus one week.
         if not start_date:
-            start_date = (datetime(today.year, today.month, today.day) - timedelta(days=offset + 7)).isoformat()
-        # End date is today minus the offset, minus 1 day (because our end date is "inclusive")
+            start_date = (datetime(today.year, today.month, today.day) -
+                          timedelta(days=offset + 7)).isoformat()
+        # End date is today minus the offset,
+        # minus 1 day (because our end date is "inclusive")
         if not end_date:
-            end_date = (datetime(today.year, today.month, today.day) - timedelta(days=offset + 1)).isoformat()
+            end_date = (datetime(today.year, today.month, today.day) -
+                        timedelta(days=offset + 1)).isoformat()
 
         # Initialise some stuff.
         start_date, end_date = fix_dates(start_date, end_date)
         end_date_limit = end_date + timedelta(days=1)
-        first_day_of_year = datetime(year=datetime.now().year,month=1,day=1)
+        first_day_of_year = datetime(year=datetime.now().year,
+                                     month=1, day=1)
         ret = {}
 
         #  Meta data.
@@ -2572,7 +2577,7 @@ class AFROBulletin(Resource):
         epi_week = ew.get(end_date.isoformat())["epi_week"]
         ret["data"] = {"epi_week_num": epi_week,
                        "end_date": end_date.isoformat(),
-                       "project_epoch": datetime(2015,5,20).isoformat(),
+                       "project_epoch": datetime(2015, 5, 20).isoformat(),
                        "start_date": start_date.isoformat()
         }
         locs = get_locations(db.session)
@@ -2580,8 +2585,10 @@ class AFROBulletin(Resource):
             return None
         location_name = locs[int(location)]
 
-        regions = [loc for loc in locs.keys() if locs[loc].parent_location == 1]
-        districts = [loc for loc in locs.keys() if locs[loc].parent_location in regions]
+        regions = [loc for loc in locs.keys()
+                   if locs[loc].parent_location == 1]
+        districts = [loc for loc in locs.keys()
+                     if locs[loc].parent_location in regions]
 
         ret["data"]["project_region"] = location_name.name
         ret["data"]["project_region_id"] = location
@@ -2600,12 +2607,12 @@ class AFROBulletin(Resource):
             conn,
             use_ids=True
         )
-        logging.warning( ret["data"]["weekly_highlights"] )
         # Get number of clinics
         tot_clinics = TotClinics()
         ret["data"]["weekly_highlights"]["clinic_num"] = tot_clinics.get(location)["total"]
 
-        comp = json.loads(Completeness().get('reg_1', location, 4).data.decode('UTF-8'))
+        comp = json.loads(Completeness().get('reg_1',
+                                             location, 4).data.decode('UTF-8'))
         # Get completeness figures, assuming 4 registers to be submitted a week.
         try:
             timeline = comp["timeline"][str(location)]['values']
@@ -2629,6 +2636,7 @@ class AFROBulletin(Resource):
         ]
         for vars_list in multi_vars:
             ret["data"]["weekly_highlights"]["_".join(vars_list)] = query_sum(
+                db,
                 vars_list,
                 start_date,
                 end_date,
@@ -2643,13 +2651,12 @@ class AFROBulletin(Resource):
         # Calculate percentages. Assign them key "var_id1_perc_var_id2" e.g. "mls_3_perc_mls_2".
         # Each element in list is 2 element list of a numerator and denominator for a perc calc.
         perc_vars = [
-
-            ['mls_3','mls_2'],
-            ['cmd_17','mls_2'],
-            ['mls_48','mls_12_or_mls_24'],
-            ['cmd_15_ale_1','cmd_15'],
-            ['cmd_15_ale_2','cmd_15'],
-            ['cmd_15_age_1','cmd_15'],
+            ['mls_3', 'mls_2'],
+            ['cmd_17', 'mls_2'],
+            ['mls_48', 'mls_12_or_mls_24'],
+            ['cmd_15_ale_1', 'cmd_15'],
+            ['cmd_15_ale_2', 'cmd_15'],
+            ['cmd_15_age_1', 'cmd_15'],
             ['cmd_10_ale_2', 'cmd_10'],
             ['cmd_7_ale_1', 'cmd_7'],
             ['cmd_7_ale_2', 'cmd_7']
@@ -2663,14 +2670,14 @@ class AFROBulletin(Resource):
                 ret["data"]["weekly_highlights"][perc[0]+"_perc_"+perc[1]] = 0
 
         # Top 3 regions of malnutrition.
-        nutri = variable_id_by_level(
-            'cmd_24',
+        nutri = query_sum(
+            db,
+            ['cmd_24'],
             start_date,
             end_date_limit,
             location,
-            conn,
             level="region"
-        )
+        )["region"]
         # Sort the regions by counts of malnutrtion
         nutri_top_3 = top(nutri, 3)
         # For each of the top three regions, structure the data.
@@ -2698,10 +2705,10 @@ class AFROBulletin(Resource):
         for var in mort:
             # Extract the cause's id from the count variables name e.g. mor_1 name is "Deaths icd_17"
             mort_var = Variable().get( var[0] )
-            cause_var = Variable().get( mort_var['name'][7:] )
+            cause_var = Variable().get(mort_var['name'][7:])
             # Only return if there are more than zero deaths.
             if var[1] > 0:
-                mort_top.insert( 0, {
+                mort_top.insert(0, {
                     'id': cause_var['id'],
                     'name': cause_var['name'],
                     'number': var[1]
@@ -2711,37 +2718,45 @@ class AFROBulletin(Resource):
 
         # FIGURE 1: COMPLETENESS BY DISTRICT
         ret["data"]["figure_completeness"] = []
-
+        district_completeness_data = {}
+        district_timeliness_data = {}
         comp_reg = {}
         for reg in regions:
-            logging.warning( reg)
             try: # If data is completely missing there is no iformation for districts in the region
-                comp_reg = json.loads( Completeness().get( 'reg_1', reg, 4 ).data.decode('UTF-8') )
+                comp_reg = json.loads(Completeness().get('reg_1',
+                                                           reg, 4).data.decode('UTF-8'))
+                time_reg = json.loads(Completeness().get('reg_5',
+                                                         reg, 4).data.decode('UTF-8'))
                 for loc_s in comp_reg["yearly_score"].keys():
                     try:
                         ret["data"]["figure_completeness"].append({
-                        "district": locs[int(loc_s)].name,
-                        "value": comp_reg["yearly_score"][loc_s]
+                            "district": locs[int(loc_s)].name,
+                            "value": comp_reg["yearly_score"][loc_s]
                         })
                     except KeyError:
                         ret["data"]["figure_completeness"].append({
-                        "district": locs[int(loc_s)].name,
-                        "value": -1
+                            "district": locs[int(loc_s)].name,
+                            "value": -1
                         })
+                for loc_s in comp_reg["score"].keys():
+                    district_completeness_data[loc_s] = comp_reg["score"][loc_s]
+                for loc_s in time_reg["score"].keys():
+                    district_timeliness_data[loc_s] = time_reg["score"][loc_s]
+                        
             except AttributeError:
                 pass
 
 
-        # FIGURE 2: CUMULATIVE REPORTED MATERNAL DEATHS BY DISTRICT (MAP) ---------------------------
+        # FIGURE 2: CUMULATIVE REPORTED MATERNAL DEATHS BY DISTRICT (MAP)
         mat_deaths = {}
-        mat_deaths_ret = variable_id_by_level(
-            'cmd_21',
+        mat_deaths_ret = query_sum(
+            db,
+            ['cmd_21'],
             first_day_of_year,
             end_date_limit,
             location,
-            conn,
             level="district"
-        )
+        )["district"]
         for district in mat_deaths_ret.keys():
             mat_deaths[district] = {
                 "value": mat_deaths_ret[district],
@@ -2750,21 +2765,21 @@ class AFROBulletin(Resource):
 
         # fill the rest of the districts with zeroes
         for district in districts:
-          if not district in mat_deaths:
-            mat_deaths.update(
-                {
-                    district: {
-                        "value": 0,
-                        "name": locs[district].name
+            if not district in mat_deaths:
+                mat_deaths.update(
+                    {
+                        district: {
+                            "value": 0,
+                            "name": locs[district].name
                     }
                 }
             )
 
-        ret["data"].update({"figure_mat_deaths_map":mat_deaths})
+        ret["data"].update({"figure_mat_deaths_map": mat_deaths})
 
-        # FIGURE 3: INCIDENCE OF CONFIRMED MALARIA CASES BY REGION (MAP) ----------------------------
+        # FIGURE 3: INCIDENCE OF CONFIRMED MALARIA CASES BY REGION (MAP)
         ir = IncidenceRate()
-        mal_incidence = ir.get( 'epi_1', 'region', mult_factor=100000 )
+        mal_incidence = ir.get('epi_1', 'region', mult_factor=100000)
         mapped_mal_incidence = {}
 
         # Structure the data.
@@ -2772,7 +2787,7 @@ class AFROBulletin(Resource):
             if region not in mal_incidence:
                 mal_incidence[region] = 0
             mapped_mal_incidence[region] = {
-                "name":locs[region].name,
+                "name": locs[region].name,
                 "value": int(mal_incidence[region])
             }
 
@@ -2780,33 +2795,38 @@ class AFROBulletin(Resource):
             "figure_malaria_map": mapped_mal_incidence
         })
 
-        # FIGURE 4: NUMBER OF CONFIRMED MALARIA CASES BY TYPE AND WEEK --------------------------
-        aggregate_year=AggregateYear()
+        # FIGURE 4: NUMBER OF CONFIRMED MALARIA CASES BY TYPE AND WEEK 
+        aggregate_year = AggregateYear()
 
-        simple=aggregate_year.get(variable_id="mls_12",location_id=location)['weeks']
-        severe=aggregate_year.get(variable_id="mls_24",location_id=location)['weeks']
-        rdt=aggregate_year.get(variable_id="mls_3",location_id=location)['weeks']
+        simple = aggregate_year.get(variable_id="mls_12",
+                                    location_id=location)['weeks']
+        severe = aggregate_year.get(variable_id="mls_24",
+                                    location_id=location)['weeks']
+        rdt = aggregate_year.get(variable_id="mls_3",
+                                 location_id=location)['weeks']
         all_weeks = set(simple.keys()) | set(severe.keys()) | set(rdt.keys())
 
         def calc_positivity(key):
             try:
-                return ( key, 100*(simple.get(key,0) + severe.get(key,0)) / rdt.get(key,0) )
+                return (key,
+                        100 * (simple.get(key, 0) + severe.get(key, 0)) / rdt.get(key, 0))
             except ZeroDivisionError:
-                return ( key, 0 )
+                return (key, 0)
 
         ret["data"]["figure_malaria"] = {
             "simple_malaria": simple,
             "severe_malaria": severe,
-            "positivity": dict(map( calc_positivity, all_weeks )),
+            "positivity": dict(map(calc_positivity, all_weeks)),
         }
 
-        # FIGURE 5: TREND OF SUSPECTED MEASLES CASES BY AGE GROUP -----------------------------------
+        # FIGURE 5: TREND OF SUSPECTED MEASLES CASES BY AGE GROUP
         qv = QueryVariable()
-        measles=qv.get(variable="cmd_15", group_by="age")
+        measles = qv.get(variable="cmd_15", group_by="age")
 
-        measles_under_5yo =aggregate_year.get(variable_id="cmd_15",location_id=location)
+        measles_under_5yo = aggregate_year.get(variable_id="cmd_15",
+                                               location_id=location)
 
-        ret["data"].update({"figure_measles":{
+        ret["data"].update({"figure_measles": {
             "measles_under_5yo": measles_under_5yo,
             "measles_over_5yo": {}
         }})
@@ -2819,22 +2839,23 @@ class AFROBulletin(Resource):
                 if "total" in ret["data"]["figure_measles"]["measles_over_5yo"]:
                     ret["data"]["figure_measles"]["measles_over_5yo"]["total"] += measles[age_group]["total"]
                     for week in measles[age_group]["weeks"]:
-                        ret["data"]["figure_measles"]["measles_over_5yo"]["weeks"][week]+=measles[age_group]["weeks"][week]
+                        ret["data"]["figure_measles"]["measles_over_5yo"]["weeks"][week] += measles[age_group]["weeks"][week]
                 else:
-                    ret["data"]["figure_measles"]["measles_over_5yo"].update({"total":measles[age_group]["total"]})
-                    ret["data"]["figure_measles"]["measles_over_5yo"].update({"weeks":{}})
+                    ret["data"]["figure_measles"]["measles_over_5yo"].update({"total": measles[age_group]["total"]})
+                    ret["data"]["figure_measles"]["measles_over_5yo"].update({"weeks": {}})
                     for week in measles[age_group]["weeks"]:
-                        ret["data"]["figure_measles"]["measles_over_5yo"]["weeks"].update({week:measles[age_group]["weeks"][week]})
+                        ret["data"]["figure_measles"]["measles_over_5yo"]["weeks"].update({week: measles[age_group]["weeks"][week]})
 
-        # FIGURE 6: TREND OF REPORTED SEVERE MALNUTRITION CASES IN UNDER FIVES---------------------
+        # FIGURE 6: TREND OF REPORTED SEVERE MALNUTRITION CASES IN UNDER FIVES
         # Epi 8 tracks severe malnutrition in under 5s. epi_8
-        malnutrition = aggregate_year.get(variable_id="epi_8",location_id=location)
-        ret["data"].update({"figure_malnutrition":{
+        malnutrition = aggregate_year.get(variable_id="epi_8",
+                                          location_id=location)
+        ret["data"].update({"figure_malnutrition": {
             "malnutrition": malnutrition,
         }})
 
 
-        # TABLE 1: Reported Priority Diseases, Conditions and Events by District, week X -----------
+        # TABLE 1: Reported Priority Diseases, Conditions and Events by District, week X
         # TODO: Connect cmd_codes to mortality
 
         #  Required priority diseases:
@@ -2865,45 +2886,45 @@ class AFROBulletin(Resource):
         #  cmd_5 A05    Foodborne disease    Toxi Infection Alimentaire collective (TIAC)
         #  cmd_6  A16.9    Tuberculosis    Tuberculose
 
-        ret["data"]['table_priority_diseases']={}
-        priority_diseases=[
+        ret["data"]['table_priority_diseases'] = {}
+        priority_diseases = [
             'cmd_1', 'cmd_2', 'cmd_3',
-            'cmd_4','cmd_5','cmd_6',
-            'cmd_7','cmd_8','cmd_9',
-            'cmd_10','cmd_11','cmd_12',
-            'cmd_13','cmd_14','cmd_15',
-            'cmd_16','cmd_17','cmd_18',
-            'cmd_19','cmd_20','cmd_23',
-            'cmd_24','cmd_25','cmd_26',
-            'cmd_27','cmd_28'
+            'cmd_4', 'cmd_5', 'cmd_6',
+            'cmd_7', 'cmd_8', 'cmd_9',
+            'cmd_10', 'cmd_11', 'cmd_12',
+            'cmd_13', 'cmd_14', 'cmd_15',
+            'cmd_16', 'cmd_17', 'cmd_18',
+            'cmd_19', 'cmd_20', 'cmd_23',
+            'cmd_24', 'cmd_25', 'cmd_26',
+            'cmd_27', 'cmd_28'
         ]
-        mortality_codes={
-            'cmd_1':'mor_18',
-            'cmd_2':'mor_26',
-            'cmd_3':'mor_28',
-            'cmd_4':'mor_1',
-            'cmd_5':'mor_6',
-            'cmd_6':'mor_20',
-            'cmd_7':'mor_5',
-            'cmd_8':'mor_14',
-            'cmd_9':'mor_12',
-            'cmd_10':'mor_11',
-            'cmd_11':'mor_10',
-            'cmd_12':'mor_4',
-            'cmd_13':'mor_3',
-            'cmd_14':'mor_29',
-            'cmd_15':'mor_13',
-            'cmd_16':'mor_8',
-            'cmd_17':'mor_16',
-            'cmd_18':'mor_2',
-            'cmd_19':'mor_7',
-            'cmd_20':'mor_19',
-            'cmd_23':'mor_21',
-            'cmd_24':'mor_22',
-            'cmd_25':'mor_17',
-            'cmd_26':'mor_15',
-            'cmd_27':'mor_9',
-            'cmd_28':'mor_23'
+        mortality_codes = {
+            'cmd_1': 'mor_18',
+            'cmd_2': 'mor_26',
+            'cmd_3': 'mor_28',
+            'cmd_4': 'mor_1',
+            'cmd_5': 'mor_6',
+            'cmd_6': 'mor_20',
+            'cmd_7': 'mor_5',
+            'cmd_8': 'mor_14',
+            'cmd_9': 'mor_12',
+            'cmd_10': 'mor_11',
+            'cmd_11': 'mor_10',
+            'cmd_12': 'mor_4',
+            'cmd_13': 'mor_3',
+            'cmd_14': 'mor_29',
+            'cmd_15': 'mor_13',
+            'cmd_16': 'mor_8',
+            'cmd_17': 'mor_16',
+            'cmd_18': 'mor_2',
+            'cmd_19': 'mor_7',
+            'cmd_20': 'mor_19',
+            'cmd_23': 'mor_21',
+            'cmd_24': 'mor_22',
+            'cmd_25': 'mor_17',
+            'cmd_26': 'mor_15',
+            'cmd_27': 'mor_9',
+            'cmd_28': 'mor_23'
         }
 
         # insert disease names and regions
@@ -2935,29 +2956,25 @@ class AFROBulletin(Resource):
 
         # insert case figures
         for disease in priority_diseases:
-            priority_disease_cases = variable_id_by_level(
-                disease,
+            priority_disease_cases = query_sum(
+                db,
+                [disease],
                 start_date,
                 end_date_limit,
                 location,
-                conn,
-                level="region"           
-            )   
+                level="region"       
+            )["region"]
             priority_disease_cases_total = query_sum(
                 db,
                 [disease],
-                start_date, 
-                end_date_limit, 
-                location, 
-                conn,
+                start_date,
+                end_date_limit,
+                location,
             )["total"]
             
-            #add regional case breakdown
+            # add regional case breakdown
 
-            print("priority_disease_cases for " + disease)
-            print(priority_disease_cases)
-            print("priority_disease_cases_total")
-            print(priority_disease_cases_total)
+      
             for region in priority_disease_cases:
                 try:
                     ret["data"]["table_priority_diseases"][disease][locs[region].name] = priority_disease_cases[region]
@@ -3012,14 +3029,14 @@ class AFROBulletin(Resource):
 
 
         for disease in priority_diseases:
-            ret["data"]["table_priority_diseases_cumulative"].update({disease:{
-                "name":Variable().get(disease)["name"],
-                "cases":0,
-                "cases_cumulative":0,
-                "mortality":0,
-                "mortality_cumulative":0,
-                "cfr":0,
-                "cfr_cumulative":0}})
+            ret["data"]["table_priority_diseases_cumulative"].update({disease: {
+                "name": Variable().get(disease)["name"],
+                "cases": 0,
+                "cases_cumulative": 0,
+                "mortality": 0,
+                "mortality_cumulative": 0,
+                "cfr": 0,
+                "cfr_cumulative": 0}})
             
             priority_disease_cases_cumulative = query_sum(
                 db,
@@ -3078,33 +3095,33 @@ class AFROBulletin(Resource):
                 ret["data"]["table_priority_diseases_cumulative"][disease]["cfr_cumulative"] = 'N/A'
 
 
-        # TABLE 3: Timeliness and Completeness of reporting for Week X, 2016 --------------------------------
+        # TABLE 3: Timeliness and Completeness of reporting for Week X, 2016
         ret["data"]["table_timeliness_completeness"] = {}
         for district in districts:
             try:
-                comp_comp = json.loads( Completeness().get( 'reg_1', district, 4 ).data.decode('UTF-8') )
-                comp_time = json.loads( Completeness().get( 'reg_5', district, 5 ).data.decode('UTF-8') )
+                if tot_clinics.get(district)["total"] > 0:
                 #  District names
-                ret["data"]["table_timeliness_completeness"].update({str(district):{"name":locs[district].name}})
+                    ret["data"]["table_timeliness_completeness"].update(
+                        {str(district): {"name": locs[district].name}})
 
-                #  Number of clinics in district
-                ret["data"]["table_timeliness_completeness"][str(district)].update({
-                    "clinics":tot_clinics.get(district)["total"]
-                })
-                #  Number of clinics that reported
-                ret["data"]["table_timeliness_completeness"][str(district)].update({
-                    "clinics_reported":tot_clinics.get(district)["total"] - len(NonReporting().get("reg_1", district,num_weeks=1))
-                })
+                    #  Number of clinics in district
+                    ret["data"]["table_timeliness_completeness"][str(district)].update({
+                        "clinics": tot_clinics.get(district)["total"]
+                    })
+                    #  Number of clinics that reported
+                    ret["data"]["table_timeliness_completeness"][str(district)].update({
+                        "clinics_reported": tot_clinics.get(district)["total"] - len(NonReporting().get("reg_1", district, num_weeks=1))
+                    })
 
-                #  District completeness
-                ret["data"]["table_timeliness_completeness"][str(district)].update({
-                    "completeness":comp_comp["score"][str(district)]
-                })
+                    #  District completeness
+                    ret["data"]["table_timeliness_completeness"][str(district)].update({
+                        "completeness":district_completeness_data[str(district)]
+                    })
 
-                #  District timeliness
-                ret["data"]["table_timeliness_completeness"][str(district)].update({
-                    "timeliness":comp_time["score"][str(district)]
-                })
+                    #  District timeliness
+                    ret["data"]["table_timeliness_completeness"][str(district)].update({
+                        "timeliness":district_timeliness_data[str(district)]
+                    })
             except AttributeError:
                 pass
 

@@ -47,8 +47,8 @@ def query_sum(db, var_ids, start_date, end_date, location, level=None, weeks=Fal
     ret = {"total": 0}
 
     for i, var_id in enumerate(var_ids):
-        where_clauses.append("(data.variables ? :variables_{})".format(i))
-        variables["variables_" + str(i)] = var_id
+        where_clauses.append("(data.variables ? :variables_{})".format(i + 2))
+        variables["variables_" + str(i + 2)] = var_id
 
     if weeks:
         extra_columns = ", floor(EXTRACT(days FROM data.date - :date_3) / 7 + 1) AS week"

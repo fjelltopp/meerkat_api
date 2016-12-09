@@ -57,7 +57,6 @@ class Completeness(Resource):
 
     def get(self, variable, location, number_per_week, exclude=None,
             weekend=None, start_week=1):
-        print(variable, location, number_per_week, start_week, exclude, weekend)
         today = datetime.now()
         epi_year_weekday = epi_week_start_date(today.year).weekday()
         freq = ["W-MON", "W-TUE", "W-WED", "W-THU", "W-FRI", "W-SAT",
@@ -279,7 +278,6 @@ class NonReporting(Resource):
                                  for r in db.session.query(Data.clinic).filter(
                                      Data.variables.has_key(variable)).all()]
         non_reporting_clinics = []
-        print(locations)
         for clinic in clinics:
             if clinic not in clinics_with_variable:
                 if exclude:

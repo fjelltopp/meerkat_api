@@ -4,7 +4,7 @@ meerkat_api.py
 Root Flask app for the Meerkat API.
 """
 
-from werkzeug.contrib.profiler import ProfilerMiddleware
+#from werkzeug.contrib.profiler import ProfilerMiddleware
 from flask import Flask, make_response
 from flask.json import JSONEncoder
 from flask_sqlalchemy import SQLAlchemy
