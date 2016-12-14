@@ -36,71 +36,7 @@ class MeerkatAPIReportsUtilityTestCase(unittest.TestCase):
         pass
 
 
-    def test_get_variable_id(self):
-        """Test get variable_id"""
-        variable = "tot_1"
-        variables = [{"tot_1": 1, "tot_2": 3} for i in range(100)]
-        locations = [(1, 2, 3, 4) for i in range(50)]
-        locations += [(1, 2, 3, 5) for i in range(50)]
-        db_util.create_data(self.db.session, variables, locations=locations)
-        conn = meerkat_api.db.engine.connect()
-        start_date = datetime(datetime.now().year, 1, 1)
-        end_date = datetime.now()
-        # Test with different locations
-        variable_id_result = reports.get_variable_id(variable,
-                                                     start_date,
-                                                     end_date,
-                                                     1,
-                                                     conn)
-        self.assertEqual(variable_id_result, 100)
-        variable_id_result = reports.get_variable_id(variable,
-                                                     start_date,
-                                                     end_date,
-                                                     2,
-                                                     conn)
-        self.assertEqual(variable_id_result, 100)
-        variable_id_result = reports.get_variable_id(variable,
-                                                     start_date,
-                                                     end_date,
-                                                     4,
-                                                     conn)
-        self.assertEqual(variable_id_result, 50)
-        variable_id_result = reports.get_variable_id(variable,
-                                                     start_date,
-                                                     end_date,
-                                                     5,
-                                                     conn)
-        self.assertEqual(variable_id_result, 50)
-
-        # Dates
-        dates = [datetime.now() + timedelta(days=1) for i in range(100)]
-        db_util.create_data(self.db.session, variables, locations=locations,
-                            dates=dates)
-        variable_id_result = reports.get_variable_id(variable,
-                                                     start_date,
-                                                     end_date,
-                                                     1,
-                                                     conn)
-        self.assertEqual(variable_id_result, 0)
-        dates = [datetime(datetime.now().year, 1, 1) for i in range(100)]
-        db_util.create_data(self.db.session, variables, locations=locations,
-                            dates=dates)
-        variable_id_result = reports.get_variable_id(variable,
-                                                     start_date,
-                                                     end_date,
-                                                     1,
-                                                     conn)
-        self.assertEqual(variable_id_result, 100)
-        # So should not get any results 
-        variables = [{"tot_2": 3} for i in range(100)]
-        db_util.create_data(self.db.session, variables, locations=locations,
-                            dates=dates)
-        variable_id_result = reports.get_variable_id(variable,
-                                                     start_date,
-                                                     end_date,
-                                                     1,
-                                                     conn)
-        self.assertEqual(variable_id_result, 0)
+  
 
     def test_top(self):
         """Test top function"""

@@ -7,12 +7,9 @@ Unit tests for the Meerkat API
 import json, os
 import unittest
 from datetime import datetime
-from datetime import timedelta
-from sqlalchemy import extract
 import meerkat_api
 import meerkat_abacus.data_management as manage
-import meerkat_abacus.config as config
-import meerkat_abacus.model as model
+from meerkat_abacus.task_queue import app as celery_app
 
 #Check if auth requirements have been installed
 try:
@@ -37,7 +34,7 @@ def need_csv_representation(url):
     Returns:
        is_csv: True has csv representation
     """
-    csv_representations = ["export/data", "export/form/", "export/alerts"]
+    csv_representations = ["export/get"]
     for r in csv_representations:
         if r in url:
             return True
@@ -85,6 +82,7 @@ def valid_urls(app):
         "mult_factor": "1000",
         "loc_id": "1",
         "level": "district",
+        "uid": "1",
         "start_week": "1",
         "exclude": "mental"
     }
@@ -122,6 +120,9 @@ class MeerkatAPITestCase(unittest.TestCase):
         """Setup for testing"""
         meerkat_api.app.config['TESTING'] = True
         meerkat_api.app.config['API_KEY'] = ""
+        celery_app.conf.CELERY_ALWAYS_EAGER = True
+
+        BROKER_BACKEND = 'memory'
         manage.set_up_everything(False, False, 500)
 
         self.app = meerkat_api.app.test_client()

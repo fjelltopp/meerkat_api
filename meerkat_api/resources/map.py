@@ -54,8 +54,8 @@ class MapVariable(Resource):
         map_data: [{value:0, geolocation: .., clinic:name},...]\n
     """
     decorators = [authenticate]
-    
-    def get(self, variable_id, location=1, 
+
+    def get(self, variable_id, location=1,
             start_date=None, end_date=None, include_all_clinics=False):
 
         start_date, end_date = fix_dates(start_date, end_date)
@@ -67,15 +67,15 @@ class MapVariable(Resource):
             func.sum( Data.variables[vi].astext.cast(Float) ).label('value'),
             Data.geolocation,
             Data.clinic
-        ).filter( 
+        ).filter(
             Data.variables.has_key(variable_id ),
-            Data.date >= start_date, 
+            Data.date >= start_date,
             Data.date < end_date,
             or_(
                 loc == location for loc in ( Data.country,
                                              Data.region,
                                              Data.district,
-                                             Data.clinic)  
+                                             Data.clinic)
             )
         ).group_by("clinic", "geolocation")
 
@@ -109,20 +109,20 @@ class IncidenceMap(Resource):
         map_data: [{value:0, geolocation: .., clinic:name},...]\n
     """
     decorators = [authenticate]
-    
+
     def get(self, variable_id):
 
         ir = IncidenceRate()
 
         incidence_rates = ir.get(variable_id, "clinic")
-        
+
         locations = get_locations(db.session)
         ret = {}
         for clinic in incidence_rates.keys():
             if incidence_rates[clinic]:
                 geo = locations[clinic].geolocation
                 if geo:
-                    
+
                     ret[clinic] = {"value": incidence_rates[clinic],
                                    "geolocation": geo.split(","),
                                    "clinic": locations[clinic].name}

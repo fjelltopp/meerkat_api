@@ -45,6 +45,7 @@ def fix_dates(start_date, end_date):
                                       microsecond=0)
     return start_date, end_date
 
+
 def row_to_dict(row):
     """
     Translate sql alchemy row to dict

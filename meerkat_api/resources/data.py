@@ -13,11 +13,12 @@ from meerkat_api.resources.epi_week import epi_year_start
 from meerkat_abacus.model import Data
 from meerkat_api.resources.variables import Variables
 from meerkat_api.authentication import authenticate
+from meerkat_api.util.data_query import query_sum
 
 
 class Aggregate(Resource):
     """
-    Count (or add up) all the records with variable and location over all time. 
+    Count (or add up) all the records with variable and location over all time.
     
     Args:\n
         variable: variable_id\n
@@ -27,24 +28,19 @@ class Aggregate(Resource):
         result: {"value": value}\n
     """
     decorators = [authenticate]
+    
     def get(self, variable_id, location_id):
-        results = db.session.query(Data.variables).filter(
-            Data.variables.has_key(variable_id), or_(
-                loc == location_id for loc in (Data.country,
-                                               Data.region,
-                                               Data.district,
-                                               Data.clinic)))
-        total = 0
-        for row in results:
-            total += row.variables[variable_id]
-        return {"value": total}
+        
+        result = query_sum(db, [variable_id], datetime(1900, 1, 1),
+                             datetime(2100, 1, 1), location_id)
+        return {"value": result["total"]}
 
 
 class AggregateYear(Resource):
     """
     Get total and weekly aggregate for the current year for the given
-    variable and location. Can get data for other years by useing the 
-    year keyword argument. 
+    variable and location. Can get data for other years by useing the
+    year keyword argument.
     
     Args:\n
         variable: variable_id\n
@@ -56,43 +52,19 @@ class AggregateYear(Resource):
     """
     decorators = [authenticate]
     
-    def get(self, variable_id, location_id, year=datetime.today().year, lim_variable=""):
-        year = int(year)
+    def get(self, variable_id, location_id, year=datetime.today().year,
+            lim_variable=""):
         vi = str(variable_id)
-        epi_week_start = epi_year_start(year)
-
+        year = int(year)
+        start_date = datetime(year, 1, 1)
+        end_date = datetime(year + 1, 1, 1)
+        variables = [vi]
         # We sum over variable grouped by epi_week
         if(lim_variable != ""):
-            results = db.session.query(
-                func.sum(Data.variables[vi].astext.cast(Integer)).label('value'),
-                func.floor(
-                    extract('days', Data.date -
-                            epi_week_start) / 7 + 1).label("week")
-            ).filter(Data.variables.has_key(vi),
-                    Data.variables.has_key(lim_variable),
-                    extract('year', Data.date) == year,
-                    or_(loc == location_id for loc in (Data.country,
-                                                        Data.region,
-                                                        Data.district,
-                                                        Data.clinic))
-            ).group_by("week")
-        else:
-            results = db.session.query(
-                func.sum(Data.variables[vi].astext.cast(Float)).label('value'),
-                func.floor(
-                    extract('days', Data.date -
-                            epi_week_start) / 7 + 1).label("week")
-            ).filter(Data.variables.has_key(vi),
-                    extract('year', Data.date) == year,
-                    or_(loc == location_id for loc in (Data.country,
-                                                        Data.region,
-                                                        Data.district,
-                                                        Data.clinic))
-            ).group_by("week")
-
-
-        weeks = dict((int(el[1]), el[0]) for el in results.all())
-        return {"weeks": weeks, "year": sum(weeks.values())}
+            variables.append(lim_variable)
+        result = query_sum(db, variables, start_date, end_date,
+                                        location_id, weeks=True)
+        return {"weeks": result["weeks"], "year": result["total"]}
 
 
 class AggregateCategory(Resource):
