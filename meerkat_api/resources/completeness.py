@@ -46,8 +46,9 @@ class Completeness(Resource):
         variable: variable_id\n
         location: location id
         number_per_week: expected number per week\n
-        exclude: Exclude locations with this case_type\n
-        weekend: specified weekend days in a comma separated string 0=Mon
+        exclude: Exclude locations with this case_type. In order to provide
+    argument `weekend`, specify exclude as a string `None`\n
+        weekend: specified weekend days in a comma separated string 0=Mon.
     Returns:\n
         completness data: {score: score, timeline: timeline, clinic_score: clinic:score, 
         clinic_yearly_score: clinic:yearly_score, dates_not_reported: dated_not_reported,
@@ -57,6 +58,7 @@ class Completeness(Resource):
 
     def get(self, variable, location, number_per_week, exclude=None,
             weekend=None, start_week=1):
+        print(weekend)
         today = datetime.now()
         epi_year_weekday = epi_week_start_date(today.year).weekday()
         freq = ["W-MON", "W-TUE", "W-WED", "W-THU", "W-FRI", "W-SAT",
@@ -76,7 +78,7 @@ class Completeness(Resource):
             loc == location
             for loc in (Data.country, Data.region, Data.district, Data.clinic))
                       ]
-        if exclude:
+        if exclude and exclude != "None":
             conditions.append(or_(Data.case_type is not None,
                                   Data.case_type != exclude))
         if "tag" in request.args.keys():
