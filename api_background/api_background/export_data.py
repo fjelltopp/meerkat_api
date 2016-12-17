@@ -31,6 +31,17 @@ def export_data(uuid, use_loc_ids=False):
        use_loc_ids: If we use names are location ids
     """
     db, session = get_db_engine()
+    status =  DownloadDataFiles(
+                uuid=uuid,
+                content="",
+                generation_time=datetime.now(),
+                type="data",
+                success=0,
+                status=0
+    )
+    session.add(status)        
+    session.commit()
+    
     results = session.query(Data)
     variables = set()
     locs = get_locations(session)
@@ -53,16 +64,9 @@ def export_data(uuid, use_loc_ids=False):
     writer = csv.DictWriter(output, fieldnames, extrasaction="ignore")
     writer.writeheader()
     writer.writerows(dict_rows)
-    session.add(
-            DownloadDataFiles(
-                uuid=uuid,
-                content=output.getvalue(),
-                generation_time=datetime.now(),
-                type="data",
-                success=1,
-                status=1
-                )
-            )
+    status.status = 1
+    status.success = 1
+    status.content = output.getvalue()
     session.commit()
     return True
 
@@ -127,13 +131,20 @@ def export_category(uuid, form_name, category, download_name, variables):
     # alert_links are included
     for v in variables:
         return_keys.append(v[1])
+       
         if "icd_name$" in v[0]:
             category = v[0].split("$")[1]
+            cat_variables = {}
+            res = session.query(AggregationVariables).filter(
+                AggregationVariables.category.has_key(category)
+            )
+            for r in res:
+                cat_variables[r.id] = r
             icd_code_to_name[v[0]] = {}
             for i in cat_variables.keys():
                 condition = cat_variables[i].condition
                 if ";" in condition:
-                    condition = condition.split(";")[0]
+                    codes = condition.split(";")[0]
                 if "," in condition:
                     # If a variable have many icd codes
                     # we take all of them into account
@@ -153,7 +164,7 @@ def export_category(uuid, form_name, category, download_name, variables):
         if "gen_link$" in v[0]:
             link_ids.append(v[0].split("$")[1])
         translation_dict[v[1]] = v[0]
-
+        
     link_ids = set(link_ids)
     links_by_type, links_by_name = get_links(config_directory +
                                              country_config["links_file"])
