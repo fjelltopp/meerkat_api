@@ -18,6 +18,100 @@ from meerkat_api.test import db_util
 from meerkat_abacus import data_management
 from meerkat_abacus import model
 from meerkat_api.resources import reports
+from freezegun import freeze_time
+
+"""
+Compare list of unhashable objects (e.g. dictionaries). From SO by Steven Rumbalski.
+"""
+def compare_unhashable_list(s, t):
+    t = list(t)   # make a mutable copy
+    try:
+        for elem in s:
+            t.remove(elem)
+    except ValueError:
+        return False
+    return not t
+
+
+""" The following helper function compare two dictionaries assuming identical structure. 
+
+Here is an example of functionality:
+l1 = [1,2,3,4]
+l2 = [2,1,4,3]
+l3 = [1,2]
+l4 = [1]
+d1a = {"e1":12, "e2":l3}
+d1b = {"e1":12, "e2":l4}
+d2a = {"e3":2,"e4":l1,"e5":d1a}
+d2b = {"e3":1,"e4":l2,"e5":d1b}
+d3a = {"e1":12, "e2":l3}
+d3b = {"e1":12, "e2":l3}
+d4a = {"e3":1,"e4":l1,"e5":d3a}
+d4b = {"e3":1,"e4":l1,"e5":d3b}
+print(simplified_dict_compare(d2a,d2b))
+print(simplified_dict_compare(d4a,d4b))
+>> ({'e3': (2, 1)}, ({'e2': ([1, 2], [1])}, {}))
+>> None
+
+"""
+def simplified_dict_compare(d1, d2):
+    d1_keys = set(d1.keys())
+    d2_keys = set(d2.keys())
+    intersect_keys = d1_keys.intersection(d2_keys)
+    modified = dict()
+    mod_dict = dict()
+    for o in intersect_keys:
+        #compare dictionaries recursively
+        if ((type(d1[o]) == dict) and (type(d2[o]) == dict)):
+           mod_dict = simplified_dict_compare(d1[o],d2[o])
+        #compare lists as sets.
+        elif ((type(d1[o]) == list) and (type(d2[o]) == list)):
+                if not compare_unhashable_list(d1[o],d2[o]):
+                    modified[o] = (d1[o],d2[o])
+        #show differences
+        else:
+                if(d1[o] != d2[o]):
+                    modified[o] = (d1[o],d2[o])
+    if (mod_dict == None or mod_dict == {}) and modified == {}:
+        return None
+    #same = set(o for o in intersect_keys if d1[o] == d2[o])
+    #return added, removed, modified, same, mod_dict
+    return modified, mod_dict
+
+"""
+This helper function compares structure of recursive dictionaries, returning `None` if it's identical.
+
+Here is a study case of usage:
+d1 = {"a":{"b": 1,"c": 1},"e":1,"f":1}
+d2 = {"a":{"b": 1,"d": 1},"f":1}
+d3 = {"a":{"b": 1,"c": 1},"e":1,"f":1}
+d4 = {"a":{"b": {"g":1},"c": 1},"e":1,"f":1}
+d5 = {"a":{"b": {"h":1},"d": 1},"f":1}
+print(dict_struct_compare(d1,d3))
+print(dict_struct_compare(d1,d2))
+print(dict_struct_compare(d4,d5))
+>>None
+>>{'added': {'e'}, 'removed': set(), 'inner structure': {'a': {'added': {'c'}, 'removed': {'d'}, 'inner structure': {}}}}
+>>{'added': {'e'}, 'removed': set(), 'inner structure': {'a': {'added': {'c'}, 'removed': {'d'}, 'inner structure': {'b': {'added': {'g'}, 'removed': {'h'}, 'inner structure': {}}}}}}
+"""
+def dict_struct_compare(d1, d2):
+    d1_keys = set(d1.keys())
+    d2_keys = set(d2.keys())
+    intersect_keys = d1_keys.intersection(d2_keys)
+    added = d1_keys - d2_keys
+    removed = d2_keys - d1_keys
+    struct_dict = {}
+    for o in intersect_keys:
+        #compare dictionaries recursively
+        if ((type(d1[o]) == dict) and (type(d2[o]) == dict)):
+            struct_dict_diff = {}
+            struct_dict_diff = dict_struct_compare(d1[o],d2[o])
+            if(struct_dict_diff != None):
+                struct_dict[o] = struct_dict_diff
+        
+    if(added == set() and removed == set() and (struct_dict == None or struct_dict == {})):
+        return None
+    return {"added":added, "removed":removed, "inner structure":struct_dict}
 
 
 
@@ -212,7 +306,7 @@ class MeerkatAPIReportsUtilityTestCase(unittest.TestCase):
         ]
         dates = [datetime(2016, 1, 1), datetime(2016, 2, 2)]
         db_util.create_data(self.db.session, variables, dates=dates)
-        start_date = datetime(datetime.now().year, 1, 1)
+        start_date = datetime(2016, 1, 1)
         end_date = datetime.now()
         results = reports.get_latest_category("population", 4, start_date, end_date)
         self.assertEqual(results["<20"]["male"], 15)
@@ -1462,6 +1556,50 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
             start_date=datetime(2016, 1, 1).isoformat(), 
             location=1, 
             expected=1)
+
+
+
+
+    @freeze_time("2016-12-24")
+    def test_afro(self):
+        """ Test AFRO report """
+
+        afro_expected = {'data': {'figure_completeness': [{'value': 1.25, 'district': 'Region Major'}, {'value': 1.25, 'district': 'District Blue'}, {'value': 1.25, 'district': 'District Red'}, {'value': 1.25, 'district': 'District Blue'}, {'value': 1.25, 'district': 'Region Minor'}], 'table_priority_diseases_cumulative': {'cmd_8': {'cases_cumulative': 0, 'cfr_cumulative': 'N/A', 'mortality': 0, 'cfr': 'N/A', 'cases': 0, 'mortality_cumulative': 0, 'name': 'Leprosy'}, 'cmd_18': {'cases_cumulative': 0, 'cfr_cumulative': 'N/A', 'mortality': 0, 'cfr': 'N/A', 'cases': 0, 'mortality_cumulative': 0, 'name': 'Influenza-like illness '}, 'cmd_2': {'cases_cumulative': 0, 'cfr_cumulative': 'N/A', 'mortality': 0, 'cfr': 'N/A', 'cases': 0, 'mortality_cumulative': 0, 'name': 'Cholera'}, 'cmd_25': {'cases_cumulative': 0, 'cfr_cumulative': 'N/A', 'mortality': 0, 'cfr': 'N/A', 'cases': 0, 'mortality_cumulative': 0, 'name': 'Acute Respiratory Tract Infection'}, 'cmd_13': {'cases_cumulative': 0, 'cfr_cumulative': 'N/A', 'mortality': 0, 'cfr': 'N/A', 'cases': 0, 'mortality_cumulative': 0, 'name': 'Arbovirus'}, 'cmd_7': {'cases_cumulative': 0, 'cfr_cumulative': 'N/A', 'mortality': 0, 'cfr': 'N/A', 'cases': 0, 'mortality_cumulative': 0, 'name': 'Plague'}, 'cmd_19': {'cases_cumulative': 0, 'cfr_cumulative': 'N/A', 'mortality': 0, 'cfr': 'N/A', 'cases': 0, 'mortality_cumulative': 0, 'name': 'Seafood Poisoning'}, 'cmd_23': {'cases_cumulative': 0, 'cfr_cumulative': 'N/A', 'mortality': 0, 'cfr': 'N/A', 'cases': 0, 'mortality_cumulative': 0, 'name': 'Moderate malnutrition'}, 'cmd_5': {'cases_cumulative': 0, 'cfr_cumulative': 'N/A', 'mortality': 0, 'cfr': 'N/A', 'cases': 0, 'mortality_cumulative': 0, 'name': 'Food Poisoning'}, 'cmd_20': {'cases_cumulative': 0, 'cfr_cumulative': 'N/A', 'mortality': 0, 'cfr': 'N/A', 'cases': 0, 'mortality_cumulative': 0, 'name': 'Sexually Transmitted Infection'}, 'cmd_24': {'cases_cumulative': 0, 'cfr_cumulative': 'N/A', 'mortality': 0, 'cfr': 'N/A', 'cases': 0, 'mortality_cumulative': 0, 'name': 'Severe malnutrition'}, 'cmd_27': {'cases_cumulative': 0, 'cfr_cumulative': 'N/A', 'mortality': 0, 'cfr': 'N/A', 'cases': 0, 'mortality_cumulative': 0, 'name': 'Animal Bite'}, 'cmd_14': {'cases_cumulative': 0, 'cfr_cumulative': 'N/A', 'mortality': 0, 'cfr': 'N/A', 'cases': 0, 'mortality_cumulative': 0, 'name': 'Acute Haemorrhagic Fever'}, 'cmd_28': {'cases_cumulative': 0, 'cfr_cumulative': 'N/A', 'mortality': 0, 'cfr': 'N/A', 'cases': 0, 'mortality_cumulative': 0, 'name': 'Other / Alert'}, 'cmd_12': {'cases_cumulative': 0, 'cfr_cumulative': 'N/A', 'mortality': 0, 'cfr': 'N/A', 'cases': 0, 'mortality_cumulative': 0, 'name': 'Meningitis'}, 'cmd_4': {'cases_cumulative': 0, 'cfr_cumulative': 'N/A', 'mortality': 0, 'cfr': 'N/A', 'cases': 0, 'mortality_cumulative': 0, 'name': 'Bloody Diarrhoea'}, 'cmd_1': {'cases_cumulative': 4.0, 'cfr_cumulative': 0.0, 'mortality': 0, 'cfr': 0.0, 'cases': 4.0, 'mortality_cumulative': 0, 'name': 'Acute Diarrhoea'}, 'cmd_10': {'cases_cumulative': 0, 'cfr_cumulative': 'N/A', 'mortality': 0, 'cfr': 'N/A', 'cases': 0, 'mortality_cumulative': 0, 'name': 'Acute Flaccid Paralysis'}, 'cmd_3': {'cases_cumulative': 0, 'cfr_cumulative': 'N/A', 'mortality': 0, 'cfr': 'N/A', 'cases': 0, 'mortality_cumulative': 0, 'name': 'Typhoid Fever'}, 'cmd_11': {'cases_cumulative': 0, 'cfr_cumulative': 'N/A', 'mortality': 0, 'cfr': 'N/A', 'cases': 0, 'mortality_cumulative': 0, 'name': 'Rabies'}, 'cmd_15': {'cases_cumulative': 0, 'cfr_cumulative': 'N/A', 'mortality': 0, 'cfr': 'N/A', 'cases': 0, 'mortality_cumulative': 0, 'name': 'Measles / Rubella'}, 'cmd_26': {'cases_cumulative': 0, 'cfr_cumulative': 'N/A', 'mortality': 0, 'cfr': 'N/A', 'cases': 0, 'mortality_cumulative': 0, 'name': 'Lymphatic Filariasis'}, 'cmd_16': {'cases_cumulative': 0, 'cfr_cumulative': 'N/A', 'mortality': 0, 'cfr': 'N/A', 'cases': 0, 'mortality_cumulative': 0, 'name': 'Acute Jaundice Syndrome'}, 'cmd_9': {'cases_cumulative': 0, 'cfr_cumulative': 'N/A', 'mortality': 0, 'cfr': 'N/A', 'cases': 0, 'mortality_cumulative': 0, 'name': 'Neonatal Tetanus'}, 'cmd_17': {'cases_cumulative': 0, 'cfr_cumulative': 'N/A', 'mortality': 0, 'cfr': 'N/A', 'cases': 0, 'mortality_cumulative': 0, 'name': 'Malaria'}, 'cmd_6': {'cases_cumulative': 0, 'cfr_cumulative': 'N/A', 'mortality': 0, 'cfr': 'N/A', 'cases': 0, 'mortality_cumulative': 0, 'name': 'Tuberculosis'}}, 'figure_mat_deaths_map': {'District Blue': {'value': 0}, 'District Red': {'value': 0}}, 'project_epoch': '2015-05-20T00:00:00', 'project_region': 'Testshire', 'start_date': '2016-02-06T00:00:00', 'figure_measles': {'measles_under_5yo': {'weeks': {'8': 0, '32': 0, '24': 0, '27': 0, '47': 0, '26': 0, '30': 0, '16': 0, '38': 0, '7': 0, '1': 0, '22': 0, '49': 0, '45': 0, '28': 0, '12': 0, '15': 0, '51': 0, '48': 0, '35': 0, '42': 0, '46': 0, '18': 0, '3': 0, '39': 0, '52': 0, '21': 0, '37': 0, '31': 0, '50': 0, '11': 0, '23': 0, '10': 0, '43': 0, '25': 0, '17': 0, '2': 0, '33': 0, '5': 0, '19': 0, '14': 0, '40': 0, '13': 0, '9': 0, '36': 0, '41': 0, '6': 0, '44': 0, '20': 0, '4': 0, '34': 0, '29': 0}, 'total': 0, 'year': 0}, 'measles_over_5yo': {'weeks': {'8': 0, '32': 0, '24': 0, '27': 0, '47': 0, '26': 0, '30': 0, '16': 0, '38': 0, '7': 0, '1': 0, '22': 0, '49': 0, '45': 0, '28': 0, '12': 0, '15': 0, '51': 0, '48': 0, '35': 0, '42': 0, '46': 0, '18': 0, '3': 0, '39': 0, '52': 0, '21': 0, '37': 0, '31': 0, '50': 0, '11': 0, '23': 0, '10': 0, '43': 0, '25': 0, '17': 0, '2': 0, '33': 0, '5': 0, '19': 0, '14': 0, '40': 0, '13': 0, '9': 0, '36': 0, '41': 0, '6': 0, '44': 0, '20': 0, '4': 0, '34': 0, '29': 0}, 'total': 0}}, 'weekly_highlights': {'cmd_11_ale_2': 0, 'cmd_18': 0, 'cmd_2': 0, 'cmd_15_ale_1': 0, 'cmd_7': 0, 'mls_12_or_mls_24': 0, 'cmd_15_ale_1_perc_cmd_15': 0, 'cmd_7_ale_1': 0, 'dea_0': 0, 'cmd_24': 0, 'malnutrition': [], 'mls_24': 0, 'mls_2': 0, 'cmd_11': 0, 'cmd_1': 4.0, 'cmd_7_ale_2_perc_cmd_7': 0, 'cmd_4': 0, 'cmd_21_ale_1': 0, 'comp_year': 1.25, 'cmd_17': 0, 'comp_week': 0.0, 'cmd_10_ale_2_perc_cmd_10': 0, 'cmd_15_age_1': 0, 'cmd_10_ale_2': 0, 'clinic_num': 4, 'cmd_7_ale_2': 0, 'cmd_15_age_1_perc_cmd_15': 0, 'cmd_25': 0, 'cmd_7_ale_1_perc_cmd_7': 0, 'mortality': [], 'mls_3': 0, 'cmd_23': 0, 'age_1': 0, 'cmd_21': 0, 'cmd_15_ale_2': 0, 'cmd_17_perc_mls_2': 0, 'cmd_27': 0, 'mls_36': 0, 'mls_3_perc_mls_2': 0, 'cmd_22': 0, 'cmd_15_ale_2_perc_cmd_15': 0, 'cmd_10': 0, 'cmd_15': 0, 'cmd_22_ale_1': 0, 'mls_48_perc_mls_12_or_mls_24': 0, 'mls_48': 0, 'mls_12': 0}, 'epi_week_num': 49, 'table_priority_diseases': {'cmd_8': {'Region Major': 0, 'mortality': 0, 'cfr': 'N/A', 'Region Minor': 0, 'cases_total': 0, 'name': 'Leprosy'}, 'cmd_18': {'Region Major': 0, 'mortality': 0, 'cfr': 'N/A', 'Region Minor': 0, 'cases_total': 0, 'name': 'Influenza-like illness '}, 'cmd_2': {'Region Major': 0, 'mortality': 0, 'cfr': 'N/A', 'Region Minor': 0, 'cases_total': 0, 'name': 'Cholera'}, 'cmd_25': {'Region Major': 0, 'mortality': 0, 'cfr': 'N/A', 'Region Minor': 0, 'cases_total': 0, 'name': 'Acute Respiratory Tract Infection'}, 'cmd_13': {'Region Major': 0, 'mortality': 0, 'cfr': 'N/A', 'Region Minor': 0, 'cases_total': 0, 'name': 'Arbovirus'}, 'cmd_7': {'Region Major': 0, 'mortality': 0, 'cfr': 'N/A', 'Region Minor': 0, 'cases_total': 0, 'name': 'Plague'}, 'cmd_19': {'Region Major': 0, 'mortality': 0, 'cfr': 'N/A', 'Region Minor': 0, 'cases_total': 0, 'name': 'Seafood Poisoning'}, 'cmd_23': {'Region Major': 0, 'mortality': 0, 'cfr': 'N/A', 'Region Minor': 0, 'cases_total': 0, 'name': 'Moderate malnutrition'}, 'cmd_5': {'Region Major': 0, 'mortality': 0, 'cfr': 'N/A', 'Region Minor': 0, 'cases_total': 0, 'name': 'Food Poisoning'}, 'cmd_20': {'Region Major': 0, 'mortality': 0, 'cfr': 'N/A', 'Region Minor': 0, 'cases_total': 0, 'name': 'Sexually Transmitted Infection'}, 'cmd_24': {'Region Major': 0, 'mortality': 0, 'cfr': 'N/A', 'Region Minor': 0, 'cases_total': 0, 'name': 'Severe malnutrition'}, 'cmd_27': {'Region Major': 0, 'mortality': 0, 'cfr': 'N/A', 'Region Minor': 0, 'cases_total': 0, 'name': 'Animal Bite'}, 'cmd_14': {'Region Major': 0, 'mortality': 0, 'cfr': 'N/A', 'Region Minor': 0, 'cases_total': 0, 'name': 'Acute Haemorrhagic Fever'}, 'cmd_28': {'Region Major': 0, 'mortality': 0, 'cfr': 'N/A', 'Region Minor': 0, 'cases_total': 0, 'name': 'Other / Alert'}, 'cmd_12': {'Region Major': 0, 'mortality': 0, 'cfr': 'N/A', 'Region Minor': 0, 'cases_total': 0, 'name': 'Meningitis'}, 'cmd_4': {'Region Major': 0, 'mortality': 0, 'cfr': 'N/A', 'Region Minor': 0, 'cases_total': 0, 'name': 'Bloody Diarrhoea'}, 'cmd_1': {'Region Major': 3.0, 'mortality': 0, 'cfr': 0.0, 'Region Minor': 1.0, 'cases_total': 4.0, 'name': 'Acute Diarrhoea'}, 'cmd_10': {'Region Major': 0, 'mortality': 0, 'cfr': 'N/A', 'Region Minor': 0, 'cases_total': 0, 'name': 'Acute Flaccid Paralysis'}, 'cmd_3': {'Region Major': 0, 'mortality': 0, 'cfr': 'N/A', 'Region Minor': 0, 'cases_total': 0, 'name': 'Typhoid Fever'}, 'cmd_11': {'Region Major': 0, 'mortality': 0, 'cfr': 'N/A', 'Region Minor': 0, 'cases_total': 0, 'name': 'Rabies'}, 'cmd_15': {'Region Major': 0, 'mortality': 0, 'cfr': 'N/A', 'Region Minor': 0, 'cases_total': 0, 'name': 'Measles / Rubella'}, 'cmd_26': {'Region Major': 0, 'mortality': 0, 'cfr': 'N/A', 'Region Minor': 0, 'cases_total': 0, 'name': 'Lymphatic Filariasis'}, 'cmd_16': {'Region Major': 0, 'mortality': 0, 'cfr': 'N/A', 'Region Minor': 0, 'cases_total': 0, 'name': 'Acute Jaundice Syndrome'}, 'cmd_9': {'Region Major': 0, 'mortality': 0, 'cfr': 'N/A', 'Region Minor': 0, 'cases_total': 0, 'name': 'Neonatal Tetanus'}, 'cmd_17': {'Region Major': 0, 'mortality': 0, 'cfr': 'N/A', 'Region Minor': 0, 'cases_total': 0, 'name': 'Malaria'}, 'cmd_6': {'Region Major': 0, 'mortality': 0, 'cfr': 'N/A', 'Region Minor': 0, 'cases_total': 0, 'name': 'Tuberculosis'}}, 'end_date': '2016-12-06T00:00:00', 'figure_malaria_map': {'Region Major': {'value': 0}, 'Region Minor': {'value': 0}}, 'table_timeliness_completeness': {'4': {'timeliness': 0.0, 'clinics': 2, 'clinics_reported': 1, 'name': 'District Blue', 'completeness': 0.0}, '6': {'timeliness': 0.0, 'clinics': 1, 'clinics_reported': 0, 'name': 'District Blue', 'completeness': 0.0}, '5': {'timeliness': 0.0, 'clinics': 1, 'clinics_reported': 0, 'name': 'District Red', 'completeness': 0.0}}, 'figure_malaria': {'simple_malaria': {}, 'positivity': {}, 'severe_malaria': {}}, 'figure_malnutrition': {'malnutrition': {'weeks': {}, 'year': 0}}, 'project_region_id': '1'}, 'meta': {'schema_version': 0.1, 'uuid': 'f4f7c00f-fe37-4ed9-9709-b4af5628cf2b', 'project_id': 1, 'generation_timestamp': '2016-12-24T00:00:00'}}
+
+
+
+
+        print("afro test began")
+
+        print("freezing time")
+
+        # Load the test data.
+        # db_util.insert_specific_locations(self.db.session, "mad_dump")
+        db_util.insert_specific_locations(self.db.session, "testshire")
+        db_util.insert_codes_from_file(self.db.session, "codes.csv")
+        db_util.insert_cases(self.db.session, "afro_report")
+
+        rv = self.app.get(
+            '/reports/afro/{}/{}/{}'
+            .format(
+                1,
+                datetime(2016, 12, 6).isoformat(),
+                datetime(2016, 2, 6).isoformat(),
+            ), headers=settings.header)
+        self.assertEqual(rv.status_code, 200)
+        afro_returned = json.loads(rv.data.decode("utf-8"))
+        print("[Output afro_returned]:")
+        print(afro_returned)
+        print(type(afro_returned))
+        print("[end]")
+        afro_expected.pop("meta",None)
+        afro_returned.pop("meta",None)
+        dictdiffstructure = dict_struct_compare(afro_expected,afro_returned)
+        dictdiffcontent = simplified_dict_compare(afro_expected,afro_returned)
+        print(dictdiffstructure)
+        print(dictdiffcontent)
+        self.assertTrue(dictdiffstructure == None)
+        self.assertTrue(dictdiffcontent == None)
 
 if __name__ == '__main__':
     unittest.main()

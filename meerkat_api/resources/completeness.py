@@ -8,10 +8,10 @@ from datetime import datetime, timedelta
 import pandas as pd
 
 from meerkat_api import db, app
-from meerkat_api.resources.epi_week import EpiWeek, epi_week_start
+from meerkat_api.resources.epi_week import EpiWeek, epi_week_start, epi_year_start
 from meerkat_abacus.model import Data, Locations
 from meerkat_api.util import get_children
-from meerkat_abacus.util import get_locations, epi_week_start_date
+from meerkat_abacus.util import get_locations
 from meerkat_api.authentication import authenticate
 from meerkat_abacus.util import get_locations
 from pandas.tseries.offsets import CustomBusinessDay
@@ -58,9 +58,8 @@ class Completeness(Resource):
 
     def get(self, variable, location, number_per_week, exclude=None,
             weekend=None, start_week=1):
-        print(weekend)
         today = datetime.now()
-        epi_year_weekday = epi_week_start_date(today.year).weekday()
+        epi_year_weekday = epi_year_start(today.year).weekday()
         freq = ["W-MON", "W-TUE", "W-WED", "W-THU", "W-FRI", "W-SAT",
                 "W-SUN"][epi_year_weekday]
 
@@ -94,14 +93,20 @@ class Completeness(Resource):
             return {}
 
         # If today is the start of an epi week we do not want to include the current epi week
+        # We only calculate completeness for whole epi-weeks so we want to set end_d to the
+        # the end of the previous epi_week.
         offset = today.weekday() - epi_year_weekday
-
         if offset < 0:
             offset = 7 + offset
         end_d = today - timedelta(days=offset + 1)
 
-        begining = epi_week_start(today.year, start_week)
 
+        begining = epi_week_start(today.year, start_week)
+        ew = EpiWeek()
+        week = ew.get(end_d.isoformat())
+        if ew.get(end_d.isoformat())["epi_week"] == 53:
+            begining = begining.replace(year=begining.year -1)
+            
         # We drop duplicates so each clinic can only have one record per day
         data = data.drop_duplicates(
             subset=["region", "district", "clinic", "date", variable])
@@ -136,7 +141,10 @@ class Completeness(Resource):
 
             clinic_sums = completeness.groupby(level=1).sum()
             zero_clinics = clinic_sums[clinic_sums == 0].index
-            completeness = completeness.drop(zero_clinics, level=1)
+
+            nr = NonReporting()
+            non_reporting_clinics = nr.get(variable, location)["clinics"]
+            completeness = completeness.drop(non_reporting_clinics, level=1)
             completeness.reindex()
 
             # We only want to count a maximum of number per week per week
@@ -254,7 +262,7 @@ class Completeness(Resource):
 
 class NonReporting(Resource):
     """
-    Returns all non-reporting clinics for the last num_weeks complete epi weeks .
+    Returns all non-reporting clinics for the last num_weeks complete epi weeks.
 
     Args: \n
         variable: variable_id\n
@@ -268,7 +276,7 @@ class NonReporting(Resource):
     """
     decorators = [authenticate]
 
-    def get(self, variable, location, exclude=None, num_weeks=2):
+    def get(self, variable, location, exclude=None):
         locations = get_locations(db.session)
         location = int(location)
         clinics = get_children(location, locations)

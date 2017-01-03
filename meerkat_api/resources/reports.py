@@ -663,6 +663,7 @@ class Pip(Resource):
                                          start_date=start_date.isoformat(),
                                          only_loc=location,
                                          use_ids=True)
+        print("pip_followup:")
         print(pip_followup)
         total_followup = pip_followup["pif_1"]["total"]
         icu = pip_followup["pif_3"]["total"]
@@ -2537,9 +2538,6 @@ class AFROBulletin(Resource):
     decorators = [authenticate]
 
     def get(self, location, start_date=None, end_date=None):
-        # Hack the tests for now.
-        if app.config["TESTING"]:
-            return {}
 
         # Set default date values to last epi week.
         today = datetime.now()
@@ -3107,7 +3105,7 @@ class AFROBulletin(Resource):
                     })
                     #  Number of clinics that reported
                     ret["data"]["table_timeliness_completeness"][str(district)].update({
-                        "clinics_reported": tot_clinics.get(district)["total"] - len(NonReporting().get("reg_1", district, num_weeks=1))
+                        "clinics_reported": tot_clinics.get(district)["total"] - len(NonReporting().get("reg_1", district))
                     })
 
                     #  District completeness

@@ -8,6 +8,7 @@ import json
 import unittest
 from datetime import datetime
 import csv
+from freezegun import freeze_time
 
 import meerkat_api
 from meerkat_api.test import db_util
@@ -23,22 +24,23 @@ class MeerkatAPITestCase(unittest.TestCase):
         meerkat_api.db.session.commit()
         db_util.insert_codes(meerkat_api.db.session)
         db_util.insert_locations(meerkat_api.db.session)
-        db_util.insert_cases(meerkat_api.db.session, "frontpage")
+        db_util.insert_cases(meerkat_api.db.session, "frontpage", "2016-07-02")
 
     def tearDown(self):
         pass
-
+    
+    @freeze_time("2016-07-02")
     def test_key_indicators(self):
         """ Test getting key indicators """
         
         rv = self.app.get('/key_indicators')
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))
-        print(data)
         self.assertEqual(data["reg_1"]["year"], 1)
         self.assertEqual(data["reg_2"]["year"], 15)
         self.assertEqual(data["tot_1"]["year"], 2)
 
+    @freeze_time("2016-07-02")
     def test_tot_map(self):
         """ Test getting the map of cases"""
         
@@ -52,7 +54,7 @@ class MeerkatAPITestCase(unittest.TestCase):
         self.assertEqual(data["10"]["value"], 0)
         self.assertEqual(data["11"]["value"], 0)
 
-
+    @freeze_time("2016-07-02")
     def test_consultation_map(self):
         """ Test getting map of consultations"""
         rv = self.app.get('/consultation_map')
@@ -64,7 +66,7 @@ class MeerkatAPITestCase(unittest.TestCase):
         self.assertEqual(data["8"]["value"], 15)
         self.assertEqual(data["10"]["value"], 0)
         self.assertEqual(data["11"]["value"], 0)
-
+    @freeze_time("2016-07-02")
     def test_num_alerts(self):
         """ Test getting the number of consultations"""
         rv = self.app.get('/num_alerts')

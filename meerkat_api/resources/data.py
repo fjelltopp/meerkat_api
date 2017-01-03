@@ -83,7 +83,9 @@ class AggregateCategory(Resource):
     """
     decorators = [authenticate]
     
-    def get(self, category, location_id, lim_variable="", year=datetime.today().year):
+    def get(self, category, location_id, lim_variable="", year=None):
+        if year is None:
+            year = datetime.today().year
         variables_instance = Variables()
         variables = variables_instance.get(category)
         aggregate_year = AggregateYear()

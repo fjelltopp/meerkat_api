@@ -4,30 +4,38 @@ Utility functions for setting up the DB for Meerkat API tests
 
 """
 from datetime import datetime, timedelta
+from importlib import reload
 import uuid
+from freezegun import freeze_time
 import random, csv, os, logging
 
-from meerkat_api.test.test_data import  locations, cases
+from meerkat_api.test.test_data import locations, cases
 
 from meerkat_abacus import model
 
 
-def insert_cases(session, variable):
+def insert_cases(session, variable, date=None):
     """ Add a variable with cases from the cases.py file in test_data
-    
-    Args: 
+
+    Args:
        session: db session
        variable: name of the varible from cases.py we want
     """
+    if date:
+        freezer = freeze_time(date)
+        freezer.start()
+        reload(cases)
     session.query(model.Data).delete()
     session.query(model.DisregardedData).delete()
     session.bulk_save_objects(getattr(cases, variable))
     session.commit()
 
+    if date:
+        freezer.stop()
 def insert_links(session, variable):
     """ Add a variable with links from the links.py file in test_data
-    
-    Args: 
+
+    Args:
        session: db session
        variable: name of the varible from links.py we want
     """
@@ -35,10 +43,11 @@ def insert_links(session, variable):
     session.bulk_save_objects(getattr(links, variable))
     session.commit()
 
+
 def insert_alerts(session, variable):
     """ Add a variable with alerts from the alerts.py file in test_data
-    
-    Args: 
+
+    Args:
        session: db session
        variable: name of the varible from alerts.py we want
     """
@@ -49,13 +58,13 @@ def insert_alerts(session, variable):
 
 def insert_codes(session):
     """ Add the codes from the codes.py file in test_data
-    
-    Args: 
+
+    Args:
        session: db session
     """
     insert_codes_from_file(session, "demo_codes.csv")
 
-    
+
 def insert_codes_from_file(session, filename):
     """
     Import variables from codes csv-file.
@@ -78,16 +87,42 @@ def insert_codes_from_file(session, filename):
     session.commit()
 
 
-def insert_locations(session):
+def insert_locations(session, date=None):
     """ Add the locations from the locations.py file in test_data
-    
-    Args: 
+
+    Args:
        session: db session
     """
+
+    if date:
+        freezer = freeze_time(date)
+        freezer.start()
+        reload(locations)
+
     session.query(model.Locations).delete()
     session.bulk_save_objects(locations.locations)
     session.commit()
-    
+
+    if date:
+        freezer.stop()
+
+def insert_specific_locations(session, variable):
+    """ Add specific variable locations from the locations.py file in test_data
+
+    Args:
+       session: db session
+       variable: name of the varible from locations.py we want
+    """
+    if date:
+        freezer = freeze_time(date)
+        freezer.start()
+        reload(locations)
+    session.query(model.Locations).delete()
+    session.bulk_save_objects(getattr(locations, variable))
+    session.commit()
+
+    if date:
+        freezer.stop()
 
 
 def create_category(session, variables, category, names=None):
@@ -95,7 +130,7 @@ def create_category(session, variables, category, names=None):
     Make sure the aggregation_variables table has only the variables
     specified with the given cateogry
 
-    Args: 
+    Args:
        session: the db session
        variables: list of variable ids we want to add
        category: a single or list of categories to add to the variables
@@ -118,13 +153,14 @@ def create_category(session, variables, category, names=None):
         ))
     session.commit()
 
+
 def create_data(session, variables,
                 locations=(1,2,3,4), dates="year",
                 clinic_types="hospital", geolocations="0,0"):
     """
     Makes sure the data table has records with the variables in the variables list
 
-    Args: 
+    Args:
        session: db session
        variables: list of variable dicts to give the records
        locations: either one location tuple(country, region, dsitrict, clinic) to give all the records or a list of Locations
@@ -140,7 +176,7 @@ def create_data(session, variables,
         clinic_types = [clinic_types for i in range(N)]
     if not isinstance(geolocations, list):
         geolocations = [geolocations for i in range(N)]
-        
+
     if dates == "year":
         year = datetime(datetime.now().year, 1, 1)
         days = (datetime.now() - year).days
@@ -151,7 +187,7 @@ def create_data(session, variables,
 
     if len(locations) != N or len(dates) != N or len(clinic_types) != N or len(geolocations) != N:
         raise IndexError("Variables, locations, clinic_types, geolocations and dates need to have the same length")
-    
+
     for i in range(N):
         session.add(model.Data(
             uuid=uuid.uuid4(),
@@ -166,10 +202,11 @@ def create_data(session, variables,
         ))
     session.commit()
 
+
 def read_csv(filename):
     """
     Reads csvfile from the test data and returns list of rows
-    
+
     Args:
         file_path: path of file to read (relative to the test_data folder)
 
@@ -185,11 +222,12 @@ def read_csv(filename):
             rows.append(row)
     return rows
 
+
 def field_to_list(row, key):
     """
     Transforms key in row to a list. We split on semicolons if they exist in the string,
     otherwise we use commas.
-    
+
     Args:
         row: row of data
         key: key for the field we want

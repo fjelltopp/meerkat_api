@@ -148,15 +148,22 @@ vaccination_report = [
     Data(**{
         'uuid': 'uuid:2d14ec68-c5b3-47d5-90db-eee510ee9378', 'clinic_type': 'Hospital', 'district': 6,
         "variables":{"vac_ses":1,"vac_pw_vat1":1,"vac_pw_vat2":1,"vac_pw_vat3":1,"vac_pw_vat4":1,"vac_pw_vat5":1,"vac_i0_bcg":1,"vac_i0_vpi":1,"vac_i12_bcg":1,"vac_i0_dtc1":1,"vac_i0_dtc2":1,"vac_i0_dtc3":1,"vac_i0_pcv1":1,"vac_i0_pcv2":1,"vac_i0_pcv3":1,"vac_i12_vpi":1,"vac_i0_vpo0":1,"vac_i0_vpo1":1,"vac_i0_vpo2":1,"vac_i0_vpo3":1,"vac_notpw_vat1":1,"vac_notpw_vat2":1,"vac_notpw_vat3":1,"vac_notpw_vat4":1,"vac_notpw_vat5":1,"vac_i12_dtc1":1,"vac_i12_dtc2":1,"vac_i12_dtc3":1,"vac_i12_pcv1":1,"vac_i12_pcv2":1,"vac_i12_pcv3":1,"vac_i0_rota1":1,"vac_i0_rota2":1,"vac_i0_rota3":1,"vac_i12_vpo0":1,"vac_i12_vpo1":1,"vac_i12_vpo2":1,"vac_i12_vpo3":1,"vac_i12_rota1":1,"vac_i12_rota2":1,"vac_i12_rota3":1
-        },'clinic': 11, 'geolocation': '-0.1,0.4', 'id': 2, 'region': 2, 'country': 1, 'date': datetime.datetime(2016, 4, 30, 23, 54, 16, 49059)}),
+        },'clinic': 11, 'geolocation': '-0.1,0.4', 'id': 2, 'region': 2, 'country': 1, 'date': datetime.datetime(2016, 4, 30, 23, 54, 16, 49059)})
 
 ]
+
+afro_report = [
+    Data(**{"id":1,"uuid":"uuid:00d2dd82-115d-4a22-b858-e520c45b8aa2","type":"case","date":"2016-10-24T00:00:00","country":1,"region":2,"district":4,"clinic":7,"clinic_type":"SARI","links":{},"tags":[],"variables":{"age_2": 1, "agv_1": 6.0, "cmd_1": 1, "gen_1": 1, "icb_1": 1, "icc_1": 1, "nat_1": 1, "prc_1": 1, "tot_1": 1, "vis_1": 1, "age_14": 1, "icd_69": 1, "mls_56": 1, "mls_60": 1, "mls_62": 1, "reg_1":1, "reg_2":13.0, "reg_4":3.0, "reg_5":1},"geolocation":"-22.7545,47.6139"}),
+    Data(**{"id":2,"uuid":"uuid:02d2dd82-115d-4a22-b858-e520c45b8aa2","type":"case","date":"2016-10-24T00:00:00","country":1,"region":2,"district":4,"clinic":8,"clinic_type":"SARI","links":{},"tags":[],"variables":{"age_2": 1, "agv_1": 6.0, "cmd_1": 1, "gen_1": 1, "icb_1": 1, "icc_1": 1, "nat_1": 1, "prc_1": 1, "tot_1": 1, "vis_1": 1, "age_14": 1, "icd_69": 1, "mls_56": 1, "mls_60": 1, "mls_62": 1, "reg_1":1, "reg_2":13.0, "reg_4":3.0, "reg_5":1},"geolocation":"-22.7545,47.6139"}),
+    Data(**{"id":3,"uuid":"uuid:00d2dd82-114d-4a22-b858-e520c45b8aa2","type":"case","date":"2016-10-24T00:00:00","country":1,"region":2,"district":5,"clinic":9,"clinic_type":"SARI","links":{},"tags":[],"variables":{"age_2": 1, "agv_1": 6.0, "cmd_1": 1, "gen_1": 1, "icb_1": 1, "icc_1": 1, "nat_1": 1, "prc_1": 1, "tot_1": 1, "vis_1": 1, "age_14": 1, "icd_69": 1, "mls_56": 1, "mls_60": 1, "mls_62": 1, "reg_1":1, "reg_2":13.0, "reg_4":3.0, "reg_5":1},"geolocation":"-22.7545,47.6139"}),
+    Data(**{"id":4,"uuid":"uuid:50d2dd82-115d-4a22-b858-e520c45b8aa2","type":"case","date":"2016-10-24T00:00:00","country":1,"region":3,"district":6,"clinic":10,"clinic_type":"SARI","links":{},"tags":[],"variables":{"age_2": 1, "agv_1": 6.0, "cmd_1": 1, "gen_1": 1, "icb_1": 1, "icc_1": 1, "nat_1": 1, "prc_1": 1, "tot_1": 1, "vis_1": 1, "age_14": 1, "icd_69": 1, "mls_56": 1, "mls_60": 1, "mls_62": 1, "reg_1":1, "reg_2":13.0, "reg_4":3.0, "reg_5":1},"geolocation":"-22.7545,47.6139"})
+    ]
+
 
 date = datetime.date.today()
 start = datetime.datetime(date.year, 1, 1)
 
 offset = date.weekday() - start.weekday()
-
 if offset < 0:
     offset = 7 + offset
 completeness = [

@@ -6,10 +6,14 @@ Unit tests for the location resource in Meerkat API
 """
 import json
 import unittest
+from freezegun import freeze_time
+    
 import meerkat_api
 from meerkat_api.test import db_util
 from meerkat_api.resources.map import MapVariable
 from . import settings
+
+
 
 class MeerkatAPIMapTestCase(unittest.TestCase):
 
@@ -20,7 +24,7 @@ class MeerkatAPIMapTestCase(unittest.TestCase):
         self.app = meerkat_api.app.test_client()
         db_util.insert_codes(meerkat_api.db.session)
         db_util.insert_locations(meerkat_api.db.session)
-        db_util.insert_cases(meerkat_api.db.session, "map_test")
+        db_util.insert_cases(meerkat_api.db.session, "map_test", date="2016-07-02")
 
         
     def tearDown(self):
@@ -46,7 +50,7 @@ class MeerkatAPIMapTestCase(unittest.TestCase):
         self.assertEqual(len(data["features"]), 2)
 
 
-        
+    @freeze_time("2016-07-02")
     def test_map(self):
         """ Test map variable """
         rv = self.app.get('/map/tot_1', headers=settings.header)
