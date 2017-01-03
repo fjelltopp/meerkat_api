@@ -102,6 +102,9 @@ class Completeness(Resource):
 
         begining = epi_week_start(today.year, start_week)
 
+        if end_d - begining < timedelta(days=7):
+            begining = begining.replace(year=begining.year -1)
+        
         # We drop duplicates so each clinic can only have one record per day
         data = data.drop_duplicates(
             subset=["region", "district", "clinic", "date", variable])
