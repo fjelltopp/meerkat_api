@@ -145,7 +145,6 @@ class Completeness(Resource):
             nr = NonReporting()
             non_reporting_clinics = nr.get(variable, location)["clinics"]
             completeness = completeness.drop(non_reporting_clinics, level=1)
-            completeness = completeness.drop(zero_clinics, level=1)
             completeness.reindex()
 
             # We only want to count a maximum of number per week per week
