@@ -102,13 +102,11 @@ class Completeness(Resource):
 
 
         begining = epi_week_start(today.year, start_week)
-        print(data)
         ew = EpiWeek()
         week = ew.get(end_d.isoformat())
         if ew.get(end_d.isoformat())["epi_week"] == 53:
             begining = begining.replace(year=begining.year -1)
             
-        print(begining, end_d)
         # We drop duplicates so each clinic can only have one record per day
         data = data.drop_duplicates(
             subset=["region", "district", "clinic", "date", variable])
@@ -143,6 +141,10 @@ class Completeness(Resource):
 
             clinic_sums = completeness.groupby(level=1).sum()
             zero_clinics = clinic_sums[clinic_sums == 0].index
+
+            nr = NonReporting()
+            non_reporting_clinics = nr.get(variable, location)["clinics"]
+            completeness = completeness.drop(non_reporting_clinics, level=1)
             completeness = completeness.drop(zero_clinics, level=1)
             completeness.reindex()
 
