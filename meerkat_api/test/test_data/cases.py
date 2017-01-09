@@ -156,7 +156,6 @@ date = datetime.date.today()
 start = datetime.datetime(date.year, 1, 1)
 
 offset = date.weekday() - start.weekday()
-
 if offset < 0:
     offset = 7 + offset
 completeness = [

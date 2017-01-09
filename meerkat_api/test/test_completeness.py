@@ -11,26 +11,28 @@ from sqlalchemy import extract
 import pandas as pd
 from . import settings
 import meerkat_api
+from freezegun import freeze_time
+
 from meerkat_api.test import db_util
 import meerkat_abacus.config as config
 import meerkat_abacus.model as model
 
 class MeerkatAPIDataTestCase(unittest.TestCase):
-    
     def setUp(self):
         """Setup for testing"""
         meerkat_api.app.config['TESTING'] = True
         meerkat_api.app.config['API_KEY'] = ""
         self.app = meerkat_api.app.test_client()
         db_util.insert_codes(meerkat_api.db.session)
-        db_util.insert_locations(meerkat_api.db.session)
-        db_util.insert_cases(meerkat_api.db.session, "completeness")
+        db_util.insert_locations(meerkat_api.db.session, date="2016-07-02")
+
 
     def tearDown(self):
         pass
-    
+    @freeze_time("2016-07-02")
     def test_non_reporting(self):
         """Check non_reporting"""
+        db_util.insert_cases(meerkat_api.db.session, "completeness", "2016-07-02")
         rv = self.app.get('/non_reporting/reg_1/1', headers=settings.header)
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(rv.status_code, 200)
@@ -53,27 +55,26 @@ class MeerkatAPIDataTestCase(unittest.TestCase):
         self.assertEqual(sorted(data["clinics"]), [11])
 
 
+    @freeze_time("2016-07-02")
     def test_completness(self):
         """Test completeness"""
+        db_util.insert_cases(meerkat_api.db.session, "completeness", "2016-07-02")
         rv = self.app.get('completeness/reg_1/1/5', headers=settings.header)
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))
+        print(data)
         self.assertEqual( 
             sorted(data.keys()),
             ["clinic_score", "clinic_yearly_score", "dates_not_reported", "score", "timeline", "yearly_score"]
         )
         self.assertEqual(data["score"]["1"], 4 / 10 * 100)
         self.assertAlmostEqual(data["score"]["2"], 4 / 10 *100)
-
         self.assertEqual(data["clinic_score"]["7"], 60)
         self.assertEqual(data["clinic_score"]["8"], 20)
         today = date.today()
         today = datetime(today.year, today.month, today.day)
-        freq = "W-MON"
-        if today.year == 2016:
-            epi_year_weekday = 4
-        elif today.year == 2017:
-            epi_year_weekday = 6
+        freq = "W-FRI"
+        epi_year_weekday = 4
         start = datetime(today.year, 1, 1)
         
         offset = today.weekday() - epi_year_weekday
@@ -133,7 +134,6 @@ class MeerkatAPIDataTestCase(unittest.TestCase):
                           headers=settings.header)
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))
-        print(data)
         for d in dates_to_check.to_pydatetime():
             if d.weekday() not in [4, 5] and d not in record_dates:
                 self.assertIn(d.isoformat(), data["dates_not_reported"])

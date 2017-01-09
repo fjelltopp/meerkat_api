@@ -4,7 +4,9 @@ Utility functions for setting up the DB for Meerkat API tests
 
 """
 from datetime import datetime, timedelta
+from importlib import reload
 import uuid
+from freezegun import freeze_time
 import random, csv, os, logging
 
 from meerkat_api.test.test_data import  locations, cases
@@ -12,18 +14,23 @@ from meerkat_api.test.test_data import  locations, cases
 from meerkat_abacus import model
 
 
-def insert_cases(session, variable):
+def insert_cases(session, variable, date=None):
     """ Add a variable with cases from the cases.py file in test_data
     
     Args: 
        session: db session
        variable: name of the varible from cases.py we want
     """
+    if date:
+        freezer = freeze_time(date)
+        freezer.start()
+        reload(cases)
     session.query(model.Data).delete()
     session.query(model.DisregardedData).delete()
     session.bulk_save_objects(getattr(cases, variable))
     session.commit()
-
+    if date:
+        freezer.stop()
 def insert_links(session, variable):
     """ Add a variable with links from the links.py file in test_data
     
@@ -78,16 +85,23 @@ def insert_codes_from_file(session, filename):
     session.commit()
 
 
-def insert_locations(session):
+def insert_locations(session, date=None):
     """ Add the locations from the locations.py file in test_data
     
     Args: 
        session: db session
     """
+
+    if date:
+        freezer = freeze_time(date)
+        freezer.start()
+        reload(locations)
+
     session.query(model.Locations).delete()
     session.bulk_save_objects(locations.locations)
     session.commit()
-    
+    if date:
+        freezer.stop()
 
 
 def create_category(session, variables, category, names=None):

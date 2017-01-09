@@ -212,7 +212,7 @@ class MeerkatAPIReportsUtilityTestCase(unittest.TestCase):
         ]
         dates = [datetime(2016, 1, 1), datetime(2016, 2, 2)]
         db_util.create_data(self.db.session, variables, dates=dates)
-        start_date = datetime(datetime.now().year, 1, 1)
+        start_date = datetime(2016, 1, 1)
         end_date = datetime.now()
         results = reports.get_latest_category("population", 4, start_date, end_date)
         self.assertEqual(results["<20"]["male"], 15)
