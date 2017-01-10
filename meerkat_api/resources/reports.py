@@ -3107,7 +3107,7 @@ class AFROBulletin(Resource):
                     })
                     #  Number of clinics that reported
                     ret["data"]["table_timeliness_completeness"][str(district)].update({
-                        "clinics_reported": tot_clinics.get(district)["total"] - len(NonReporting().get("reg_1", district, num_weeks=1))
+                        "clinics_reported": tot_clinics.get(district)["total"] - len(NonReporting().get("reg_1", district))
                     })
 
                     #  District completeness
