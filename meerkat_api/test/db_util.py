@@ -29,10 +29,8 @@ def insert_cases(session, variable, date=None):
     session.query(model.DisregardedData).delete()
     session.bulk_save_objects(getattr(cases, variable))
     session.commit()
-
     if date:
         freezer.stop()
-
 def insert_links(session, variable):
     """ Add a variable with links from the links.py file in test_data
 
