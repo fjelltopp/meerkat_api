@@ -32,6 +32,7 @@ def insert_cases(session, variable, date=None):
 
     if date:
         freezer.stop()
+
 def insert_links(session, variable):
     """ Add a variable with links from the links.py file in test_data
 
@@ -106,7 +107,7 @@ def insert_locations(session, date=None):
     if date:
         freezer.stop()
 
-def insert_specific_locations(session, variable):
+def insert_specific_locations(session, variable, date=None):
     """ Add specific variable locations from the locations.py file in test_data
 
     Args:
