@@ -57,9 +57,10 @@ class Completeness(Resource):
     decorators = [authenticate]
 
     def get(self, variable, location, number_per_week, exclude=None,
-            weekend=None, start_week=1):
-        today = datetime.now()
-        epi_year_weekday = epi_year_start(today.year).weekday()
+            weekend=None, start_week=1, end_date=None):
+        if not end_date:
+            end_date = datetime.now()
+        epi_year_weekday = epi_year_start(end_date.year).weekday()
         freq = ["W-MON", "W-TUE", "W-WED", "W-THU", "W-FRI", "W-SAT",
                 "W-SUN"][epi_year_weekday]
 
@@ -92,16 +93,16 @@ class Completeness(Resource):
         if len(data) == 0:
             return {}
 
-        # If today is the start of an epi week we do not want to include the current epi week
+        # If end_date is the start of an epi week we do not want to include the current epi week
         # We only calculate completeness for whole epi-weeks so we want to set end_d to the
         # the end of the previous epi_week.
-        offset = today.weekday() - epi_year_weekday
+        offset = end_date.weekday() - epi_year_weekday
         if offset < 0:
             offset = 7 + offset
-        end_d = today - timedelta(days=offset + 1)
+        end_d = end_date - timedelta(days=offset + 1)
 
 
-        begining = epi_week_start(today.year, start_week)
+        begining = epi_week_start(end_date.year, start_week)
         ew = EpiWeek()
         week = ew.get(end_d.isoformat())
         if ew.get(end_d.isoformat())["epi_week"] == 53:
