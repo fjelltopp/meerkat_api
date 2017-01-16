@@ -2561,7 +2561,7 @@ class AFROBulletin(Resource):
         # Initialise some stuff.
         start_date, end_date = fix_dates(start_date, end_date)
         end_date_limit = end_date + timedelta(days=1)
-        first_day_of_year = datetime(year=datetime.now().year,
+        first_day_of_year = datetime(year=end_date.year,
                                      month=1, day=1)
         ret = {}
 
@@ -2580,6 +2580,7 @@ class AFROBulletin(Resource):
                        "project_epoch": datetime(2015, 5, 20).isoformat(),
                        "start_date": start_date.isoformat()
         }
+        print(epi_week)
         locs = get_locations(db.session)
         if int(location) not in locs:
             return None
@@ -2612,7 +2613,7 @@ class AFROBulletin(Resource):
         ret["data"]["weekly_highlights"]["clinic_num"] = tot_clinics.get(location)["total"]
 
         comp = json.loads(Completeness().get('reg_1',
-                                             location, 4).data.decode('UTF-8'))
+                                             location, 4, end_date=end_date + timedelta(days=2)).data.decode('UTF-8'))
         # Get completeness figures, assuming 4 registers to be submitted a week.
         try:
             timeline = comp["timeline"][str(location)]['values']
@@ -2724,9 +2725,9 @@ class AFROBulletin(Resource):
         for reg in regions:
             try: # If data is completely missing there is no iformation for districts in the region
                 comp_reg = json.loads(Completeness().get('reg_1',
-                                                           reg, 4).data.decode('UTF-8'))
+                                                           reg, 4, end_date=end_date + timedelta(days=2)).data.decode('UTF-8'))
                 time_reg = json.loads(Completeness().get('reg_5',
-                                                         reg, 4).data.decode('UTF-8'))
+                                                         reg, 4, end_date=end_date + timedelta(days=2)).data.decode('UTF-8'))
                 for loc_s in comp_reg["yearly_score"].keys():
                     try:
                         ret["data"]["figure_completeness"].append({
@@ -2796,11 +2797,11 @@ class AFROBulletin(Resource):
         aggregate_year = AggregateYear()
 
         simple = aggregate_year.get(variable_id="mls_12",
-                                    location_id=location)['weeks']
+                                    location_id=location,year=end_date.year)['weeks']
         severe = aggregate_year.get(variable_id="mls_24",
-                                    location_id=location)['weeks']
+                                    location_id=location,year=end_date.year)['weeks']
         rdt = aggregate_year.get(variable_id="mls_3",
-                                 location_id=location)['weeks']
+                                 location_id=location,year=end_date.year)['weeks']
         all_weeks = set(simple.keys()) | set(severe.keys()) | set(rdt.keys())
 
         def calc_positivity(key):
@@ -2818,10 +2819,11 @@ class AFROBulletin(Resource):
 
         # FIGURE 5: TREND OF SUSPECTED MEASLES CASES BY AGE GROUP
         qv = QueryVariable()
-        measles = qv.get(variable="cmd_15", group_by="age")
+        measles = qv.get(variable="cmd_15", group_by="age", only_loc=location,
+                         start_date=first_day_of_year.isoformat(), end_date=end_date.isoformat())
 
         measles_under_5yo = aggregate_year.get(variable_id="cmd_15",
-                                               location_id=location)
+                                               location_id=location, year=end_date.year)
 
         ret["data"].update({"figure_measles": {
             "measles_under_5yo": measles_under_5yo,
@@ -2846,7 +2848,7 @@ class AFROBulletin(Resource):
         # FIGURE 6: TREND OF REPORTED SEVERE MALNUTRITION CASES IN UNDER FIVES
         # Epi 8 tracks severe malnutrition in under 5s. epi_8
         malnutrition = aggregate_year.get(variable_id="epi_8",
-                                          location_id=location)
+                                          location_id=location, year=end_date.year)
         ret["data"].update({"figure_malnutrition": {
             "malnutrition": malnutrition,
         }})
