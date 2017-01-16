@@ -111,7 +111,7 @@ class QueryVariable(Resource):
     decorators = [authenticate]
 
     def get(self, variable, group_by, start_date=None,
-            end_date=None, only_loc=None, use_ids=None):
+            end_date=None, only_loc=None, use_ids=None, date_variable=None):
         variable = str(variable)
         start_date, end_date = sort_date(start_date, end_date)
         year = start_date.year
@@ -120,7 +120,13 @@ class QueryVariable(Resource):
         else:
             use_ids = False
 
-        date_conditions = [Data.date >= start_date, Data.date < end_date]
+        if date_variable:
+            date_conditions = [func.to_date(
+                Data.variables[date_variable].astext, "YYYY-MM-DDTHH-MI-SS") >= start_date,
+            func.to_date(
+                Data.variables[date_variable].astext, "YYYY-MM-DDTHH-MI-SS") < end_date]
+        else:
+            date_conditions = [Data.date >= start_date, Data.date < end_date]
 
         if "location" in variable:
             location_id = variable.split(":")[1]
@@ -136,12 +142,20 @@ class QueryVariable(Resource):
                     Data.country, Data.region, Data.district, Data.clinic))]
         epi_week_start = epi_year_start(year)
         # Determine which columns we want to extract from the Data table
-        columns_to_extract = [func.count(Data.id).label('value'),
-                              func.floor(
-                                  extract('days', Data.date -
-                                          epi_week_start) / 7 + 1
-                              ).label("week")]
+        columns_to_extract = [func.count(Data.id).label('value')]
 
+        if date_variable:
+            columns_to_extract.append(func.floor(
+                extract('days', func.to_date(Data.variables[date_variable].astext, "YYYY-MM-DDTHH-MI-SS") -
+                epi_week_start) / 7 + 1
+            ).label("week"))
+        else:
+            columns_to_extract.append(
+                func.floor(
+                    extract('days', Data.date -
+                            epi_week_start) / 7 + 1
+                ).label("week")
+            )
         # We want to add the columns to extract based on the group_by value
         # in addition we create a names dict that translates ids to names
         
