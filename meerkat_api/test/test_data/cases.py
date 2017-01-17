@@ -152,11 +152,243 @@ vaccination_report = [
 
 ]
 
+
+#Freeze date of test 24th Dec 2016
+#id 1,
+#comp_week - completeness in the recent week, 25, only clinic A reported every day.
+#clinic_num - 4 health facilities
+#!!!comp_year = approx 1.9. In last 51 weeks in total we had completeness 100& only one week.
+#dea_0 - reported deaths, it is 7 this week in clinic A.
+# dea_0 ale_1 - deaths from community (5)
+# cmd_21 - maternal, ale_1 maternal investigated
+# cmd_22 - neonatal, ale_1 investigated
+
 afro_report = [
-    Data(**{"id":1,"uuid":"uuid:00d2dd82-115d-4a22-b858-e520c45b8aa2","type":"case","date":"2016-10-24T00:00:00","country":1,"region":2,"district":4,"clinic":7,"clinic_type":"SARI","links":{},"tags":[],"variables":{"age_2": 1, "agv_1": 6.0, "cmd_1": 1, "gen_1": 1, "icb_1": 1, "icc_1": 1, "nat_1": 1, "prc_1": 1, "tot_1": 1, "vis_1": 1, "age_14": 1, "icd_69": 1, "mls_56": 1, "mls_60": 1, "mls_62": 1, "reg_1":1, "reg_2":13.0, "reg_4":3.0, "reg_5":1},"geolocation":"-22.7545,47.6139"}),
-    Data(**{"id":2,"uuid":"uuid:02d2dd82-115d-4a22-b858-e520c45b8aa2","type":"case","date":"2016-10-24T00:00:00","country":1,"region":2,"district":4,"clinic":8,"clinic_type":"SARI","links":{},"tags":[],"variables":{"age_2": 1, "agv_1": 6.0, "cmd_1": 1, "gen_1": 1, "icb_1": 1, "icc_1": 1, "nat_1": 1, "prc_1": 1, "tot_1": 1, "vis_1": 1, "age_14": 1, "icd_69": 1, "mls_56": 1, "mls_60": 1, "mls_62": 1, "reg_1":1, "reg_2":13.0, "reg_4":3.0, "reg_5":1},"geolocation":"-22.7545,47.6139"}),
-    Data(**{"id":3,"uuid":"uuid:00d2dd82-114d-4a22-b858-e520c45b8aa2","type":"case","date":"2016-10-24T00:00:00","country":1,"region":2,"district":5,"clinic":9,"clinic_type":"SARI","links":{},"tags":[],"variables":{"age_2": 1, "agv_1": 6.0, "cmd_1": 1, "gen_1": 1, "icb_1": 1, "icc_1": 1, "nat_1": 1, "prc_1": 1, "tot_1": 1, "vis_1": 1, "age_14": 1, "icd_69": 1, "mls_56": 1, "mls_60": 1, "mls_62": 1, "reg_1":1, "reg_2":13.0, "reg_4":3.0, "reg_5":1},"geolocation":"-22.7545,47.6139"}),
-    Data(**{"id":4,"uuid":"uuid:50d2dd82-115d-4a22-b858-e520c45b8aa2","type":"case","date":"2016-10-24T00:00:00","country":1,"region":3,"district":6,"clinic":10,"clinic_type":"SARI","links":{},"tags":[],"variables":{"age_2": 1, "agv_1": 6.0, "cmd_1": 1, "gen_1": 1, "icb_1": 1, "icc_1": 1, "nat_1": 1, "prc_1": 1, "tot_1": 1, "vis_1": 1, "age_14": 1, "icd_69": 1, "mls_56": 1, "mls_60": 1, "mls_62": 1, "reg_1":1, "reg_2":13.0, "reg_4":3.0, "reg_5":1},"geolocation":"-22.7545,47.6139"})
+    #completeness, Districts Blue, Red and Green
+    Data(**{"id":10,"uuid":"10","type":"case","date":"2016-12-20T00:00:00","country":1,"region":2,"district":4,"clinic":7,"clinic_type":"test","links":{},"tags":[],
+            "variables":{
+                "reg_1":1,
+                "reg_5":3
+            },"geolocation":"0,0"}),
+    Data(**{"id":11,"uuid":"11","type":"case","date":"2016-11-20T00:00:00","country":1,"region":2,"district":5,"clinic":9,"clinic_type":"test","links":{},"tags":[],
+            "variables":{
+                "reg_1":10,
+                "reg_5":10
+            },"geolocation":"0,0"}),
+    Data(**{"id":12,"uuid":"12","type":"case","date":"2016-12-20T00:00:00","country":1,"region":3,"district":6,"clinic":10,"clinic_type":"test","links":{},"tags":[],
+            "variables":{
+                "reg_1":10,
+                "reg_5":10
+            },"geolocation":"0,0"}),
+
+
+
+
+    #THIS WEEK
+    #Clinic A
+    #14 deaths (dea_0) in this week, half of them (ale_1) from community
+    #21 cases of severe malnutrition `cmd_24` in Region Major and 11 of moderate (`cmd_23`)
+    #120 cases of fever (mls_2) and 40 cases tested (mls_3)
+    #MALARIA data
+    #10 deaths from malaria (mls_36)
+    #30 positively tested cases of malaria (cmd_17), it is 30/40 of tested (mls_3)
+    #10 simple (mls_12) and 20 sever (mls_24), 15 (mls_48) treated with ACT 
+    Data(**{"id":1,"uuid":"1","type":"case","date":"2016-12-20T00:00:00","country":1,"region":2,"district":4,"clinic":7,"clinic_type":"test","links":{},"tags":[],
+            "variables":{
+                "mls_2":120,
+                "mls_3":40,
+                "mls_12":10,
+                "mls_24":20,
+                "mls_48":15,
+                "dea_0":7,
+                "cmd_23":11,
+                "cmd_24":21,
+                "mls_36":10,
+                "cmd_17":30
+            },"geolocation":"0,0"}),
+    Data(**{"id":2,"uuid":"2","type":"case","date":"2016-12-20T00:00:00","country":1,"region":2,"district":4,"clinic":7,"clinic_type":"test","links":{},"tags":[],
+            "variables":{
+                "dea_0":7,
+                "ale_1":1
+            },"geolocation":"0,0"}),
+    Data(**{"id":3,"uuid":"3","type":"case","date":"2016-10-24T00:00:00","country":1,"region":2,"district":4,"clinic":7,"clinic_type":"test","links":{},"tags":[],
+            "variables":{
+
+            },"geolocation":"0,0"}),
+    #Measles for WEEKLY HIGHLIGHTS
+    #100 cases suspected (cmd_15)
+    #ale_1 investigated (50)
+    #ale_2 confirmed
+    #age_1 10 among children <5
+    Data(**{"id":13,"uuid":"13","type":"case","date":"2016-12-21T00:00:00","country":1,"region":3,"district":6,"clinic":10,"clinic_type":"test","links":{},"tags":[],
+            "variables":{
+                "cmd_15":40
+            },"geolocation":"0,0"}),
+    Data(**{"id":14,"uuid":"14","type":"case","date":"2016-12-21T00:00:00","country":1,"region":3,"district":6,"clinic":10,"clinic_type":"test","links":{},"tags":[],
+            "variables":{
+                "cmd_15":10,
+                "age_1":1
+            },"geolocation":"0,0"}),
+    Data(**{"id":15,"uuid":"15","type":"case","date":"2016-12-21T00:00:00","country":1,"region":3,"district":6,"clinic":10,"clinic_type":"test","links":{},"tags":[],
+            "variables":{
+                "cmd_15":50,
+                "ale_1":1
+            },"geolocation":"0,0"}),
+    Data(**{"id":16,"uuid":"16","type":"case","date":"2016-12-21T00:00:00","country":1,"region":3,"district":6,"clinic":10,"clinic_type":"test","links":{},"tags":[],
+            "variables":{
+                "cmd_15":25,
+                "ale_2":1
+            },"geolocation":"0,0"}),
+    #Acute flaccid paralysis for WEEKLY HIGHLIGHTS
+    #99 cases suspected (cmd_10)
+    #ale_2 investigated (33) TODO: cofirm it is not ale_1
+    Data(**{"id":17,"uuid":"17","type":"case","date":"2016-12-21T00:00:00","country":1,"region":3,"district":6,"clinic":10,"clinic_type":"test","links":{},"tags":[],
+            "variables":{
+                "cmd_10":66,
+                "mor_11":33
+            },"geolocation":"0,0"}),
+    Data(**{"id":18,"uuid":"18","type":"case","date":"2016-12-21T00:00:00","country":1,"region":3,"district":6,"clinic":10,"clinic_type":"test","links":{},"tags":[],
+            "variables":{
+                "cmd_10":33,
+                "ale_2":1
+            },"geolocation":"0,0"}),
+    #Malnutrition for WEEKLY HIGHLIGHTS
+    #severe malnutrition `cmd_24` : 40, moderate `cmd_23`, 20, 40 from Major and 20 from minor
+    Data(**{"id":20,"uuid":"20","type":"case","date":"2016-12-21T00:00:00","country":1,"region":2,"district":4,"clinic":7,"clinic_type":"test","links":{},"tags":[],
+            "variables":{
+                "cmd_24":21,
+                "cmd_23":19,
+            },"geolocation":"0,0"}),
+    Data(**{"id":21,"uuid":"21","type":"case","date":"2016-12-21T00:00:00","country":1,"region":3,"district":6,"clinic":10,"clinic_type":"test","links":{},"tags":[],
+            "variables":{
+                "cmd_24":19,
+                "cmd_23":1,
+            },"geolocation":"0,0"}),
+    #All cases in clinc C,
+    # REPORTED only
+    #Diarrhoea.
+    #15 `cmd_1` acute and `mor_18` 10 deaths
+    #22 `cmd_4` bloody (dysentery)
+    #12 `cmd_2` watery (cholera)
+    #40 cases `cmd_25` ARTI (Acute respiratory tract infection)
+    #23 cases `cmd_18`influenza like ilness
+    #100 cases `cmd_27` of animal bites
+    #20 UNCOMFIRMED cases of Rabies `cmd_11`
+    #99 UNCOMFIRMED cases of Plague `cmd_7`
+    Data(**{"id":22,"uuid":"22","type":"case","date":"2016-12-22T00:00:00","country":1,"region":2,"district":5,"clinic":9,"clinic_type":"test","links":{},"tags":[],
+            "variables":{
+                "cmd_1":15,
+                "mor_18":10,
+                "cmd_4":22,
+                "cmd_2":12,
+                "cmd_25":40,
+                "cmd_18":23,
+                "cmd_27":100,
+                "cmd_11":20,
+                "cmd_7":99
+            },"geolocation":"0,0"}),
+    #clinic C cases INVESTIGATED `ale_1`
+    #76 investigated cases of Plague `cmd_7` with `ale_1`
+    Data(**{"id":23,"uuid":"23","type":"case","date":"2016-12-23T00:00:00","country":1,"region":2,"district":5,"clinic":9,"clinic_type":"test","links":{},"tags":[],
+            "variables":{
+                "cmd_7":76,
+                "ale_1":1,
+            },"geolocation":"0,0"}),
+
+    #clinic C cases CONFIRMED
+    #Confirmed Rabies
+    #15 confirmed cases of Rabies `cmd_11` with `ale_2`
+    #16 confirmed cases of Plague `cmd_7` with `ale_2`
+    Data(**{"id":24,"uuid":"24","type":"case","date":"2016-12-21T00:00:00","country":1,"region":2,"district":5,"clinic":9,"clinic_type":"test","links":{},"tags":[],
+            "variables":{
+                "cmd_11":15,
+                "cmd_7":16,
+                "ale_2":1,
+            },"geolocation":"0,0"}),
+
+    #Clinic B, District Blue, Region Major.
+    #10 Maternal deaths and 10 neonatal NOT investigated
+    Data(**{"id":6,"uuid":"6","type":"case","date":"2016-12-24T00:00:00","country":1,"region":2,"district":4,"clinic":8,"clinic_type":"test","links":{},"tags":[],
+            "variables":{
+                "cmd_21":10,
+                "cmd_22":10,
+            },"geolocation":"0,0"}),
+    #5 Maternal deaths and 5 neonatal *investigated*
+    Data(**{"id":7,"uuid":"7","type":"case","date":"2016-12-24T00:00:00","country":1,"region":2,"district":4,"clinic":8,"clinic_type":"test","links":{},"tags":[],
+            "variables":{
+                "cmd_21":5,
+                "cmd_22":5,
+                "ale_1":1
+            },"geolocation":"0,0"}),
+
+
+    #
+    #
+    # PREVIOUS WEEKS
+    # SHOULDN'T be in Weekly Highlights
+    #
+    #
+
+
+
+    #Clinic D, District Green, Region Minor.
+    #17 Maternal deaths and 17 neonatal NOT investigated
+    Data(**{"id":31,"uuid":"31","type":"case","date":"2016-10-24T00:00:00","country":1,"region":2,"district":4,"clinic":8,"clinic_type":"test","links":{},"tags":[],
+            "variables":{
+                "cmd_21":17,
+                "cmd_22":17,
+            },"geolocation":"0,0"}),
+
+    #Malaria map takes cases of `epi_1` and `epi_2`
+    #malaria map by type `mls_12`, `mls_24`, `mls_3`
+    #clinic C in region major of population 750
+    Data(**{"id":32,"uuid":"32","type":"case","date":"2016-11-20T00:00:00","country":1,"region":2,"district":5,"clinic":9,"clinic_type":"test","links":{},"tags":[],
+            "variables":{
+                "epi_1":7,
+                "epi_2":25,
+                "mls_12":14,
+                "mls_24":22,
+                "mls_3":100
+            },"geolocation":"0,0"}),
+    #clinic D in region minor of population 250
+    Data(**{"id":33,"uuid":"33","type":"case","date":"2016-11-24T00:00:00","country":1,"region":3,"district":6,"clinic":10,"clinic_type":"test","links":{},"tags":[],
+            "variables":{
+                "epi_1":25,
+                "epi_2":75,
+                "mls_12":4,
+                "mls_24":2,
+                "mls_3":10
+            },"geolocation":"0,0"}),
+
+    #Measles over 5 yo
+    # 13 cases
+    Data(**{"id":34,"uuid":"34","type":"case","date":"2016-11-24T00:00:00","country":1,"region":3,"district":6,"clinic":10,"clinic_type":"test","links":{},"tags":[],
+            "variables":{
+                "cmd_15":13,
+                "mor_13":5,
+                "age_3":1
+            },"geolocation":"0,0"}),
+    Data(**{"id":35,"uuid":"35","type":"case","date":"2016-11-11T00:00:00","country":1,"region":3,"district":6,"clinic":10,"clinic_type":"test","links":{},"tags":[],
+            "variables":{
+                "cmd_15":7,
+                "age_5":5
+            },"geolocation":"0,0"}),
+
+    #Severe malnutrition under 5yo
+    #It is from epi code 8
+    # 5 cases in week in September of malnutrition in clinicD
+    Data(**{"id":36,"uuid":"36","type":"case","date":"2016-09-11T00:00:00","country":1,"region":3,"district":6,"clinic":10,"clinic_type":"test","links":{},"tags":[],
+            "variables":{
+                "epi_8":5
+            },"geolocation":"0,0"}),
+
+    #Table priority diseases cumulative information
+    #Acute diarrhoea case from previous week (july) to alter cumulative
+    Data(**{"id":37,"uuid":"37","type":"case","date":"2016-07-22T00:00:00","country":1,"region":2,"district":5,"clinic":9,"clinic_type":"test","links":{},"tags":[],
+            "variables":{
+                "cmd_1":80,
+                "mor_18":70,
+            },"geolocation":"0,0"}),
     ]
 
 
