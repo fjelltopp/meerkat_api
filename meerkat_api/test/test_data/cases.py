@@ -200,21 +200,48 @@ afro_report = [
     Data(**{"id":10,"uuid":"10","type":"case","date":"2016-12-20T00:00:00","country":1,"region":2,"district":4,"clinic":7,"clinic_type":"test","links":{},"tags":[],
             "variables":{
                 "reg_1":1,
-                "reg_5":3
+                "reg_5":1
             },"geolocation":"0,0"}),
+    Data(**{"id":100,"uuid":"100","type":"case","date":"2016-12-20T00:00:00","country":1,"region":2,"district":4,"clinic":8,"clinic_type":"test","links":{},"tags":[],
+            "variables":{
+                "reg_1":1,
+                "reg_5":1
+            },"geolocation":"0,0"}),
+    Data(**{"id":101,"uuid":"101","type":"case","date":"2016-12-19T00:00:00","country":1,"region":2,"district":5,"clinic":9,"clinic_type":"test","links":{},"tags":[],
+            "variables":{
+                "reg_1":2,
+                "reg_5":2
+            },"geolocation":"0,0"}),
+    # Data(**{"id":102,"uuid":"102","type":"case","date":"2016-12-21T00:00:00","country":1,"region":2,"district":5,"clinic":9,"clinic_type":"test","links":{},"tags":[],
+    #         "variables":{
+    #             "reg_1":5,
+    #             "reg_5":5
+    #         },"geolocation":"0,0"}),
     Data(**{"id":11,"uuid":"11","type":"case","date":"2016-11-20T00:00:00","country":1,"region":2,"district":5,"clinic":9,"clinic_type":"test","links":{},"tags":[],
             "variables":{
-                "reg_1":10,
-                "reg_5":10
+                "reg_1":1,
+                "reg_5":1
             },"geolocation":"0,0"}),
     Data(**{"id":12,"uuid":"12","type":"case","date":"2016-12-20T00:00:00","country":1,"region":3,"district":6,"clinic":10,"clinic_type":"test","links":{},"tags":[],
             "variables":{
-                "reg_1":10,
-                "reg_5":10
+                "reg_1":4,
+                "reg_5":4
             },"geolocation":"0,0"}),
 
+    #Completeness in the week after date of the report. Shouldn't change the weekly completeness
+    #4 daily registers means that completeness in this week is 100
+    Data(**{"id":112,"uuid":"112","type":"case","date":"2016-12-29T00:00:00","country":1,"region":3,"district":6,"clinic":10,"clinic_type":"test","links":{},"tags":[],
+            "variables":{
+                "reg_1":4,
+                "reg_5":4
+            },"geolocation":"0,0"}),
 
-
+    #50 deaths and 50 cases of sever malnutrition `dea_0` and `cmd_24` in a week after the report. Shouldn't appear in weekly highlights
+    Data(**{"id":113,"uuid":"113","type":"case","date":"2016-12-29T00:00:00","country":1,"region":2,"district":4,"clinic":7,"clinic_type":"test","links":{},"tags":[],
+            "variables":{
+                "dea_0":50,
+                "cmd_24":50,
+            },"geolocation":"0,0"}),
 
     #THIS WEEK
     #Clinic A
@@ -233,8 +260,6 @@ afro_report = [
                 "mls_24":20,
                 "mls_48":15,
                 "dea_0":7,
-                "cmd_23":11,
-                "cmd_24":21,
                 "mls_36":10,
                 "cmd_17":30
             },"geolocation":"0,0"}),
@@ -248,9 +273,10 @@ afro_report = [
 
             },"geolocation":"0,0"}),
     #Measles for WEEKLY HIGHLIGHTS
-    #100 cases suspected (cmd_15)
+    #125 cases in total (cmd_15)
+    #40 suspected but not tested
     #ale_1 investigated (50)
-    #ale_2 confirmed
+    #ale_2 confirmed (25)
     #age_1 10 among children <5
     Data(**{"id":13,"uuid":"13","type":"case","date":"2016-12-21T00:00:00","country":1,"region":3,"district":6,"clinic":10,"clinic_type":"test","links":{},"tags":[],
             "variables":{
@@ -286,11 +312,13 @@ afro_report = [
             },"geolocation":"0,0"}),
     #Malnutrition for WEEKLY HIGHLIGHTS
     #severe malnutrition `cmd_24` : 40, moderate `cmd_23`, 20, 40 from Major and 20 from minor
+    #major
     Data(**{"id":20,"uuid":"20","type":"case","date":"2016-12-21T00:00:00","country":1,"region":2,"district":4,"clinic":7,"clinic_type":"test","links":{},"tags":[],
             "variables":{
                 "cmd_24":21,
                 "cmd_23":19,
             },"geolocation":"0,0"}),
+    #minor
     Data(**{"id":21,"uuid":"21","type":"case","date":"2016-12-21T00:00:00","country":1,"region":3,"district":6,"clinic":10,"clinic_type":"test","links":{},"tags":[],
             "variables":{
                 "cmd_24":19,
@@ -339,17 +367,24 @@ afro_report = [
             },"geolocation":"0,0"}),
 
     #Clinic B, District Blue, Region Major.
-    #10 Maternal deaths and 10 neonatal NOT investigated
+    #14 Maternal deaths and 10 neonatal NOT investigated
     Data(**{"id":6,"uuid":"6","type":"case","date":"2016-12-24T00:00:00","country":1,"region":2,"district":4,"clinic":8,"clinic_type":"test","links":{},"tags":[],
             "variables":{
-                "cmd_21":10,
+                "cmd_21":14,
                 "cmd_22":10,
             },"geolocation":"0,0"}),
-    #5 Maternal deaths and 5 neonatal *investigated*
-    Data(**{"id":7,"uuid":"7","type":"case","date":"2016-12-24T00:00:00","country":1,"region":2,"district":4,"clinic":8,"clinic_type":"test","links":{},"tags":[],
+    #5 Maternal deaths and 2 neonatal *investigated*
+    Data(**{"id":7,"uuid":"7","type":"case","date":"2016-12-24T00:00:00","country":1,"region":2,"district":5,"clinic":9,"clinic_type":"test","links":{},"tags":[],
             "variables":{
                 "cmd_21":5,
-                "cmd_22":5,
+                "cmd_22":2,
+                "ale_1":1
+            },"geolocation":"0,0"}),
+    # # 1 maternal death and 1 neonatal investiaged in District Green
+    Data(**{"id":70,"uuid":"70","type":"case","date":"2016-12-24T00:00:00","country":1,"region":3,"district":6,"clinic":10,"clinic_type":"test","links":{},"tags":[],
+            "variables":{
+                "cmd_21":1,
+                "cmd_22":1,
                 "ale_1":1
             },"geolocation":"0,0"}),
 
@@ -363,7 +398,7 @@ afro_report = [
 
 
 
-    #Clinic D, District Green, Region Minor.
+    #Clinic B, District Blue, Region Major.
     #17 Maternal deaths and 17 neonatal NOT investigated
     Data(**{"id":31,"uuid":"31","type":"case","date":"2016-10-24T00:00:00","country":1,"region":2,"district":4,"clinic":8,"clinic_type":"test","links":{},"tags":[],
             "variables":{

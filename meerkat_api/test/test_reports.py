@@ -1563,12 +1563,11 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
 
 
 
-    @freeze_time("2016-12-24")
+    @freeze_time("2016-12-30")
     def test_afro(self):
         """ Test AFRO report """
         print("afro test began")
         afro_expected = meerkat_api.test.test_data.expected_output.afro_expected
-        print(afro_expected)
         print("freezing time")
 
         # Load the test data.
@@ -1582,8 +1581,8 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
             '/reports/afro/{}/{}/{}'
             .format(
                 1,
-                datetime(2016, 12, 24).isoformat(),
-                datetime(2016, 1, 1).isoformat(),
+                datetime(2016, 12, 25).isoformat(),
+                datetime(2016, 12, 18).isoformat(),
             ), headers=settings.header)
         self.assertEqual(rv.status_code, 200)
         afro_returned = json.loads(rv.data.decode("utf-8"))
@@ -1595,7 +1594,9 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
         afro_returned.pop("meta",None)
         dictdiffstructure = dict_struct_compare(afro_expected,afro_returned)
         dictdiffcontent = simplified_dict_compare(afro_expected,afro_returned)
+        print("Difference in response structure")
         print(dictdiffstructure)
+        print("Difference in response content")
         print(dictdiffcontent)
         self.assertTrue(dictdiffstructure == None)
         self.assertTrue(dictdiffcontent == None)

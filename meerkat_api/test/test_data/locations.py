@@ -64,7 +64,7 @@ testshire = [
                  "case_type":None,
                  "population":250}),
     Locations(**{"id":6,
-                 "name":"District Blue",
+                 "name":"District Green",
                  "parent_location":3,
                  'geolocation':'2,2',
                  "other":None,
