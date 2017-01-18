@@ -1466,6 +1466,8 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))
 
+        print("Malaria output data missing some variables")
+        print(data)
         #Refactorisation: check the data is returned is as expected
         def check_data( data, expected ): 
             
