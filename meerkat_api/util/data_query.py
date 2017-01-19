@@ -6,7 +6,7 @@ from datetime import datetime
 qu = "SELECT sum(CAST(data.variables ->> :variables_1 AS FLOAT)) AS sum_1 extra_columns FROM data WHERE where_clause AND data.date >= :date_1 AND data.date < :date_2 AND (data.country = :country_1 OR data.region = :region_1 OR data.district = :district_1 OR data.clinic = :clinic_1) group_by_clause"
 
 
-def query_sum(db, var_ids, start_date, end_date, location, level=None, weeks=False):
+def query_sum(db, var_ids, start_date, end_date, location, level=None, weeks=False, date_variable=None):
     """
     Calculates the total number of records with every variable in var_ids.
     If var_ids is only one variable it can also be used to sum up the numbers
@@ -22,6 +22,7 @@ def query_sum(db, var_ids, start_date, end_date, location, level=None, weeks=Fal
         location: Location to restrict to
         level: Level to brea down the total by
         weeks: True if we want a breakdwon by weeks.
+        date_variable: if None we use date from data otherwise we use the variable indicated
     Returns:
        result(dict): Dictionary with results. Always has total key, and if
                      level was given there is a level key with the data
@@ -64,9 +65,16 @@ def query_sum(db, var_ids, start_date, end_date, location, level=None, weeks=Fal
         extra_columns += ', "' + level + '"'
     if group_by:
         group_by_clause = "group by " + ", ".join(group_by)
+        
     query = qu.replace("where_clause", " AND ".join(where_clauses))
     query = query.replace("group_by_clause", group_by_clause)
     query = text(query.replace("extra_columns", extra_columns))
+    if date_variable:
+        date_string = 'to_date(data->> :date_variable, "YYYY-MM-DDTHH-MI-SS")'
+        variables["date_variable"] = date_variable
+        query.replace("data.date", date_string)
+
+    
     conn = db.engine.connect()
     result = conn.execute(query, **variables).fetchall()
     if result:
