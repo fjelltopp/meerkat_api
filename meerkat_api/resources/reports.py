@@ -2277,6 +2277,7 @@ class Malaria(Resource):
                 ret['malaria_situation'][key] = int(round(value))
 
         var.update( variables_instance.get('malaria_situation') )
+        var.update( variables_instance.get('malaria_situation_no_case') )
 
         ret['malaria_prevention'] = get_variables_category(
             'malaria_prevention',
