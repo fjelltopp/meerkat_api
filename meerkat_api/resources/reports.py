@@ -2628,7 +2628,7 @@ class AFROBulletin(Resource):
             ['cmd_15', 'ale_1'],
             ['cmd_7',  'ale_1'],
             ['cmd_15', 'ale_2'],
-            ['cmd_10', 'ale_2'],
+            ['cmd_10', 'ale_1'],
             ['cmd_11', 'ale_2'],
             ['cmd_7',  'ale_2'],
             ['cmd_15', 'age_1']
@@ -2656,7 +2656,7 @@ class AFROBulletin(Resource):
             ['cmd_15_ale_1', 'cmd_15'],
             ['cmd_15_ale_2', 'cmd_15'],
             ['cmd_15_age_1', 'cmd_15'],
-            ['cmd_10_ale_2', 'cmd_10'],
+            ['cmd_10_ale_1', 'cmd_10'],
             ['cmd_7_ale_1', 'cmd_7'],
             ['cmd_7_ale_2', 'cmd_7']
         ]
