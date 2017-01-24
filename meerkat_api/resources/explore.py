@@ -104,6 +104,8 @@ class QueryVariable(Resource):
         only_loc: If given retricts the data to that location\n
         use_ids: If use_ids is true we use variable_ids and not the
                  name as keys for the return\n
+        additional_variables: a list of variable string id's to
+                 include in the filter conditions\n
 
     Returns:\n
         data: {variable_1: {total: X, weeks: {12:X,13:X}}....}\n
@@ -111,8 +113,10 @@ class QueryVariable(Resource):
     decorators = [authenticate]
 
     def get(self, variable, group_by, start_date=None,
-            end_date=None, only_loc=None, use_ids=None, date_variable=None):
+            end_date=None, only_loc=None, use_ids=None, date_variable=None, additional_variables=None):
+
         variable = str(variable)
+
         start_date, end_date = sort_date(start_date, end_date)
         year = start_date.year
         if "use_ids" in request.args.keys() or use_ids:
@@ -134,6 +138,12 @@ class QueryVariable(Resource):
                 Data.country, Data.region, Data.district, Data.clinic))]
         else:
             conditions = [Data.variables.has_key(variable)] + date_conditions
+
+            if additional_variables: 
+            # add additional variable filters if there are and
+                for i in additional_variables:
+                    conditions.append(Data.variables.has_key(i))
+
             if only_loc or "only_loc" in request.args:
                 if not only_loc:
                     # only loc is in request variables
