@@ -37,10 +37,10 @@ class Forms(Resource):
 class ExportData(Resource):
     """
     Export data table from db
-    
+
     Starts generation of data file
-    
-    Args: 
+
+    Args:
        use_loc_ids: If we use names are location ids
     Returns:\n
        uuid
@@ -53,6 +53,7 @@ class ExportData(Resource):
         uid = str(uuid.uuid4())
         export_data.delay(uid, use_loc_ids)
         return uid
+
 
 class ExportCategory(Resource):
     """
@@ -82,12 +83,12 @@ class GetDownload(Resource):
     """
     serves a pregenerated csv file
 
-    Args: 
+    Args:
        uuid: uuid of download
     """
     decorators = [authenticate]
     representations = {'text/csv': output_csv}
-    
+
     def get(self, uid):
         res = db.session.query(DownloadDataFiles).filter(
             DownloadDataFiles.uuid == uid).first()
@@ -95,7 +96,7 @@ class GetDownload(Resource):
             return {"string": res.content, "filename": res.type}
         return {"string": "", "filename": "missing"}
 
-    
+
 class GetStatus(Resource):
     """
     Checks the current status of the generation
@@ -104,9 +105,9 @@ class GetStatus(Resource):
        uuid: uuid to check status for
     """
     decorators = [authenticate]
-    
+
     def get(self, uid):
-        
+
         results = db.session.query(DownloadDataFiles).filter(
             DownloadDataFiles.uuid == uid).first()
         if results:
@@ -114,7 +115,7 @@ class GetStatus(Resource):
         else:
             return None
 
-    
+
 class ExportForm(Resource):
     """
     Export a form. If fields is in the request variable we only include
@@ -128,7 +129,7 @@ class ExportForm(Resource):
     """
     # representations = {'text/csv': output_csv}
     decorators = [authenticate]
-    
+
     def get(self, form):
         uid = str(uuid.uuid4())
         if "fields" in request.args.keys():
