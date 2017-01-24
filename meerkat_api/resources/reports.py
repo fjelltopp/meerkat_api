@@ -328,17 +328,50 @@ def create_ncd_report(location, start_date=None, end_date=None, params=['case'])
     ret["hypertension"] = {"age": {}, "complications": {}, "email_summary": {}}
     ret["diabetes"] = {"age": {}, "complications": {}, "email_summary": {}}
 
-    diabetes_id = "ncd_1"
-    hypertension_id = "ncd_2"
-    diseases = {"hypertension": hypertension_id,
-                "diabetes": diabetes_id}
-    ids_to_include = {"hypertension": [("lab_4", "lab_3"), ("lab_5", "lab_3"), ("lab_2", "lab_1"), ("com_1", "tot"), ("smo_2", "smo_4"), ("lab_11", "lab_10")],
-                      "diabetes": [("lab_4", "lab_3"), ("lab_5", "lab_3"), ("lab_7", "lab_6"), ("lab_9", "lab_8"), ("com_2", "tot"), ("smo_2", "smo_4"), ("lab_11", "lab_10")]
-    }
+    #  read from params if creating new visit or return visit report
+    if 'new' in params or 'return' in params:
+        diabetes_id = "visit_ncd_1"
+        hypertension_id = "visit_ncd_2"
+        age_category = "r_ncd_age"
+        gender_category = "r_gender"
+        gender_variables = ["visit_gen_1","visit_gen_2"]
+        email_report_control_diabetes = "visit_lab_9"
+        email_report_control_hypertension = "visit_lab_2"
+        diseases = {"hypertension": hypertension_id,
+                    "diabetes": diabetes_id}
+        ids_to_include = {"hypertension": [("visit_lab_4", "visit_lab_3"), ("visit_lab_5", "visit_lab_3"), \
+                            ("visit_lab_2", "visit_lab_1"), ("visit_com_1", "visit_tot"), \
+                            ("visit_smo_2", "visit_smo_4"), ("visit_lab_11", "visit_lab_10")],
+                          "diabetes": [("visit_lab_4", "visit_lab_3"), ("visit_lab_5", "visit_lab_3"), \
+                            ("visit_lab_7", "visit_lab_6"), ("visit_lab_9", "visit_lab_8"), \
+                            ("visit_com_2", "visit_tot"), ("visit_smo_2", "visit_smo_4"),\
+                            ("visit_lab_11", "visit_lab_10")]
+        }
+        if 'new' in params:
+            additional_variables = ['vis_4'] 
+        elif 'return' in params:
+            additional_variables = ['vis_5'] 
+
+    else:
+        diabetes_id = "ncd_1"
+        hypertension_id = "ncd_2"
+        age_category = "ncd_age"
+        gender_category = "gender"
+        gender_variables = ["gen_1","gen_2"]
+        email_report_control_diabetes = "lab_9"
+        email_report_control_hypertension = "lab_2"
+        diseases = {"hypertension": hypertension_id,
+                    "diabetes": diabetes_id}
+        ids_to_include = {"hypertension": [("lab_4", "lab_3"), ("lab_5", "lab_3"), ("lab_2", "lab_1"), ("com_1", "tot"), ("smo_2", "smo_4"), ("lab_11", "lab_10")],
+                          "diabetes": [("lab_4", "lab_3"), ("lab_5", "lab_3"), ("lab_7", "lab_6"), ("lab_9", "lab_8"), ("com_2", "tot"), ("smo_2", "smo_4"), ("lab_11", "lab_10")]
+        }
+        additional_variables = []
 
     locations, ldid, regions, districts, devices = all_location_data(db.session)
     v = Variables()
-    ages = v.get("ncd_age")
+
+
+    ages = v.get(age_category)
 
     #  Loop through diabetes and hypertension
     for disease in diseases.keys():
@@ -350,8 +383,8 @@ def create_ncd_report(location, start_date=None, end_date=None, params=['case'])
         ret[disease]["age"]["titles"].insert(1,"Total")
         ret[disease]["complications"]["titles"] = ["reg",
                                                    "tot",
-                                                   "gen_1",
-                                                   "gen_2"]
+                                                   gender_variables[0],
+                                                   gender_variables[1]]
 
         for i in ids_to_include[disease]:
             ret[disease]["complications"]["titles"].append(i[0])
@@ -364,17 +397,9 @@ def create_ncd_report(location, start_date=None, end_date=None, params=['case'])
             d_id = diseases[disease]
             query_variable = QueryVariable()
 
-            #  read from params if creating new visit or return visit report
-            if 'new' in params:
-                additional_variables = ['vis_4']
-            elif 'return' in params:
-                additional_variables = ['vis_5']
-            else:
-                additional_variables = []
-
 
             #  get the age breakdown
-            disease_age = query_variable.get(d_id, "ncd_age",
+            disease_age = query_variable.get(d_id, age_category,
                                              end_date=end_date_limit.isoformat(),
                                              start_date=start_date.isoformat(),
                                              only_loc=region,
@@ -396,7 +421,7 @@ def create_ncd_report(location, start_date=None, end_date=None, params=['case'])
               ret[disease]["email_summary"]["cases"]=ret[disease]["age"]["data"][i]["values"][0]
 
             #  Get gender breakdown
-            disease_gender = query_variable.get(d_id, "gender",
+            disease_gender = query_variable.get(d_id, gender_category,
                                                 end_date=end_date_limit.isoformat(),
                                                 start_date=start_date.isoformat(),
                                                 only_loc=region)
@@ -429,9 +454,9 @@ def create_ncd_report(location, start_date=None, end_date=None, params=['case'])
 
                     # control for email report for the whole country
                     if region == 1:
-                      if disease == "diabetes" and new_id[0] == "lab_9":
+                      if disease == "diabetes" and new_id[0] == email_report_control_diabetes:
                         ret[disease]["email_summary"]["control"] = numerator/ denominator * 100
-                      elif disease == "hypertension" and new_id[0] == "lab_2":
+                      elif disease == "hypertension" and new_id[0] == email_report_control_hypertension:
                         ret[disease]["email_summary"]["control"] = numerator/ denominator * 100
                 else:
                     #  We can N/A to the table if it includes data we are not collecting
