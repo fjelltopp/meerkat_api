@@ -245,7 +245,8 @@ api.add_resource(Completeness,
                  "/completeness/<variable>/<location>/<number_per_week>",
                  "/completeness/<variable>/<location>/<number_per_week>/<start_week>",
                  "/completeness/<variable>/<location>/<number_per_week>/<start_week>/<exclude>",
-                 "/completeness/<variable>/<location>/<number_per_week>/<start_week>/<exclude>/<weekend>")
+                 "/completeness/<variable>/<location>/<number_per_week>/<start_week>/<exclude>/<weekend>",
+                 "/completeness/<variable>/<location>/<number_per_week>/<start_week>/<exclude>/<weekend>/<end_date>")
 api.add_resource(Records, "/records/<variable>/<location_id>")
 
 @app.route('/')
