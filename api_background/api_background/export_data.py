@@ -26,34 +26,36 @@ def export_data(uuid, use_loc_ids=False):
 
     Inserts finished file in to databse
 
-    Args: 
+    Args:
        uuid: uuid for download
        use_loc_ids: If we use names are location ids
     """
     db, session = get_db_engine()
-    status =  DownloadDataFiles(
-                uuid=uuid,
-                content="",
-                generation_time=datetime.now(),
-                type="data",
-                success=0,
-                status=0
+    status = DownloadDataFiles(
+        uuid=uuid,
+        content="",
+        generation_time=datetime.now(),
+        type="data",
+        success=0,
+        status=0
     )
-    session.add(status)        
+    session.add(status)
     session.commit()
-    
+
     results = session.query(Data)
     variables = set()
     locs = get_locations(session)
     for row in results:
         variables = variables.union(set(row.variables.keys()))
-    fieldnames = ["id", "country", "region", "district", "clinic",
-                      "clinic_type", "geolocation", "date", "uuid"
-                  ] + list(variables)
+    fieldnames = [
+        "id", "country", "region", "district", "clinic",
+        "clinic_type", "geolocation", "date", "uuid"
+    ] + list(variables)
     dict_rows = []
     for row in results:
-        dict_row = dict((col, getattr(row, col))
-                    for col in row.__table__.columns.keys())
+        dict_row = dict(
+            (col, getattr(row, col)) for col in row.__table__.columns.keys()
+        )
         if not use_loc_ids:
             for l in ["country", "region", "district", "clinic"]:
                 if dict_row[l]:
@@ -111,8 +113,8 @@ def export_category(uuid, form_name, category, download_name, variables):
     session.commit()
     res = session.query(AggregationVariables).filter(
         AggregationVariables.category.has_key(category)
-        )
-    
+    )
+
     data_keys = []
     cat_variables = {}
     for r in res:
@@ -131,7 +133,7 @@ def export_category(uuid, form_name, category, download_name, variables):
     # alert_links are included
     for v in variables:
         return_keys.append(v[1])
-       
+
         if "icd_name$" in v[0]:
             category = v[0].split("$")[1]
             cat_variables = {}
@@ -164,7 +166,7 @@ def export_category(uuid, form_name, category, download_name, variables):
         if "gen_link$" in v[0]:
             link_ids.append(v[0].split("$")[1])
         translation_dict[v[1]] = v[0]
-        
+
     link_ids = set(link_ids)
     links_by_type, links_by_name = get_links(config_directory +
                                              country_config["links_file"])
@@ -201,6 +203,13 @@ def export_category(uuid, form_name, category, download_name, variables):
                         "icd_code"]]
                 else:
                     dict_row[k] = None
+            elif "$date" in form_var:
+                if form_var in r[1].data:
+                    dict_row[k] = parse(r[1].data[form_var]).strftime(
+                        "%d/%m/%Y"
+                    )
+                else:
+                    dict_row[k] = None
             elif form_var == "clinic":
                 dict_row[k] = locs[r[0].clinic].name
             elif form_var == "region":
@@ -220,6 +229,12 @@ def export_category(uuid, form_name, category, download_name, variables):
                 field = form_var.split("$")[0]
                 if field in r[1].data and r[1].data[field]:
                     dict_row[k] = parse(r[1].data[field]).month
+                else:
+                    dict_row[k] = None
+            elif "$day" in form_var:
+                field = form_var.split("$")[0]
+                if field in r[1].data and r[1].data[field]:
+                    dict_row[k] = parse(r[1].data[field]).day
                 else:
                     dict_row[k] = None
             elif "$epi_week" in form_var:
@@ -289,7 +304,6 @@ def export_category(uuid, form_name, category, download_name, variables):
     return True
 
 
-
 @task
 def export_form(uuid, form, fields=None):
     """
@@ -304,7 +318,7 @@ def export_form(uuid, form, fields=None):
        fields: Fileds from form to export\n
 
     """
-    
+
     db, session = get_db_engine()
     (locations, locs_by_deviceid, regions,
      districts, devices) = all_location_data(session)
@@ -319,7 +333,7 @@ def export_form(uuid, form, fields=None):
         result = db.execute(sql)
         for r in result:
             keys.append(r[0])
-            
+
     f = io.StringIO()
     csv_writer = csv.DictWriter(f, keys, extrasaction='ignore')
     csv_writer.writeheader()
@@ -337,7 +351,7 @@ def export_form(uuid, form, fields=None):
             )
         session.commit()
         return False
-        
+
     if form in form_tables.keys():
         results = session.query(form_tables[form].data).yield_per(1000)
         dict_rows = []
@@ -379,10 +393,8 @@ def export_form(uuid, form, fields=None):
                 type=form,
                 success=1,
                 status=1
-                )
             )
+        )
         session.commit()
-        
-        return True
 
-    
+        return True
