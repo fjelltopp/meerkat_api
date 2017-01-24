@@ -330,6 +330,7 @@ def create_ncd_report(location, start_date=None, end_date=None, params=['case'])
 
     #  read from params if creating new visit or return visit report
     if 'new' in params or 'return' in params:
+        total_variable = 'vis_0'
         diabetes_id = "visit_ncd_1"
         hypertension_id = "visit_ncd_2"
         age_category = "r_ncd_age"
@@ -353,6 +354,7 @@ def create_ncd_report(location, start_date=None, end_date=None, params=['case'])
             additional_variables = ['vis_5'] 
 
     else:
+        total_variable = 'tot'
         diabetes_id = "ncd_1"
         hypertension_id = "ncd_2"
         age_category = "ncd_age"
@@ -424,7 +426,8 @@ def create_ncd_report(location, start_date=None, end_date=None, params=['case'])
             disease_gender = query_variable.get(d_id, gender_category,
                                                 end_date=end_date_limit.isoformat(),
                                                 start_date=start_date.isoformat(),
-                                                only_loc=region)
+                                                only_loc=region,
+                                                additional_variables=additional_variables)
 
             table_two_total = sum([disease_gender[gender]["total"] for gender in disease_gender])
             ret[disease]["complications"]["data"].append(
@@ -442,11 +445,13 @@ def create_ncd_report(location, start_date=None, end_date=None, params=['case'])
             #  Get the lab breakdown
             for new_id in ids_to_include[disease]:
                 if new_id[0]:
-                    numerator = query_sum(db, [d_id, new_id[0]], start_date, end_date_limit, region)["total"]
+                    numerator = query_sum(db, [d_id, new_id[0]] + additional_variables, start_date, end_date_limit,\
+                         region)["total"]
                     if new_id[1] == "tot":
                         denominator = table_two_total
                     else:
-                        denominator = query_sum(db, [d_id, new_id[1]], start_date, end_date_limit, region)["total"]
+                        denominator = query_sum(db, [d_id, new_id[1]] + additional_variables, start_date, end_date_limit,\
+                             region)["total"]
                     if denominator == 0:
                         denominator = 1
                     ret[disease]["complications"]["data"][i]["values"].append(
