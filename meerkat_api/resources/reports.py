@@ -384,7 +384,7 @@ def create_ncd_report(location, start_date=None, end_date=None, params=['case'])
             ret[disease]["age"]["titles"].append(ages[age]["name"])
         ret[disease]["age"]["titles"].insert(1,"Total")
         ret[disease]["complications"]["titles"] = ["reg",
-                                                   "tot",
+                                                   total_variable,
                                                    gender_variables[0],
                                                    gender_variables[1]]
 
@@ -447,7 +447,7 @@ def create_ncd_report(location, start_date=None, end_date=None, params=['case'])
                 if new_id[0]:
                     numerator = query_sum(db, [d_id, new_id[0]] + additional_variables, start_date, end_date_limit,\
                          region)["total"]
-                    if new_id[1] == "tot":
+                    if new_id[1] == total_variable:
                         denominator = table_two_total
                     else:
                         denominator = query_sum(db, [d_id, new_id[1]] + additional_variables, start_date, end_date_limit,\
