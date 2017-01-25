@@ -53,14 +53,14 @@ def output_csv(data_dict, code, headers=None):
     have a keys key with a list of keys in the correct order. Data should
     then also include a filename and a list of dicts for each row
 
-    Args: 
+    Args:
        data: list of dicts with output data or dict with data and keys
        code: Response code
        headers: http headers
     """
     filename = "file"
     out_string=""
-    if data_dict: 
+    if data_dict:
         if "data" in data_dict:
             keys = data_dict["keys"]
             filename = data_dict["filename"]
@@ -84,6 +84,31 @@ def output_csv(data_dict, code, headers=None):
     app.logger.info('Memory usage: %s (kb)' % int(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss))
     return resp
 
+
+@api.representation('text/xls')
+def output_xls(data, code, headers=None):
+    """
+    Function to write data to a xls file.
+
+    Args:
+       data: StringIO output of xls writer.
+       code: Response code
+       headers: http headers
+    """
+    filename = "file"
+    out_string = ""
+    if data and "string" in data:
+            out_string = data["string"]
+            filename = data["filename"]
+    resp = make_response(out_string, code)
+    resp.headers.extend(headers or {
+        "Content-Disposition": "attachment; filename={}.xls".format(filename)})
+    # To monitor memory usage
+    app.logger.info('Memory usage: %s (kb)' % int(
+        resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
+    )
+    return resp
+
 # Importing all the resources here to avoid circular imports
 
 from meerkat_api.resources.locations import Location, Locations, LocationTree, TotClinics
@@ -97,7 +122,7 @@ from meerkat_api.resources.epi_week import EpiWeek, EpiWeekStart
 from meerkat_api.resources.completeness import Completeness, NonReporting
 from meerkat_api.resources.reports import PublicHealth, CdReport, CdPublicHealth, CdPublicHealthMad, NcdPublicHealth,RefugeePublicHealth, RefugeeCd,RefugeeDetail, NcdReport, Pip, WeeklyEpiMonitoring, Malaria, VaccinationReport, AFROBulletin
 from meerkat_api.resources.frontpage import KeyIndicators, TotMap, NumAlerts, ConsultationMap, RefugeePage, NumClinics
-from meerkat_api.resources.export_data import ExportData, ExportForm, Forms, ExportCategory, GetDownload, GetStatus
+from meerkat_api.resources.export_data import ExportData, ExportForm, Forms, ExportCategory, GetCSVDownload, GetXLSDownload, GetStatus
 from meerkat_api.resources.incidence import IncidenceRate, WeeklyIncidenceRate
 #from meerkat_api.resources.links import Link, Links
 
@@ -119,7 +144,8 @@ api.add_resource(NumClinics, "/num_clinics")
 api.add_resource(RefugeePage, "/refugee_page")
 
 # Export data
-api.add_resource(GetDownload, "/export/get/<uid>")
+api.add_resource(GetCSVDownload, "/export/getcsv/<uid>")
+api.add_resource(GetXLSDownload, "/export/getxls/<uid>")
 api.add_resource(GetStatus, "/export/get_status/<uid>")
 api.add_resource(ExportData, "/export/data",
                  "/export/data/<use_loc_ids>")
@@ -169,12 +195,12 @@ api.add_resource(IncidenceMap, "/incidence_map/<variable_id>")
 
 # IncidenceRate
 api.add_resource(
-    IncidenceRate, 
+    IncidenceRate,
     "/incidence_rate/<variable_id>/<level>",
     "/incidence_rate/<variable_id>/<level>/<mult_factor>"
 )
 api.add_resource(
-    WeeklyIncidenceRate, 
+    WeeklyIncidenceRate,
     "/weekly_incidence/<variable_id>/<loc_id>",
     "/weekly_incidence/<variable_id>/<loc_id>/<year>",
     "/weekly_incidence/<variable_id>/<loc_id>/<year>/<mult_factor>"
@@ -251,4 +277,3 @@ api.add_resource(Records, "/records/<variable>/<location_id>")
 @app.route('/')
 def hello_world():
     return "WHO"
-

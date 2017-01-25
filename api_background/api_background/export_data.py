@@ -7,9 +7,10 @@ Functions to export data
 """
 from sqlalchemy import text, or_
 from sqlalchemy.orm import aliased
-import io
+from io import StringIO, BytesIO
 import csv
 import json
+import xlsxwriter
 from dateutil.parser import parse
 from datetime import datetime
 from celery import task
@@ -33,7 +34,8 @@ def export_data(uuid, use_loc_ids=False):
     db, session = get_db_engine()
     status = DownloadDataFiles(
         uuid=uuid,
-        content="",
+        csvcontent="",
+        xlscontent="",
         generation_time=datetime.now(),
         type="data",
         success=0,
@@ -62,13 +64,42 @@ def export_data(uuid, use_loc_ids=False):
                     dict_row[l] = locs[dict_row[l]].name
         dict_row.update(dict_row.pop("variables"))
         dict_rows.append(dict_row)
-    output = io.StringIO()
+    output = StringIO()
     writer = csv.DictWriter(output, fieldnames, extrasaction="ignore")
     writer.writeheader()
     writer.writerows(dict_rows)
+    status.csvcontent = output.getvalue()
+
+    # Create a workbook and add a worksheet.
+    output = StringIO()
+    workbook = xlsxwriter.Workbook(output)
+    worksheet = workbook.add_worksheet()
+
+    # Write the header cells and record column numbers.
+    row = 0
+    col = 0
+    columns = {}
+    for key in fieldnames:
+        worksheet.write(row, col, key)
+        columns[key] = col
+        col += 1
+
+    # Write each dict row out
+    row = 1
+    col = 0
+    for dict_row in dict_rows:
+        for element in dict_row.keys():
+            col = columns[element]
+            value = dict_row[element]
+            worksheet.write(row, col, value)
+        row += 1
+        col = 0
+
+    workbook.close()
+
+    status.xlscontent = output.getvalue()
     status.status = 1
     status.success = 1
-    status.content = output.getvalue()
     session.commit()
     return True
 
@@ -103,7 +134,8 @@ def export_category(uuid, form_name, category, download_name, variables):
 
     status = DownloadDataFiles(
         uuid=uuid,
-        content="",
+        csvcontent="",
+        xlscontent="",
         generation_time=datetime.now(),
         type=download_name,
         success=0,
@@ -293,13 +325,42 @@ def export_category(uuid, form_name, category, download_name, variables):
                     dict_row[k] = tr_dict[dict_row[k]]
 
         dict_rows.append(dict_row)
-    output = io.StringIO()
+    output = StringIO()
     writer = csv.DictWriter(output, return_keys, extrasaction="ignore")
     writer.writeheader()
     writer.writerows(dict_rows)
+    status.csvcontent = output.getvalue()
+
+    # Create a workbook and add a worksheet.
+    output = BytesIO()
+    workbook = xlsxwriter.Workbook(output, {'in_memory': True})
+    worksheet = workbook.add_worksheet()
+
+    # Write the header cells and record column numbers.
+    row = 0
+    col = 0
+    columns = {}
+    for key in return_keys:
+        worksheet.write(row, col, key)
+        columns[key] = col
+        col += 1
+
+    # Write each dict row out
+    row = 1
+    col = 0
+    for dict_row in dict_rows:
+        for element in dict_row.keys():
+            col = columns[element]
+            value = dict_row[element]
+            worksheet.write(row, col, value)
+        row += 1
+        col = 0
+
+    workbook.close()
+    output.seek(0)
+    status.xlscontent = output.read()
     status.status = 1
     status.success = 1
-    status.content = output.getvalue()
     session.commit()
     return True
 
@@ -327,22 +388,36 @@ def export_form(uuid, form, fields=None):
     else:
         keys = ["clinic", "region", "district"]
         if form not in form_tables:
-            return {"filename": form, "file": io.StringIO()}
+            return {"filename": form, "file": StringIO()}
         sql = text("SELECT DISTINCT(jsonb_object_keys(data)) from {}".
                    format(form_tables[form].__tablename__))
         result = db.execute(sql)
         for r in result:
             keys.append(r[0])
 
-    f = io.StringIO()
-    csv_writer = csv.DictWriter(f, keys, extrasaction='ignore')
+    csv = StringIO()
+    xls = StringIO()
+    csv_writer = csv.DictWriter(csv, keys, extrasaction='ignore')
     csv_writer.writeheader()
+
+    # Set up xls file.
+    workbook = xlsxwriter.Workbook(xls)
+    worksheet = workbook.add_worksheet()
+    row = 0
+    col = 0
+    columns = {}
+    for key in keys:
+        worksheet.write(row, col, key)
+        columns[key] = col
+        col += 1
+
     i = 0
     if locs_by_deviceid is None:
         session.add(
             DownloadDataFiles(
                 uuid=uuid,
-                content="",
+                csvcontent="",
+                xlscontent="",
                 generation_time=datetime.now(),
                 type=form,
                 success=0,
@@ -382,13 +457,38 @@ def export_form(uuid, form, fields=None):
             dict_rows.append(dict_row)
             if i % 1000 == 0:
                 csv_writer.writerows(dict_rows)
+                # Write each dict row out to xls
+                row = 1000*(int(i / 1000) - 1) + 1
+                col = 0
+                for dict_row in dict_rows:
+                    for element in dict_row.keys():
+                        col = columns[element]
+                        value = dict_row[element]
+                        worksheet.write(row, col, value)
+                    row += 1
+                    col = 0
                 dict_rows = []
             i += 1
         csv_writer.writerows(dict_rows)
+
+        # Write each dict row out
+        row = 1000*(int(i / 1000) - 1) + 1
+        col = 0
+        for dict_row in dict_rows:
+            for element in dict_row.keys():
+                col = columns[element]
+                value = dict_row[element]
+                worksheet.write(row, col, value)
+            row += 1
+            col = 0
+
+        workbook.close()
+
         session.add(
             DownloadDataFiles(
                 uuid=uuid,
-                content=f.getvalue(),
+                csvcontent=csv.getvalue(),
+                xlscontent=xls.getvalue(),
                 generation_time=datetime.now(),
                 type=form,
                 success=1,

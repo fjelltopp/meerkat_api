@@ -6,7 +6,7 @@ from flask import request
 import json
 import uuid
 
-from meerkat_api import db, output_csv
+from meerkat_api import db, output_csv, output_xls
 from meerkat_abacus.model import form_tables, DownloadDataFiles
 from meerkat_api.authentication import authenticate
 from meerkat_abacus.task_queue import export_form, export_category, export_data
@@ -79,7 +79,7 @@ class ExportCategory(Resource):
         return uid
 
 
-class GetDownload(Resource):
+class GetCSVDownload(Resource):
     """
     serves a pregenerated csv file
 
@@ -93,7 +93,26 @@ class GetDownload(Resource):
         res = db.session.query(DownloadDataFiles).filter(
             DownloadDataFiles.uuid == uid).first()
         if res:
-            return {"string": res.content, "filename": res.type}
+            return {"string": res.csvcontent, "filename": res.type}
+        return {"string": "", "filename": "missing"}
+
+
+class GetXLSDownload(Resource):
+    """
+    Serves a pregenerated xls file
+
+    Args:
+       uuid: uuid of download
+    """
+    decorators = [authenticate]
+    representations = {'text/xls': output_xls}
+
+    def get(self, uid):
+        res = db.session.query(DownloadDataFiles).filter(
+            DownloadDataFiles.uuid == uid
+        ).first()
+        if res:
+            return {"string": res.xlscontent, "filename": res.type}
         return {"string": "", "filename": "missing"}
 
 
