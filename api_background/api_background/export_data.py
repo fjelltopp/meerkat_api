@@ -1,23 +1,19 @@
 """
-
 Functions to export data
-
-
-
 """
-from sqlalchemy import text, or_
+from meerkat_abacus.util import epi_week, get_locations
+from meerkat_abacus.util import all_location_data, get_db_engine, get_links
+from meerkat_abacus.model import form_tables, Data
+from meerkat_abacus.model import DownloadDataFiles, AggregationVariables
+from meerkat_abacus.config import country_config, config_directory
 from sqlalchemy.orm import aliased
-from io import StringIO, BytesIO
-import csv
-import json
-import xlsxwriter
+from sqlalchemy import text, or_
 from dateutil.parser import parse
 from datetime import datetime
+from io import StringIO
 from celery import task
-
-from meerkat_abacus.util import epi_week, get_locations, all_location_data, get_db_engine, get_links
-from meerkat_abacus.model import form_tables, Data, DownloadDataFiles, AggregationVariables
-from meerkat_abacus.config import country_config, config_directory
+import csv
+import json
 
 
 @task
@@ -35,7 +31,7 @@ def export_data(uuid, use_loc_ids=False):
     status = DownloadDataFiles(
         uuid=uuid,
         csvcontent="",
-        xlscontent="",
+        json_data="",
         generation_time=datetime.now(),
         type="data",
         success=0,
@@ -70,34 +66,7 @@ def export_data(uuid, use_loc_ids=False):
     writer.writerows(dict_rows)
     status.csvcontent = output.getvalue()
 
-    # Create a workbook and add a worksheet.
-    output = StringIO()
-    workbook = xlsxwriter.Workbook(output)
-    worksheet = workbook.add_worksheet()
-
-    # Write the header cells and record column numbers.
-    row = 0
-    col = 0
-    columns = {}
-    for key in fieldnames:
-        worksheet.write(row, col, key)
-        columns[key] = col
-        col += 1
-
-    # Write each dict row out
-    row = 1
-    col = 0
-    for dict_row in dict_rows:
-        for element in dict_row.keys():
-            col = columns[element]
-            value = dict_row[element]
-            worksheet.write(row, col, value)
-        row += 1
-        col = 0
-
-    workbook.close()
-
-    status.xlscontent = output.getvalue()
+    status.json_data = json.dumps(dict_rows)
     status.status = 1
     status.success = 1
     session.commit()
@@ -135,7 +104,7 @@ def export_category(uuid, form_name, category, download_name, variables):
     status = DownloadDataFiles(
         uuid=uuid,
         csvcontent="",
-        xlscontent="",
+        json_data="",
         generation_time=datetime.now(),
         type=download_name,
         success=0,
@@ -222,59 +191,62 @@ def export_category(uuid, form_name, category, download_name, variables):
         or_(Data.variables.has_key(key)
             for key in data_keys)).yield_per(200)
     locs = get_locations(session)
-    dict_rows = []
+    list_rows = [return_keys]
 
     # Prepare each row
     for r in results:
-        dict_row = {}
+        list_row = ['']*len(return_keys)
         for k in return_keys:
             form_var = translation_dict[k]
+            index = return_keys.index(k)
+
             if "icd_name$" in form_var:
                 if r[1].data["icd_code"] in icd_code_to_name[form_var]:
-                    dict_row[k] = icd_code_to_name[form_var][r[1].data[
+                    list_row[index] = icd_code_to_name[form_var][r[1].data[
                         "icd_code"]]
                 else:
-                    dict_row[k] = None
+                    list_row[index] = None
+
             elif "$date" in form_var:
                 if form_var in r[1].data:
-                    dict_row[k] = parse(r[1].data[form_var]).strftime(
+                    list_row[index] = parse(r[1].data[form_var]).strftime(
                         "%d/%m/%Y"
                     )
                 else:
-                    dict_row[k] = None
+                    list_row[index] = None
             elif form_var == "clinic":
-                dict_row[k] = locs[r[0].clinic].name
+                list_row[index] = locs[r[0].clinic].name
             elif form_var == "region":
-                dict_row[k] = locs[r[0].region].name
+                list_row[index] = locs[r[0].region].name
             elif form_var == "district":
                 if r[0].district:
-                    dict_row[k] = locs[r[0].district].name
+                    list_row[index] = locs[r[0].district].name
                 else:
-                    dict_row[k] = None
+                    list_row[index] = None
             elif "$year" in form_var:
                 field = form_var.split("$")[0]
                 if field in r[1].data and r[1].data[field]:
-                    dict_row[k] = parse(r[1].data[field]).year
+                    list_row[index] = parse(r[1].data[field]).year
                 else:
-                    dict_row[k] = None
+                    list_row[index] = None
             elif "$month" in form_var:
                 field = form_var.split("$")[0]
                 if field in r[1].data and r[1].data[field]:
-                    dict_row[k] = parse(r[1].data[field]).month
+                    list_row[index] = parse(r[1].data[field]).month
                 else:
-                    dict_row[k] = None
+                    list_row[index] = None
             elif "$day" in form_var:
                 field = form_var.split("$")[0]
                 if field in r[1].data and r[1].data[field]:
-                    dict_row[k] = parse(r[1].data[field]).day
+                    list_row[index] = parse(r[1].data[field]).day
                 else:
-                    dict_row[k] = None
+                    list_row[index] = None
             elif "$epi_week" in form_var:
                 field = form_var.split("$")[0]
                 if field in r[1].data and r[1].data[field]:
-                    dict_row[k] = epi_week(parse(r[1].data[field]))[1]
+                    list_row[index] = epi_week(parse(r[1].data[field]))[1]
                 else:
-                    dict_row[k] = None
+                    list_row[index] = None
 
             # A general framework for referencing links in the
             # download data.
@@ -283,9 +255,9 @@ def export_category(uuid, form_name, category, download_name, variables):
                 link = form_var.split("$")[1]
                 link_index = link_id_index[link]
                 if r[link_index]:
-                    dict_row[k] = r[link_index][form_var.split("$")[-1]]
+                    list_row[index] = r[link_index][form_var.split("$")[-1]]
                 else:
-                    dict_row[k] = None
+                    list_row[index] = None
 
             elif "code" == form_var.split("$")[0]:
                 # code$cod_1,cod_2,Text_1,Text_2$default_value
@@ -301,65 +273,36 @@ def export_category(uuid, form_name, category, download_name, variables):
                     if codes[i] in r[0].variables:
                         final_text.append(text[i])
                 if len(final_text) > 0:
-                    dict_row[k] = " ".join(final_text)
+                    list_row[index] = " ".join(final_text)
                 else:
-                    dict_row[k] = default_value
+                    list_row[index] = default_value
 
             elif "code_value" == form_var.split("$")[0]:
                 code = form_var.split("$")[1]
                 if code in r[0].variables:
-                    dict_row[k] = r[0].variables[code]
+                    list_row[index] = r[0].variables[code]
                 else:
-                    dict_row[k] = None
+                    list_row[index] = None
             elif "value" == form_var.split(":")[0]:
-                dict_row[k] = form_var.split(":")[1]
+                list_row[index] = form_var.split(":")[1]
             else:
                 if form_var in r[1].data:
-                    dict_row[k] = r[1].data[form_var]
+                    list_row[index] = r[1].data[form_var]
                 else:
-                    dict_row[k] = None
+                    list_row[index] = None
 
             if min_translation and k in min_translation:
                 tr_dict = min_translation[k]
-                if dict_row[k] in tr_dict.keys():
-                    dict_row[k] = tr_dict[dict_row[k]]
+                if list_row[index] in tr_dict.keys():
+                    list_row[index] = tr_dict[list_row[index]]
 
-        dict_rows.append(dict_row)
+        list_rows.append(list_row)
+
     output = StringIO()
-    writer = csv.DictWriter(output, return_keys, extrasaction="ignore")
-    writer.writeheader()
-    writer.writerows(dict_rows)
+    writer = csv.writer(output)
+    writer.writerows(list_rows)
     status.csvcontent = output.getvalue()
-
-    # Create a workbook and add a worksheet.
-    # output = BytesIO()
-    # workbook = xlsxwriter.Workbook(output, {'in_memory': True})
-    # worksheet = workbook.add_worksheet()
-
-
-    # Write the header cells and record column numbers.
-    # row = 0
-    # col = 0
-    # columns = {}
-    # for key in return_keys:
-    #     worksheet.write(row, col, key)
-    #     columns[key] = col
-    #     col += 1
-    #
-    # # Write each dict row out
-    # row = 1
-    # col = 0
-    # for dict_row in dict_rows:
-    #     for element in dict_row.keys():
-    #         col = columns[element]
-    #         value = dict_row[element]
-    #         worksheet.write(row, col, value)
-    #     row += 1
-    #     col = 0
-    #
-    # workbook.close()
-    output.seek(0)
-    status.xlscontent = json.dumps(dict_rows)
+    status.json_data = json.dumps(list_rows)
     status.status = 1
     status.success = 1
     session.commit()
@@ -380,10 +323,18 @@ def export_form(uuid, form, fields=None):
        fields: Fileds from form to export\n
 
     """
+    # A method that glues json arrays together into a single string.
+    def build_json(new_string, json_string):
+        if not json_string:
+            return new_string
+        else:
+            return json_string[:-1] + ', ' + new_string[1:]
 
     db, session = get_db_engine()
     (locations, locs_by_deviceid, regions,
      districts, devices) = all_location_data(session)
+    json_string = ""
+
     if fields:
         keys = fields
     else:
@@ -397,20 +348,8 @@ def export_form(uuid, form, fields=None):
             keys.append(r[0])
 
     csv = StringIO()
-    xls = StringIO()
     csv_writer = csv.DictWriter(csv, keys, extrasaction='ignore')
     csv_writer.writeheader()
-
-    # Set up xls file.
-    workbook = xlsxwriter.Workbook(xls)
-    worksheet = workbook.add_worksheet()
-    row = 0
-    col = 0
-    columns = {}
-    for key in keys:
-        worksheet.write(row, col, key)
-        columns[key] = col
-        col += 1
 
     i = 0
     if locs_by_deviceid is None:
@@ -418,7 +357,7 @@ def export_form(uuid, form, fields=None):
             DownloadDataFiles(
                 uuid=uuid,
                 csvcontent="",
-                xlscontent="",
+                json_data="",
                 generation_time=datetime.now(),
                 type=form,
                 success=0,
@@ -456,40 +395,23 @@ def export_form(uuid, form, fields=None):
                 if key in keys and key not in dict_row:
                     dict_row[key] = row.data[key]
             dict_rows.append(dict_row)
+
             if i % 1000 == 0:
                 csv_writer.writerows(dict_rows)
-                # Write each dict row out to xls
-                row = 1000*(int(i / 1000) - 1) + 1
-                col = 0
-                for dict_row in dict_rows:
-                    for element in dict_row.keys():
-                        col = columns[element]
-                        value = dict_row[element]
-                        worksheet.write(row, col, value)
-                    row += 1
-                    col = 0
-                dict_rows = []
+                json_string = build_json(json.dumps(dict_rows), json_string)
+
+            dict_rows = []
             i += 1
+
+        # Write any remaining unwritten data down.
         csv_writer.writerows(dict_rows)
-
-        # Write each dict row out
-        row = 1000*(int(i / 1000) - 1) + 1
-        col = 0
-        for dict_row in dict_rows:
-            for element in dict_row.keys():
-                col = columns[element]
-                value = dict_row[element]
-                worksheet.write(row, col, value)
-            row += 1
-            col = 0
-
-        workbook.close()
+        json_string = build_json(json.dumps(dict_rows), json_string)
 
         session.add(
             DownloadDataFiles(
                 uuid=uuid,
                 csvcontent=csv.getvalue(),
-                xlscontent=xls.getvalue(),
+                json_data=json_string,
                 generation_time=datetime.now(),
                 type=form,
                 success=1,

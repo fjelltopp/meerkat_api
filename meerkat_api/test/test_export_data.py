@@ -103,7 +103,7 @@ class MeerkatAPITestCase(unittest.TestCase):
 
         self.assertTrue(has_found)
 
-        
+
     def test_export_category(self):
         """ Test getting a from with category """
         rv = self.app.get('/export/category/demo_case/cd_tab/cd?variables=[["icd_code", "icd code"], ["icd_name$cd_tab", "Name"], ["code$ale_2,ale_3,ale_4$Confirmed,Disregarded,Ongoing","Alert Status"], ["clinic", "Clinic"], ["meta/instanceID", "uuid"], ["end$month", "Month"], ["end$year", "Year"], ["end$epi_week", "epi_week"]]',
@@ -146,7 +146,7 @@ class MeerkatAPITestCase(unittest.TestCase):
                 self.assertEqual(line["Month"], "5")
                 self.assertEqual(line["Year"], "2016")
                 self.assertEqual(line["epi_week"], "18")
-                
+
                 found_uuid = True
         self.assertTrue(found_cholera)
         self.assertTrue(found_tf)
@@ -213,4 +213,3 @@ class MeerkatAPITestCase(unittest.TestCase):
     #         line["reason"] = "cmd_11"
     #         line["alert_id"] = "ee9376"
     #         line["alert_investigator"] = "Clinic 1"
-

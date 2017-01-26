@@ -113,7 +113,7 @@ class GetXLSDownload(Resource):
             DownloadDataFiles.uuid == uid
         ).first()
         if res:
-            return {"data": res.xlscontent, "filename": res.type}
+            return {"data": res.json_data, "filename": res.type}
         return {"data": "", "filename": "missing"}
 
 
