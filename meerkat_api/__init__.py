@@ -3,15 +3,12 @@ meerkat_api.py
 
 Root Flask app for the Meerkat API.
 """
-
-#from werkzeug.contrib.profiler import ProfilerMiddleware
-from flask import Flask, make_response, send_file
+from flask import Flask, make_response
 from flask.json import JSONEncoder
 from flask_sqlalchemy import SQLAlchemy
 from flask_restful import Api
 from datetime import datetime
 import flask_excel as excel
-# from werkzeug.contrib.profiler import ProfilerMiddleware
 import io
 import csv
 import os
@@ -110,13 +107,8 @@ def output_xls(data, code, headers=None):
 
     print(out_data)
 
-    resp = excel.make_response_from_records(out_data, 'xls', code, filename)
-    # resp.headers.extend(headers or {
-    #     'Content-Disposition': 'attachment; filename={}.xls'.format(filename),
-    #     'Content-type': ('application/vnd.openxml'
-    #                      'formats-officedocument.spreadsheetml.sheet')
-    # })
-    # To monitor memory usage
+    resp = excel.make_response_from_array(out_data, 'xls', code, filename)
+
     app.logger.info('Memory usage: %s (kb)' % int(
         resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
     )
