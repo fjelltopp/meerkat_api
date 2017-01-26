@@ -332,33 +332,34 @@ def export_category(uuid, form_name, category, download_name, variables):
     status.csvcontent = output.getvalue()
 
     # Create a workbook and add a worksheet.
-    output = BytesIO()
-    workbook = xlsxwriter.Workbook(output, {'in_memory': True})
-    worksheet = workbook.add_worksheet()
+    # output = BytesIO()
+    # workbook = xlsxwriter.Workbook(output, {'in_memory': True})
+    # worksheet = workbook.add_worksheet()
+
 
     # Write the header cells and record column numbers.
-    row = 0
-    col = 0
-    columns = {}
-    for key in return_keys:
-        worksheet.write(row, col, key)
-        columns[key] = col
-        col += 1
-
-    # Write each dict row out
-    row = 1
-    col = 0
-    for dict_row in dict_rows:
-        for element in dict_row.keys():
-            col = columns[element]
-            value = dict_row[element]
-            worksheet.write(row, col, value)
-        row += 1
-        col = 0
-
-    workbook.close()
+    # row = 0
+    # col = 0
+    # columns = {}
+    # for key in return_keys:
+    #     worksheet.write(row, col, key)
+    #     columns[key] = col
+    #     col += 1
+    #
+    # # Write each dict row out
+    # row = 1
+    # col = 0
+    # for dict_row in dict_rows:
+    #     for element in dict_row.keys():
+    #         col = columns[element]
+    #         value = dict_row[element]
+    #         worksheet.write(row, col, value)
+    #     row += 1
+    #     col = 0
+    #
+    # workbook.close()
     output.seek(0)
-    status.xlscontent = output.read()
+    status.xlscontent = json.dumps(dict_rows)
     status.status = 1
     status.success = 1
     session.commit()

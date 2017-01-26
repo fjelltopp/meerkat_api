@@ -105,15 +105,16 @@ class GetXLSDownload(Resource):
        uuid: uuid of download
     """
     decorators = [authenticate]
-    representations = {'text/xls': output_xls}
+    representations = {('application/vnd.openxmlformats-'
+                        'officedocument.spreadsheetml.sheet'): output_xls}
 
     def get(self, uid):
         res = db.session.query(DownloadDataFiles).filter(
             DownloadDataFiles.uuid == uid
         ).first()
         if res:
-            return {"string": res.xlscontent, "filename": res.type}
-        return {"string": "", "filename": "missing"}
+            return {"data": res.xlscontent, "filename": res.type}
+        return {"data": "", "filename": "missing"}
 
 
 class GetStatus(Resource):
