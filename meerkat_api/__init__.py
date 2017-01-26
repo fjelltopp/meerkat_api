@@ -5,28 +5,32 @@ Root Flask app for the Meerkat API.
 """
 
 #from werkzeug.contrib.profiler import ProfilerMiddleware
-from flask import Flask, make_response
+from flask import Flask, make_response, send_file
 from flask.json import JSONEncoder
 from flask_sqlalchemy import SQLAlchemy
 from flask_restful import Api
 from datetime import datetime
+import flask_excel as excel
 # from werkzeug.contrib.profiler import ProfilerMiddleware
 import io
 import csv
 import os
 import resource
+import json
 
 # Create the Flask app
 app = Flask(__name__)
 app.config.from_object('config.Config')
 app.config.from_envvar('MEERKAT_API_SETTINGS', silent=True)
 if os.environ.get("MEERKAT_API_DB_SETTINGS"):
-    app.config["SQLALCHEMY_DATABASE_URL"] = os.environ.get("MEERKAT_API_DB_URL")
+    app.config["SQLALCHEMY_DATABASE_URL"] = os.environ.get(
+        "MEERKAT_API_DB_URL"
+    )
 
 
 db = SQLAlchemy(app)
 api = Api(app)
-# app.wsgi_app = ProfilerMiddleware(app.wsgi_app, restrictions=[50])
+
 
 class CustomJSONEncoder(JSONEncoder):
     """
@@ -59,7 +63,7 @@ def output_csv(data_dict, code, headers=None):
        headers: http headers
     """
     filename = "file"
-    out_string=""
+    out_string = ""
     if data_dict:
         if "data" in data_dict:
             keys = data_dict["keys"]
@@ -81,11 +85,14 @@ def output_csv(data_dict, code, headers=None):
     resp.headers.extend(headers or {
         "Content-Disposition": "attachment; filename={}.csv".format(filename)})
     # To monitor memory usage
-    app.logger.info('Memory usage: %s (kb)' % int(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss))
+    app.logger.info('Memory usage: %s (kb)' % int(
+        resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+    ))
     return resp
 
 
-@api.representation('text/xls')
+@api.representation('application/vnd.openxmlformats-'
+                    'officedocument.spreadsheetml.sheet')
 def output_xls(data, code, headers=None):
     """
     Function to write data to a xls file.
@@ -96,21 +103,27 @@ def output_xls(data, code, headers=None):
        headers: http headers
     """
     filename = "file"
-    out_string = ""
-    if data and "string" in data:
-            out_string = data["string"]
-            filename = data["filename"]
-    resp = make_response(out_string, code)
-    resp.headers.extend(headers or {
-        "Content-Disposition": "attachment; filename={}.xls".format(filename)})
+    out_data = ""
+    if data and "data" in data:
+        out_data = json.loads(data["data"])
+        filename = data["filename"]
+
+    print(out_data)
+
+    resp = excel.make_response_from_records(out_data, 'xls', code, filename)
+    # resp.headers.extend(headers or {
+    #     'Content-Disposition': 'attachment; filename={}.xls'.format(filename),
+    #     'Content-type': ('application/vnd.openxml'
+    #                      'formats-officedocument.spreadsheetml.sheet')
+    # })
     # To monitor memory usage
     app.logger.info('Memory usage: %s (kb)' % int(
         resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
     )
     return resp
 
-# Importing all the resources here to avoid circular imports
 
+# Importing all the resources here to avoid circular imports
 from meerkat_api.resources.locations import Location, Locations, LocationTree, TotClinics
 from meerkat_api.resources.variables import Variables, Variable
 from meerkat_api.resources.data import Aggregate, AggregateYear
@@ -155,11 +168,8 @@ api.add_resource(ExportData, "/export/data",
                  "/export/data/<use_loc_ids>")
 api.add_resource(ExportForm, "/export/form/<form>")
 api.add_resource(Forms, "/export/forms")
-api.add_resource(ExportCategory, "/export/category/<form_name>/<category>/<download_name>")
-
-# Links
-# api.add_resource(Link, "/link/<link_id>")
-# api.add_resource(Links, "/links/<link_def>")
+api.add_resource(ExportCategory,
+                 "/export/category/<form_name>/<category>/<download_name>")
 
 # Location urls
 api.add_resource(Locations, "/locations")
