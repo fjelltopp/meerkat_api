@@ -14,7 +14,7 @@ from meerkat_api.test.test_data import  locations, cases
 from meerkat_abacus import model
 
 
-def insert_cases(session, variable, date=None):
+def insert_cases(session, variable, date=None, delete=True):
     """ Add a variable with cases from the cases.py file in test_data
     
     Args: 
@@ -25,8 +25,9 @@ def insert_cases(session, variable, date=None):
         freezer = freeze_time(date)
         freezer.start()
         reload(cases)
-    session.query(model.Data).delete()
-    session.query(model.DisregardedData).delete()
+    if delete:
+        session.query(model.Data).delete()
+        session.query(model.DisregardedData).delete()
     session.bulk_save_objects(getattr(cases, variable))
     session.commit()
     if date:
