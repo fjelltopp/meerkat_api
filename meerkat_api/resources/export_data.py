@@ -114,7 +114,7 @@ class GetXLSDownload(Resource):
         ).first()
         if res:
             return {"data": res.json_data, "filename": res.type}
-        return {"data": "", "filename": "missing"}
+        return {"string":"" , "filename": "missing"}
 
 
 class GetStatus(Resource):

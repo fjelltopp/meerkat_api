@@ -54,6 +54,7 @@ def export_data(uuid, use_loc_ids=False):
         dict_row = dict(
             (col, getattr(row, col)) for col in row.__table__.columns.keys()
         )
+        dict_row["date"] = dict_row["date"].isoformat()
         if not use_loc_ids:
             for l in ["country", "region", "district", "clinic"]:
                 if dict_row[l]:
@@ -347,8 +348,9 @@ def export_form(uuid, form, fields=None):
         for r in result:
             keys.append(r[0])
 
-    csv = StringIO()
-    csv_writer = csv.DictWriter(csv, keys, extrasaction='ignore')
+    file_object = StringIO()
+
+    csv_writer = csv.DictWriter(file_object, keys, extrasaction='ignore')
     csv_writer.writeheader()
 
     i = 0
@@ -395,12 +397,11 @@ def export_form(uuid, form, fields=None):
                 if key in keys and key not in dict_row:
                     dict_row[key] = row.data[key]
             dict_rows.append(dict_row)
-
             if i % 1000 == 0:
+                print(dict_rows)
                 csv_writer.writerows(dict_rows)
                 json_string = build_json(json.dumps(dict_rows), json_string)
-
-            dict_rows = []
+                dict_rows = []
             i += 1
 
         # Write any remaining unwritten data down.
@@ -410,7 +411,7 @@ def export_form(uuid, form, fields=None):
         session.add(
             DownloadDataFiles(
                 uuid=uuid,
-                csvcontent=csv.getvalue(),
+                csvcontent=file_object.getvalue(),
                 json_data=json_string,
                 generation_time=datetime.now(),
                 type=form,

@@ -85,10 +85,11 @@ class MeerkatAPITestCase(unittest.TestCase):
         self.assertEqual(len(test), 1)
         self.assertEqual(test[0].uuid, uuid)
 
-        rv = self.app.get('/export/get/' + uuid,
+        rv = self.app.get('/export/getcsv/' + uuid,
                           headers={**{"Accept": "text/csv"},
                                    **settings.header})
         lines = rv.data.decode("utf-8").strip().split("\r\n")
+        print(lines)
         self.assertEqual(len(lines), 13)
 
         c = csv.DictReader(lines)
@@ -117,7 +118,7 @@ class MeerkatAPITestCase(unittest.TestCase):
         self.assertEqual(len(test), 1)
         self.assertEqual(test[0].uuid, uuid)
 
-        rv = self.app.get('/export/get/' + uuid,
+        rv = self.app.get('/export/getcsv/' + uuid,
                           headers={**{"Accept": "text/csv"},
                                    **settings.header})
         self.assertEqual(rv.status_code, 200)
@@ -157,6 +158,7 @@ class MeerkatAPITestCase(unittest.TestCase):
     def test_export_forms(self):
         """ Test the basic export form functionality """
 
+        print(len(meerkat_api.db.session.query(model.form_tables["demo_case"]).all()))
         rv = self.app.get('/export/form/demo_case', headers={**settings.header})
 
         self.assertEqual(rv.status_code, 200)
@@ -167,10 +169,11 @@ class MeerkatAPITestCase(unittest.TestCase):
         self.assertEqual(len(test), 1)
         self.assertEqual(test[0].uuid, uuid)
 
-        rv = self.app.get('/export/get/' + uuid,
+        rv = self.app.get('/export/getcsv/' + uuid,
                           headers={**{"Accept": "text/csv"},
                                    **settings.header})
         lines = rv.data.decode("utf-8").strip().split("\r\n")
+        print(lines)
         self.assertEqual(len(lines), 11)
         c = csv.DictReader(lines)
         found_uuid = False
@@ -192,7 +195,7 @@ class MeerkatAPITestCase(unittest.TestCase):
         self.assertEqual(len(test), 1)
         self.assertEqual(test[0].uuid, uuid)
 
-        rv = self.app.get('/export/get/' + uuid,
+        rv = self.app.get('/export/getcsv/' + uuid,
                           headers={**{"Accept": "text/csv"},
                                    **settings.header})
         lines = rv.data.decode("utf-8").strip().split("\r\n")

@@ -104,9 +104,6 @@ def output_xls(data, code, headers=None):
     if data and "data" in data:
         out_data = json.loads(data["data"])
         filename = data["filename"]
-
-    print(out_data)
-
     resp = excel.make_response_from_array(out_data, 'xls', code, filename)
 
     app.logger.info('Memory usage: %s (kb)' % int(
