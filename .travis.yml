@@ -3,7 +3,7 @@ python:
 - '3.5'
 env:
 - MEERKAT_ABACUS_DB_URL='postgresql+psycopg2://postgres:postgres@localhost/meerkat_db'
-  MEERKAT_BRANCH='master' MEERKAT_API_SETTINGS='../.travis_config'
+  MEERKAT_BRANCH='development' MEERKAT_API_SETTINGS='../.travis_config'
   DATA_DIRECTORY='/home/travis/build/meerkat-code/meerkat_api/meerkat_abacus/meerkat_abacus/data/'
   COUNTRY_CONFIG_DIR='/home/travis/build/meerkat-code/meerkat_api/meerkat_abacus/meerkat_abacus/country_config/'
   MEERKAT_AUTH_SETTINGS='/home/travis/build/meerkat-code/meerkat_api/meerkat_auth/auth.cfg'
