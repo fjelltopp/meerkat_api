@@ -95,7 +95,11 @@ from meerkat_api.resources.alerts import Alert, Alerts, AggregateAlerts
 from meerkat_api.resources.explore import QueryVariable, QueryCategory
 from meerkat_api.resources.epi_week import EpiWeek, EpiWeekStart
 from meerkat_api.resources.completeness import Completeness, NonReporting
-from meerkat_api.resources.reports import PublicHealth, CdReport, CdPublicHealth, CdPublicHealthMad, NcdPublicHealth,RefugeePublicHealth, RefugeeCd,RefugeeDetail, NcdReport, Pip, WeeklyEpiMonitoring, Malaria, VaccinationReport, AFROBulletin
+from meerkat_api.resources.reports import PublicHealth, CdReport, \
+    CdPublicHealth, CdPublicHealthMad, NcdPublicHealth,RefugeePublicHealth, \
+    RefugeeCd,RefugeeDetail, Pip, WeeklyEpiMonitoring, Malaria, \
+    VaccinationReport, AFROBulletin,\
+    NcdReport, NcdReportNewVisits, NcdReportReturnVisits
 from meerkat_api.resources.frontpage import KeyIndicators, TotMap, NumAlerts, ConsultationMap, RefugeePage, NumClinics
 from meerkat_api.resources.export_data import ExportData, ExportForm, Forms, ExportCategory, GetDownload, GetStatus
 from meerkat_api.resources.incidence import IncidenceRate, WeeklyIncidenceRate
@@ -201,6 +205,12 @@ api.add_resource(PublicHealth, "/reports/public_health/<location>",
 api.add_resource(NcdReport, "/reports/ncd_report/<location>",
                  "/reports/ncd_report/<location>/<end_date>",
                  "/reports/ncd_report/<location>/<end_date>/<start_date>")
+api.add_resource(NcdReportNewVisits, "/reports/ncd_report_new_visits/<location>",
+                 "/reports/ncd_report_new_visits/<location>/<end_date>",
+                 "/reports/ncd_report_new_visits/<location>/<end_date>/<start_date>")
+api.add_resource(NcdReportReturnVisits, "/reports/ncd_report_return_visits/<location>",
+                 "/reports/ncd_report_return_visits/<location>/<end_date>",
+                 "/reports/ncd_report_return_visits/<location>/<end_date>/<start_date>")
 api.add_resource(CdPublicHealth, "/reports/cd_public_health/<location>",
                  "/reports/cd_public_health/<location>/<end_date>",
                  "/reports/cd_public_health/<location>/<end_date>/<start_date>")

@@ -250,156 +250,224 @@ def refugee_disease(disease_demo):
     return ret
 
 def order_by_name(data_list):
-  return 1
+    return 1
+
+
+"""
+Ncd Reports to show data on Hypertension and Diabetes. The data includes
+breakdowns by age and on lab data, complications and comorbidity. We create
+tables with rows for regions.
+
+Args:\n
+   location: Location to generate report for\n
+   start_date: Start date of report\n
+   end_date: End date of report\n
+Returns:\n
+   report_data\n
+"""
+class NcdReportNewVisits(Resource):
+
+    decorators = [authenticate]
+
+    def get(self, location, start_date=None, end_date=None):
+        retval = create_ncd_report(location=location, start_date=start_date,\
+            end_date=end_date, params=['new'])
+        return retval
+
+class NcdReportReturnVisits(Resource):
+
+    decorators = [authenticate]
+ 
+    def get(self, location, start_date=None, end_date=None):
+        retval = create_ncd_report(location=location, start_date=start_date,\
+            end_date=end_date, params=['return'])
+        return retval
 
 class NcdReport(Resource):
-    """
-    Ncd Report to show data on Hypertension and Diabetes. The data includes
-    breakdowns by age and on lab data, complications and comorbidity. We create
-    tables with rows for regions.
 
-    Args:\n
-       location: Location to generate report for\n
-       start_date: Start date of report\n
-       end_date: End date of report\n
-    Returns:\n
-       report_data\n
-    """
     decorators = [authenticate]
+
     def get(self, location, start_date=None, end_date=None):
-        start_date, end_date = fix_dates(start_date, end_date)
-        end_date_limit = end_date + timedelta(days=1)
-        ret = {}
-        # meta data
-        ret["meta"] = {"uuid": str(uuid.uuid4()),
-                       "project_id": 1,
-                       "generation_timestamp": datetime.now().isoformat(),
-                       "schema_version": 0.1
-        }
-        #  Dates and Location Name
-        ew = EpiWeek()
-        epi_week = ew.get(end_date.isoformat())["epi_week"]
-        ret["data"] = {"epi_week_num": epi_week,
-                       "end_date": end_date.isoformat(),
-                       "project_epoch": datetime(2015, 5, 20).isoformat(),
-                       "start_date": start_date.isoformat()
-        }
-        location_name = db.session.query(Locations.name).filter(
-            Locations.id == location).first()
-        if not location_name:
-            return None
-        ret["data"]["project_region"] = location_name.name
-        tot_clinics = TotClinics()
-        ret["data"]["clinic_num"] = tot_clinics.get(location)["total"]
-        #  Data on Hypertension and Diabebtes, there are two tables for each disease.
-        #  One for the age breakdown, and one for labs and complications.
-        #  For each table we have rows for each Region.
-        #  Each of these tables have a title key for the X-axis titles
-        #  Data is list of rows(dicts) with a title for the y-axis title and
-        #  a list of values that are the values for the row in the right order
+        retval = create_ncd_report(location=location, start_date=start_date,\
+            end_date=end_date, params=['case'])
+        return retval
 
-        ret["hypertension"] = {"age": {}, "complications": {}, "email_summary": {}}
-        ret["diabetes"] = {"age": {}, "complications": {}, "email_summary": {}}
+    
+def create_ncd_report(location, start_date=None, end_date=None, params=['case']):
+    start_date, end_date = fix_dates(start_date, end_date)
+    end_date_limit = end_date + timedelta(days=1)
+    ret = {}
+    # meta data
+    ret["meta"] = {"uuid": str(uuid.uuid4()),
+                   "project_id": 1,
+                   "generation_timestamp": datetime.now().isoformat(),
+                   "schema_version": 0.1
+    }
+    #  Dates and Location Name
+    ew = EpiWeek()
+    epi_week = ew.get(end_date.isoformat())["epi_week"]
+    ret["data"] = {"epi_week_num": epi_week,
+                   "end_date": end_date.isoformat(),
+                   "project_epoch": datetime(2015, 5, 20).isoformat(),
+                   "start_date": start_date.isoformat()
+    }
+    location_name = db.session.query(Locations.name).filter(
+        Locations.id == location).first()
+    if not location_name:
+        return None
+    ret["data"]["project_region"] = location_name.name
+    tot_clinics = TotClinics()
+    ret["data"]["clinic_num"] = tot_clinics.get(location)["total"]
+    #  Data on Hypertension and Diabebtes, there are two tables for each disease.
+    #  One for the age breakdown, and one for labs and complications.
+    #  For each table we have rows for each Region.
+    #  Each of these tables have a title key for the X-axis titles
+    #  Data is list of rows(dicts) with a title for the y-axis title and
+    #  a list of values that are the values for the row in the right order
 
+    ret["hypertension"] = {"age": {}, "complications": {}, "email_summary": {}}
+    ret["diabetes"] = {"age": {}, "complications": {}, "email_summary": {}}
+
+    #  read from params if creating new visit or return visit report
+    if 'new' in params or 'return' in params:
+        total_variable = 'vis_0'
+        diabetes_id = "visit_ncd_1"
+        hypertension_id = "visit_ncd_2"
+        age_category = "r_ncd_age"
+        gender_category = "r_gender"
+        gender_variables = ["visit_gen_1","visit_gen_2"]
+        email_report_control_diabetes = "visit_lab_9"
+        email_report_control_hypertension = "visit_lab_2"
+        diseases = {"hypertension": hypertension_id,
+                    "diabetes": diabetes_id}
+        ids_to_include = {"hypertension": [("visit_lab_4", "visit_lab_3"), ("visit_lab_5", "visit_lab_3"), \
+                            ("visit_lab_2", "visit_lab_1"), ("visit_com_1", "visit_tot"), \
+                            ("visit_smo_2", "visit_smo_4"), ("visit_lab_11", "visit_lab_10")],
+                          "diabetes": [("visit_lab_4", "visit_lab_3"), ("visit_lab_5", "visit_lab_3"), \
+                            ("visit_lab_7", "visit_lab_6"), ("visit_lab_9", "visit_lab_8"), \
+                            ("visit_com_2", "visit_tot"), ("visit_smo_2", "visit_smo_4"),\
+                            ("visit_lab_11", "visit_lab_10")]
+        }
+        if 'new' in params:
+            additional_variables = ['vis_4'] 
+        elif 'return' in params:
+            additional_variables = ['vis_5'] 
+
+    else:
+        total_variable = 'tot'
         diabetes_id = "ncd_1"
         hypertension_id = "ncd_2"
+        age_category = "ncd_age"
+        gender_category = "gender"
+        gender_variables = ["gen_1","gen_2"]
+        email_report_control_diabetes = "lab_9"
+        email_report_control_hypertension = "lab_2"
         diseases = {"hypertension": hypertension_id,
                     "diabetes": diabetes_id}
         ids_to_include = {"hypertension": [("lab_4", "lab_3"), ("lab_5", "lab_3"), ("lab_2", "lab_1"), ("com_1", "tot"), ("smo_2", "smo_4"), ("lab_11", "lab_10")],
                           "diabetes": [("lab_4", "lab_3"), ("lab_5", "lab_3"), ("lab_7", "lab_6"), ("lab_9", "lab_8"), ("com_2", "tot"), ("smo_2", "smo_4"), ("lab_11", "lab_10")]
         }
+        additional_variables = []
 
-        locations, ldid, regions, districts, devices = all_location_data(db.session)
-        v = Variables()
-        ages = v.get("ncd_age")
+    locations, ldid, regions, districts, devices = all_location_data(db.session)
+    v = Variables()
 
-        #  Loop through diabetes and hypertension
-        for disease in diseases.keys():
-            #  First sort out the titles
-            ret[disease]["age"]["titles"] = [gettext("reg")]
-            ret[disease]["age"]["data"] = []
+
+    ages = v.get(age_category)
+
+    #  Loop through diabetes and hypertension
+    for disease in diseases.keys():
+        #  First sort out the titles
+        ret[disease]["age"]["titles"] = [gettext("reg")]
+        ret[disease]["age"]["data"] = []
+        for age in sorted(ages.keys()):
+            ret[disease]["age"]["titles"].append(ages[age]["name"])
+        ret[disease]["age"]["titles"].insert(1,"Total")
+        ret[disease]["complications"]["titles"] = ["reg",
+                                                   total_variable,
+                                                   gender_variables[0],
+                                                   gender_variables[1]]
+
+        for i in ids_to_include[disease]:
+            ret[disease]["complications"]["titles"].append(i[0])
+        ret[disease]["complications"]["data"] = []
+
+
+        #  Loop through each region, we add [1] to include the whole country
+        for i, region in enumerate( sorted(regions) + [1]):
+
+            d_id = diseases[disease]
+            query_variable = QueryVariable()
+
+
+            #  get the age breakdown
+            disease_age = query_variable.get(d_id, age_category,
+                                             end_date=end_date_limit.isoformat(),
+                                             start_date=start_date.isoformat(),
+                                             only_loc=region,
+                                             use_ids=True,
+                                             additional_variables=additional_variables)
+            loc_name = locations[region].name
+            if region == 1:
+                loc_name = gettext("Total")
+            ret[disease]["age"]["data"].append(
+                {"title": loc_name, "values": []}
+            )
+
             for age in sorted(ages.keys()):
-                ret[disease]["age"]["titles"].append(ages[age]["name"])
-            ret[disease]["age"]["titles"].insert(1,"Total")
-            ret[disease]["complications"]["titles"] = ["reg",
-                                                       "tot",
-                                                       "gen_1",
-                                                       "gen_2"]
+                ret[disease]["age"]["data"][i]["values"].append(disease_age[age]["total"])
+            ret[disease]["age"]["data"][i]["values"].insert(0,sum( [a["total"] for a in disease_age.values()]))
 
-            for i in ids_to_include[disease]:
-                ret[disease]["complications"]["titles"].append(i[0])
-            ret[disease]["complications"]["data"] = []
+            # Add whole country summary for email report
+            if region == 1:
+              ret[disease]["email_summary"]["cases"]=ret[disease]["age"]["data"][i]["values"][0]
 
+            #  Get gender breakdown
+            disease_gender = query_variable.get(d_id, gender_category,
+                                                end_date=end_date_limit.isoformat(),
+                                                start_date=start_date.isoformat(),
+                                                only_loc=region,
+                                                additional_variables=additional_variables)
 
-            #  Loop through each region, we add [1] to include the whole country
-            for i, region in enumerate( sorted(regions) + [1]):
-
-                d_id = diseases[disease]
-                query_variable = QueryVariable()
-                #  get the age breakdown
-                disease_age = query_variable.get(d_id, "ncd_age",
-                                                 end_date=end_date_limit.isoformat(),
-                                                 start_date=start_date.isoformat(),
-                                                 only_loc=region,
-                                                 use_ids=True)
-                loc_name = locations[region].name
-                if region == 1:
-                    loc_name = gettext("Total")
-                ret[disease]["age"]["data"].append(
-                    {"title": loc_name, "values": []}
-                )
-
-                for age in sorted(ages.keys()):
-                    ret[disease]["age"]["data"][i]["values"].append(disease_age[age]["total"])
-                ret[disease]["age"]["data"][i]["values"].insert(0,sum( [a["total"] for a in disease_age.values()]))
-
-                # Add whole country summary for email report
-                if region == 1:
-                  ret[disease]["email_summary"]["cases"]=ret[disease]["age"]["data"][i]["values"][0]
-
-                #  Get gender breakdown
-                disease_gender = query_variable.get(d_id, "gender",
-                                                    end_date=end_date_limit.isoformat(),
-                                                    start_date=start_date.isoformat(),
-                                                    only_loc=region)
-
-                table_two_total = sum([disease_gender[gender]["total"] for gender in disease_gender])
-                ret[disease]["complications"]["data"].append(
-                    {
-                        "title": loc_name,
-                        "values": [table_two_total]
-                    })
-                if table_two_total == 0:
-                    table_two_total = 1
-                ret[disease]["complications"]["data"][i]["values"].append([disease_gender["Male"]["total"],  disease_gender["Male"]["total"] /table_two_total * 100])
-                ret[disease]["complications"]["data"][i]["values"].append([disease_gender["Female"]["total"],  disease_gender["Female"]["total"] / table_two_total * 100])
+            table_two_total = sum([disease_gender[gender]["total"] for gender in disease_gender])
+            ret[disease]["complications"]["data"].append(
+                {
+                    "title": loc_name,
+                    "values": [table_two_total]
+                })
+            if table_two_total == 0:
+                table_two_total = 1
+            ret[disease]["complications"]["data"][i]["values"].append([disease_gender["Male"]["total"],  disease_gender["Male"]["total"] /table_two_total * 100])
+            ret[disease]["complications"]["data"][i]["values"].append([disease_gender["Female"]["total"],  disease_gender["Female"]["total"] / table_two_total * 100])
 
 
 
-                #  Get the lab breakdown
-                for new_id in ids_to_include[disease]:
-                    if new_id[0]:
-                        numerator = query_sum(db, [d_id, new_id[0]], start_date, end_date_limit, region)["total"]
-                        if new_id[1] == "tot":
-                            denominator = table_two_total
-                        else:
-                            denominator = query_sum(db, [d_id, new_id[1]], start_date, end_date_limit, region)["total"]
-                        if denominator == 0:
-                            denominator = 1
-                        ret[disease]["complications"]["data"][i]["values"].append(
-                            [numerator, numerator/ denominator * 100])
-
-                        # control for email report for the whole country
-                        if region == 1:
-                          if disease == "diabetes" and new_id[0] == "lab_9":
-                            ret[disease]["email_summary"]["control"] = numerator/ denominator * 100
-                          elif disease == "hypertension" and new_id[0] == "lab_2":
-                            ret[disease]["email_summary"]["control"] = numerator/ denominator * 100
+            #  Get the lab breakdown
+            for new_id in ids_to_include[disease]:
+                if new_id[0]:
+                    numerator = query_sum(db, [d_id, new_id[0]] + additional_variables, start_date, end_date_limit,\
+                         region)["total"]
+                    if new_id[1] == total_variable:
+                        denominator = table_two_total
                     else:
-                        #  We can N/A to the table if it includes data we are not collecting
-                        ret[disease]["complications"]["data"][i]["values"].append("N/A")
+                        denominator = query_sum(db, [d_id, new_id[1]] + additional_variables, start_date, end_date_limit,\
+                             region)["total"]
+                    if denominator == 0:
+                        denominator = 1
+                    ret[disease]["complications"]["data"][i]["values"].append(
+                        [numerator, numerator/ denominator * 100])
 
-        return ret
+                    # control for email report for the whole country
+                    if region == 1:
+                      if disease == "diabetes" and new_id[0] == email_report_control_diabetes:
+                        ret[disease]["email_summary"]["control"] = numerator/ denominator * 100
+                      elif disease == "hypertension" and new_id[0] == email_report_control_hypertension:
+                        ret[disease]["email_summary"]["control"] = numerator/ denominator * 100
+                else:
+                    #  We can N/A to the table if it includes data we are not collecting
+                    ret[disease]["complications"]["data"][i]["values"].append("N/A")
+
+    return ret
 
 
 class CdReport(Resource):
