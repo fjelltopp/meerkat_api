@@ -130,6 +130,25 @@ def export_category(uuid, form_name, category, download_name, variables):
     link_ids = []
     min_translation = {}
 
+    def add_translations_from_file(details):
+        # Load the csv file and reader
+        file_path = '{}api/{}'.format(
+            os.environ['COUNTRY_CONFIG_DIR'],
+            details['dict_file']
+        )
+        csv_file = open(file_path, 'rb')
+        reader = csv.reader(csv_file)
+        # Establish which column in each row we're translating from and to.
+        headers = next(reader)
+        from_index = headers.index(details['from'])
+        to_index = headers.index(details['to'])
+        # Add translations to the translation dictionary.
+        trans_dict = {}
+        for row in reader:
+            trans_dict[row[from_index]] = row[to_index]
+        return trans_dict
+
+
     # Set up icd_code_to_name if needed and determine if
     # alert_links are included
     for v in variables:
@@ -161,8 +180,13 @@ def export_category(uuid, form_name, category, download_name, variables):
             field = "$".join(split[:-1])
             trans = split[-1]
             tr_dict = json.loads(trans.split(";")[1].replace("'", '"'))
-            min_translation[v[1]] = tr_dict
-            v[0] = field
+            # If the json specifies file details, load translation from file.
+            if tr_dict.get('dict_file', False):
+                min_translation[v[1]] = add_translations_from_file(tr_dict)
+                v[0] = field + '$translate'
+            else:
+                min_translation[v[1]] = tr_dict
+                v[0] = field
             print(min_translation)
         if "gen_link$" in v[0]:
             link_ids.append(v[0].split("$")[1])
@@ -291,10 +315,12 @@ def export_category(uuid, form_name, category, download_name, variables):
                 else:
                     list_row[index] = None
 
-            if min_translation and k in min_translation:
+            if min_translation and k in min_translation and list_row[index]:
                 tr_dict = min_translation[k]
-                if list_row[index] in tr_dict.keys():
-                    list_row[index] = tr_dict[list_row[index]]
+                parts = [x.strip() for x in list_row[index].split(',')]
+                for part in parts:
+                    part = tr_dict.get(part, part)
+                list_row[index] = parts.join(', ')
 
         list_rows.append(list_row)
 
