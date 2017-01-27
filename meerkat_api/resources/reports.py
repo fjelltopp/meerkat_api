@@ -318,8 +318,6 @@ def create_ncd_report(location, start_date=None, end_date=None, params=['case'])
         Locations.id == location).first()
     if not location_name:
         return None
-    if app.config["TESTING"]:
-        return ret
     ret["data"]["project_region"] = location_name.name
     tot_clinics = TotClinics()
     ret["data"]["clinic_num"] = tot_clinics.get(location)["total"]
@@ -338,25 +336,25 @@ def create_ncd_report(location, start_date=None, end_date=None, params=['case'])
         total_variable = 'vis_0'
         diabetes_id = "visit_ncd_1"
         hypertension_id = "visit_ncd_2"
-        age_category = "r_ncd_age"
-        gender_category = "r_gender"
-        gender_variables = ["visit_gen_1","visit_gen_2"]
+        age_category = "visit_ncd_age"
+        gender_category = "visit_gender"
+        gender_variables = ["visit_gen_1", "visit_gen_2"]
         email_report_control_diabetes = "visit_lab_9"
         email_report_control_hypertension = "visit_lab_2"
         diseases = {"hypertension": hypertension_id,
                     "diabetes": diabetes_id}
         ids_to_include = {"hypertension": [("visit_lab_4", "visit_lab_3"), ("visit_lab_5", "visit_lab_3"), \
-                            ("visit_lab_2", "visit_lab_1"), ("visit_com_1", "visit_tot"), \
+                            ("visit_lab_2", "visit_lab_1"), ("visit_com_1", "visit_ncd_2"), \
                             ("visit_smo_2", "visit_smo_4"), ("visit_lab_11", "visit_lab_10")],
                           "diabetes": [("visit_lab_4", "visit_lab_3"), ("visit_lab_5", "visit_lab_3"), \
                             ("visit_lab_7", "visit_lab_6"), ("visit_lab_9", "visit_lab_8"), \
-                            ("visit_com_2", "visit_tot"), ("visit_smo_2", "visit_smo_4"),\
+                            ("visit_com_2", "visit_ncd_1"), ("visit_smo_2", "visit_smo_4"),\
                             ("visit_lab_11", "visit_lab_10")]
         }
         if 'new' in params:
-            additional_variables = ['vis_4'] 
+            additional_variables = ['vis_4']
         elif 'return' in params:
-            additional_variables = ['vis_5'] 
+            additional_variables = ['vis_5']
 
     else:
         total_variable = 'tot'
@@ -364,7 +362,7 @@ def create_ncd_report(location, start_date=None, end_date=None, params=['case'])
         hypertension_id = "ncd_2"
         age_category = "ncd_age"
         gender_category = "gender"
-        gender_variables = ["gen_1","gen_2"]
+        gender_variables = ["gen_1", "gen_2"]
         email_report_control_diabetes = "lab_9"
         email_report_control_hypertension = "lab_2"
         diseases = {"hypertension": hypertension_id,
@@ -376,7 +374,7 @@ def create_ncd_report(location, start_date=None, end_date=None, params=['case'])
 
     locations, ldid, regions, districts, devices = all_location_data(db.session)
     v = Variables()
-
+  
 
     ages = v.get(age_category)
 
@@ -387,7 +385,7 @@ def create_ncd_report(location, start_date=None, end_date=None, params=['case'])
         ret[disease]["age"]["data"] = []
         for age in sorted(ages.keys()):
             ret[disease]["age"]["titles"].append(ages[age]["name"])
-        ret[disease]["age"]["titles"].insert(1,"Total")
+        ret[disease]["age"]["titles"].insert(1, "Total")
         ret[disease]["complications"]["titles"] = ["reg",
                                                    total_variable,
                                                    gender_variables[0],
@@ -399,7 +397,7 @@ def create_ncd_report(location, start_date=None, end_date=None, params=['case'])
 
 
         #  Loop through each region, we add [1] to include the whole country
-        for i, region in enumerate( sorted(regions) + [1]):
+        for i, region in enumerate(sorted(regions) + [1]):
 
             d_id = diseases[disease]
             query_variable = QueryVariable()
@@ -442,6 +440,7 @@ def create_ncd_report(location, start_date=None, end_date=None, params=['case'])
                 })
             if table_two_total == 0:
                 table_two_total = 1
+            
             ret[disease]["complications"]["data"][i]["values"].append([disease_gender["Male"]["total"],  disease_gender["Male"]["total"] /table_two_total * 100])
             ret[disease]["complications"]["data"][i]["values"].append([disease_gender["Female"]["total"],  disease_gender["Female"]["total"] / table_two_total * 100])
 
@@ -2611,8 +2610,8 @@ class AFROBulletin(Resource):
 
     def get(self, location, start_date=None, end_date=None):
         # Hack the tests for now.
- #       if app.config["TESTING"]:
- #           return {}
+        if app.config["TESTING"]:
+            return {}
 
         # Set default date values to last epi week.
         today = datetime.now()
