@@ -33,6 +33,7 @@ install:
 - cd meerkat_abacus
 - git checkout $MEERKAT_BRANCH
 - pip install .
+- python meerkat_abacus/manage.py create-dbcc
 - cd ..
 script: nosetests
 notifications:
