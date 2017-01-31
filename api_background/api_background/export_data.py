@@ -304,7 +304,7 @@ def export_category(uuid, form_name, category, download_name, variables):
             elif "code_value" == form_var.split("$")[0]:
                 code = form_var.split("$")[1]
                 if code in r[0].variables:
-                    list_row[index] = r[0].variables[code]
+                    list_row[index] = round(float(r[0].variables[code]), 1)
                 else:
                     list_row[index] = None
             elif "value" == form_var.split(":")[0]:
@@ -338,6 +338,7 @@ def export_category(uuid, form_name, category, download_name, variables):
     status.csvcontent = csvcontent.getvalue()
     status.xlscontent = xlscontent.getvalue()
     logging.warning(status.xlscontent)
+
     status.status = 1
     status.success = 1
     session.commit()
