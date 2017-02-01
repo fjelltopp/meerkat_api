@@ -136,7 +136,7 @@ def export_category(uuid, form_name, category, download_name, variables):
             os.environ['COUNTRY_CONFIG_DIR'],
             details['dict_file']
         )
-        csv_file = open(file_path, 'rb')
+        csv_file = open(file_path, 'rt')
         reader = csv.reader(csv_file)
         # Establish which column in each row we're translating from and to.
         headers = next(reader)
@@ -183,10 +183,9 @@ def export_category(uuid, form_name, category, download_name, variables):
             # If the json specifies file details, load translation from file.
             if tr_dict.get('dict_file', False):
                 min_translation[v[1]] = add_translations_from_file(tr_dict)
-                v[0] = field + '$translate'
             else:
                 min_translation[v[1]] = tr_dict
-                v[0] = field
+            v[0] = field
             print(min_translation)
         if "gen_link$" in v[0]:
             link_ids.append(v[0].split("$")[1])
