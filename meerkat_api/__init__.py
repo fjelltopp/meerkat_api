@@ -3,17 +3,19 @@ meerkat_api.py
 
 Root Flask app for the Meerkat API.
 """
-from flask import Flask, make_response
+from flask import Flask, make_response, abort
 from flask.json import JSONEncoder
 from flask_sqlalchemy import SQLAlchemy
 from flask_restful import Api
 from datetime import datetime
+from io import BytesIO
 import flask_excel as excel
 import io
 import csv
 import os
 import resource
-import json
+import pyexcel
+import logging
 
 # Create the Flask app
 app = Flask(__name__)
@@ -102,14 +104,24 @@ def output_xls(data, code, headers=None):
     filename = "file"
     out_data = ""
     if data and "data" in data:
-        out_data = json.loads(data["data"])
         filename = data["filename"]
-    resp = excel.make_response_from_array(out_data, 'xls', code, filename)
+        out_data = data['data']
+        logging.warning("Out data")
+        logging.warning(out_data.decode('iso-8859-1'))
 
-    app.logger.info('Memory usage: %s (kb)' % int(
-        resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
-    )
-    return resp
+        resp = make_response(out_data, code)
+        resp.headers.extend(headers or {
+            "Content-Disposition": "attachment; filename={}.xlsx".format(
+                filename
+            )
+        })
+        # To monitor memory usage
+        app.logger.info('Memory usage: %s (kb)' % int(
+            resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+        ))
+        return resp
+    else:
+        abort(404)
 
 
 # Importing all the resources here to avoid circular imports

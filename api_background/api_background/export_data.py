@@ -10,10 +10,13 @@ from sqlalchemy.orm import aliased
 from sqlalchemy import text, or_
 from dateutil.parser import parse
 from datetime import datetime
-from io import StringIO
+from io import StringIO, BytesIO
 from celery import task
+import pyexcel
 import csv
 import json
+import logging
+from collections import OrderedDict
 
 
 @task
@@ -31,7 +34,7 @@ def export_data(uuid, use_loc_ids=False):
     status = DownloadDataFiles(
         uuid=uuid,
         csvcontent="",
-        json_data="",
+        xlscontent=b"",
         generation_time=datetime.now(),
         type="data",
         success=0,
@@ -67,7 +70,7 @@ def export_data(uuid, use_loc_ids=False):
     writer.writerows(dict_rows)
     status.csvcontent = output.getvalue()
 
-    status.json_data = json.dumps(dict_rows)
+    status.xlscontent = json.dumps(dict_rows)
     status.status = 1
     status.success = 1
     session.commit()
@@ -105,7 +108,7 @@ def export_category(uuid, form_name, category, download_name, variables):
     status = DownloadDataFiles(
         uuid=uuid,
         csvcontent="",
-        json_data="",
+        xlscontent=b"",
         generation_time=datetime.now(),
         type=download_name,
         success=0,
@@ -299,11 +302,20 @@ def export_category(uuid, form_name, category, download_name, variables):
 
         list_rows.append(list_row)
 
-    output = StringIO()
-    writer = csv.writer(output)
+    # Save the collected data in xlsx form
+    xlscontent = BytesIO()
+    sheet = pyexcel.Sheet(list_rows)
+    xlscontent = sheet.save_to_memory("xlsx", xlscontent)
+
+    # Save the collected data in csv form
+    csvcontent = StringIO()
+    writer = csv.writer(csvcontent)
     writer.writerows(list_rows)
-    status.csvcontent = output.getvalue()
-    status.json_data = json.dumps(list_rows)
+
+    # Write the two files to database
+    status.csvcontent = csvcontent.getvalue()
+    status.xlscontent = xlscontent.getvalue()
+    logging.warning(status.xlscontent)
     status.status = 1
     status.success = 1
     session.commit()
@@ -359,7 +371,7 @@ def export_form(uuid, form, fields=None):
             DownloadDataFiles(
                 uuid=uuid,
                 csvcontent="",
-                json_data="",
+                xlscontent=b"",
                 generation_time=datetime.now(),
                 type=form,
                 success=0,
@@ -412,7 +424,7 @@ def export_form(uuid, form, fields=None):
             DownloadDataFiles(
                 uuid=uuid,
                 csvcontent=file_object.getvalue(),
-                json_data=json_string,
+                xlscontent=json_string,
                 generation_time=datetime.now(),
                 type=form,
                 success=1,
