@@ -6,7 +6,7 @@ from flask import request
 import json
 import uuid
 
-from meerkat_api import db, output_csv
+from meerkat_api import db, output_csv, output_xls
 from meerkat_abacus.model import form_tables, DownloadDataFiles
 from meerkat_api.authentication import authenticate
 from meerkat_abacus.task_queue import export_form, export_category, export_data
@@ -37,10 +37,10 @@ class Forms(Resource):
 class ExportData(Resource):
     """
     Export data table from db
-    
+
     Starts generation of data file
-    
-    Args: 
+
+    Args:
        use_loc_ids: If we use names are location ids
     Returns:\n
        uuid
@@ -53,6 +53,7 @@ class ExportData(Resource):
         uid = str(uuid.uuid4())
         export_data.delay(uid, use_loc_ids)
         return uid
+
 
 class ExportCategory(Resource):
     """
@@ -78,24 +79,44 @@ class ExportCategory(Resource):
         return uid
 
 
-class GetDownload(Resource):
+class GetCSVDownload(Resource):
     """
     serves a pregenerated csv file
 
-    Args: 
+    Args:
        uuid: uuid of download
     """
     decorators = [authenticate]
     representations = {'text/csv': output_csv}
-    
+
     def get(self, uid):
         res = db.session.query(DownloadDataFiles).filter(
             DownloadDataFiles.uuid == uid).first()
         if res:
-            return {"string": res.content, "filename": res.type}
+            return {"string": res.csvcontent, "filename": res.type}
         return {"string": "", "filename": "missing"}
 
-    
+
+class GetXLSDownload(Resource):
+    """
+    Serves a pregenerated xls file
+
+    Args:
+       uuid: uuid of download
+    """
+    decorators = [authenticate]
+    representations = {('application/vnd.openxmlformats-'
+                        'officedocument.spreadsheetml.sheet'): output_xls}
+
+    def get(self, uid):
+        res = db.session.query(DownloadDataFiles).filter(
+            DownloadDataFiles.uuid == uid
+        ).first()
+        if res:
+            return {"data": res.json_data, "filename": res.type}
+        return {"string":"" , "filename": "missing"}
+
+
 class GetStatus(Resource):
     """
     Checks the current status of the generation
@@ -104,9 +125,9 @@ class GetStatus(Resource):
        uuid: uuid to check status for
     """
     decorators = [authenticate]
-    
+
     def get(self, uid):
-        
+
         results = db.session.query(DownloadDataFiles).filter(
             DownloadDataFiles.uuid == uid).first()
         if results:
@@ -114,7 +135,7 @@ class GetStatus(Resource):
         else:
             return None
 
-    
+
 class ExportForm(Resource):
     """
     Export a form. If fields is in the request variable we only include
@@ -128,7 +149,7 @@ class ExportForm(Resource):
     """
     # representations = {'text/csv': output_csv}
     decorators = [authenticate]
-    
+
     def get(self, form):
         uid = str(uuid.uuid4())
         if "fields" in request.args.keys():
