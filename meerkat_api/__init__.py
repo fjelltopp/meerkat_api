@@ -10,6 +10,8 @@ from flask.json import JSONEncoder
 from flask_sqlalchemy import SQLAlchemy
 from flask_restful import Api
 from datetime import datetime
+from geoalchemy2.elements import WKBElement
+from geoalchemy2.shape import to_shape
 # from werkzeug.contrib.profiler import ProfilerMiddleware
 import io
 import csv
@@ -36,6 +38,14 @@ class CustomJSONEncoder(JSONEncoder):
         try:
             if isinstance(obj, datetime):
                 return obj.isoformat()
+            if isinstance(obj, WKBElement):
+                shp_obj = to_shape(obj)
+                if shp_obj.geom_type == "Point":
+                    return shp_obj.coords
+                if shp_obj.geom_type == "Polygon":
+                    return shp_obj.exterior.coords
+                else:
+                    return None
             iterable = iter(obj)
         except TypeError:
             pass
@@ -90,7 +100,7 @@ from meerkat_api.resources.locations import Location, Locations, LocationTree, T
 from meerkat_api.resources.variables import Variables, Variable
 from meerkat_api.resources.data import Aggregate, AggregateYear
 from meerkat_api.resources.data import AggregateCategory, Records
-from meerkat_api.resources.map import Clinics, MapVariable, IncidenceMap
+from meerkat_api.resources.map import Clinics, MapVariable, IncidenceMap, Shapes
 from meerkat_api.resources.alerts import Alert, Alerts, AggregateAlerts
 from meerkat_api.resources.explore import QueryVariable, QueryCategory
 from meerkat_api.resources.epi_week import EpiWeek, EpiWeekStart
@@ -165,6 +175,8 @@ api.add_resource(Alerts, "/alerts")
 # Map
 api.add_resource(Clinics, "/clinics/<location_id>",
                  "/clinics/<location_id>/<clinic_type>")
+api.add_resource(Shapes, "/geo_shapes/<level>")
+
 api.add_resource(MapVariable, "/map/<variable_id>",
                  "/map/<variable_id>/<location>",
                  "/map/<variable_id>/<location>/<end_date>",

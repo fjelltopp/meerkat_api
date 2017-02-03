@@ -6,14 +6,16 @@ from flask import abort
 from geojson import Point, FeatureCollection, Feature
 from sqlalchemy import extract, func, Float, or_
 from datetime import datetime
-
+from geoalchemy2.shape import to_shape
+import shapely.geometry
 from meerkat_api.util import is_child, fix_dates
 from meerkat_api import db, app
 from meerkat_abacus import model
-from meerkat_abacus.model import Data
+from meerkat_abacus.model import Data, Locations
 from meerkat_api.resources.incidence import IncidenceRate
 from meerkat_abacus.util import get_locations
 from meerkat_api.authentication import authenticate
+
 
 class Clinics(Resource):
     """
@@ -31,14 +33,15 @@ class Clinics(Resource):
         points = []
         for l in locations:
             if (locations[l].case_report and is_child(
-                    location_id, l, locations) and locations[l].geolocation
+                    location_id, l, locations) and locations[l].point_location is not None
                 and (not clinic_type or locations[l].clinic_type == clinic_type)):
-                lat, lng = locations[l].geolocation.split(",")
-                p = Point((float(lng), float(lat))) # Note that this is the specified order for geojson
+                geo = to_shape(locations[l].point_location)
+                p = Point((float(geo.y), float(geo.x))) # Note that this is the specified order for geojson
                 points.append(Feature(geometry=p,
                                       properties={"name":
                                                   locations[l].name}))
         return FeatureCollection(points)
+
 
 class MapVariable(Resource):
     """
@@ -61,39 +64,49 @@ class MapVariable(Resource):
         start_date, end_date = fix_dates(start_date, end_date)
         location = int(location)
         vi = str(variable_id)
-        year = datetime.now().year
 
         results = db.session.query(
-            func.sum( Data.variables[vi].astext.cast(Float) ).label('value'),
+            func.sum(Data.variables[vi].astext.cast(Float)).label('value'),
             Data.geolocation,
             Data.clinic
         ).filter(
-            Data.variables.has_key(variable_id ),
+            Data.variables.has_key(variable_id),
             Data.date >= start_date,
             Data.date < end_date,
             or_(
-                loc == location for loc in ( Data.country,
-                                             Data.region,
-                                             Data.district,
-                                             Data.clinic)
+                loc == location for loc in (Data.country,
+                                            Data.region,
+                                            Data.district,
+                                            Data.clinic)
             )
         ).group_by("clinic", "geolocation")
 
         locations = get_locations(db.session)
         ret = {}
         for r in results.all():
-            if r[1]:
-                ret[r[2]] = {"value": r[0], "geolocation": r[1].split(","),
-                             "clinic": locations[r[2]].name}
+            if r[1] is not None:
+                geo = to_shape(r[1])
+                if r[2]:
+                    # Leaflet uses LatLng
+                    ret[str(r[2])] = {"value": r[0], "geolocation": [geo.y, geo.x],
+                                 "clinic": locations[r[2]].name}
+                else:
+                    if not include_all_clinics:
+                        cords = [geo.y, geo.x]  # Leaflet uses LatLng
+                        ret[str(cords)] = {"value": r[0], "geolocation": cords,
+                                           "clinic": "Outbreak Investigation"}
+                    
 
         if include_all_clinics:
             results = db.session.query(model.Locations)
             for row in results.all():
-                if row.case_report and row.geolocation and row.id not in ret.keys():
-                    ret[row.id] = {"value": 0,
-                                   "geolocation": row.geolocation.split(","),
+                if row.case_report and row.point_location is not None and str(row.id) not in ret.keys():
+                    geo = to_shape(row.point_location)
+                    ret[str(row.id)] = {"value": 0,
+                                   "geolocation": [geo.y, geo.x],
                                    "clinic": row.name}
         return ret
+
 
 class IncidenceMap(Resource):
     """
@@ -120,11 +133,50 @@ class IncidenceMap(Resource):
         ret = {}
         for clinic in incidence_rates.keys():
             if incidence_rates[clinic]:
-                geo = locations[clinic].geolocation
-                if geo:
+                print(clinic)
 
+                if locations[clinic].point_location is not None:
+                    geo = to_shape(locations[clinic].point_location)
                     ret[clinic] = {"value": incidence_rates[clinic],
-                                   "geolocation": geo.split(","),
+                                   "geolocation": [geo.y, geo.x],
+                                   # Leaflet uses LatLng
                                    "clinic": locations[clinic].name}
 
         return ret
+
+
+class Shapes(Resource):
+    """
+    Returns the shapes for the given level
+    
+    Args:\n
+       level: region, district or clinic
+    """
+
+    def get(self, level):
+        results = db.session.query(
+            Locations.point_location,
+            Locations.area,
+            Locations.name
+        ).filter(
+            Locations.level == level
+        )
+
+        features = []
+
+        for r in results:
+            if r[1] is not None:
+                if level == "clinic":
+                    shape = to_shape(r[0])
+                else:
+                    shape = to_shape(r[1])
+                    
+                feature = {"type": "Feature",
+                       "properties": {
+                           "Name": r[2]
+                       },
+                           "geometry": shapely.geometry.mapping(shape)
+                }
+                features.append(feature)
+        return {"type": "FeatureCollection", "features": features}
+            

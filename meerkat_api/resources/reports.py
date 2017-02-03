@@ -559,6 +559,7 @@ class CdReport(Resource):
         for v in variable_query.all():
             variable_names[v.id] = v.name
         #  The loop through all alerts
+        print(all_alerts)
         for a in all_alerts:
             if a["date"] <= end_date and a["date"] >= start_date:
                 reason = variable_names[a["variables"]["alert_reason"]]
@@ -2777,8 +2778,8 @@ class AFROBulletin(Resource):
         mort_top = []
         for var in mort:
             # Extract the cause's id from the count variables name e.g. mor_1 name is "Deaths icd_17"
-            mort_var = Variable().get( var[0] )
-            cause_var = Variable().get(mort_var['name'][7:])
+#            mort_var = Variable().get( var[0] )
+            cause_var = Variable().get(var[0].replace("mor", "cmd"))
             # Only return if there are more than zero deaths.
             if var[1] > 0:
                 mort_top.insert(0, {
@@ -2970,32 +2971,32 @@ class AFROBulletin(Resource):
             'cmd_27', 'cmd_28'
         ]
         mortality_codes = {
-            'cmd_1': 'mor_18',
-            'cmd_2': 'mor_26',
-            'cmd_3': 'mor_28',
-            'cmd_4': 'mor_1',
-            'cmd_5': 'mor_6',
-            'cmd_6': 'mor_20',
-            'cmd_7': 'mor_5',
-            'cmd_8': 'mor_14',
-            'cmd_9': 'mor_12',
-            'cmd_10': 'mor_11',
-            'cmd_11': 'mor_10',
-            'cmd_12': 'mor_4',
-            'cmd_13': 'mor_3',
-            'cmd_14': 'mor_29',
-            'cmd_15': 'mor_13',
-            'cmd_16': 'mor_8',
-            'cmd_17': 'mor_16',
-            'cmd_18': 'mor_2',
-            'cmd_19': 'mor_7',
-            'cmd_20': 'mor_19',
-            'cmd_23': 'mor_21',
-            'cmd_24': 'mor_22',
-            'cmd_25': 'mor_17',
-            'cmd_26': 'mor_15',
-            'cmd_27': 'mor_9',
-            'cmd_28': 'mor_23'
+            'cmd_1': 'mor_1',
+            'cmd_2': 'mor_2',
+            'cmd_3': 'mor_3',
+            'cmd_4': 'mor_4',
+            'cmd_5': 'mor_5',
+            'cmd_6': 'mor_6',
+            'cmd_7': 'mor_7',
+            'cmd_8': 'mor_8',
+            'cmd_9': 'mor_9',
+            'cmd_10': 'mor_10',
+            'cmd_11': 'mor_11',
+            'cmd_12': 'mor_12',
+            'cmd_13': 'mor_13',
+            'cmd_14': 'mor_14',
+            'cmd_15': 'mor_15',
+            'cmd_16': 'mor_16',
+            'cmd_17': 'mor_17',
+            'cmd_18': 'mor_18',
+            'cmd_19': 'mor_19',
+            'cmd_20': 'mor_20',
+            'cmd_23': 'mor_23',
+            'cmd_24': 'mor_24',
+            'cmd_25': 'mor_15',
+            'cmd_26': 'mor_26',
+            'cmd_27': 'mor_27',
+            'cmd_28': 'mor_28'
         }
 
         # insert disease names and regions
