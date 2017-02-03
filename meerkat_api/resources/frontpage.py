@@ -4,13 +4,14 @@ Resource for frontpage, so that certain data can be accessed without authenticat
 from flask_restful import Resource
 from datetime import datetime
 import json
+from geoalchemy2.shape import to_shape
 
 from meerkat_api import db
 from meerkat_abacus.util import get_locations
 from meerkat_api.util import get_children
 from meerkat_api.resources.data import AggregateCategory
 from meerkat_api.resources.map import MapVariable
-from meerkat_api.resources.alerts import Alerts
+from meerkat_api.resources.alerts import Alerts, get_alerts
 from meerkat_api.resources.reports import get_latest_category
 from meerkat_api.resources.locations import TotClinics
 
@@ -52,8 +53,8 @@ class NumAlerts(Resource):
 
     def get(self):
         al = Alerts()
-        data = json.loads(al.get().data.decode("utf-8"))
-        return {"num_alerts": len(data["alerts"])}
+        alerts = get_alerts({})
+        return {"num_alerts": len(alerts)}
 
 
 class NumClinics(Resource):
@@ -87,9 +88,9 @@ class RefugeePage(Resource):
                     [sum(result[x].values()) for x in result.keys()])
 
                 tot_pop += clinic_pop
+            geo = to_shape(locs[clinic].point_location)
             clinic_map.append({"value": clinic_pop,
-                               "geolocation":
-                               locs[clinic].geolocation.split(","),
+                               "geolocation":[geo.y, geo.x],
                                "clinic": locs[clinic].name,
                                "location_id": clinic})
         return clinic_map

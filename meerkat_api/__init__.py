@@ -3,30 +3,37 @@ meerkat_api.py
 
 Root Flask app for the Meerkat API.
 """
-
-#from werkzeug.contrib.profiler import ProfilerMiddleware
-from flask import Flask, make_response
+from flask import Flask, make_response, abort
 from flask.json import JSONEncoder
 from flask_sqlalchemy import SQLAlchemy
 from flask_restful import Api
 from datetime import datetime
+from geoalchemy2.elements import WKBElement
+from geoalchemy2.shape import to_shape
 # from werkzeug.contrib.profiler import ProfilerMiddleware
+from io import BytesIO
+import flask_excel as excel
+
 import io
 import csv
 import os
 import resource
+import pyexcel
+import logging
 
 # Create the Flask app
 app = Flask(__name__)
 app.config.from_object('config.Config')
 app.config.from_envvar('MEERKAT_API_SETTINGS', silent=True)
 if os.environ.get("MEERKAT_API_DB_SETTINGS"):
-    app.config["SQLALCHEMY_DATABASE_URL"] = os.environ.get("MEERKAT_API_DB_URL")
+    app.config["SQLALCHEMY_DATABASE_URL"] = os.environ.get(
+        "MEERKAT_API_DB_URL"
+    )
 
 
 db = SQLAlchemy(app)
 api = Api(app)
-# app.wsgi_app = ProfilerMiddleware(app.wsgi_app, restrictions=[50])
+
 
 class CustomJSONEncoder(JSONEncoder):
     """
@@ -36,6 +43,14 @@ class CustomJSONEncoder(JSONEncoder):
         try:
             if isinstance(obj, datetime):
                 return obj.isoformat()
+            if isinstance(obj, WKBElement):
+                shp_obj = to_shape(obj)
+                if shp_obj.geom_type == "Point":
+                    return shp_obj.coords
+                if shp_obj.geom_type == "Polygon":
+                    return shp_obj.exterior.coords
+                else:
+                    return None
             iterable = iter(obj)
         except TypeError:
             pass
@@ -53,14 +68,14 @@ def output_csv(data_dict, code, headers=None):
     have a keys key with a list of keys in the correct order. Data should
     then also include a filename and a list of dicts for each row
 
-    Args: 
+    Args:
        data: list of dicts with output data or dict with data and keys
        code: Response code
        headers: http headers
     """
     filename = "file"
-    out_string=""
-    if data_dict: 
+    out_string = ""
+    if data_dict:
         if "data" in data_dict:
             keys = data_dict["keys"]
             filename = data_dict["filename"]
@@ -81,23 +96,63 @@ def output_csv(data_dict, code, headers=None):
     resp.headers.extend(headers or {
         "Content-Disposition": "attachment; filename={}.csv".format(filename)})
     # To monitor memory usage
-    app.logger.info('Memory usage: %s (kb)' % int(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss))
+    app.logger.info('Memory usage: %s (kb)' % int(
+        resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+    ))
     return resp
 
-# Importing all the resources here to avoid circular imports
 
+@api.representation('application/vnd.openxmlformats-'
+                    'officedocument.spreadsheetml.sheet')
+def output_xls(data, code, headers=None):
+    """
+    Function to write data to a xls file.
+
+    Args:
+       data: StringIO output of xls writer.
+       code: Response code
+       headers: http headers
+    """
+    filename = "file"
+    out_data = ""
+    if data and "data" in data:
+        filename = data["filename"]
+        out_data = data['data']
+        logging.warning("Out data")
+        logging.warning(out_data.decode('iso-8859-1'))
+
+        resp = make_response(out_data, code)
+        resp.headers.extend(headers or {
+            "Content-Disposition": "attachment; filename={}.xlsx".format(
+                filename
+            )
+        })
+        # To monitor memory usage
+        app.logger.info('Memory usage: %s (kb)' % int(
+            resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+        ))
+        return resp
+    else:
+        abort(404)
+
+
+# Importing all the resources here to avoid circular imports
 from meerkat_api.resources.locations import Location, Locations, LocationTree, TotClinics
 from meerkat_api.resources.variables import Variables, Variable
 from meerkat_api.resources.data import Aggregate, AggregateYear
 from meerkat_api.resources.data import AggregateCategory, Records
-from meerkat_api.resources.map import Clinics, MapVariable, IncidenceMap
+from meerkat_api.resources.map import Clinics, MapVariable, IncidenceMap, Shapes
 from meerkat_api.resources.alerts import Alert, Alerts, AggregateAlerts
 from meerkat_api.resources.explore import QueryVariable, QueryCategory
 from meerkat_api.resources.epi_week import EpiWeek, EpiWeekStart
 from meerkat_api.resources.completeness import Completeness, NonReporting
-from meerkat_api.resources.reports import PublicHealth, CdReport, CdPublicHealth, CdPublicHealthMad, NcdPublicHealth,RefugeePublicHealth, RefugeeCd,RefugeeDetail, NcdReport, Pip, WeeklyEpiMonitoring, Malaria, VaccinationReport, AFROBulletin
+from meerkat_api.resources.reports import PublicHealth, CdReport, \
+    CdPublicHealth, CdPublicHealthMad, NcdPublicHealth,RefugeePublicHealth, \
+    RefugeeCd,RefugeeDetail, Pip, WeeklyEpiMonitoring, Malaria, \
+    VaccinationReport, AFROBulletin,\
+    NcdReport, NcdReportNewVisits, NcdReportReturnVisits
 from meerkat_api.resources.frontpage import KeyIndicators, TotMap, NumAlerts, ConsultationMap, RefugeePage, NumClinics
-from meerkat_api.resources.export_data import ExportData, ExportForm, Forms, ExportCategory, GetDownload, GetStatus
+from meerkat_api.resources.export_data import ExportData, ExportForm, Forms, ExportCategory, GetCSVDownload, GetXLSDownload, GetStatus
 from meerkat_api.resources.incidence import IncidenceRate, WeeklyIncidenceRate
 #from meerkat_api.resources.links import Link, Links
 
@@ -119,17 +174,15 @@ api.add_resource(NumClinics, "/num_clinics")
 api.add_resource(RefugeePage, "/refugee_page")
 
 # Export data
-api.add_resource(GetDownload, "/export/get/<uid>")
+api.add_resource(GetCSVDownload, "/export/getcsv/<uid>")
+api.add_resource(GetXLSDownload, "/export/getxls/<uid>")
 api.add_resource(GetStatus, "/export/get_status/<uid>")
 api.add_resource(ExportData, "/export/data",
                  "/export/data/<use_loc_ids>")
 api.add_resource(ExportForm, "/export/form/<form>")
 api.add_resource(Forms, "/export/forms")
-api.add_resource(ExportCategory, "/export/category/<form_name>/<category>/<download_name>")
-
-# Links
-# api.add_resource(Link, "/link/<link_id>")
-# api.add_resource(Links, "/links/<link_def>")
+api.add_resource(ExportCategory,
+                 "/export/category/<form_name>/<category>/<download_name>")
 
 # Location urls
 api.add_resource(Locations, "/locations")
@@ -161,6 +214,8 @@ api.add_resource(Alerts, "/alerts")
 # Map
 api.add_resource(Clinics, "/clinics/<location_id>",
                  "/clinics/<location_id>/<clinic_type>")
+api.add_resource(Shapes, "/geo_shapes/<level>")
+
 api.add_resource(MapVariable, "/map/<variable_id>",
                  "/map/<variable_id>/<location>",
                  "/map/<variable_id>/<location>/<end_date>",
@@ -169,12 +224,12 @@ api.add_resource(IncidenceMap, "/incidence_map/<variable_id>")
 
 # IncidenceRate
 api.add_resource(
-    IncidenceRate, 
+    IncidenceRate,
     "/incidence_rate/<variable_id>/<level>",
     "/incidence_rate/<variable_id>/<level>/<mult_factor>"
 )
 api.add_resource(
-    WeeklyIncidenceRate, 
+    WeeklyIncidenceRate,
     "/weekly_incidence/<variable_id>/<loc_id>",
     "/weekly_incidence/<variable_id>/<loc_id>/<year>",
     "/weekly_incidence/<variable_id>/<loc_id>/<year>/<mult_factor>"
@@ -201,6 +256,12 @@ api.add_resource(PublicHealth, "/reports/public_health/<location>",
 api.add_resource(NcdReport, "/reports/ncd_report/<location>",
                  "/reports/ncd_report/<location>/<end_date>",
                  "/reports/ncd_report/<location>/<end_date>/<start_date>")
+api.add_resource(NcdReportNewVisits, "/reports/ncd_report_new_visits/<location>",
+                 "/reports/ncd_report_new_visits/<location>/<end_date>",
+                 "/reports/ncd_report_new_visits/<location>/<end_date>/<start_date>")
+api.add_resource(NcdReportReturnVisits, "/reports/ncd_report_return_visits/<location>",
+                 "/reports/ncd_report_return_visits/<location>/<end_date>",
+                 "/reports/ncd_report_return_visits/<location>/<end_date>/<start_date>")
 api.add_resource(CdPublicHealth, "/reports/cd_public_health/<location>",
                  "/reports/cd_public_health/<location>/<end_date>",
                  "/reports/cd_public_health/<location>/<end_date>/<start_date>")
@@ -245,10 +306,11 @@ api.add_resource(Completeness,
                  "/completeness/<variable>/<location>/<number_per_week>",
                  "/completeness/<variable>/<location>/<number_per_week>/<start_week>",
                  "/completeness/<variable>/<location>/<number_per_week>/<start_week>/<exclude>",
-                 "/completeness/<variable>/<location>/<number_per_week>/<start_week>/<exclude>/<weekend>")
+                 "/completeness/<variable>/<location>/<number_per_week>/<start_week>/<exclude>/<weekend>",
+                 "/completeness/<variable>/<location>/<number_per_week>/<start_week>/<exclude>/<weekend>/<non_reporting_variable>",
+                 "/completeness/<variable>/<location>/<number_per_week>/<start_week>/<exclude>/<weekend>/<non_reporting_variable>/<end_date>")
 api.add_resource(Records, "/records/<variable>/<location_id>")
 
 @app.route('/')
 def hello_world():
     return "WHO"
-

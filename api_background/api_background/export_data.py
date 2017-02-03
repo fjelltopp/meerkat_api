@@ -1,22 +1,23 @@
 """
-
 Functions to export data
-
-
-
 """
-from sqlalchemy import text, or_
+from meerkat_abacus.util import epi_week, get_locations
+from meerkat_abacus.util import all_location_data, get_db_engine, get_links
+from meerkat_abacus.model import form_tables, Data
+from meerkat_abacus.model import DownloadDataFiles, AggregationVariables
+from meerkat_abacus.config import country_config, config_directory
 from sqlalchemy.orm import aliased
-import io
-import csv
-import json
+from sqlalchemy import text, or_
 from dateutil.parser import parse
 from datetime import datetime
+from io import StringIO, BytesIO
 from celery import task
-
-from meerkat_abacus.util import epi_week, get_locations, all_location_data, get_db_engine, get_links
-from meerkat_abacus.model import form_tables, Data, DownloadDataFiles, AggregationVariables
-from meerkat_abacus.config import country_config, config_directory
+import pyexcel
+import csv
+import json
+import logging
+import xlsxwriter
+import os
 
 
 @task
@@ -26,47 +27,49 @@ def export_data(uuid, use_loc_ids=False):
 
     Inserts finished file in to databse
 
-    Args: 
+    Args:
        uuid: uuid for download
        use_loc_ids: If we use names are location ids
     """
     db, session = get_db_engine()
-    status =  DownloadDataFiles(
-                uuid=uuid,
-                content="",
-                generation_time=datetime.now(),
-                type="data",
-                success=0,
-                status=0
+    status = DownloadDataFiles(
+        uuid=uuid,
+        csvcontent="",
+        xlscontent=b"",
+        generation_time=datetime.now(),
+        type="data",
+        success=0,
+        status=0
     )
-    session.add(status)        
+    session.add(status)
     session.commit()
-    
+
     results = session.query(Data)
     variables = set()
     locs = get_locations(session)
     for row in results:
         variables = variables.union(set(row.variables.keys()))
-    fieldnames = ["id", "country", "region", "district", "clinic",
-                      "clinic_type", "geolocation", "date", "uuid"
-                  ] + list(variables)
+    fieldnames = ["id", "country", "region",
+                  "district", "clinic", "clinic_type",
+                  "geolocation", "date", "uuid"] + list(variables)
     dict_rows = []
     for row in results:
-        dict_row = dict((col, getattr(row, col))
-                    for col in row.__table__.columns.keys())
+        dict_row = dict(
+            (col, getattr(row, col)) for col in row.__table__.columns.keys()
+        )
         if not use_loc_ids:
             for l in ["country", "region", "district", "clinic"]:
                 if dict_row[l]:
                     dict_row[l] = locs[dict_row[l]].name
         dict_row.update(dict_row.pop("variables"))
         dict_rows.append(dict_row)
-    output = io.StringIO()
+    output = StringIO()
     writer = csv.DictWriter(output, fieldnames, extrasaction="ignore")
     writer.writeheader()
     writer.writerows(dict_rows)
     status.status = 1
     status.success = 1
-    status.content = output.getvalue()
+    status.csvcontent = output.getvalue()
     session.commit()
     return True
 
@@ -101,7 +104,8 @@ def export_category(uuid, form_name, category, download_name, variables):
 
     status = DownloadDataFiles(
         uuid=uuid,
-        content="",
+        csvcontent="",
+        xlscontent=b"",
         generation_time=datetime.now(),
         type=download_name,
         success=0,
@@ -111,8 +115,8 @@ def export_category(uuid, form_name, category, download_name, variables):
     session.commit()
     res = session.query(AggregationVariables).filter(
         AggregationVariables.category.has_key(category)
-        )
-    
+    )
+
     data_keys = []
     cat_variables = {}
     for r in res:
@@ -127,11 +131,31 @@ def export_category(uuid, form_name, category, download_name, variables):
     link_ids = []
     min_translation = {}
 
+    def add_translations_from_file(details):
+        # Load the csv file and reader
+        file_path = '{}api/{}'.format(
+            os.environ['COUNTRY_CONFIG_DIR'],
+            details['dict_file']
+        )
+        csv_file = open(file_path, 'rt')
+        reader = csv.reader(csv_file)
+        # Establish which column in each row we're translating from and to.
+        headers = next(reader)
+        from_index = headers.index(details['from'])
+        to_index = headers.index(details['to'])
+        # Add translations to the translation dictionary.
+        trans_dict = {}
+        for row in reader:
+            trans_dict[row[from_index]] = row[to_index]
+        logging.warning(trans_dict)
+        return trans_dict
+
+
     # Set up icd_code_to_name if needed and determine if
     # alert_links are included
     for v in variables:
         return_keys.append(v[1])
-       
+
         if "icd_name$" in v[0]:
             category = v[0].split("$")[1]
             cat_variables = {}
@@ -158,13 +182,17 @@ def export_category(uuid, form_name, category, download_name, variables):
             field = "$".join(split[:-1])
             trans = split[-1]
             tr_dict = json.loads(trans.split(";")[1].replace("'", '"'))
-            min_translation[v[1]] = tr_dict
+            # If the json specifies file details, load translation from file.
+            if tr_dict.get('dict_file', False):
+                min_translation[v[1]] = add_translations_from_file(tr_dict)
+            else:
+                min_translation[v[1]] = tr_dict
             v[0] = field
-            print(min_translation)
+
         if "gen_link$" in v[0]:
             link_ids.append(v[0].split("$")[1])
         translation_dict[v[1]] = v[0]
-        
+
     link_ids = set(link_ids)
     links_by_type, links_by_name = get_links(config_directory +
                                              country_config["links_file"])
@@ -188,46 +216,65 @@ def export_category(uuid, form_name, category, download_name, variables):
         or_(Data.variables.has_key(key)
             for key in data_keys)).yield_per(200)
     locs = get_locations(session)
-    dict_rows = []
+    list_rows = [return_keys]
 
     # Prepare each row
     for r in results:
-        dict_row = {}
+        list_row = ['']*len(return_keys)
         for k in return_keys:
             form_var = translation_dict[k]
+            index = return_keys.index(k)
+
+            if form_var is 'symptoms':
+                logging.warning('form_var: {} val: {}'.format(form_var, r[1].data.get(form_var, "")))
+
             if "icd_name$" in form_var:
                 if r[1].data["icd_code"] in icd_code_to_name[form_var]:
-                    dict_row[k] = icd_code_to_name[form_var][r[1].data[
+                    list_row[index] = icd_code_to_name[form_var][r[1].data[
                         "icd_code"]]
                 else:
-                    dict_row[k] = None
+                    list_row[index] = None
+
+            elif "$date" in form_var:
+                if form_var in r[1].data:
+                    list_row[index] = parse(r[1].data[form_var]).strftime(
+                        "%d/%m/%Y"
+                    )
+                else:
+                    list_row[index] = None
             elif form_var == "clinic":
-                dict_row[k] = locs[r[0].clinic].name
+                list_row[index] = locs[r[0].clinic].name
             elif form_var == "region":
-                dict_row[k] = locs[r[0].region].name
+                list_row[index] = locs[r[0].region].name
             elif form_var == "district":
                 if r[0].district:
-                    dict_row[k] = locs[r[0].district].name
+                    list_row[index] = locs[r[0].district].name
                 else:
-                    dict_row[k] = None
+                    list_row[index] = None
             elif "$year" in form_var:
                 field = form_var.split("$")[0]
                 if field in r[1].data and r[1].data[field]:
-                    dict_row[k] = parse(r[1].data[field]).year
+                    list_row[index] = parse(r[1].data[field]).year
                 else:
-                    dict_row[k] = None
+                    list_row[index] = None
             elif "$month" in form_var:
                 field = form_var.split("$")[0]
                 if field in r[1].data and r[1].data[field]:
-                    dict_row[k] = parse(r[1].data[field]).month
+                    list_row[index] = parse(r[1].data[field]).month
                 else:
-                    dict_row[k] = None
+                    list_row[index] = None
+            elif "$day" in form_var:
+                field = form_var.split("$")[0]
+                if field in r[1].data and r[1].data[field]:
+                    list_row[index] = parse(r[1].data[field]).day
+                else:
+                    list_row[index] = None
             elif "$epi_week" in form_var:
                 field = form_var.split("$")[0]
                 if field in r[1].data and r[1].data[field]:
-                    dict_row[k] = epi_week(parse(r[1].data[field]))[1]
+                    list_row[index] = epi_week(parse(r[1].data[field]))[1]
                 else:
-                    dict_row[k] = None
+                    list_row[index] = None
 
             # A general framework for referencing links in the
             # download data.
@@ -236,9 +283,9 @@ def export_category(uuid, form_name, category, download_name, variables):
                 link = form_var.split("$")[1]
                 link_index = link_id_index[link]
                 if r[link_index]:
-                    dict_row[k] = r[link_index][form_var.split("$")[-1]]
+                    list_row[index] = r[link_index][form_var.split("$")[-1]]
                 else:
-                    dict_row[k] = None
+                    list_row[index] = None
 
             elif "code" == form_var.split("$")[0]:
                 # code$cod_1,cod_2,Text_1,Text_2$default_value
@@ -254,40 +301,53 @@ def export_category(uuid, form_name, category, download_name, variables):
                     if codes[i] in r[0].variables:
                         final_text.append(text[i])
                 if len(final_text) > 0:
-                    dict_row[k] = " ".join(final_text)
+                    list_row[index] = " ".join(final_text)
                 else:
-                    dict_row[k] = default_value
+                    list_row[index] = default_value
 
             elif "code_value" == form_var.split("$")[0]:
                 code = form_var.split("$")[1]
                 if code in r[0].variables:
-                    dict_row[k] = r[0].variables[code]
+                    list_row[index] = round(float(r[0].variables[code]), 1)
                 else:
-                    dict_row[k] = None
+                    list_row[index] = None
             elif "value" == form_var.split(":")[0]:
-                dict_row[k] = form_var.split(":")[1]
+                list_row[index] = form_var.split(":")[1]
             else:
                 if form_var in r[1].data:
-                    dict_row[k] = r[1].data[form_var]
+                    list_row[index] = r[1].data[form_var]
                 else:
-                    dict_row[k] = None
+                    list_row[index] = None
 
-            if min_translation and k in min_translation:
+            if min_translation and k in min_translation and list_row[index]:
+                logging.warning("translating in to")
                 tr_dict = min_translation[k]
-                if dict_row[k] in tr_dict.keys():
-                    dict_row[k] = tr_dict[dict_row[k]]
+                parts = [x.strip() for x in list_row[index].split(',')]
+                for x in range(len(parts)):
+                    parts[x] = tr_dict.get(parts[x], parts[x])
+                list_row[index] = ', '.join(list(filter(bool, parts)))
+                logging.warning(list_row[index])
 
-        dict_rows.append(dict_row)
-    output = io.StringIO()
-    writer = csv.DictWriter(output, return_keys, extrasaction="ignore")
-    writer.writeheader()
-    writer.writerows(dict_rows)
+        list_rows.append(list_row)
+
+    # Save the collected data in xlsx form
+    xlscontent = BytesIO()
+    sheet = pyexcel.Sheet(list_rows)
+    xlscontent = sheet.save_to_memory("xlsx", xlscontent)
+
+    # Save the collected data in csv form
+    csvcontent = StringIO()
+    writer = csv.writer(csvcontent)
+    writer.writerows(list_rows)
+
+    # Write the two files to database
+    status.csvcontent = csvcontent.getvalue()
+    status.xlscontent = xlscontent.getvalue()
+
     status.status = 1
     status.success = 1
-    status.content = output.getvalue()
     session.commit()
     return True
-
 
 
 @task
@@ -304,31 +364,47 @@ def export_form(uuid, form, fields=None):
        fields: Fileds from form to export\n
 
     """
-    
+
     db, session = get_db_engine()
     (locations, locs_by_deviceid, regions,
      districts, devices) = all_location_data(session)
+
     if fields:
         keys = fields
     else:
         keys = ["clinic", "region", "district"]
         if form not in form_tables:
-            return {"filename": form, "file": io.StringIO()}
+            return {"filename": form, "file": StringIO()}
         sql = text("SELECT DISTINCT(jsonb_object_keys(data)) from {}".
                    format(form_tables[form].__tablename__))
         result = db.execute(sql)
         for r in result:
             keys.append(r[0])
-            
-    f = io.StringIO()
-    csv_writer = csv.DictWriter(f, keys, extrasaction='ignore')
-    csv_writer.writeheader()
+
+    csv_content = StringIO()
+    csv_writer = csv.writer(csv_content)
+    csv_writer.writerows([keys])
+
+    # XlsxWriter with "constant_memory" set to true, flushes mem after each row
+    xls_content = BytesIO()
+    xls_book = xlsxwriter.Workbook(xls_content, {'constant_memory': True})
+    xls_sheet = xls_book.add_worksheet()
+    # xls_sheet = pyexcel.Sheet([keys])
+
+    # Little utility function write a row to file.
+    def write_xls_row(data, row, sheet):
+        for cell in range(len(data)):
+            xls_sheet.write(row, cell, data[cell])
+
+    write_xls_row(keys, 0, xls_sheet)
+
     i = 0
     if locs_by_deviceid is None:
         session.add(
             DownloadDataFiles(
                 uuid=uuid,
-                content="",
+                csvcontent="",
+                xlscontent=b"",
                 generation_time=datetime.now(),
                 type=form,
                 success=0,
@@ -337,52 +413,81 @@ def export_form(uuid, form, fields=None):
             )
         session.commit()
         return False
-        
+
     if form in form_tables.keys():
         results = session.query(form_tables[form].data).yield_per(1000)
-        dict_rows = []
+        list_rows = []
         for row in results:
-            dict_row = row.data
-            if not dict_row:
-                continue
-            clinic_id = locs_by_deviceid.get(dict_row["deviceid"], None)
+            # Initialise empty row
+            list_row = ['']*len(keys)
+            # For each key requested, add the value to the row.
+            for key in keys:
+                try:
+                    list_row[keys.index(key)] = row.data.get(key, '')
+                except AttributeError as e:
+                    logging.warning(e)
+                    logging.warning(row)
+                    logging.warning(row.data)
+
+            # Add the location data if it has been requested and exists.
+            clinic_id = locs_by_deviceid.get(
+                row.data["deviceid"],
+                None
+            )
             if clinic_id:
-                dict_row["clinic"] = locations[clinic_id].name
+                if 'clinic' in keys:
+                    list_row[keys.index("clinic")] = locations[clinic_id].name
                 # Sort out district and region
                 if locations[clinic_id].parent_location in districts:
-                    dict_row["district"] = locations[locations[clinic_id]
-                                                     .parent_location].name
-                    dict_row["region"] = locations[locations[locations[
-                        clinic_id].parent_location].parent_location].name
+                    if 'district' in keys:
+                        list_row[keys.index("district")] = locations[
+                            locations[clinic_id].parent_location
+                        ].name
+                    if 'region' in keys:
+                        list_row[keys.index("region")] = locations[locations[
+                            locations[clinic_id].parent_location
+                        ].parent_location].name
                 elif locations[clinic_id].parent_location in regions:
-                    dict_row["district"] = ""
-                    dict_row["region"] = locations[locations[clinic_id]
-                                                   .parent_location].name
+                    if 'district' in keys:
+                        list_row[keys.index("district")] = ""
+                    if 'region' in keys:
+                        list_row[keys.index("region")] = locations[
+                            locations[clinic_id].parent_location
+                        ].name
             else:
-                dict_row["clinic"] = ""
-                dict_row["district"] = ""
-                dict_row["region"] = ""
-            for key in list(row.data.keys()):
-                if key in keys and key not in dict_row:
-                    dict_row[key] = row.data[key]
-            dict_rows.append(dict_row)
-            if i % 1000 == 0:
-                csv_writer.writerows(dict_rows)
-                dict_rows = []
+                if 'clinic' in keys:
+                    list_row[keys.index("clinic")] = ""
+                if 'district' in keys:
+                    list_row[keys.index("district")] = ""
+                if 'region' in keys:
+                    list_row[keys.index("region")] = ""
+
+            # Can write row immediately to xls file as memory is flushed after.
+            write_xls_row(list_row, i+1, xls_sheet)
+            # Append the row to list of rows to be written to csv.
+            list_rows.append(list_row)
+
+            # Store for every 1000 rows.
+            if i % 5 == 0:
+                csv_writer.writerows(list_rows)
+                list_rows = []
             i += 1
-        csv_writer.writerows(dict_rows)
+
+        # Write any remaining unwritten data down.
+        csv_writer.writerows(list_rows)
+
+        xls_book.close()
         session.add(
             DownloadDataFiles(
                 uuid=uuid,
-                content=f.getvalue(),
+                csvcontent=csv_content.getvalue(),
+                xlscontent=xls_content.getvalue(),
                 generation_time=datetime.now(),
                 type=form,
                 success=1,
                 status=1
-                )
             )
+        )
         session.commit()
-        
-        return True
 
-    
+        return True

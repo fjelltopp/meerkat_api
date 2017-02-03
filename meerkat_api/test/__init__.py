@@ -10,6 +10,7 @@ from datetime import datetime
 import meerkat_api
 import meerkat_abacus.data_management as manage
 from meerkat_abacus.task_queue import app as celery_app
+from meerkat_api.test import db_util
 
 #Check if auth requirements have been installed
 try:
@@ -55,7 +56,7 @@ def valid_urls(app):
         "location": "1",
         "location_id": "1",
         "start_date": datetime(2015, 1, 1).isoformat(),
-        "end_date": datetime(2015, 12, 31).isoformat(),
+        "end_date": datetime.now().isoformat(),
         "variable_id": "tot_1",
         "variable": "tot",
         "group_by1": "gender",
@@ -84,7 +85,8 @@ def valid_urls(app):
         "level": "district",
         "uid": "1",
         "start_week": "1",
-        "exclude": "mental"
+        "exclude": "mental",
+        "non_reporting_variable": "reg_1"
     }
     urls = []
     for url in meerkat_api.app.url_map.iter_rules():
@@ -123,8 +125,31 @@ class MeerkatAPITestCase(unittest.TestCase):
         celery_app.conf.CELERY_ALWAYS_EAGER = True
 
         BROKER_BACKEND = 'memory'
-        manage.set_up_everything(False, False, 500)
-
+        # manage.set_up_everything(False, False, 500)
+        db_util.insert_codes(meerkat_api.db.session)
+        db_util.insert_locations(meerkat_api.db.session)
+        db_util.insert_cases(meerkat_api.db.session, "public_health_report",
+                             delete=True)
+        db_util.insert_cases(meerkat_api.db.session,
+                             "ncd_public_health_report", delete=False)
+        db_util.insert_cases(meerkat_api.db.session, "ncd_report",
+                             delete=False)
+        db_util.insert_cases(meerkat_api.db.session, "pip_report",
+                             delete=False)
+        db_util.insert_cases(meerkat_api.db.session, "refugee_data",
+                             delete=False)
+        db_util.insert_cases(meerkat_api.db.session, "frontpage", delete=False)
+        db_util.insert_cases(meerkat_api.db.session, "map_test", delete=False)
+        db_util.insert_cases(meerkat_api.db.session, "epi_monitoring",
+                             delete=False)
+        db_util.insert_cases(meerkat_api.db.session, "malaria", delete=False)
+        db_util.insert_cases(meerkat_api.db.session, "alerts", delete=False)
+        db_util.insert_cases(meerkat_api.db.session, "cd_report", delete=False)
+        db_util.insert_cases(meerkat_api.db.session, "vaccination_report",
+                             delete=False)
+        db_util.insert_cases(meerkat_api.db.session, "completeness",
+                             delete=False)
+        
         self.app = meerkat_api.app.test_client()
         self.locations = {1: {"name": "Demo"}}
         self.variables = {1: {"name": "Total"}}
@@ -141,6 +166,7 @@ class MeerkatAPITestCase(unittest.TestCase):
     def test_all_urls(self):
         urls = valid_urls(meerkat_api.app)
         for url in urls:
+            print(url)
             rv = get_url(self.app, url)
             isOK = rv.status_code == 200
             if not isOK:

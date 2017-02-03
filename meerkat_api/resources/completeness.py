@@ -3,6 +3,7 @@ Data resource for completeness data
 """
 from flask_restful import Resource
 from flask import jsonify, request
+from dateutil.parser import parse
 from sqlalchemy import extract, func, Integer, or_
 from datetime import datetime, timedelta
 import pandas as pd
@@ -57,9 +58,14 @@ class Completeness(Resource):
     decorators = [authenticate]
 
     def get(self, variable, location, number_per_week, exclude=None,
-            weekend=None, start_week=1, end_date=None):
+            weekend=None, start_week=1, end_date=None, non_reporting_variable=None):
         if not end_date:
             end_date = datetime.now()
+        else:
+            if isinstance(end_date, str):
+                end_date = parse(end_date)
+        if not non_reporting_variable:
+            non_reporting_variable = variable
         epi_year_weekday = epi_year_start(end_date.year).weekday()
         freq = ["W-MON", "W-TUE", "W-WED", "W-THU", "W-FRI", "W-SAT",
                 "W-SUN"][epi_year_weekday]
@@ -91,7 +97,12 @@ class Completeness(Resource):
                              Data.variables[variable].label(variable)).filter(
                                  *conditions).statement, db.session.bind)
         if len(data) == 0:
-            return {}
+            return jsonify({"score": {},
+                            "timeline": {},
+                            "clinic_score": {},
+                            "clinic_yearly_score": {},
+                            "dates_not_reported": [],
+                            "yearly_score": {}})
 
         # If end_date is the start of an epi week we do not want to include the current epi week
         # We only calculate completeness for whole epi-weeks so we want to set end_d to the
@@ -144,7 +155,7 @@ class Completeness(Resource):
             zero_clinics = clinic_sums[clinic_sums == 0].index
 
             nr = NonReporting()
-            non_reporting_clinics = nr.get(variable, location)["clinics"]
+            non_reporting_clinics = nr.get(non_reporting_variable, location)["clinics"]
             completeness = completeness.drop(non_reporting_clinics, level=1)
             completeness.reindex()
 
