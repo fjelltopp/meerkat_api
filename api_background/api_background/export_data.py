@@ -17,6 +17,7 @@ import csv
 import json
 import logging
 import xlsxwriter
+import os
 
 
 @task
@@ -146,6 +147,7 @@ def export_category(uuid, form_name, category, download_name, variables):
         trans_dict = {}
         for row in reader:
             trans_dict[row[from_index]] = row[to_index]
+        logging.warning(trans_dict)
         return trans_dict
 
 
@@ -186,7 +188,7 @@ def export_category(uuid, form_name, category, download_name, variables):
             else:
                 min_translation[v[1]] = tr_dict
             v[0] = field
-            print(min_translation)
+
         if "gen_link$" in v[0]:
             link_ids.append(v[0].split("$")[1])
         translation_dict[v[1]] = v[0]
@@ -222,6 +224,9 @@ def export_category(uuid, form_name, category, download_name, variables):
         for k in return_keys:
             form_var = translation_dict[k]
             index = return_keys.index(k)
+
+            if form_var is 'symptoms':
+                logging.warning('form_var: {} val: {}'.format(form_var, r[1].data.get(form_var, "")))
 
             if "icd_name$" in form_var:
                 if r[1].data["icd_code"] in icd_code_to_name[form_var]:
@@ -315,11 +320,13 @@ def export_category(uuid, form_name, category, download_name, variables):
                     list_row[index] = None
 
             if min_translation and k in min_translation and list_row[index]:
+                logging.warning("translating in to")
                 tr_dict = min_translation[k]
                 parts = [x.strip() for x in list_row[index].split(',')]
-                for part in parts:
-                    part = tr_dict.get(part, part)
-                list_row[index] = parts.join(', ')
+                for x in range(len(parts)):
+                    parts[x] = tr_dict.get(parts[x], parts[x])
+                list_row[index] = ', '.join(list(filter(bool, parts)))
+                logging.warning(list_row[index])
 
         list_rows.append(list_row)
 
@@ -336,7 +343,6 @@ def export_category(uuid, form_name, category, download_name, variables):
     # Write the two files to database
     status.csvcontent = csvcontent.getvalue()
     status.xlscontent = xlscontent.getvalue()
-    logging.warning(status.xlscontent)
 
     status.status = 1
     status.success = 1
