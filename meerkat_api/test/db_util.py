@@ -156,7 +156,7 @@ def create_category(session, variables, category, names=None):
 
 def create_data(session, variables,
                 locations=(1,2,3,4), dates="year",
-                clinic_types="hospital", geolocations="0,0"):
+                clinic_types="hospital", geolocations="POINT(0 0)"):
     """
     Makes sure the data table has records with the variables in the variables list
 

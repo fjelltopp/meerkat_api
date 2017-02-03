@@ -3,17 +3,23 @@ meerkat_api.py
 
 Root Flask app for the Meerkat API.
 """
-from flask import Flask, make_response
+from flask import Flask, make_response, abort
 from flask.json import JSONEncoder
 from flask_sqlalchemy import SQLAlchemy
 from flask_restful import Api
 from datetime import datetime
+from geoalchemy2.elements import WKBElement
+from geoalchemy2.shape import to_shape
+# from werkzeug.contrib.profiler import ProfilerMiddleware
+from io import BytesIO
 import flask_excel as excel
+
 import io
 import csv
 import os
 import resource
-import json
+import pyexcel
+import logging
 
 # Create the Flask app
 app = Flask(__name__)
@@ -37,6 +43,14 @@ class CustomJSONEncoder(JSONEncoder):
         try:
             if isinstance(obj, datetime):
                 return obj.isoformat()
+            if isinstance(obj, WKBElement):
+                shp_obj = to_shape(obj)
+                if shp_obj.geom_type == "Point":
+                    return shp_obj.coords
+                if shp_obj.geom_type == "Polygon":
+                    return shp_obj.exterior.coords
+                else:
+                    return None
             iterable = iter(obj)
         except TypeError:
             pass
@@ -102,14 +116,24 @@ def output_xls(data, code, headers=None):
     filename = "file"
     out_data = ""
     if data and "data" in data:
-        out_data = json.loads(data["data"])
         filename = data["filename"]
-    resp = excel.make_response_from_array(out_data, 'xls', code, filename)
+        out_data = data['data']
+        logging.warning("Out data")
+        logging.warning(out_data.decode('iso-8859-1'))
 
-    app.logger.info('Memory usage: %s (kb)' % int(
-        resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
-    )
-    return resp
+        resp = make_response(out_data, code)
+        resp.headers.extend(headers or {
+            "Content-Disposition": "attachment; filename={}.xlsx".format(
+                filename
+            )
+        })
+        # To monitor memory usage
+        app.logger.info('Memory usage: %s (kb)' % int(
+            resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+        ))
+        return resp
+    else:
+        abort(404)
 
 
 # Importing all the resources here to avoid circular imports
@@ -117,7 +141,7 @@ from meerkat_api.resources.locations import Location, Locations, LocationTree, T
 from meerkat_api.resources.variables import Variables, Variable
 from meerkat_api.resources.data import Aggregate, AggregateYear
 from meerkat_api.resources.data import AggregateCategory, Records
-from meerkat_api.resources.map import Clinics, MapVariable, IncidenceMap
+from meerkat_api.resources.map import Clinics, MapVariable, IncidenceMap, Shapes
 from meerkat_api.resources.alerts import Alert, Alerts, AggregateAlerts
 from meerkat_api.resources.explore import QueryVariable, QueryCategory
 from meerkat_api.resources.epi_week import EpiWeek, EpiWeekStart
@@ -190,6 +214,8 @@ api.add_resource(Alerts, "/alerts")
 # Map
 api.add_resource(Clinics, "/clinics/<location_id>",
                  "/clinics/<location_id>/<clinic_type>")
+api.add_resource(Shapes, "/geo_shapes/<level>")
+
 api.add_resource(MapVariable, "/map/<variable_id>",
                  "/map/<variable_id>/<location>",
                  "/map/<variable_id>/<location>/<end_date>",

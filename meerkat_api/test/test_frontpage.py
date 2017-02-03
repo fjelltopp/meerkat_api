@@ -66,6 +66,7 @@ class MeerkatAPITestCase(unittest.TestCase):
         self.assertEqual(data["8"]["value"], 15)
         self.assertEqual(data["10"]["value"], 0)
         self.assertEqual(data["11"]["value"], 0)
+        
     @freeze_time("2016-07-02")
     def test_num_alerts(self):
         """ Test getting the number of consultations"""

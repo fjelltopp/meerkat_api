@@ -10,10 +10,14 @@ from sqlalchemy.orm import aliased
 from sqlalchemy import text, or_
 from dateutil.parser import parse
 from datetime import datetime
-from io import StringIO
+from io import StringIO, BytesIO
 from celery import task
+import pyexcel
 import csv
 import json
+import logging
+import xlsxwriter
+import os
 
 
 @task
@@ -31,7 +35,7 @@ def export_data(uuid, use_loc_ids=False):
     status = DownloadDataFiles(
         uuid=uuid,
         csvcontent="",
-        json_data="",
+        xlscontent=b"",
         generation_time=datetime.now(),
         type="data",
         success=0,
@@ -45,16 +49,14 @@ def export_data(uuid, use_loc_ids=False):
     locs = get_locations(session)
     for row in results:
         variables = variables.union(set(row.variables.keys()))
-    fieldnames = [
-        "id", "country", "region", "district", "clinic",
-        "clinic_type", "geolocation", "date", "uuid"
-    ] + list(variables)
+    fieldnames = ["id", "country", "region",
+                  "district", "clinic", "clinic_type",
+                  "geolocation", "date", "uuid"] + list(variables)
     dict_rows = []
     for row in results:
         dict_row = dict(
             (col, getattr(row, col)) for col in row.__table__.columns.keys()
         )
-        dict_row["date"] = dict_row["date"].isoformat()
         if not use_loc_ids:
             for l in ["country", "region", "district", "clinic"]:
                 if dict_row[l]:
@@ -65,11 +67,9 @@ def export_data(uuid, use_loc_ids=False):
     writer = csv.DictWriter(output, fieldnames, extrasaction="ignore")
     writer.writeheader()
     writer.writerows(dict_rows)
-    status.csvcontent = output.getvalue()
-
-    status.json_data = json.dumps(dict_rows)
     status.status = 1
     status.success = 1
+    status.csvcontent = output.getvalue()
     session.commit()
     return True
 
@@ -105,7 +105,7 @@ def export_category(uuid, form_name, category, download_name, variables):
     status = DownloadDataFiles(
         uuid=uuid,
         csvcontent="",
-        json_data="",
+        xlscontent=b"",
         generation_time=datetime.now(),
         type=download_name,
         success=0,
@@ -130,6 +130,26 @@ def export_category(uuid, form_name, category, download_name, variables):
     icd_code_to_name = {}
     link_ids = []
     min_translation = {}
+
+    def add_translations_from_file(details):
+        # Load the csv file and reader
+        file_path = '{}api/{}'.format(
+            os.environ['COUNTRY_CONFIG_DIR'],
+            details['dict_file']
+        )
+        csv_file = open(file_path, 'rt')
+        reader = csv.reader(csv_file)
+        # Establish which column in each row we're translating from and to.
+        headers = next(reader)
+        from_index = headers.index(details['from'])
+        to_index = headers.index(details['to'])
+        # Add translations to the translation dictionary.
+        trans_dict = {}
+        for row in reader:
+            trans_dict[row[from_index]] = row[to_index]
+        logging.warning(trans_dict)
+        return trans_dict
+
 
     # Set up icd_code_to_name if needed and determine if
     # alert_links are included
@@ -162,9 +182,13 @@ def export_category(uuid, form_name, category, download_name, variables):
             field = "$".join(split[:-1])
             trans = split[-1]
             tr_dict = json.loads(trans.split(";")[1].replace("'", '"'))
-            min_translation[v[1]] = tr_dict
+            # If the json specifies file details, load translation from file.
+            if tr_dict.get('dict_file', False):
+                min_translation[v[1]] = add_translations_from_file(tr_dict)
+            else:
+                min_translation[v[1]] = tr_dict
             v[0] = field
-            print(min_translation)
+
         if "gen_link$" in v[0]:
             link_ids.append(v[0].split("$")[1])
         translation_dict[v[1]] = v[0]
@@ -200,6 +224,9 @@ def export_category(uuid, form_name, category, download_name, variables):
         for k in return_keys:
             form_var = translation_dict[k]
             index = return_keys.index(k)
+
+            if form_var is 'symptoms':
+                logging.warning('form_var: {} val: {}'.format(form_var, r[1].data.get(form_var, "")))
 
             if "icd_name$" in form_var:
                 if r[1].data["icd_code"] in icd_code_to_name[form_var]:
@@ -281,7 +308,7 @@ def export_category(uuid, form_name, category, download_name, variables):
             elif "code_value" == form_var.split("$")[0]:
                 code = form_var.split("$")[1]
                 if code in r[0].variables:
-                    list_row[index] = r[0].variables[code]
+                    list_row[index] = round(float(r[0].variables[code]), 1)
                 else:
                     list_row[index] = None
             elif "value" == form_var.split(":")[0]:
@@ -292,18 +319,31 @@ def export_category(uuid, form_name, category, download_name, variables):
                 else:
                     list_row[index] = None
 
-            if min_translation and k in min_translation:
+            if min_translation and k in min_translation and list_row[index]:
+                logging.warning("translating in to")
                 tr_dict = min_translation[k]
-                if list_row[index] in tr_dict.keys():
-                    list_row[index] = tr_dict[list_row[index]]
+                parts = [x.strip() for x in list_row[index].split(',')]
+                for x in range(len(parts)):
+                    parts[x] = tr_dict.get(parts[x], parts[x])
+                list_row[index] = ', '.join(list(filter(bool, parts)))
+                logging.warning(list_row[index])
 
         list_rows.append(list_row)
 
-    output = StringIO()
-    writer = csv.writer(output)
+    # Save the collected data in xlsx form
+    xlscontent = BytesIO()
+    sheet = pyexcel.Sheet(list_rows)
+    xlscontent = sheet.save_to_memory("xlsx", xlscontent)
+
+    # Save the collected data in csv form
+    csvcontent = StringIO()
+    writer = csv.writer(csvcontent)
     writer.writerows(list_rows)
-    status.csvcontent = output.getvalue()
-    status.json_data = json.dumps(list_rows)
+
+    # Write the two files to database
+    status.csvcontent = csvcontent.getvalue()
+    status.xlscontent = xlscontent.getvalue()
+
     status.status = 1
     status.success = 1
     session.commit()
@@ -324,17 +364,10 @@ def export_form(uuid, form, fields=None):
        fields: Fileds from form to export\n
 
     """
-    # A method that glues json arrays together into a single string.
-    def build_json(new_string, json_string):
-        if not json_string:
-            return new_string
-        else:
-            return json_string[:-1] + ', ' + new_string[1:]
 
     db, session = get_db_engine()
     (locations, locs_by_deviceid, regions,
      districts, devices) = all_location_data(session)
-    json_string = ""
 
     if fields:
         keys = fields
@@ -348,10 +381,22 @@ def export_form(uuid, form, fields=None):
         for r in result:
             keys.append(r[0])
 
-    file_object = StringIO()
+    csv_content = StringIO()
+    csv_writer = csv.writer(csv_content)
+    csv_writer.writerows([keys])
 
-    csv_writer = csv.DictWriter(file_object, keys, extrasaction='ignore')
-    csv_writer.writeheader()
+    # XlsxWriter with "constant_memory" set to true, flushes mem after each row
+    xls_content = BytesIO()
+    xls_book = xlsxwriter.Workbook(xls_content, {'constant_memory': True})
+    xls_sheet = xls_book.add_worksheet()
+    # xls_sheet = pyexcel.Sheet([keys])
+
+    # Little utility function write a row to file.
+    def write_xls_row(data, row, sheet):
+        for cell in range(len(data)):
+            xls_sheet.write(row, cell, data[cell])
+
+    write_xls_row(keys, 0, xls_sheet)
 
     i = 0
     if locs_by_deviceid is None:
@@ -359,7 +404,7 @@ def export_form(uuid, form, fields=None):
             DownloadDataFiles(
                 uuid=uuid,
                 csvcontent="",
-                json_data="",
+                xlscontent=b"",
                 generation_time=datetime.now(),
                 type=form,
                 success=0,
@@ -371,48 +416,72 @@ def export_form(uuid, form, fields=None):
 
     if form in form_tables.keys():
         results = session.query(form_tables[form].data).yield_per(1000)
-        dict_rows = []
+        list_rows = []
         for row in results:
-            dict_row = row.data
-            if not dict_row:
-                continue
-            clinic_id = locs_by_deviceid.get(dict_row["deviceid"], None)
+            # Initialise empty row
+            list_row = ['']*len(keys)
+            # For each key requested, add the value to the row.
+            for key in keys:
+                try:
+                    list_row[keys.index(key)] = row.data.get(key, '')
+                except AttributeError as e:
+                    logging.warning(e)
+                    logging.warning(row)
+                    logging.warning(row.data)
+
+            # Add the location data if it has been requested and exists.
+            clinic_id = locs_by_deviceid.get(
+                row.data["deviceid"],
+                None
+            )
             if clinic_id:
-                dict_row["clinic"] = locations[clinic_id].name
+                if 'clinic' in keys:
+                    list_row[keys.index("clinic")] = locations[clinic_id].name
                 # Sort out district and region
                 if locations[clinic_id].parent_location in districts:
-                    dict_row["district"] = locations[locations[clinic_id]
-                                                     .parent_location].name
-                    dict_row["region"] = locations[locations[locations[
-                        clinic_id].parent_location].parent_location].name
+                    if 'district' in keys:
+                        list_row[keys.index("district")] = locations[
+                            locations[clinic_id].parent_location
+                        ].name
+                    if 'region' in keys:
+                        list_row[keys.index("region")] = locations[locations[
+                            locations[clinic_id].parent_location
+                        ].parent_location].name
                 elif locations[clinic_id].parent_location in regions:
-                    dict_row["district"] = ""
-                    dict_row["region"] = locations[locations[clinic_id]
-                                                   .parent_location].name
+                    if 'district' in keys:
+                        list_row[keys.index("district")] = ""
+                    if 'region' in keys:
+                        list_row[keys.index("region")] = locations[
+                            locations[clinic_id].parent_location
+                        ].name
             else:
-                dict_row["clinic"] = ""
-                dict_row["district"] = ""
-                dict_row["region"] = ""
-            for key in list(row.data.keys()):
-                if key in keys and key not in dict_row:
-                    dict_row[key] = row.data[key]
-            dict_rows.append(dict_row)
-            if i % 1000 == 0:
-                print(dict_rows)
-                csv_writer.writerows(dict_rows)
-                json_string = build_json(json.dumps(dict_rows), json_string)
-                dict_rows = []
+                if 'clinic' in keys:
+                    list_row[keys.index("clinic")] = ""
+                if 'district' in keys:
+                    list_row[keys.index("district")] = ""
+                if 'region' in keys:
+                    list_row[keys.index("region")] = ""
+
+            # Can write row immediately to xls file as memory is flushed after.
+            write_xls_row(list_row, i+1, xls_sheet)
+            # Append the row to list of rows to be written to csv.
+            list_rows.append(list_row)
+
+            # Store for every 1000 rows.
+            if i % 5 == 0:
+                csv_writer.writerows(list_rows)
+                list_rows = []
             i += 1
 
         # Write any remaining unwritten data down.
-        csv_writer.writerows(dict_rows)
-        json_string = build_json(json.dumps(dict_rows), json_string)
+        csv_writer.writerows(list_rows)
 
+        xls_book.close()
         session.add(
             DownloadDataFiles(
                 uuid=uuid,
-                csvcontent=file_object.getvalue(),
-                json_data=json_string,
+                csvcontent=csv_content.getvalue(),
+                xlscontent=xls_content.getvalue(),
                 generation_time=datetime.now(),
                 type=form,
                 success=1,

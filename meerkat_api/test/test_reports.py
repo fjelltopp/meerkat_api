@@ -836,6 +836,7 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))["data"]["communicable_diseases"]
 
+        print(data)
         self.assertIn("Cholera", data)
         self.assertIn('Typhoid fever', data)
         self.assertIn('Diphtheria', data)
