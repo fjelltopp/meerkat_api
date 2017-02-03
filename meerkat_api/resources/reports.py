@@ -433,7 +433,6 @@ def create_ncd_report(location, start_date=None, end_date=None, params=['case'])
                                                 additional_variables=additional_variables)
 
             table_two_total = sum([disease_gender[gender]["total"] for gender in disease_gender])
-
             ret[disease]["complications"]["data"].append(
                 {
                     "title": loc_name,
@@ -2815,6 +2814,7 @@ class AFROBulletin(Resource):
                     district_completeness_data[loc_s] = comp_reg["score"][loc_s]
                 for loc_s in time_reg["score"].keys():
                     district_timeliness_data[loc_s] = time_reg["score"][loc_s]
+
             except AttributeError:
                 pass
 
@@ -3193,8 +3193,6 @@ class AFROBulletin(Resource):
                         "timeliness":district_timeliness_data[str(district)]
                     })
             except AttributeError:
-                pass
-            except KeyError:
                 pass
 
         return ret
