@@ -166,6 +166,7 @@ class MeerkatAPITestCase(unittest.TestCase):
     def test_all_urls(self):
         urls = valid_urls(meerkat_api.app)
         for url in urls:
+            print(url)
             rv = get_url(self.app, url)
             isOK = rv.status_code == 200
             if not isOK:
