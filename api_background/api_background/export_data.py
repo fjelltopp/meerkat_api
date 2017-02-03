@@ -416,7 +416,12 @@ def export_form(uuid, form, fields=None):
             list_row = ['']*len(keys)
             # For each key requested, add the value to the row.
             for key in keys:
-                list_row[keys.index(key)] = row.data.get(key, '')
+                try:
+                    list_row[keys.index(key)] = row.data.get(key, '')
+                except AttributeError as e:
+                    logging.warning(e)
+                    logging.warning(row)
+                    logging.warning(row.data)
 
             # Add the location data if it has been requested and exists.
             clinic_id = locs_by_deviceid.get(
