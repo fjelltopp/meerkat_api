@@ -3,7 +3,7 @@ Data resource for getting Alert data
 """
 from flask_restful import Resource
 from flask import jsonify, request, current_app
-
+from sqlalchemy import or_
 from meerkat_api.util import row_to_dict, rows_to_dicts, get_children
 from meerkat_api import db
 from meerkat_abacus import model
@@ -85,9 +85,19 @@ def get_alerts(args):
     if "location" in args.keys():
         locations = get_locations(db.session)
         children = get_children(int(args["location"]), locations)
-        conditions.append(model.Data.clinic.in_(children))
-        disregarded_conditions.append(
-            model.DisregardedData.clinic.in_(children))
+        cond = or_(loc == args["location"] for loc in (
+            model.Data.country,
+            model.Data.region,
+            model.Data.district,
+            model.Data.clinic))
+        disregarded_cond = or_(loc == args["location"] for loc in (
+            model.DisregardedData.country,
+            model.DisregardedData.region,
+            model.DisregardedData.district,
+            model.DisregardedData.clinic)
+        )
+        conditions.append(cond)
+        disregarded_conditions.append(disregarded_cond)
     if "start_date" in args.keys():
         conditions.append(model.Data.date >= args["start_date"])
         disregarded_conditions.append(

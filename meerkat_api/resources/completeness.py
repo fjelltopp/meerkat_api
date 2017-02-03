@@ -97,7 +97,12 @@ class Completeness(Resource):
                              Data.variables[variable].label(variable)).filter(
                                  *conditions).statement, db.session.bind)
         if len(data) == 0:
-            return jsonify({})
+            return jsonify({"score": {},
+                            "timeline": {},
+                            "clinic_score": {},
+                            "clinic_yearly_score": {},
+                            "dates_not_reported": [],
+                            "yearly_score": {}})
 
         # If end_date is the start of an epi week we do not want to include the current epi week
         # We only calculate completeness for whole epi-weeks so we want to set end_d to the
