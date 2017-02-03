@@ -3195,5 +3195,7 @@ class AFROBulletin(Resource):
                     })
             except AttributeError:
                 pass
+            except KeyError:
+                pass
 
         return ret

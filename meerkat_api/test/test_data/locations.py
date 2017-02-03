@@ -6,7 +6,7 @@ testshire = [
     Locations(**{"id":1,
                  "name":"Testshire",
                  "parent_location":None,
-                 'geolocation':'0,0',
+                 
                  "other":None,
                  "deviceid":None,
                  "clinic_type":None,
@@ -18,7 +18,7 @@ testshire = [
     Locations(**{"id":2,
                  "name":"Region Major",
                  "parent_location":1,
-                 'geolocation':'1,0',
+                 
                  "other":None,
                  "deviceid":None,
                  "clinic_type":None,
@@ -30,7 +30,7 @@ testshire = [
     Locations(**{"id":3,
                  "name":"Region Minor",
                  "parent_location":1,
-                 'geolocation':'1,1',
+                 
                  "other":None,
                  "deviceid":None,
                  "clinic_type":None,
@@ -42,7 +42,7 @@ testshire = [
     Locations(**{"id":4,
                  "name":"District Blue",
                  "parent_location":2,
-                 'geolocation':'2,0',
+                 
                  "other":None,
                  "deviceid":None,
                  "clinic_type":None,
@@ -54,7 +54,7 @@ testshire = [
     Locations(**{"id":5,
                  "name":"District Red",
                  "parent_location":2,
-                 'geolocation':'2,1',
+                 
                  "other":None,
                  "deviceid":None,
                  "clinic_type":None,
@@ -66,7 +66,7 @@ testshire = [
     Locations(**{"id":6,
                  "name":"District Green",
                  "parent_location":3,
-                 'geolocation':'2,2',
+                 
                  "other":None,
                  "deviceid":None,
                  "clinic_type":None,
@@ -78,7 +78,7 @@ testshire = [
     Locations(**{"id":7,
                  "name":"Clinic A",
                  "parent_location":4,
-                 'geolocation':'3,0',
+                 
                  "other":None,
                  "deviceid":"1111",
                  "clinic_type":"test",
@@ -90,7 +90,7 @@ testshire = [
     Locations(**{"id":8,
                  "name":"Clinic B",
                  "parent_location":4,
-                 'geolocation':'3,1',
+                 
                  "other":None,
                  "deviceid":"2222",
                  "clinic_type":"test",
@@ -102,7 +102,7 @@ testshire = [
     Locations(**{"id":9,
                  "name":"Clinic C",
                  "parent_location":5,
-                 'geolocation':'3,2',
+                 
                  "other":None,
                  "deviceid":"3333",
                  "clinic_type":"test",
@@ -114,7 +114,7 @@ testshire = [
     Locations(**{"id":10,
                  "name":"Clinic D",
                  "parent_location":6,
-                 'geolocation':'3,3',
+                 
                  "other":None,
                  "deviceid":"4444",
                  "clinic_type":"test",
