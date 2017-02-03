@@ -1401,7 +1401,7 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
 
         #Load the test data.
         db_util.insert_locations(self.db.session)
-        db_util.insert_codes(self.db.session)
+        db_util.insert_codes_from_file(self.db.session, "codes.csv")
         db_util.insert_cases(self.db.session, "epi_monitoring")
 
         #Select report params
@@ -1468,7 +1468,7 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
 
         #Load the test data.
         db_util.insert_locations(self.db.session)
-        db_util.insert_codes(self.db.session)
+        db_util.insert_codes_from_file(self.db.session, "codes.csv")
         db_util.insert_cases(self.db.session, "malaria")
 
         #Select report params
@@ -1532,7 +1532,7 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
 
         #Load the test data.
         db_util.insert_locations(self.db.session)
-        db_util.insert_codes(self.db.session)
+        db_util.insert_codes_from_file(self.db.session, "codes.csv")
         db_util.insert_cases(self.db.session, "vaccination_report")
 
         #Check the data is returned is as expected
@@ -1587,7 +1587,7 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
         # Load the test data.
         # db_util.insert_specific_locations(self.db.session, "mad_dump")
         db_util.insert_specific_locations(self.db.session, "testshire")
-        db_util.insert_codes(self.db.session)
+        db_util.insert_codes_from_file(self.db.session, "codes.csv")
         db_util.insert_cases(self.db.session, "afro_report")
 
         #This test assumes the period is the whole year despite whatever it is
