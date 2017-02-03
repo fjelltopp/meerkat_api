@@ -17,6 +17,7 @@ import csv
 import json
 import logging
 import xlsxwriter
+import os
 
 
 @task
@@ -130,6 +131,26 @@ def export_category(uuid, form_name, category, download_name, variables):
     link_ids = []
     min_translation = {}
 
+    def add_translations_from_file(details):
+        # Load the csv file and reader
+        file_path = '{}api/{}'.format(
+            os.environ['COUNTRY_CONFIG_DIR'],
+            details['dict_file']
+        )
+        csv_file = open(file_path, 'rt')
+        reader = csv.reader(csv_file)
+        # Establish which column in each row we're translating from and to.
+        headers = next(reader)
+        from_index = headers.index(details['from'])
+        to_index = headers.index(details['to'])
+        # Add translations to the translation dictionary.
+        trans_dict = {}
+        for row in reader:
+            trans_dict[row[from_index]] = row[to_index]
+        logging.warning(trans_dict)
+        return trans_dict
+
+
     # Set up icd_code_to_name if needed and determine if
     # alert_links are included
     for v in variables:
@@ -161,9 +182,13 @@ def export_category(uuid, form_name, category, download_name, variables):
             field = "$".join(split[:-1])
             trans = split[-1]
             tr_dict = json.loads(trans.split(";")[1].replace("'", '"'))
-            min_translation[v[1]] = tr_dict
+            # If the json specifies file details, load translation from file.
+            if tr_dict.get('dict_file', False):
+                min_translation[v[1]] = add_translations_from_file(tr_dict)
+            else:
+                min_translation[v[1]] = tr_dict
             v[0] = field
-            print(min_translation)
+
         if "gen_link$" in v[0]:
             link_ids.append(v[0].split("$")[1])
         translation_dict[v[1]] = v[0]
@@ -199,6 +224,9 @@ def export_category(uuid, form_name, category, download_name, variables):
         for k in return_keys:
             form_var = translation_dict[k]
             index = return_keys.index(k)
+
+            if form_var is 'symptoms':
+                logging.warning('form_var: {} val: {}'.format(form_var, r[1].data.get(form_var, "")))
 
             if "icd_name$" in form_var:
                 if r[1].data["icd_code"] in icd_code_to_name[form_var]:
@@ -280,7 +308,7 @@ def export_category(uuid, form_name, category, download_name, variables):
             elif "code_value" == form_var.split("$")[0]:
                 code = form_var.split("$")[1]
                 if code in r[0].variables:
-                    list_row[index] = r[0].variables[code]
+                    list_row[index] = round(float(r[0].variables[code]), 1)
                 else:
                     list_row[index] = None
             elif "value" == form_var.split(":")[0]:
@@ -291,10 +319,14 @@ def export_category(uuid, form_name, category, download_name, variables):
                 else:
                     list_row[index] = None
 
-            if min_translation and k in min_translation:
+            if min_translation and k in min_translation and list_row[index]:
+                logging.warning("translating in to")
                 tr_dict = min_translation[k]
-                if list_row[index] in tr_dict.keys():
-                    list_row[index] = tr_dict[list_row[index]]
+                parts = [x.strip() for x in list_row[index].split(',')]
+                for x in range(len(parts)):
+                    parts[x] = tr_dict.get(parts[x], parts[x])
+                list_row[index] = ', '.join(list(filter(bool, parts)))
+                logging.warning(list_row[index])
 
         list_rows.append(list_row)
 
@@ -311,7 +343,7 @@ def export_category(uuid, form_name, category, download_name, variables):
     # Write the two files to database
     status.csvcontent = csvcontent.getvalue()
     status.xlscontent = xlscontent.getvalue()
-    logging.warning(status.xlscontent)
+
     status.status = 1
     status.success = 1
     session.commit()
@@ -390,7 +422,12 @@ def export_form(uuid, form, fields=None):
             list_row = ['']*len(keys)
             # For each key requested, add the value to the row.
             for key in keys:
-                list_row[keys.index(key)] = row.data.get(key, '')
+                try:
+                    list_row[keys.index(key)] = row.data.get(key, '')
+                except AttributeError as e:
+                    logging.warning(e)
+                    logging.warning(row)
+                    logging.warning(row.data)
 
             # Add the location data if it has been requested and exists.
             clinic_id = locs_by_deviceid.get(
