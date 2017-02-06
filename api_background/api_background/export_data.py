@@ -13,7 +13,6 @@ from datetime import datetime
 from io import StringIO, BytesIO
 from celery import task
 import pandas as pd
-import pyexcel
 import csv
 import json
 import logging
