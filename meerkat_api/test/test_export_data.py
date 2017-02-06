@@ -122,7 +122,8 @@ class MeerkatAPITestCase(unittest.TestCase):
                           headers={**{"Accept": "text/csv"},
                                    **settings.header})
         self.assertEqual(rv.status_code, 200)
-        lines = rv.data.decode("utf-8").strip().split("\r\n")
+        lines = rv.data.decode("utf-8").strip().split("\n")
+        print(lines)
         self.assertEqual(len(lines), 8)
         c = csv.DictReader(lines)
         found_cholera = False
@@ -144,9 +145,9 @@ class MeerkatAPITestCase(unittest.TestCase):
                 self.assertEqual(line["Clinic"], "Clinic 1")
                 self.assertEqual(line["icd code"], "A06")
                 self.assertEqual(line["Name"], "")
-                self.assertEqual(line["Month"], "5")
-                self.assertEqual(line["Year"], "2016")
-                self.assertEqual(line["epi_week"], "18")
+                self.assertEqual(line["Month"], "5.0")
+                self.assertEqual(line["Year"], "2016.0")
+                self.assertEqual(line["epi_week"], "18.0")
 
                 found_uuid = True
         self.assertTrue(found_cholera)
