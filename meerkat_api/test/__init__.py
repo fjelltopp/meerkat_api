@@ -124,7 +124,7 @@ class MeerkatAPITestCase(unittest.TestCase):
         meerkat_api.app.config['API_KEY'] = ""
         celery_app.conf.CELERY_ALWAYS_EAGER = True
 
-        BROKER_BACKEND = 'memory'b
+        BROKER_BACKEND = 'memory'
         # manage.set_up_everything(False, False, 500)
         db_util.insert_codes(meerkat_api.db.session)
         db_util.insert_locations(meerkat_api.db.session)
