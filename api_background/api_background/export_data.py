@@ -12,7 +12,7 @@ from dateutil.parser import parse
 from datetime import datetime
 from io import StringIO, BytesIO
 from celery import task
-import pyexcel
+import pandas as pd
 import csv
 import json
 import logging
@@ -216,8 +216,11 @@ def export_category(uuid, form_name, category, download_name, variables):
         or_(Data.variables.has_key(key)
             for key in data_keys)).yield_per(200)
     locs = get_locations(session)
-    list_rows = [return_keys]
+    list_rows = []
 
+    df = pd.DataFrame(columns=return_keys)
+
+    i = 0
     # Prepare each row
     for r in results:
         list_row = ['']*len(return_keys)
@@ -236,8 +239,9 @@ def export_category(uuid, form_name, category, download_name, variables):
                     list_row[index] = None
 
             elif "$date" in form_var:
-                if form_var in r[1].data:
-                    list_row[index] = parse(r[1].data[form_var]).strftime(
+                field = form_var.split("$")[0]
+                if field in r[1].data and r[1].data[field]:
+                    list_row[index] = parse(r[1].data[field]).strftime(
                         "%d/%m/%Y"
                     )
                 else:
@@ -329,17 +333,27 @@ def export_category(uuid, form_name, category, download_name, variables):
                 logging.warning(list_row[index])
 
         list_rows.append(list_row)
+        if i % 10000 == 0:
+            df1 = pd.DataFrame(list_rows, columns=return_keys)
+            df = pd.concat([df, df1])
+            list_rows = []
+        i += 1
 
+    df1 = pd.DataFrame(list_rows, columns=return_keys)
+    df = pd.concat([df, df1])
+    list_rows = []
     # Save the collected data in xlsx form
     xlscontent = BytesIO()
-    sheet = pyexcel.Sheet(list_rows)
-    xlscontent = sheet.save_to_memory("xlsx", xlscontent)
-
+    writer = pd.ExcelWriter(xlscontent, engine='xlsxwriter')
+    # sheet = pyexcel.Sheet(list_rows)
+    # xlscontent = sheet.save_to_memory("xlsx", xlscontent)
+    df.to_excel(writer, index=False)
+    writer.save()
     # Save the collected data in csv form
     csvcontent = StringIO()
-    writer = csv.writer(csvcontent)
-    writer.writerows(list_rows)
-
+    # writer = csv.writer(csvcontent)
+    # writer.writerows(list_rows)
+    df.to_csv(csvcontent, index=False)
     # Write the two files to database
     status.csvcontent = csvcontent.getvalue()
     status.xlscontent = xlscontent.getvalue()

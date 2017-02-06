@@ -118,9 +118,6 @@ def output_xls(data, code, headers=None):
     if data and "data" in data:
         filename = data["filename"]
         out_data = data['data']
-        logging.warning("Out data")
-        logging.warning(out_data.decode('iso-8859-1'))
-
         resp = make_response(out_data, code)
         resp.headers.extend(headers or {
             "Content-Disposition": "attachment; filename={}.xlsx".format(
