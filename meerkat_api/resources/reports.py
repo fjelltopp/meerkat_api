@@ -2721,6 +2721,11 @@ class AFROBulletin(Resource):
         mls = ret["data"]["weekly_highlights"]["mls_12"] + ret["data"]["weekly_highlights"]["mls_24"]
         ret["data"]["weekly_highlights"]["mls_12_or_mls_24"] = mls
 
+        if ret["data"]["weekly_highlights"]["cmd_25"] != 0:
+            ret["data"]["weekly_highlights"]["cmd_18_perc_cmd_25"] = 100 * ret["data"]["weekly_highlights"]["cmd_18"] / ret["data"]["weekly_highlights"]["cmd_25"]
+        else:
+            ret["data"]["weekly_highlights"]["cmd_18_perc_cmd_25"] = 0
+
         # Calculate percentages. Assign them key "var_id1_perc_var_id2" e.g. "mls_3_perc_mls_2".
         # Each element in list is 2 element list of a numerator and denominator for a perc calc.
         perc_vars = [
