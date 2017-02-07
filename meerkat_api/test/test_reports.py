@@ -18,6 +18,101 @@ from meerkat_api.test import db_util
 from meerkat_abacus import data_management
 from meerkat_abacus import model
 from meerkat_api.resources import reports
+from freezegun import freeze_time
+from meerkat_api.test.test_data import expected_output
+
+"""
+Compare list of unhashable objects (e.g. dictionaries). From SO by Steven Rumbalski.
+"""
+def compare_unhashable_list(s, t):
+    t = list(t)   # make a mutable copy
+    try:
+        for elem in s:
+            t.remove(elem)
+    except ValueError:
+        return False
+    return not t
+
+
+""" The following helper function compare two dictionaries assuming identical structure. 
+
+Here is an example of functionality:
+l1 = [1,2,3,4]
+l2 = [2,1,4,3]
+l3 = [1,2]
+l4 = [1]
+d1a = {"e1":12, "e2":l3}
+d1b = {"e1":12, "e2":l4}
+d2a = {"e3":2,"e4":l1,"e5":d1a}
+d2b = {"e3":1,"e4":l2,"e5":d1b}
+d3a = {"e1":12, "e2":l3}
+d3b = {"e1":12, "e2":l3}
+d4a = {"e3":1,"e4":l1,"e5":d3a}
+d4b = {"e3":1,"e4":l1,"e5":d3b}
+print(simplified_dict_compare(d2a,d2b))
+print(simplified_dict_compare(d4a,d4b))
+>> ({'e3': (2, 1)}, ({'e2': ([1, 2], [1])}, {}))
+>> None
+
+"""
+def simplified_dict_compare(d1, d2):
+    d1_keys = set(d1.keys())
+    d2_keys = set(d2.keys())
+    intersect_keys = d1_keys.intersection(d2_keys)
+    modified = dict()
+    mod_dict = dict()
+    for o in intersect_keys:
+        #compare dictionaries recursively
+        if ((type(d1[o]) == dict) and (type(d2[o]) == dict)):
+           mod_dict = simplified_dict_compare(d1[o],d2[o])
+        #compare lists as sets.
+        elif ((type(d1[o]) == list) and (type(d2[o]) == list)):
+                if not compare_unhashable_list(d1[o],d2[o]):
+                    modified[o] = (d1[o],d2[o])
+        #show differences
+        else:
+                if(d1[o] != d2[o]):
+                    modified[o] = (d1[o],d2[o])
+    if (mod_dict == None or mod_dict == {}) and modified == {}:
+        return None
+    #same = set(o for o in intersect_keys if d1[o] == d2[o])
+    #return added, removed, modified, same, mod_dict
+    return modified, mod_dict
+
+"""
+This helper function compares structure of recursive dictionaries, returning `None` if it's identical.
+
+Here is a study case of usage:
+d1 = {"a":{"b": 1,"c": 1},"e":1,"f":1}
+d2 = {"a":{"b": 1,"d": 1},"f":1}
+d3 = {"a":{"b": 1,"c": 1},"e":1,"f":1}
+d4 = {"a":{"b": {"g":1},"c": 1},"e":1,"f":1}
+d5 = {"a":{"b": {"h":1},"d": 1},"f":1}
+print(dict_struct_compare(d1,d3))
+print(dict_struct_compare(d1,d2))
+print(dict_struct_compare(d4,d5))
+>>None
+>>{'added': {'e'}, 'removed': set(), 'inner structure': {'a': {'added': {'c'}, 'removed': {'d'}, 'inner structure': {}}}}
+>>{'added': {'e'}, 'removed': set(), 'inner structure': {'a': {'added': {'c'}, 'removed': {'d'}, 'inner structure': {'b': {'added': {'g'}, 'removed': {'h'}, 'inner structure': {}}}}}}
+"""
+def dict_struct_compare(d1, d2):
+    d1_keys = set(d1.keys())
+    d2_keys = set(d2.keys())
+    intersect_keys = d1_keys.intersection(d2_keys)
+    added = d1_keys - d2_keys
+    removed = d2_keys - d1_keys
+    struct_dict = {}
+    for o in intersect_keys:
+        #compare dictionaries recursively
+        if ((type(d1[o]) == dict) and (type(d2[o]) == dict)):
+            struct_dict_diff = {}
+            struct_dict_diff = dict_struct_compare(d1[o],d2[o])
+            if(struct_dict_diff != None):
+                struct_dict[o] = struct_dict_diff
+        
+    if(added == set() and removed == set() and (struct_dict == None or struct_dict == {})):
+        return None
+    return {"added":added, "removed":removed, "inner structure":struct_dict}
 
 
 
@@ -1387,6 +1482,8 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))
 
+        print("Malaria output data missing some variables")
+        print(data)
         #Refactorisation: check the data is returned is as expected
         def check_data( data, expected ): 
             
@@ -1477,6 +1574,47 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
             start_date=datetime(2016, 1, 1).isoformat(), 
             location=1, 
             expected=1)
+
+
+
+
+    @freeze_time("2016-12-30")
+    def test_afro(self):
+        """ Test AFRO report """
+        print("afro test began")
+        afro_expected = meerkat_api.test.test_data.expected_output.afro_expected
+        print("freezing time")
+
+        # Load the test data.
+        # db_util.insert_specific_locations(self.db.session, "mad_dump")
+        db_util.insert_specific_locations(self.db.session, "testshire")
+        db_util.insert_codes_from_file(self.db.session, "codes.csv")
+        db_util.insert_cases(self.db.session, "afro_report")
+
+        #This test assumes the period is the whole year despite whatever it is
+        rv = self.app.get(
+            '/reports/afro/{}/{}/{}'
+            .format(
+                1,
+                datetime(2016, 12, 25).isoformat(),
+                datetime(2016, 12, 18).isoformat(),
+            ), headers=settings.header)
+        self.assertEqual(rv.status_code, 200)
+        afro_returned = json.loads(rv.data.decode("utf-8"))
+        print("[Output afro_returned]:")
+        print(afro_returned)
+        print(type(afro_returned))
+        print("[end]")
+        afro_expected.pop("meta",None)
+        afro_returned.pop("meta",None)
+        dictdiffstructure = dict_struct_compare(afro_expected,afro_returned)
+        dictdiffcontent = simplified_dict_compare(afro_expected,afro_returned)
+        print("Difference in response structure")
+        print(dictdiffstructure)
+        print("Difference in response content")
+        print(dictdiffcontent)
+        self.assertTrue(dictdiffstructure == None)
+        self.assertTrue(dictdiffcontent == None)
 
 if __name__ == '__main__':
     unittest.main()
