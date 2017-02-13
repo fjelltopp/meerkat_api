@@ -6,6 +6,8 @@ from flask_restful import Resource
 from meerkat_api import db
 from meerkat_abacus import model
 
+from meerkat_api.authentication import authenticate
+
 from meerkat_api.util import rows_to_dicts
 
 class Devices(Resource):
@@ -15,7 +17,7 @@ class Devices(Resource):
     Returns:\n
         devices\n
     """
-    #decorators = [authenticate]
+    decorators = [authenticate]
 
     def get(self):
         result = db.session.query(model.Devices)
