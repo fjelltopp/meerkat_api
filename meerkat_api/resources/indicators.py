@@ -12,6 +12,7 @@ class Indicators(Resource):
     def get(self, variable, location):
         # end_date = datetime.now()
 
+
         locs = get_locations(db.session)
         location = int(location)
         location_type = locs[location].level
@@ -24,21 +25,29 @@ class Indicators(Resource):
         conditions = [Data.variables.has_key(variable), or_(
             loc == location
             for loc in (Data.country, Data.region, Data.district, Data.clinic))
-                      ]
+                     ]
         data = pd.read_sql(
             db.session.query(Data.region, Data.district, Data.clinic,
                              Data.date,
                              Data.variables[variable].label(variable)).filter(
                                  *conditions).statement, db.session.bind)
-        print(data.describe())
-        print(data.values)
+        # print(data.describe())
+        # print(data.values)
         denominator_id = variable
         whateverItIs = count(data, denominator_id)
+        print(whateverItIs)
+        print(whateverItIs[0])
+        print(whateverItIs[1])
+
         print(type(whateverItIs))
         print(type(whateverItIs[0]))
         print(type(whateverItIs[1]))
-        zz = whateverItIs[1]
-        print( type(zz) )
-        zzz = series_to_json_dict(zz)
-        print( type(zzz) )
-        return zzz
+        indicatorData = dict()
+        # numpy.int64 needs to be cast to int (https://bugs.python.org/issue24313)
+        indicatorData["cummulative"]=int(whateverItIs[0])
+        indicatorData["timeline"] = series_to_json_dict(whateverItIs[1])
+        #current value is the latest week:
+        indicatorData["current"] = indicatorData["timeline"][max(indicatorData["timeline"].keys())]
+        indicatorData["name"] = "Test name of an indicator"
+
+        return indicatorData
