@@ -37,7 +37,7 @@ class MeerkatAPIMapTestCase(unittest.TestCase):
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(len(data["features"]), 4)
         self.assertEqual(data["features"][0]["properties"]["name"], "Clinic 1")
-        self.assertEqual(data["features"][3]["geometry"]["coordinates"], [0.4, -0.1])
+        self.assertEqual(data["features"][3]["geometry"]["coordinates"], [-0.1, 0.4])
         # Note the order is lat long for geojson
         rv = self.app.get('/clinics/3', headers=settings.header)
         self.assertEqual(rv.status_code, 200)
