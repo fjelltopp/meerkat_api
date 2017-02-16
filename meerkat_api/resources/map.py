@@ -36,7 +36,7 @@ class Clinics(Resource):
                     location_id, l, locations) and locations[l].point_location is not None
                 and (not clinic_type or locations[l].clinic_type == clinic_type)):
                 geo = to_shape(locations[l].point_location)
-                p = Point((float(geo.y), float(geo.x))) # Note that this is the specified order for geojson
+                p = Point((float(geo.x), float(geo.y))) # Note that this is the specified order for geojson
                 points.append(Feature(geometry=p,
                                       properties={"name":
                                                   locations[l].name}))
