@@ -736,6 +736,7 @@ class Pip(Resource):
                                          start_date=start_date.isoformat(),
                                          only_loc=location,
                                          use_ids=True)
+        print("pip_followup:")
         print(pip_followup)
         total_followup = pip_followup["pif_1"]["total"]
         icu = pip_followup["pif_3"]["total"]
@@ -2349,6 +2350,7 @@ class Malaria(Resource):
                 ret['malaria_situation'][key] = int(round(value))
 
         var.update( variables_instance.get('malaria_situation') )
+        var.update( variables_instance.get('malaria_situation_no_case') )
 
         ret['malaria_prevention'] = get_variables_category(
             'malaria_prevention',
@@ -2610,9 +2612,6 @@ class AFROBulletin(Resource):
     decorators = [authenticate]
 
     def get(self, location, start_date=None, end_date=None):
-        # Hack the tests for now.
-        if app.config["TESTING"]:
-            return {}
 
         # Set default date values to last epi week.
         today = datetime.now()
@@ -2703,7 +2702,7 @@ class AFROBulletin(Resource):
             ['cmd_15', 'ale_1'],
             ['cmd_7',  'ale_1'],
             ['cmd_15', 'ale_2'],
-            ['cmd_10', 'ale_2'],
+            ['cmd_10', 'ale_1'],
             ['cmd_11', 'ale_2'],
             ['cmd_7',  'ale_2'],
             ['cmd_15', 'age_1']
@@ -2722,6 +2721,11 @@ class AFROBulletin(Resource):
         mls = ret["data"]["weekly_highlights"]["mls_12"] + ret["data"]["weekly_highlights"]["mls_24"]
         ret["data"]["weekly_highlights"]["mls_12_or_mls_24"] = mls
 
+        if ret["data"]["weekly_highlights"]["cmd_25"] != 0:
+            ret["data"]["weekly_highlights"]["cmd_18_perc_cmd_25"] = 100 * ret["data"]["weekly_highlights"]["cmd_18"] / ret["data"]["weekly_highlights"]["cmd_25"]
+        else:
+            ret["data"]["weekly_highlights"]["cmd_18_perc_cmd_25"] = 0
+
         # Calculate percentages. Assign them key "var_id1_perc_var_id2" e.g. "mls_3_perc_mls_2".
         # Each element in list is 2 element list of a numerator and denominator for a perc calc.
         perc_vars = [
@@ -2731,7 +2735,7 @@ class AFROBulletin(Resource):
             ['cmd_15_ale_1', 'cmd_15'],
             ['cmd_15_ale_2', 'cmd_15'],
             ['cmd_15_age_1', 'cmd_15'],
-            ['cmd_10_ale_2', 'cmd_10'],
+            ['cmd_10_ale_1', 'cmd_10'],
             ['cmd_7_ale_1', 'cmd_7'],
             ['cmd_7_ale_2', 'cmd_7']
         ]
@@ -3195,6 +3199,8 @@ class AFROBulletin(Resource):
                         "timeliness":district_timeliness_data[str(district)]
                     })
             except AttributeError:
+                pass
+            except KeyError:
                 pass
 
         return ret

@@ -149,6 +149,8 @@ class MeerkatAPITestCase(unittest.TestCase):
                              delete=False)
         db_util.insert_cases(meerkat_api.db.session, "completeness",
                              delete=False)
+        db_util.insert_cases(meerkat_api.db.session, "afro_report",
+                             delete=False)
         
         self.app = meerkat_api.app.test_client()
         self.locations = {1: {"name": "Demo"}}

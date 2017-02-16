@@ -13,7 +13,6 @@ from datetime import datetime
 from io import StringIO, BytesIO
 from celery import task
 import pandas as pd
-import pyexcel
 import csv
 import json
 import logging
@@ -445,10 +444,11 @@ def export_form(uuid, form, fields=None):
                     logging.warning(row.data)
 
             # Add the location data if it has been requested and exists.
-            clinic_id = locs_by_deviceid.get(
-                row.data["deviceid"],
-                None
-            )
+            if 'deviceid' in row.data:
+                clinic_id = locs_by_deviceid.get(
+                    row.data["deviceid"],
+                    None
+                )
             if clinic_id:
                 if 'clinic' in keys:
                     list_row[keys.index("clinic")] = locations[clinic_id].name
