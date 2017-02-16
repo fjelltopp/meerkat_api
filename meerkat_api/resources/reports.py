@@ -1163,7 +1163,7 @@ class CdPublicHealth(Resource):
         ret["data"]["total_consultations"] = int(round(total_consultations))
         total_cases = query_sum(db, ["prc_1"], start_date, end_date_limit, location)["total"]
         ret["data"]["total_cases"] = int(round(total_cases))
-        total_deaths = query_sum(db, ["dea_1"], start_date, end_date_limit, location)["total"]
+        total_deaths = query_sum(db, ["dea_0"], start_date, end_date_limit, location)["total"]
         ret["data"]["total_deaths"] = int(round(total_deaths))
 
         ret["data"]["public_health_indicators"] = [
