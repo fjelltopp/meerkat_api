@@ -1080,9 +1080,21 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
         self.assertEqual(data["demographics"][5]["female"]["percent"], 13 / 25 * 100)
 
         # Reporting Sites
-        
-        assert_dict(self, data["reporting_sites"][0], "Clinic 1", 9, 9 / 25 * 100)
-        assert_dict(self, data["reporting_sites"][1], "Clinic 5", 16, 16 / 25 * 100)
+
+        self.assertEqual(len(data["reporting_sites"]), 2)
+
+        found_c1 = False
+        found_c2 = False
+        for record in data["reporting_sites"]:
+            if record["title"] == "Clinic 1":
+                found_c1 = True
+                assert_dict(self, record, "Clinic 1", 9, 9 / 25 * 100)
+
+            if record["title"] == "Clinic 5":
+                found_c2 = True
+                assert_dict(self, record, "Clinic 5", 16, 16 / 25 * 100)
+        self.assertTrue(found_c1)
+        self.assertTrue(found_c2)
 
         # Morbidity
 
