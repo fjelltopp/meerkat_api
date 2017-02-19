@@ -39,8 +39,8 @@ class Config(object):
     CELERY_RESULT_SERIALIZER = 'json'
     CELERY_ACCEPT_CONTENT = ['json']
 
-    INTERNAL_DEVICE_API_ROOT = from_env("INTERNAL_API_ROOT", 'http://dev_nginx_1/mobile_messaging')
-    EXTERNAL_DEVICE_API_ROOT = '/mobile_messaging'
+    INTERNAL_DEVICE_API_ROOT = from_env("INTERNAL_API_ROOT", 'http://dev_nginx_1/mob')
+    EXTERNAL_DEVICE_API_ROOT = '/mob'
 
     
 class Production(Config):
