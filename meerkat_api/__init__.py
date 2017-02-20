@@ -146,7 +146,7 @@ from meerkat_api.resources.completeness import Completeness, NonReporting
 from meerkat_api.resources.reports import PublicHealth, CdReport, \
     CdPublicHealth, CdPublicHealthMad, NcdPublicHealth,RefugeePublicHealth, \
     RefugeeCd,RefugeeDetail, Pip, WeeklyEpiMonitoring, Malaria, \
-    VaccinationReport, AFROBulletin,\
+    VaccinationReport, AFROBulletin, MhReport, \
     NcdReport, NcdReportNewVisits, NcdReportReturnVisits
 from meerkat_api.resources.frontpage import KeyIndicators, TotMap, NumAlerts, ConsultationMap, RefugeePage, NumClinics
 from meerkat_api.resources.export_data import ExportData, ExportForm, Forms, ExportCategory, GetCSVDownload, GetXLSDownload, GetStatus
@@ -299,6 +299,9 @@ api.add_resource(VaccinationReport, "/reports/vaccination/<location>",
 api.add_resource(AFROBulletin, "/reports/afro/<location>",
                  "/reports/afro/<location>/<end_date>",
                  "/reports/afro/<location>/<end_date>/<start_date>")
+api.add_resource(MhReport, "/reports/mh_report/<location>",
+                 "/reports/mh_report/<location>/<end_date>",
+                 "/reports/mh_report/<location>/<end_date>/<start_date>")
 
 # Misc
 api.add_resource(NonReporting, "/non_reporting/<variable>/<location>",

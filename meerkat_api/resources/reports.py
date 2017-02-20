@@ -37,7 +37,7 @@ from meerkat_api.resources.locations import TotClinics
 from meerkat_api.resources.data import AggregateYear
 from meerkat_api.resources.map import Clinics, MapVariable
 from meerkat_api.resources import alerts
-from meerkat_api.resources.explore import QueryVariable
+from meerkat_api.resources.explore import QueryVariable, QueryCategory, get_variables
 from meerkat_api.util.data_query import query_sum
 from meerkat_api.resources.incidence import IncidenceRate
 from meerkat_abacus.util import get_locations, all_location_data
@@ -473,7 +473,110 @@ def create_ncd_report(location, start_date=None, end_date=None, params=['case'])
 
     return ret
 
+class MhReport(Resource):
+    """
+    Mental Health Report to show data on all mental health related diseases and visits.
 
+    Args:\n
+       location: Location to generate report for\n
+       start_date: Start date of report\n
+       end_date: End date of report\n
+    Returns:\n
+       report_data\n
+    """
+    decorators = [authenticate]
+    def get(self, location, start_date=None, end_date=None):
+        start_date, end_date = fix_dates(start_date, end_date)
+        end_date_limit = end_date + timedelta(days=1)
+        ret = {}
+        #meta data
+        ret["meta"] = {"uuid": str(uuid.uuid4()),
+                       "project_id": 1,
+                       "generation_timestamp": datetime.now().isoformat(),
+                       "schema_version": 0.1
+        }
+        # Dates and Location Name
+        ew = EpiWeek()
+        epi_week = ew.get(end_date.isoformat())["epi_week"]
+        ret["data"] = {"epi_week_num": epi_week,
+                       "end_date": end_date.isoformat(),
+                       "project_epoch": datetime(2015, 5, 20).isoformat(),
+                       "start_date": start_date.isoformat()
+        }
+        location_name = db.session.query(Locations.name).filter(
+            Locations.id == location).first()
+        if not location_name:
+            return None
+        ret["data"]["project_region"] = location_name.name
+        tot_clinics = TotClinics()
+        ret["data"]["clinic_num"] = tot_clinics.get(location)["total"]
+
+        # get the age breakdown
+        query_category = QueryCategory()
+        query_variable = QueryVariable()
+        mh_id = "visit_prc_3"
+        gender_variables = get_variables('visit_gender')
+        visit_type_variables = {"vis_1":"new", "vis_2":"return", "vis_3":"referral"}
+        nationality_variables = get_variables('visit_nationality')
+
+        table_1_data = []
+
+        for visit_type_id in visit_type_variables.keys():
+            visit_type_name = visit_type_variables[visit_type_id]
+            visit_type_dict={visit_type_name:[]}
+
+            for nat_id in nationality_variables.keys():
+                nat_name = nationality_variables[nat_id]
+                nat_dict = {nat_name:[]}
+
+                gender_data = query_variable.get(
+                    variable=visit_type_id, 
+                    group_by='visit_gender', 
+                    start_date=start_date.isoformat(),
+                    end_date=end_date.isoformat(), 
+                    only_loc=location, 
+                    use_ids=True, 
+                    date_variable=None, 
+                    additional_variables=[mh_id]
+                )
+
+                gender_keys = []
+                gender_ids = []
+                gender_values = []
+
+                # Fetch standard gender values
+                for gender_id in gender_variables.keys():
+                    gender_keys.append(gender_variables[gender_id])
+                    gender_ids.append(gender_id)
+                    gender_values.append(gender_data[gender_id]["total"])
+
+                # Calculate total
+                total = sum(gender_values)
+
+                # Insert percentages
+                for gender_id in gender_variables.keys():
+                    gender_id_index = gender_keys.index(gender_variables[gender_id])+1
+                    gender_keys.insert(gender_id_index, gender_variables[gender_id] + '(%)')
+                    gender_values.insert(
+                        gender_id_index, gender_values[gender_id_index-1]/(1 if total == 0 else total))
+
+                gender_keys.append('Total')
+                gender_values.append(sum(gender_values))
+
+                nat_dict[nat_name].append({
+                    "keys": gender_keys,
+                    "ids" : gender_ids,
+                    "values": gender_values
+                    })
+
+                visit_type_dict[visit_type_name].append(nat_dict)
+
+            table_1_data.append(visit_type_dict)
+
+        ret['table_1_data'] = table_1_data
+
+        return ret
+ 
 class CdReport(Resource):
     """
     Communicable Disease Report
