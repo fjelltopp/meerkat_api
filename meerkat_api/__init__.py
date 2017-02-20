@@ -151,6 +151,7 @@ from meerkat_api.resources.reports import PublicHealth, CdReport, \
 from meerkat_api.resources.frontpage import KeyIndicators, TotMap, NumAlerts, ConsultationMap, RefugeePage, NumClinics
 from meerkat_api.resources.export_data import ExportData, ExportForm, Forms, ExportCategory, GetCSVDownload, GetXLSDownload, GetStatus
 from meerkat_api.resources.incidence import IncidenceRate, WeeklyIncidenceRate
+from meerkat_api.resources.devices import Devices
 #from meerkat_api.resources.links import Link, Links
 
 
@@ -245,6 +246,9 @@ api.add_resource(QueryCategory,
                  "/<start_date>/<end_date>",
                  "/query_category/<group_by1>/<group_by2>"
                  "/<start_date>/<end_date>/<only_loc>")
+
+# Devices
+api.add_resource(Devices, "/devices")
 
 # Reports
 api.add_resource(PublicHealth, "/reports/public_health/<location>",
