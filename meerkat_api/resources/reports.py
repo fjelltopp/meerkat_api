@@ -44,6 +44,13 @@ from meerkat_abacus.util import get_locations, all_location_data
 from meerkat_abacus import model
 from meerkat_api.authentication import authenticate
 
+def mean(input_list):
+
+    if len(input_list)>0:
+        return sum(input_list)/len(input_list)
+    else:
+        return None
+
 def get_disease_types(category, start_date, end_date, location, conn):
     """
     Get and return top five disease of a type
@@ -563,21 +570,38 @@ class MhReport(Resource):
                     gender_values.insert(
                         gender_id_index, gender_values[gender_id_index-1]/(1 if gender_total == 0 else gender_total))
 
-                # Insert national totals
+                # Insert gender totals
                 gender_keys.append('Total')
                 gender_values.append(gender_total)
 
                 nat_dict.update({
                     "keys": gender_keys,
-                    #"ids" : gender_ids,
                     "values": gender_values
                     })
 
                 visit_type_dict["nationalities"].append(nat_dict)
 
-            national_total = sum(item["values"][-1] for item in visit_type_dict["nationalities"])
+            # Insert national totals
+            national_totals={"keys":[],"values":[]}
 
-            visit_type_dict["total"] = national_total
+            # 2 keys and values in the dictionary per gender code plus totat
+            gender_keys_in_dict = 2*len(gender_visit_variables.keys())+1
+
+            for i in range(0,gender_keys_in_dict):
+                national_totals["keys"].append(visit_type_dict["nationalities"][0]["keys"][i])
+                national_totals["values"].append(sum(item["values"][i] for item in visit_type_dict["nationalities"]))
+
+            # Calculate national total percentages
+            for i in range(1,gender_keys_in_dict,2):
+                national_totals["values"][i] = \
+                    national_totals["values"][i-1]/ \
+                    (1 if national_totals["values"][-1] == 0 else national_totals["values"][-1])
+
+            #return national_totals
+
+            #national_total = sum(item["values"][-1] for item in visit_type_dict["nationalities"])
+
+            visit_type_dict["total"] = national_totals
 
             table_1_data.append(visit_type_dict)
 
