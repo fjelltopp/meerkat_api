@@ -72,7 +72,7 @@ class ExportCategory(Resource):
     """
     decorators = [authenticate]
 
-    def get(self, form_name, category, download_name):
+    def get(self, form_name, category, download_name, data_type=None):
         uid = str(uuid.uuid4())
         if "variables" in request.args.keys():
             variables = json.loads(request.args["variables"])
@@ -80,7 +80,7 @@ class ExportCategory(Resource):
             return "No variables"
 
         export_category.delay(uid, form_name, category,
-                              download_name, variables)
+                              download_name, variables, data_type)
         return uid
 
 

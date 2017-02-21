@@ -3,11 +3,11 @@ Functions to export data
 """
 from meerkat_abacus.util import epi_week, get_locations
 from meerkat_abacus.util import all_location_data, get_db_engine, get_links
-from meerkat_abacus.model import form_tables, Data
+from meerkat_abacus.model import form_tables, Data, Links
 from meerkat_abacus.model import DownloadDataFiles, AggregationVariables
 from meerkat_abacus.config import country_config, config_directory
 from sqlalchemy.orm import aliased
-from sqlalchemy import text, or_
+from sqlalchemy import text, or_, func
 from dateutil.parser import parse
 from datetime import datetime
 from io import StringIO, BytesIO
@@ -44,15 +44,23 @@ def export_data(uuid, use_loc_ids=False):
     session.add(status)
     session.commit()
 
-    results = session.query(Data)
-    variables = set()
+    results = session.query(
+        func.distinct(
+            func.jsonb_object_keys(Data.variables)))
+    variables = []
     locs = get_locations(session)
     for row in results:
-        variables = variables.union(set(row.variables.keys()))
+        variables.append(row[0])
+
     fieldnames = ["id", "country", "region",
                   "district", "clinic", "clinic_type",
                   "geolocation", "date", "uuid"] + list(variables)
     dict_rows = []
+    output = StringIO()
+    writer = csv.DictWriter(output, fieldnames, extrasaction="ignore")
+    writer.writeheader()
+    results = session.query(Data).yield_per(500)
+    i = 0
     for row in results:
         dict_row = dict(
             (col, getattr(row, col)) for col in row.__table__.columns.keys()
@@ -63,9 +71,10 @@ def export_data(uuid, use_loc_ids=False):
                     dict_row[l] = locs[dict_row[l]].name
         dict_row.update(dict_row.pop("variables"))
         dict_rows.append(dict_row)
-    output = StringIO()
-    writer = csv.DictWriter(output, fieldnames, extrasaction="ignore")
-    writer.writeheader()
+        if i % 1000 == 0:
+            writer.writerows(dict_rows)
+            dict_rows = []
+        i += 1
     writer.writerows(dict_rows)
     status.status = 1
     status.success = 1
@@ -75,7 +84,7 @@ def export_data(uuid, use_loc_ids=False):
 
 
 @task
-def export_category(uuid, form_name, category, download_name, variables):
+def export_category(uuid, form_name, category, download_name, variables, data_type):
     """
     We take a variable dictionary of form field name: display_name.
     There are some special commands that can be given in the form field name:
@@ -147,15 +156,42 @@ def export_category(uuid, form_name, category, download_name, variables):
         trans_dict = {}
         for row in reader:
             trans_dict[row[from_index]] = row[to_index]
-        logging.warning(trans_dict)
+#        logging.warning(trans_dict)
         return trans_dict
 
 
+    # DB conditions
+    conditions = [or_(Data.variables.has_key(key)
+                      for key in data_keys)]
+
+    if data_type:
+        conditions.append(Data.type == data_type)
+
     # Set up icd_code_to_name if needed and determine if
     # alert_links are included
+    query_links = False
     for v in variables:
-        return_keys.append(v[1])
 
+        if "every$" in v[0]:
+            # Want to include all the fields in the dictionary
+            # in v[1] for all the links in the name
+
+            # First determine the maximum number of links
+            link_name = v[0].split("$")[1]
+            length = session.query(
+                func.max(func.jsonb_array_length(Data.links[link_name]))).filter(
+                    *conditions).first()[0]
+            print(length)
+
+            for i in range(length):
+                for variable in v[1]:
+                    name = link_name + "_" + str(i) +" "+ variable[1]
+                    return_keys.append(name)
+                    translation_dict[name] = "many_links&" + link_name + "&" + str(i) + "&" +variable[0]
+            query_links = link_name
+        else:
+            return_keys.append(v[1])
+            translation_dict[v[1]] = v[0]
         if "icd_name$" in v[0]:
             category = v[0].split("$")[1]
             cat_variables = {}
@@ -191,7 +227,7 @@ def export_category(uuid, form_name, category, download_name, variables):
 
         if "gen_link$" in v[0]:
             link_ids.append(v[0].split("$")[1])
-        translation_dict[v[1]] = v[0]
+
 
     link_ids = set(link_ids)
     links_by_type, links_by_name = get_links(config_directory +
@@ -202,6 +238,13 @@ def export_category(uuid, form_name, category, download_name, variables):
 
     link_id_index = {}
     joins = []
+
+    if query_links:
+        link_data = {}
+        link_data_query = session.query(Links).filter(Links.type == link_name)
+        for row in link_data_query:
+            link_data[row.uuid_to] = row.data_to
+    
     for i, l in enumerate(link_ids):
         form = aliased(form_tables[links_by_name[l]["to_form"]])
         joins.append((form, Data.links[(l, -1)].astext == form.uuid))
@@ -212,9 +255,8 @@ def export_category(uuid, form_name, category, download_name, variables):
         form_tables[form_name], Data.uuid == form_tables[form_name].uuid)
     for join in joins:
         results = results.outerjoin(join[0], join[1])
-    results = results.filter(
-        or_(Data.variables.has_key(key)
-            for key in data_keys)).yield_per(200)
+
+    results = results.filter(*conditions).yield_per(200)
     locs = get_locations(session)
     list_rows = []
 
@@ -228,20 +270,37 @@ def export_category(uuid, form_name, category, download_name, variables):
             form_var = translation_dict[k]
             index = return_keys.index(k)
 
-            if form_var is 'symptoms':
-                logging.warning('form_var: {} val: {}'.format(form_var, r[1].data.get(form_var, "")))
+            raw_data = r[1].data
+            if "many_links&" in form_var:
+                print("hei")
+                link_name, number, form_var = form_var.split("&")[1:]
+                number = int(number)
+                if link_name in r[0].links:
+                    links = r[0].links[link_name]
+                    if len(links) >= number + 1:
+                        print(r[0].uuid)
+                        print(number, links)
+                        link_uuid = links[number]
+                        raw_data = link_data[link_uuid]
+                    else:
+                        list_row[index] = None
+                        continue
 
+                else:
+                    list_row[index] = None
+                    continue
+            
             if "icd_name$" in form_var:
-                if r[1].data["icd_code"] in icd_code_to_name[form_var]:
-                    list_row[index] = icd_code_to_name[form_var][r[1].data[
+                if raw_data["icd_code"] in icd_code_to_name[form_var]:
+                    list_row[index] = icd_code_to_name[form_var][raw_data[
                         "icd_code"]]
                 else:
                     list_row[index] = None
 
             elif "$date" in form_var:
                 field = form_var.split("$")[0]
-                if field in r[1].data and r[1].data[field]:
-                    list_row[index] = parse(r[1].data[field]).strftime(
+                if field in raw_data and raw_data[field]:
+                    list_row[index] = parse(raw_data[field]).strftime(
                         "%d/%m/%Y"
                     )
                 else:
@@ -257,26 +316,26 @@ def export_category(uuid, form_name, category, download_name, variables):
                     list_row[index] = None
             elif "$year" in form_var:
                 field = form_var.split("$")[0]
-                if field in r[1].data and r[1].data[field]:
-                    list_row[index] = parse(r[1].data[field]).year
+                if field in raw_data and raw_data[field]:
+                    list_row[index] = parse(raw_data[field]).year
                 else:
                     list_row[index] = None
             elif "$month" in form_var:
                 field = form_var.split("$")[0]
-                if field in r[1].data and r[1].data[field]:
-                    list_row[index] = parse(r[1].data[field]).month
+                if field in raw_data and raw_data[field]:
+                    list_row[index] = parse(raw_data[field]).month
                 else:
                     list_row[index] = None
             elif "$day" in form_var:
                 field = form_var.split("$")[0]
-                if field in r[1].data and r[1].data[field]:
-                    list_row[index] = parse(r[1].data[field]).day
+                if field in raw_data and raw_data[field]:
+                    list_row[index] = parse(raw_data[field]).day
                 else:
                     list_row[index] = None
             elif "$epi_week" in form_var:
                 field = form_var.split("$")[0]
-                if field in r[1].data and r[1].data[field]:
-                    list_row[index] = epi_week(parse(r[1].data[field]))[1]
+                if field in raw_data and raw_data[field]:
+                    list_row[index] = epi_week(parse(raw_data[field]))[1]
                 else:
                     list_row[index] = None
 
@@ -312,25 +371,36 @@ def export_category(uuid, form_name, category, download_name, variables):
             elif "code_value" == form_var.split("$")[0]:
                 code = form_var.split("$")[1]
                 if code in r[0].variables:
-                    list_row[index] = round(float(r[0].variables[code]), 1)
+                    list_row[index] = float(r[0].variables[code])
                 else:
                     list_row[index] = None
             elif "value" == form_var.split(":")[0]:
                 list_row[index] = form_var.split(":")[1]
             else:
-                if form_var in r[1].data:
-                    list_row[index] = r[1].data[form_var]
+                if form_var in raw_data:
+                    list_row[index] = raw_data[form_var]
                 else:
                     list_row[index] = None
 
+            # If the final value is a float, round to 2 dp.
+            # This proceedure ensures integers are shown as integers.
+            # Also accepts string values.
+            try:
+                a = float(list_row[index])
+                b = int(float(list_row[index]))
+                if a == b:
+                    list_row[index] = b
+                else:
+                    list_row[index] = round(a, 2)
+            except (ValueError, TypeError):
+                pass
+
             if min_translation and k in min_translation and list_row[index]:
-                logging.warning("translating in to")
                 tr_dict = min_translation[k]
                 parts = [x.strip() for x in list_row[index].split(',')]
                 for x in range(len(parts)):
                     parts[x] = tr_dict.get(parts[x], parts[x])
                 list_row[index] = ', '.join(list(filter(bool, parts)))
-                logging.warning(list_row[index])
 
         list_rows.append(list_row)
         if i % 10000 == 0:

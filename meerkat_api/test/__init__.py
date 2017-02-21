@@ -86,7 +86,8 @@ def valid_urls(app):
         "uid": "1",
         "start_week": "1",
         "exclude": "mental",
-        "non_reporting_variable": "reg_1"
+        "non_reporting_variable": "reg_1",
+        "data_type": "case"
     }
     urls = []
     for url in meerkat_api.app.url_map.iter_rules():
