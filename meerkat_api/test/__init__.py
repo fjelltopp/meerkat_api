@@ -19,7 +19,7 @@ try:
     print( "Authentication requirements installed." )
 except ImportError:
     print( "Authentication requirements not installed.  Installing them now." )
-    os.system('pip3 install -r /var/www/meerkat_auth/requirements.txt') 
+    os.system('pip install -r /var/www/meerkat_auth/requirements.txt') 
 
 from . import settings
 
@@ -86,7 +86,8 @@ def valid_urls(app):
         "uid": "1",
         "start_week": "1",
         "exclude": "mental",
-        "non_reporting_variable": "reg_1"
+        "non_reporting_variable": "reg_1",
+        "data_type": "case"
     }
     urls = []
     for url in meerkat_api.app.url_map.iter_rules():
@@ -148,6 +149,8 @@ class MeerkatAPITestCase(unittest.TestCase):
         db_util.insert_cases(meerkat_api.db.session, "vaccination_report",
                              delete=False)
         db_util.insert_cases(meerkat_api.db.session, "completeness",
+                             delete=False)
+        db_util.insert_cases(meerkat_api.db.session, "afro_report",
                              delete=False)
         
         self.app = meerkat_api.app.test_client()
