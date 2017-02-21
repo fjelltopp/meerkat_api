@@ -686,7 +686,7 @@ class MhReport(Resource):
         # Loop through nationalities
         for age_id in age_case_variables.keys():
             age_name = age_case_variables[age_id]
-            age_dict = {"age_category":age_name,'locations':[]}
+            age_dict = {"age_category":age_name,"locations":[]}
 
             age_data = query_variable.get(
                 variable=age_id, 
@@ -704,6 +704,61 @@ class MhReport(Resource):
             table_4_data.append(age_dict)
 
         ret['table_4_data'] = table_4_data
+
+        disease_variables = get_variables('mhgap')
+
+        # Table 5 data
+        table_5_data = []
+
+        for disease_id in disease_variables.keys():
+            disease_name = disease_variables[disease_id]
+            disease_dict = {"disease":disease_name,"nationalities":[]}
+
+            disease_data = query_variable.get(
+                variable=disease_id, 
+                group_by="nationality",
+                start_date=start_date.isoformat(),
+                end_date=end_date.isoformat(), 
+                only_loc=None, 
+                use_ids=True, 
+                date_variable=None, 
+                additional_variables=[case_mh_id]
+            )
+
+            for nat_key in disease_data.keys():
+                nat_name = nationality_case_variables[nat_key]
+                disease_dict["nationalities"].append({"nationality":nat_name,"cases":disease_data[nat_key]["total"]})
+
+            table_5_data.append(disease_dict)
+
+        ret["table_5_data"] = table_5_data
+
+        # Table 6 data
+        table_6_data = []
+
+        for disease_id in disease_variables.keys():
+            disease_name = disease_variables[disease_id]
+            disease_dict = {"disease":disease_name,"age_categories":[]}
+
+            disease_data = query_variable.get(
+                variable=disease_id, 
+                group_by="ncd_age",
+                start_date=start_date.isoformat(),
+                end_date=end_date.isoformat(), 
+                only_loc=None, 
+                use_ids=True, 
+                date_variable=None, 
+                additional_variables=[case_mh_id]
+            )
+
+            for age_key in disease_data.keys():
+                age_name = age_case_variables[age_key]
+                disease_dict["age_categories"].append({"age_category":age_name,"cases":disease_data[age_key]["total"]})
+
+
+            table_6_data.append(disease_dict)
+
+        ret["table_6_data"] = table_6_data
 
         return ret
  
