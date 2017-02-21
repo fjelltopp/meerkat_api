@@ -169,6 +169,7 @@ def export_category(uuid, form_name, category, download_name, variables, data_ty
 
     # Set up icd_code_to_name if needed and determine if
     # alert_links are included
+    query_links = False
     for v in variables:
 
         if "every$" in v[0]:

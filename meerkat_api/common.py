@@ -25,9 +25,7 @@ def device_api(url, data, api_key=False, params=None):
         dict: A python dictionary formed from the API reponse json string.
     """
     if(app.config['TESTING']):
-        path = os.path.dirname(os.path.realpath(__file__))+"/apiData"+url
-        with open(path+'.json') as data_file:
-            return json.load(data_file)
+        return {}
     else:
         api_request = ''.join([app.config['INTERNAL_DEVICE_API_ROOT'], url])
         try:
@@ -41,11 +39,7 @@ def device_api(url, data, api_key=False, params=None):
                         params=params,
                         data=data
                     )
-                #r = requests.get(
-                #    api_request,
-                #    headers={'authorization': 'Bearer ' + auth.get_token()},
-                #    params=params
-                #)
+
             else:
                 r = requests.post(
                     api_request,
