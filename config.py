@@ -4,6 +4,21 @@ config.py
 Configuration and settings
 """
 
+import os
+
+
+def from_env(env_var, default):
+    """ Gets value from envrionment variable or uses default
+
+    Args:
+        env_var: name of envrionment variable
+        default: the default value
+    """
+    new = os.environ.get(env_var)
+    if new:
+        return new
+    else:
+        return default
 
 class Config(object):
     DEBUG = True
@@ -23,6 +38,9 @@ class Config(object):
     CELERY_TASK_SERIALIZER = 'json'
     CELERY_RESULT_SERIALIZER = 'json'
     CELERY_ACCEPT_CONTENT = ['json']
+
+    INTERNAL_DEVICE_API_ROOT = from_env("INTERNAL_API_ROOT", 'http://dev_nginx_1/mob')
+    EXTERNAL_DEVICE_API_ROOT = '/mob'
 
     
 class Production(Config):

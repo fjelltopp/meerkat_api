@@ -21,10 +21,11 @@ from meerkat_api.resources import reports
 from freezegun import freeze_time
 from meerkat_api.test.test_data import expected_output
 
-"""
-Compare list of unhashable objects (e.g. dictionaries). From SO by Steven Rumbalski.
-"""
+
 def compare_unhashable_list(s, t):
+    """
+    Compare list of unhashable objects (e.g. dictionaries). From SO by Steven Rumbalski.
+    """
     t = list(t)   # make a mutable copy
     try:
         for elem in s:
@@ -33,29 +34,28 @@ def compare_unhashable_list(s, t):
         return False
     return not t
 
-
-""" The following helper function compare two dictionaries assuming identical structure. 
-
-Here is an example of functionality:
-l1 = [1,2,3,4]
-l2 = [2,1,4,3]
-l3 = [1,2]
-l4 = [1]
-d1a = {"e1":12, "e2":l3}
-d1b = {"e1":12, "e2":l4}
-d2a = {"e3":2,"e4":l1,"e5":d1a}
-d2b = {"e3":1,"e4":l2,"e5":d1b}
-d3a = {"e1":12, "e2":l3}
-d3b = {"e1":12, "e2":l3}
-d4a = {"e3":1,"e4":l1,"e5":d3a}
-d4b = {"e3":1,"e4":l1,"e5":d3b}
-print(simplified_dict_compare(d2a,d2b))
-print(simplified_dict_compare(d4a,d4b))
->> ({'e3': (2, 1)}, ({'e2': ([1, 2], [1])}, {}))
->> None
-
-"""
 def simplified_dict_compare(d1, d2):
+    """ The following helper function compare two dictionaries assuming identical structure. 
+
+    Here is an example of functionality:
+    l1 = [1,2,3,4]
+    l2 = [2,1,4,3]
+    l3 = [1,2]
+    l4 = [1]
+    d1a = {"e1":12, "e2":l3}
+    d1b = {"e1":12, "e2":l4}
+    d2a = {"e3":2,"e4":l1,"e5":d1a}
+    d2b = {"e3":1,"e4":l2,"e5":d1b}
+    d3a = {"e1":12, "e2":l3}
+    d3b = {"e1":12, "e2":l3}
+    d4a = {"e3":1,"e4":l1,"e5":d3a}
+    d4b = {"e3":1,"e4":l1,"e5":d3b}
+    print(simplified_dict_compare(d2a,d2b))
+    print(simplified_dict_compare(d4a,d4b))
+    >> ({'e3': (2, 1)}, ({'e2': ([1, 2], [1])}, {}))
+    >> None
+    
+    """
     d1_keys = set(d1.keys())
     d2_keys = set(d2.keys())
     intersect_keys = d1_keys.intersection(d2_keys)
@@ -79,23 +79,24 @@ def simplified_dict_compare(d1, d2):
     #return added, removed, modified, same, mod_dict
     return modified, mod_dict
 
-"""
-This helper function compares structure of recursive dictionaries, returning `None` if it's identical.
 
-Here is a study case of usage:
-d1 = {"a":{"b": 1,"c": 1},"e":1,"f":1}
-d2 = {"a":{"b": 1,"d": 1},"f":1}
-d3 = {"a":{"b": 1,"c": 1},"e":1,"f":1}
-d4 = {"a":{"b": {"g":1},"c": 1},"e":1,"f":1}
-d5 = {"a":{"b": {"h":1},"d": 1},"f":1}
-print(dict_struct_compare(d1,d3))
-print(dict_struct_compare(d1,d2))
-print(dict_struct_compare(d4,d5))
->>None
->>{'added': {'e'}, 'removed': set(), 'inner structure': {'a': {'added': {'c'}, 'removed': {'d'}, 'inner structure': {}}}}
->>{'added': {'e'}, 'removed': set(), 'inner structure': {'a': {'added': {'c'}, 'removed': {'d'}, 'inner structure': {'b': {'added': {'g'}, 'removed': {'h'}, 'inner structure': {}}}}}}
-"""
 def dict_struct_compare(d1, d2):
+    """
+    This helper function compares structure of recursive dictionaries, returning `None` if it's identical.
+    
+    Here is a study case of usage:
+    d1 = {"a":{"b": 1,"c": 1},"e":1,"f":1}
+    d2 = {"a":{"b": 1,"d": 1},"f":1}
+    d3 = {"a":{"b": 1,"c": 1},"e":1,"f":1}
+    d4 = {"a":{"b": {"g":1},"c": 1},"e":1,"f":1}
+    d5 = {"a":{"b": {"h":1},"d": 1},"f":1}
+    print(dict_struct_compare(d1,d3))
+    print(dict_struct_compare(d1,d2))
+    print(dict_struct_compare(d4,d5))
+    >>None
+    >>{'added': {'e'}, 'removed': set(), 'inner structure': {'a': {'added': {'c'}, 'removed': {'d'}, 'inner structure': {}}}}
+    >>{'added': {'e'}, 'removed': set(), 'inner structure': {'a': {'added': {'c'}, 'removed': {'d'}, 'inner structure': {'b': {'added': {'g'}, 'removed': {'h'}, 'inner structure': {}}}}}}
+    """
     d1_keys = set(d1.keys())
     d2_keys = set(d2.keys())
     intersect_keys = d1_keys.intersection(d2_keys)
@@ -123,15 +124,12 @@ class MeerkatAPIReportsUtilityTestCase(unittest.TestCase):
         """Setup for testing"""
         meerkat_api.app.config['TESTING'] = True
         meerkat_api.app.config['API_KEY'] = ""
-        data_management.create_db(meerkat_api.app.config["SQLALCHEMY_DATABASE_URI"],
-                                  model.Base, False)
+        #data_management.create_db(meerkat_api.app.config["SQLALCHEMY_DATABASE_URI"],
+        #                          model.Base, False)
         self.app = meerkat_api.app.test_client()
         self.db = meerkat_api.db
     def tearDown(self):
         pass
-
-
-  
 
     def test_top(self):
         """Test top function"""
@@ -146,6 +144,7 @@ class MeerkatAPIReportsUtilityTestCase(unittest.TestCase):
         result = reports.top(values, number=3)
         self.assertEqual(result, ["five", "four", "one"])
 
+        
     def test_fix_dates(self):
         """Test fix dates"""
 
@@ -166,7 +165,6 @@ class MeerkatAPIReportsUtilityTestCase(unittest.TestCase):
         self.assertEqual(new_dates[0], start_date)
         self.assertEqual(new_dates[1], end_date)
 
-        
         
     def test_get_variables_category(self):
         """ Test get category """
@@ -1080,9 +1078,21 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
         self.assertEqual(data["demographics"][5]["female"]["percent"], 13 / 25 * 100)
 
         # Reporting Sites
-        
-        assert_dict(self, data["reporting_sites"][0], "Clinic 1", 9, 9 / 25 * 100)
-        assert_dict(self, data["reporting_sites"][1], "Clinic 5", 16, 16 / 25 * 100)
+
+        self.assertEqual(len(data["reporting_sites"]), 2)
+
+        found_c1 = False
+        found_c2 = False
+        for record in data["reporting_sites"]:
+            if record["title"] == "Clinic 1":
+                found_c1 = True
+                assert_dict(self, record, "Clinic 1", 9, 9 / 25 * 100)
+
+            if record["title"] == "Clinic 5":
+                found_c2 = True
+                assert_dict(self, record, "Clinic 5", 16, 16 / 25 * 100)
+        self.assertTrue(found_c1)
+        self.assertTrue(found_c2)
 
         # Morbidity
 
