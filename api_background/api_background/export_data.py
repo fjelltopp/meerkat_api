@@ -224,7 +224,7 @@ def export_category(uuid, form_name, category, download_name, variables, data_ty
             else:
                 min_translation[v[1]] = tr_dict
             v[0] = field
-
+            translation_dict[v[1]] = v[0]
         if "gen_link$" in v[0]:
             link_ids.append(v[0].split("$")[1])
 
@@ -346,7 +346,7 @@ def export_category(uuid, form_name, category, download_name, variables, data_ty
                 link = form_var.split("$")[1]
                 link_index = link_id_index[link]
                 if r[link_index]:
-                    list_row[index] = r[link_index][form_var.split("$")[-1]]
+                    list_row[index] = r[link_index].get(form_var.split("$")[-1], None)
                 else:
                     list_row[index] = None
 
@@ -399,7 +399,7 @@ def export_category(uuid, form_name, category, download_name, variables, data_ty
                 tr_dict = min_translation[k]
                 parts = [x.strip() for x in list_row[index].split(',')]
                 for x in range(len(parts)):
-                    parts[x] = tr_dict.get(parts[x], parts[x])
+                    parts[x] = str(tr_dict.get(parts[x], parts[x]))
                 list_row[index] = ', '.join(list(filter(bool, parts)))
 
         list_rows.append(list_row)
