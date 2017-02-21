@@ -672,6 +672,24 @@ class MhReport(Resource):
 
             table_2_data.append(visit_type_dict)
 
+            # Insert age category totals
+            age_category_totals={"keys":[],"values":[]}
+
+            # 2 keys and values in the dictionary per gender code plus totat
+            gender_keys_in_dict = 2*len(gender_visit_variables.keys())+1
+
+            for i in range(0,gender_keys_in_dict):
+                age_category_totals["keys"].append(visit_type_dict["age_categories"][0]["keys"][i])
+                age_category_totals["values"].append(sum(item["values"][i] for item in visit_type_dict["age_categories"]))
+
+            # Calculate age category total percentages
+            for i in range(1,gender_keys_in_dict,2):
+                age_category_totals["values"][i] = \
+                    age_category_totals["values"][i-1]/ \
+                    (1 if age_category_totals["values"][-1] == 0 else age_category_totals["values"][-1])
+
+            visit_type_dict["total"] = age_category_totals
+
         ret['table_2_data'] = table_2_data
 
         # Table 3 data
@@ -707,7 +725,7 @@ class MhReport(Resource):
 
         age_case_variables = get_variables('ncd_age')
 
-        # Loop through nationalities
+        # Loop through age categories
         for age_id in age_case_variables.keys():
             age_name = age_case_variables[age_id]
             age_dict = {"age_category":age_name,"locations":[]}
