@@ -370,7 +370,7 @@ def export_category(uuid, form_name, category, download_name, variables, data_ty
             elif "code_value" == form_var.split("$")[0]:
                 code = form_var.split("$")[1]
                 if code in r[0].variables:
-                    list_row[index] = round(float(r[0].variables[code]), 1)
+                    list_row[index] = float(r[0].variables[code])
                 else:
                     list_row[index] = None
             elif "value" == form_var.split(":")[0]:
@@ -381,14 +381,25 @@ def export_category(uuid, form_name, category, download_name, variables, data_ty
                 else:
                     list_row[index] = None
 
+            # If the final value is a float, round to 2 dp.
+            # This proceedure ensures integers are shown as integers.
+            # Also accepts string values.
+            try:
+                a = float(list_row[index])
+                b = int(float(list_row[index]))
+                if a == b:
+                    list_row[index] = b
+                else:
+                    list_row[index] = round(a, 2)
+            except (ValueError, TypeError):
+                pass
+
             if min_translation and k in min_translation and list_row[index]:
-                logging.warning("translating in to")
                 tr_dict = min_translation[k]
                 parts = [x.strip() for x in list_row[index].split(',')]
                 for x in range(len(parts)):
                     parts[x] = tr_dict.get(parts[x], parts[x])
                 list_row[index] = ', '.join(list(filter(bool, parts)))
-                logging.warning(list_row[index])
 
         list_rows.append(list_row)
         if i % 10000 == 0:
