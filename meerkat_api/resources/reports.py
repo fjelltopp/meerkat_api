@@ -514,10 +514,10 @@ class MhReport(Resource):
         # get the age breakdown
         query_category = QueryCategory()
         query_variable = QueryVariable()
-        mh_id = "visit_prc_3"
-        gender_variables = get_variables('visit_gender')
+        visit_mh_id = "visit_prc_3"
+        gender_visit_variables = get_variables('visit_gender')
         visit_type_variables = {"vis_1":"new", "vis_2":"return", "vis_3":"referral"}
-        nationality_variables = get_variables('visit_nationality')
+        nationality_visit_variables = get_variables('visit_nationality')
 
         # Data for table 1
         table_1_data = []
@@ -528,8 +528,8 @@ class MhReport(Resource):
             visit_type_dict={"type":visit_type_name,"nationalities":[]}
 
             # Loop through nationalities
-            for nat_id in nationality_variables.keys():
-                nat_name = nationality_variables[nat_id]
+            for nat_id in nationality_visit_variables.keys():
+                nat_name = nationality_visit_variables[nat_id]
                 nat_dict = {"name":nat_name}
 
                 gender_data = query_variable.get(
@@ -540,7 +540,7 @@ class MhReport(Resource):
                     only_loc=location, 
                     use_ids=True, 
                     date_variable=None, 
-                    additional_variables=[mh_id, nat_id]
+                    additional_variables=[visit_mh_id, nat_id]
                 )
 
                 gender_keys = []
@@ -548,8 +548,8 @@ class MhReport(Resource):
                 gender_values = []
 
                 # Fetch standard gender values
-                for gender_id in gender_variables.keys():
-                    gender_keys.append(gender_variables[gender_id])
+                for gender_id in gender_visit_variables.keys():
+                    gender_keys.append(gender_visit_variables[gender_id])
                     gender_ids.append(gender_id)
                     gender_values.append(gender_data[gender_id]["total"])
 
@@ -557,9 +557,9 @@ class MhReport(Resource):
                 gender_total = sum(gender_values)
 
                 # Insert percentages
-                for gender_id in gender_variables.keys():
-                    gender_id_index = gender_keys.index(gender_variables[gender_id])+1
-                    gender_keys.insert(gender_id_index, gender_variables[gender_id] + '(%)')
+                for gender_id in gender_visit_variables.keys():
+                    gender_id_index = gender_keys.index(gender_visit_variables[gender_id])+1
+                    gender_keys.insert(gender_id_index, gender_visit_variables[gender_id] + '(%)')
                     gender_values.insert(
                         gender_id_index, gender_values[gender_id_index-1]/(1 if gender_total == 0 else gender_total))
 
@@ -606,7 +606,7 @@ class MhReport(Resource):
                     only_loc=location, 
                     use_ids=True, 
                     date_variable=None, 
-                    additional_variables=[mh_id, age_id]
+                    additional_variables=[visit_mh_id, age_id]
                 )
 
 
@@ -615,8 +615,8 @@ class MhReport(Resource):
                 gender_values = []
 
                 # Fetch standard gender values
-                for gender_id in gender_variables.keys():
-                    gender_keys.append(gender_variables[gender_id])
+                for gender_id in gender_visit_variables.keys():
+                    gender_keys.append(gender_visit_variables[gender_id])
                     gender_ids.append(gender_id)
                     gender_values.append(gender_data[gender_id]["total"])
 
@@ -624,9 +624,9 @@ class MhReport(Resource):
                 gender_total = sum(gender_values)
 
                 # Insert percentages
-                for gender_id in gender_variables.keys():
-                    gender_id_index = gender_keys.index(gender_variables[gender_id])+1
-                    gender_keys.insert(gender_id_index, gender_variables[gender_id] + '(%)')
+                for gender_id in gender_visit_variables.keys():
+                    gender_id_index = gender_keys.index(gender_visit_variables[gender_id])+1
+                    gender_keys.insert(gender_id_index, gender_visit_variables[gender_id] + '(%)')
                     gender_values.insert(
                         gender_id_index, gender_values[gender_id_index-1]/(1 if gender_total == 0 else gender_total))
 
@@ -650,6 +650,60 @@ class MhReport(Resource):
 
         ret['table_2_data'] = table_2_data
 
+        # Table 3 data
+        table_3_data = []
+
+        case_mh_id = 'prc_3'
+        nationality_case_variables = get_variables('nationality')
+
+        # Loop through nationalities
+        for nat_id in nationality_case_variables.keys():
+            nat_name = nationality_case_variables[nat_id]
+            nat_dict = {"nationality":nat_name,'locations':[]}
+
+            nat_data = query_variable.get(
+                variable=nat_id, 
+                group_by="locations:region",
+                start_date=start_date.isoformat(),
+                end_date=end_date.isoformat(), 
+                only_loc=None, 
+                use_ids=True, 
+                date_variable=None, 
+                additional_variables=[case_mh_id]
+                )
+            for loc_key in nat_data.keys():
+                nat_dict["locations"].append({"location_key":loc_key,"cases":nat_data[loc_key]["total"]})
+
+            table_3_data.append(nat_dict)
+
+        ret['table_3_data'] = table_3_data
+
+        # Table 4 data
+        table_4_data = []
+
+        age_case_variables = get_variables('ncd_age')
+
+        # Loop through nationalities
+        for age_id in age_case_variables.keys():
+            age_name = age_case_variables[age_id]
+            age_dict = {"age_category":age_name,'locations':[]}
+
+            age_data = query_variable.get(
+                variable=age_id, 
+                group_by="locations:region",
+                start_date=start_date.isoformat(),
+                end_date=end_date.isoformat(), 
+                only_loc=None, 
+                use_ids=True, 
+                date_variable=None, 
+                additional_variables=[case_mh_id]
+                )
+            for loc_key in age_data.keys():
+                age_dict["locations"].append({"location_key":loc_key,"cases":age_data[loc_key]["total"]})
+
+            table_4_data.append(age_dict)
+
+        ret['table_4_data'] = table_4_data
 
         return ret
  
