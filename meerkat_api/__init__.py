@@ -179,7 +179,8 @@ api.add_resource(ExportData, "/export/data",
 api.add_resource(ExportForm, "/export/form/<form>")
 api.add_resource(Forms, "/export/forms")
 api.add_resource(ExportCategory,
-                 "/export/category/<form_name>/<category>/<download_name>")
+                 "/export/category/<form_name>/<category>/<download_name>",
+                 "/export/category/<form_name>/<category>/<download_name>/<data_type>")
 
 # Location urls
 api.add_resource(Locations, "/locations")
