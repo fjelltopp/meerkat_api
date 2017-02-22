@@ -56,6 +56,8 @@ def row_to_dict(row):
     Returns:
       data_dict(dict): data as dictionary
     """
+    if not row:
+        return {}
     if hasattr(row, "__table__"):
         return dict((col, getattr(row, col))
                     for col in row.__table__.columns.keys())
