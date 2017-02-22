@@ -1,4 +1,5 @@
 import pandas as pd
+import copy
 from flask_restful import Resource
 from sqlalchemy import or_
 from meerkat_api import db
@@ -54,15 +55,23 @@ class Indicators(Resource):
             conditions.append(Data.variables.has_key(res_var))
 
         # Add denominator
-        if(count_over):
+        if count_over:
             conditions.append(Data.variables.has_key(denominator))
-
-        #Database query
-        data = pd.read_sql(
-            db.session.query(Data.region, Data.district, Data.clinic,
-                             Data.date,
-                             Data.variables[nominator].label(nominator)).filter(
-                                 *conditions).statement, db.session.bind)
+            #Database query
+            data = pd.read_sql(
+                db.session.query(Data.region, Data.district, Data.clinic,
+                                 Data.date,
+                                 Data.variables[nominator].label(nominator),
+                                 Data.variables[denominator].label(denominator)
+                                ).filter(
+                                    *conditions).statement, db.session.bind)
+        else:
+            data = pd.read_sql(
+                db.session.query(Data.region, Data.district, Data.clinic,
+                                 Data.date,
+                                 Data.variables[nominator].label(nominator),
+                                ).filter(
+                                    *conditions).statement, db.session.bind)
         print("debug data")
         print(data.describe())
         print(data.values)
@@ -72,7 +81,7 @@ class Indicators(Resource):
         # Prepare dummy data:
         indicator_data = dict()
         indicator_data["cummulative"] = -99
-        indicator_data["timeline"] = {"w1":-99,"w2":99}
+        indicator_data["timeline"] = {"w1" : -99, "w2" : 99}
         #current value is the latest week:
         indicator_data["current"] = 999
         indicator_data["name"] = "Dummy Data"
@@ -83,19 +92,31 @@ class Indicators(Resource):
 
 
         #Call meerkat_analysis
-        if(count_over):
+        if count_over:
             analysis_output = count_over_count(data, nominator, denominator, restrict=bRestrict)
         else:
             analysis_output = count(data, nominator)
 
-        #Limit to location
-        indicator_data = dict()
+        #Prepare output.
         # numpy.int64 needs to be cast to int (https://bugs.python.org/issue24313)
+
+        indicator_data = dict()
         indicator_data["cummulative"] = int(analysis_output[0])
+        # indicator_data["timeline"] = {"w1":-99,"w2":99}
         indicator_data["timeline"] = series_to_json_dict(analysis_output[1])
+        #TODO: we assume that indicator data is integer!!!!
+        for key, val in indicator_data["timeline"].items():
+            indicator_data["timeline"][key] = int(val)
         #current value is the latest week:
-        indicator_data["current"] = int(indicator_data["timeline"][max(
-            indicator_data["timeline"].keys())])
+        last_week_date = max(indicator_data["timeline"].keys())
+        #Find secon-to-last week
+        #TODO: Add a case for one-week-old data
+        tmp_dict = copy.deepcopy(indicator_data["timeline"])
+        tmp_dict.pop(last_week_date, None)
+        second_to_last_week_date = max(tmp_dict.keys())
+
+        indicator_data["current"] = int(indicator_data["timeline"][last_week_date])
+        indicator_data["previous"] = int(indicator_data["timeline"][second_to_last_week_date])
         indicator_data["name"] = "Name is not passed to the API!"
 
         return indicator_data
