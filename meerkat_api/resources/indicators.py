@@ -94,8 +94,8 @@ class Indicators(Resource):
         indicator_data["cummulative"] = int(analysis_output[0])
         indicator_data["timeline"] = series_to_json_dict(analysis_output[1])
         #current value is the latest week:
-        indicator_data["current"] = indicator_data["timeline"][max(
-            indicator_data["timeline"].keys())]
+        indicator_data["current"] = int(indicator_data["timeline"][max(
+            indicator_data["timeline"].keys())])
         indicator_data["name"] = "Name is not passed to the API!"
 
         return indicator_data
