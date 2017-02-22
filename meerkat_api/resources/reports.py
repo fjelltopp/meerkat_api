@@ -1634,6 +1634,35 @@ class NcdPublicHealth(Resource):
         clin = Clinics()
         ret["data"]["map"] = clin.get(1)
 
+        regions = [loc for loc in locs.keys()
+                   if locs[loc].parent_location == 1]
+        # Diabets map
+        ir = IncidenceRate()
+        dia_incidence = ir.get('ncd_1', 'region', mult_factor=1000)
+        hyp_incidence = ir.get('ncd_2', 'region', mult_factor=1000)
+        mapped_dia_incidence = {}
+        mapped_hyp_incidence = {}
+
+        # Structure the data.
+        for region in regions:
+            if region not in dia_incidence:
+                dia_incidence[region] = 0
+            if region not in hyp_incidence:
+                hyp_incidence[region] = 0
+                
+            mapped_dia_incidence[locs[region].name] = {
+                'value': int(dia_incidence[region])
+            }
+            mapped_hyp_incidence[locs[region].name] = {
+                'value': int(hyp_incidence[region])
+            }
+
+        ret["data"].update({
+            "figure_diabetes_map":  mapped_dia_incidence,
+            "figure_hyp_map":  mapped_hyp_incidence
+        })
+
+        
         return ret
 
 

@@ -2,7 +2,7 @@
 Data resource for exporting data
 """
 from flask_restful import Resource
-from flask import request
+from flask import request, redirect
 import json
 import uuid
 
@@ -12,8 +12,8 @@ from meerkat_api.authentication import authenticate
 from meerkat_abacus.task_queue import export_form, export_category, export_data
 
 # Uncomment to run export data during request
-# from meerkat_abacus.task_queue import app as celery_app
-# celery_app.conf.CELERY_ALWAYS_EAGER = True
+from meerkat_abacus.task_queue import app as celery_app
+celery_app.conf.CELERY_ALWAYS_EAGER = True
 
 
 class Forms(Resource):
@@ -98,8 +98,8 @@ class GetCSVDownload(Resource):
         res = db.session.query(DownloadDataFiles).filter(
             DownloadDataFiles.uuid == uid).first()
         if res:
-            return {"string": res.csvcontent, "filename": res.type}
-        return {"string": "", "filename": "missing"}
+            return redirect("/exported/" + uid + "/" + res.type + ".csv")
+        return {"url": "", "filename": "missing"}
 
 
 class GetXLSDownload(Resource):
@@ -118,8 +118,8 @@ class GetXLSDownload(Resource):
             DownloadDataFiles.uuid == uid
         ).first()
         if res:
-            return {"data": res.xlscontent, "filename": res.type}
-        return {"string": "", "filename": "missing"}
+            return redirect("/exported/" + uid + "/" + res.type + ".xlsx")
+        return {"url": "", "filename": "missing"}
 
 
 class GetStatus(Resource):

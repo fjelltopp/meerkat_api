@@ -14,6 +14,8 @@ from meerkat_api.test import db_util
 from meerkat_abacus.task_queue import app as celery_app
 from meerkat_abacus import data_management, model, config
 
+from api_background.export_data import base_folder
+
 
 class MeerkatAPITestCase(unittest.TestCase):
 
@@ -78,7 +80,6 @@ class MeerkatAPITestCase(unittest.TestCase):
         rv = self.app.get('/export/data', headers={**settings.header})
 
         self.assertEqual(rv.status_code, 200)
-
         uuid = rv.data.decode("utf-8")[1:-2]
         test = meerkat_api.db.session.query(model.DownloadDataFiles).filter(
             model.DownloadDataFiles.uuid == uuid).all()
@@ -88,22 +89,25 @@ class MeerkatAPITestCase(unittest.TestCase):
         rv = self.app.get('/export/getcsv/' + uuid,
                           headers={**{"Accept": "text/csv"},
                                    **settings.header})
-        lines = rv.data.decode("utf-8").strip().split("\r\n")
-        print(lines)
-        self.assertEqual(len(lines), 13)
+        self.assertEqual(rv.status_code, 302)
+        self.assertIn("exported/" + uuid + "/data.csv",
+                      rv.data.decode("utf-8"))
 
-        c = csv.DictReader(lines)
-        has_found = False
-        for line in c:
-            if line["uuid"] == "uuid:2d14ec68-c5b3-47d5-90db-eee510ee9375":
-                has_found = True
-                self.assertEqual(line["sta_1"], "1")
-                self.assertEqual(line["gen_2"], "1")
-                self.assertEqual(line["gen_1"], "")
-                self.assertEqual(line["clinic"], "Clinic 1")
+        filename = base_folder + "/exported_data/" + uuid + "/data.csv"
 
-        self.assertTrue(has_found)
-
+        with open(filename) as csv_file:
+            self.assertEqual(len(csv_file.readlines()), 13)
+            csv_file.seek(0)
+            c = csv.DictReader(csv_file)
+            has_found = False
+            for line in c:
+                if line["uuid"] == "uuid:2d14ec68-c5b3-47d5-90db-eee510ee9375":
+                    has_found = True
+                    self.assertEqual(line["sta_1"], "1")
+                    self.assertEqual(line["gen_2"], "1")
+                    self.assertEqual(line["gen_1"], "")
+                    self.assertEqual(line["clinic"], "Clinic 1")
+            self.assertTrue(has_found)
 
     def test_export_category(self):
         """ Test getting a from with category """
@@ -121,39 +125,44 @@ class MeerkatAPITestCase(unittest.TestCase):
         rv = self.app.get('/export/getcsv/' + uuid,
                           headers={**{"Accept": "text/csv"},
                                    **settings.header})
-        self.assertEqual(rv.status_code, 200)
-        lines = rv.data.decode("utf-8").strip().split("\n")
-        print(lines)
-        self.assertEqual(len(lines), 8)
-        c = csv.DictReader(lines)
-        found_cholera = False
-        found_tf = False
-        found_bd = False
-        found_uuid = False
-        for line in c:
-            if line["icd code"] == "A00":
-                found_cholera = True
-                self.assertEqual(line["Name"], "Cholera")
-            if line["icd code"] == "A01":
-                found_tf = True
-                self.assertEqual(line["Name"], "Typhoid fever")
-            if line["icd code"] == "A03":
-                found_bd = True
-                self.assertEqual(line["Name"], "Bloody diarrhoea")
+        self.assertEqual(rv.status_code, 302)
+        self.assertIn("exported/" + uuid + "/cd.csv",
+                      rv.data.decode("utf-8"))
 
-            if line["uuid"] == "uuid:2d14ec68-c5b3-47d5-90db-eee510ee9376":
-                self.assertEqual(line["Clinic"], "Clinic 1")
-                self.assertEqual(line["icd code"], "A06")
-                self.assertEqual(line["Name"], "")
-                self.assertEqual(line["Month"], "5.0")
-                self.assertEqual(line["Year"], "2016.0")
-                self.assertEqual(line["epi_week"], "18.0")
+        filename = base_folder + "/exported_data/" + uuid + "/cd.csv"
 
-                found_uuid = True
-        self.assertTrue(found_cholera)
-        self.assertTrue(found_tf)
-        self.assertTrue(found_bd)
-        self.assertTrue(found_uuid)
+        with open(filename) as csv_file:
+            self.assertEqual(len(csv_file.readlines()), 8)
+            csv_file.seek(0)
+            c = csv.DictReader(csv_file)
+            found_cholera = False
+            found_tf = False
+            found_bd = False
+            found_uuid = False
+            for line in c:
+                if line["icd code"] == "A00":
+                    found_cholera = True
+                    self.assertEqual(line["Name"], "Cholera")
+                if line["icd code"] == "A01":
+                    found_tf = True
+                    self.assertEqual(line["Name"], "Typhoid fever")
+                if line["icd code"] == "A03":
+                    found_bd = True
+                    self.assertEqual(line["Name"], "Bloody diarrhoea")
+
+                if line["uuid"] == "uuid:2d14ec68-c5b3-47d5-90db-eee510ee9376":
+                    self.assertEqual(line["Clinic"], "Clinic 1")
+                    self.assertEqual(line["icd code"], "A06")
+                    self.assertEqual(line["Name"], "")
+                    self.assertEqual(line["Month"], "5")
+                    self.assertEqual(line["Year"], "2016")
+                    self.assertEqual(line["epi_week"], "18")
+
+                    found_uuid = True
+            self.assertTrue(found_cholera)
+            self.assertTrue(found_tf)
+            self.assertTrue(found_bd)
+            self.assertTrue(found_uuid)
         #TODO: Test the general framework for accessing data in linked forms.
 
     def test_export_forms(self):
@@ -173,17 +182,28 @@ class MeerkatAPITestCase(unittest.TestCase):
         rv = self.app.get('/export/getcsv/' + uuid,
                           headers={**{"Accept": "text/csv"},
                                    **settings.header})
-        lines = rv.data.decode("utf-8").strip().split("\r\n")
-        print(lines)
-        self.assertEqual(len(lines), 11)
-        c = csv.DictReader(lines)
-        found_uuid = False
-        for line in c:
-            if line["meta/instanceID"] == "uuid:2d14ec68-c5b3-47d5-90db-eee510ee9376":
-                found_uuid = True
-                self.assertEqual(line["deviceid"], "5")
-                self.assertEqual(line["icd_code"], "A06")
-        self.assertTrue(found_uuid)
+
+        rv = self.app.get('/export/getcsv/' + uuid,
+                          headers={**{"Accept": "text/csv"},
+                                   **settings.header})
+        self.assertEqual(rv.status_code, 302)
+        self.assertIn("exported/" + uuid + "/demo_case.csv",
+                      rv.data.decode("utf-8"))
+
+        filename = base_folder + "/exported_data/" + uuid + "/demo_case.csv"
+        print(uuid)
+        with open(filename, errors="replace") as csv_file:
+            
+            self.assertEqual(len(csv_file.readlines()), 11)
+            csv_file.seek(0)
+            c = csv.DictReader(csv_file)
+            found_uuid = False
+            for line in c:
+                if line["meta/instanceID"] == "uuid:2d14ec68-c5b3-47d5-90db-eee510ee9376":
+                    found_uuid = True
+                    self.assertEqual(line["deviceid"], "5")
+                    self.assertEqual(line["icd_code"], "A06")
+            self.assertTrue(found_uuid)
 
         rv = self.app.get('/export/form/demo_case?fields=icd_code,intro./module',
                           headers={**settings.header})
@@ -199,11 +219,15 @@ class MeerkatAPITestCase(unittest.TestCase):
         rv = self.app.get('/export/getcsv/' + uuid,
                           headers={**{"Accept": "text/csv"},
                                    **settings.header})
-        lines = rv.data.decode("utf-8").strip().split("\r\n")
-        self.assertEqual(len(lines), 11)
-        for line in c:
-            self.assertEqual(sorted(line.keys()),
-                             sorted(["icd_code", "intro./module"]))
+        filename = base_folder + "/exported_data/" + uuid + "/demo_case.csv"
+        print(uuid)
+        with open(filename, errors="replace") as csv_file:
+            self.assertEqual(len(csv_file.readlines()), 11)
+            csv_file.seek(0)
+            c = csv.DictReader(csv_file)
+            for line in c:
+                self.assertEqual(sorted(line.keys()),
+                                 sorted(["icd_code", "intro./module"]))
 
     # def test_export_alerts(self):
     #     """ Test exporting alerts """
