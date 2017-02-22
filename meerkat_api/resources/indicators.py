@@ -7,17 +7,29 @@ from meerkat_analysis.indicators import count_over_count, count
 from meerkat_abacus.model import Data, Locations
 from meerkat_abacus.util import get_locations
 from meerkat_api.resources.completeness import series_to_json_dict
+from meerkat_api.authentication import authenticate
 
 
 class Indicators(Resource):
-    def get(self, transforms, variables, location):
+    """
+    Return a value and a timeline of an indicator specified by a list of variables and flags. 
+
+    Args: \n
+        flags: A list containings char flags defining operations on variables. `d` - denominator of an indicator, `n` - nominator, `v` - additional variable to restrict query. `r` - restrict `count_over_count` query if set to `1`\n
+        variables: A list of variables id to which flags correspond\n
+        location: location id
+    Returns:\n
+        indicator_data: {cummulative: cummulative, timeline: timeline, current: current}\n
+    """
+    decorators = [authenticate]
+    def get(self, flags, variables, location):
         bRestrict = False
         count_over = False
         restricted_var = []
         variablesList = variables.split(',')
-        transformsList = transforms.split(',')
+        flagsList = flags.split(',')
 
-        operations = list(zip(transformsList, variablesList))
+        operations = list(zip(flagsList, variablesList))
 
         for op in operations:
             if op[0] == "d":
@@ -25,10 +37,10 @@ class Indicators(Resource):
                 denominator = op[1]
             if op[0] == "n":
                 nominator = op[1]
-            if op[0] == "r":
-                bRestrict = True
+            if op[0] == "v":
                 restricted_var.append(op[1])
-
+            if op[0] == "r" and op[1] == "1":
+                bRestrict = True
 
         #Limit to location and nominator variable
         conditions = [Data.variables.has_key(nominator), or_(
