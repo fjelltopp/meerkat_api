@@ -314,7 +314,7 @@ api.add_resource(Completeness,
                  "/completeness/<variable>/<location>/<number_per_week>/<start_week>/<exclude>/<weekend>/<non_reporting_variable>/<end_date>")
 api.add_resource(Records, "/records/<variable>/<location_id>")
 
-api.add_resource(Indicators, "/indicators/<variable>/<location>")
+api.add_resource(Indicators, "/indicators/<transforms>/<variables>/<location>")
 
 @app.route('/')
 def hello_world():
