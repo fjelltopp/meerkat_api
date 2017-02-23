@@ -529,13 +529,19 @@ class MhReport(Resource):
                        "project_epoch": datetime(2015, 5, 20).isoformat(),
                        "start_date": start_date.isoformat()
         }
-        location_name = db.session.query(Locations.name).filter(
-            Locations.id == location).first()
-        if not location_name:
+
+        locs = get_locations(db.session)
+        if int(location) not in locs:
             return None
-        ret["data"]["project_region"] = location_name.name
+        location_name = locs[int(location)].name
+        ret["data"]["project_region"] = location_name
         tot_clinics = TotClinics()
         ret["data"]["clinic_num"] = tot_clinics.get(location)["total"]
+
+        locs = get_locations(db.session)
+        if int(location) not in locs:
+            return None
+        location_name = locs[int(location)].name
 
         # get the age breakdown
         query_category = QueryCategory()
@@ -733,7 +739,11 @@ class MhReport(Resource):
                 additional_variables=[case_mh_id]
                 )
             for loc_key in nat_data.keys():
-                nat_dict["locations"].append({"location_key":loc_key,"cases":nat_data[loc_key]["total"]})
+                nat_dict["locations"].append({
+                    "location_key":loc_key,
+                    "location_name":locs[int(loc_key)].name,
+                    "cases":nat_data[loc_key]["total"]
+                    })
 
             table_3_data.append(nat_dict)
 
@@ -760,7 +770,11 @@ class MhReport(Resource):
                 additional_variables=[case_mh_id]
                 )
             for loc_key in age_data.keys():
-                age_dict["locations"].append({"location_key":loc_key,"cases":age_data[loc_key]["total"]})
+                age_dict["locations"].append({
+                    "location_key":loc_key,
+                    "location_name":locs[int(loc_key)].name,
+                    "cases":age_data[loc_key]["total"]
+                    })
 
             table_4_data.append(age_dict)
 
