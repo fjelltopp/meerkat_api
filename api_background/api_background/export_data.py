@@ -6,6 +6,8 @@ from meerkat_abacus.util import all_location_data, get_db_engine, get_links
 from meerkat_abacus.model import form_tables, Data, Links
 from meerkat_abacus.model import DownloadDataFiles, AggregationVariables
 from meerkat_abacus.config import country_config, config_directory
+import resource
+import shelve
 from sqlalchemy.orm import aliased
 from sqlalchemy import text, or_, func
 from dateutil.parser import parse
@@ -18,7 +20,7 @@ import json
 import logging
 import xlsxwriter
 import os
-
+base_folder = os.path.dirname(os.path.realpath(__file__))
 
 @task
 def export_data(uuid, use_loc_ids=False):
@@ -34,8 +36,6 @@ def export_data(uuid, use_loc_ids=False):
     db, session = get_db_engine()
     status = DownloadDataFiles(
         uuid=uuid,
-        csvcontent="",
-        xlscontent=b"",
         generation_time=datetime.now(),
         type="data",
         success=0,
@@ -56,7 +56,10 @@ def export_data(uuid, use_loc_ids=False):
                   "district", "clinic", "clinic_type",
                   "geolocation", "date", "uuid"] + list(variables)
     dict_rows = []
-    output = StringIO()
+    
+    filename = base_folder + "/exported_data/" + uuid + "/data"
+    os.mkdir(base_folder + "/exported_data/" + uuid)
+    output = open(filename + ".csv", "w")
     writer = csv.DictWriter(output, fieldnames, extrasaction="ignore")
     writer.writeheader()
     results = session.query(Data).yield_per(500)
@@ -78,7 +81,6 @@ def export_data(uuid, use_loc_ids=False):
     writer.writerows(dict_rows)
     status.status = 1
     status.success = 1
-    status.csvcontent = output.getvalue()
     session.commit()
     return True
 
@@ -113,8 +115,6 @@ def export_category(uuid, form_name, category, download_name, variables, data_ty
 
     status = DownloadDataFiles(
         uuid=uuid,
-        csvcontent="",
-        xlscontent=b"",
         generation_time=datetime.now(),
         type=download_name,
         success=0,
@@ -125,7 +125,7 @@ def export_category(uuid, form_name, category, download_name, variables, data_ty
     res = session.query(AggregationVariables).filter(
         AggregationVariables.category.has_key(category)
     )
-
+    print(uuid)
     data_keys = []
     cat_variables = {}
     for r in res:
@@ -163,7 +163,6 @@ def export_category(uuid, form_name, category, download_name, variables, data_ty
     # DB conditions
     conditions = [or_(Data.variables.has_key(key)
                       for key in data_keys)]
-
     if data_type:
         conditions.append(Data.type == data_type)
 
@@ -178,14 +177,13 @@ def export_category(uuid, form_name, category, download_name, variables, data_ty
 
             # First determine the maximum number of links
             link_name = v[0].split("$")[1]
-            length = session.query(
+            length_q = session.query(
                 func.max(func.jsonb_array_length(Data.links[link_name]))).filter(
-                    *conditions).first()[0]
-            print(length)
-
+                    *conditions)
+            length = length_q.first()[0]
             for i in range(length):
                 for variable in v[1]:
-                    name = link_name + "_" + str(i) +" "+ variable[1]
+                    name = link_name + "_" + str(i) + " " + variable[1]
                     return_keys.append(name)
                     translation_dict[name] = "many_links&" + link_name + "&" + str(i) + "&" +variable[0]
             query_links = link_name
@@ -199,20 +197,23 @@ def export_category(uuid, form_name, category, download_name, variables, data_ty
                 AggregationVariables.category.has_key(category)
             )
             for r in res:
-                cat_variables[r.id] = r
+                cat_variables.setdefault(r.id, [])
+                cat_variables[r.id].append(r)
             icd_code_to_name[v[0]] = {}
             for i in cat_variables.keys():
-                condition = cat_variables[i].condition
-                if ";" in condition:
-                    codes = condition.split(";")[0]
-                if "," in condition:
-                    # If a variable have many icd codes
-                    # we take all of them into account
-                    codes = condition.split(",")
-                else:
-                    codes = [condition]
-                for c in codes:
-                    icd_code_to_name[v[0]][c.strip()] = cat_variables[i].name
+                for var in cat_variables[i]:
+                    condition = var.condition
+                    if ";" in condition:
+                        condition = condition.split(";")[0]
+                    if "," in condition:
+                        # If a variable have many icd codes
+                        # we take all of them into account
+                        codes = condition.split(",")
+                    else:
+                        codes = [condition]
+                    for c in codes:
+                        if c:
+                            icd_code_to_name[v[0]][c.strip()] = var.name
         if "$translate" in v[0]:
             split = v[0].split("$")
             field = "$".join(split[:-1])
@@ -224,10 +225,9 @@ def export_category(uuid, form_name, category, download_name, variables, data_ty
             else:
                 min_translation[v[1]] = tr_dict
             v[0] = field
-
+            translation_dict[v[1]] = v[0]
         if "gen_link$" in v[0]:
             link_ids.append(v[0].split("$")[1])
-
 
     link_ids = set(link_ids)
     links_by_type, links_by_name = get_links(config_directory +
@@ -240,11 +240,11 @@ def export_category(uuid, form_name, category, download_name, variables, data_ty
     joins = []
 
     if query_links:
-        link_data = {}
-        link_data_query = session.query(Links).filter(Links.type == link_name)
+        link_data = shelve.open(base_folder + "/exported_data/" + uuid)
+        link_data_query = session.query(Links).filter(Links.type == link_name).yield_per(300)
         for row in link_data_query:
             link_data[row.uuid_to] = row.data_to
-    
+
     for i, l in enumerate(link_ids):
         form = aliased(form_tables[links_by_name[l]["to_form"]])
         joins.append((form, Data.links[(l, -1)].astext == form.uuid))
@@ -260,7 +260,24 @@ def export_category(uuid, form_name, category, download_name, variables, data_ty
     locs = get_locations(session)
     list_rows = []
 
-    df = pd.DataFrame(columns=return_keys)
+    filename = base_folder + "/exported_data/" + uuid + "/" + download_name
+    os.mkdir(base_folder + "/exported_data/" + uuid)
+    csv_content = open(filename + ".csv", "w")
+    csv_writer = csv.writer(csv_content)
+    csv_writer.writerows([return_keys])
+
+    # XlsxWriter with "constant_memory" set to true, flushes mem after each row
+    xls_content = open(filename + ".xlsx", "wb")
+    xls_book = xlsxwriter.Workbook(xls_content, {'constant_memory': True})
+    xls_sheet = xls_book.add_worksheet()
+    # xls_sheet = pyexcel.Sheet([keys])
+
+    # Little utility function write a row to file.
+    def write_xls_row(data, row, sheet):
+        for cell in range(len(data)):
+            xls_sheet.write(row, cell, data[cell])
+
+    write_xls_row(return_keys, 0, xls_sheet)
 
     i = 0
     # Prepare each row
@@ -272,14 +289,11 @@ def export_category(uuid, form_name, category, download_name, variables, data_ty
 
             raw_data = r[1].data
             if "many_links&" in form_var:
-                print("hei")
                 link_name, number, form_var = form_var.split("&")[1:]
                 number = int(number)
                 if link_name in r[0].links:
                     links = r[0].links[link_name]
                     if len(links) >= number + 1:
-                        print(r[0].uuid)
-                        print(number, links)
                         link_uuid = links[number]
                         raw_data = link_data[link_uuid]
                     else:
@@ -346,7 +360,7 @@ def export_category(uuid, form_name, category, download_name, variables, data_ty
                 link = form_var.split("$")[1]
                 link_index = link_id_index[link]
                 if r[link_index]:
-                    list_row[index] = r[link_index][form_var.split("$")[-1]]
+                    list_row[index] = r[link_index].get(form_var.split("$")[-1], None)
                 else:
                     list_row[index] = None
 
@@ -360,9 +374,9 @@ def export_category(uuid, form_name, category, download_name, variables, data_ty
                 else:
                     default_value = None
                 final_text = []
-                for i in range(len(codes)):
-                    if codes[i] in r[0].variables:
-                        final_text.append(text[i])
+                for j in range(len(codes)):
+                    if codes[j] in r[0].variables:
+                        final_text.append(text[j])
                 if len(final_text) > 0:
                     list_row[index] = " ".join(final_text)
                 else:
@@ -399,38 +413,34 @@ def export_category(uuid, form_name, category, download_name, variables, data_ty
                 tr_dict = min_translation[k]
                 parts = [x.strip() for x in list_row[index].split(',')]
                 for x in range(len(parts)):
-                    parts[x] = tr_dict.get(parts[x], parts[x])
+                    parts[x] = str(tr_dict.get(parts[x], parts[x]))
                 list_row[index] = ', '.join(list(filter(bool, parts)))
 
         list_rows.append(list_row)
-        if i % 10000 == 0:
-            df1 = pd.DataFrame(list_rows, columns=return_keys)
-            df = pd.concat([df, df1])
+        # Can write row immediately to xls file as memory is flushed after.
+        write_xls_row(list_row, i+1, xls_sheet)
+        # Append the row to list of rows to be written to csv.
+        if i % 200 == 0:
+            csv_writer.writerows(list_rows)
             list_rows = []
         i += 1
+    csv_writer.writerows(list_rows)
 
-    df1 = pd.DataFrame(list_rows, columns=return_keys)
-    df = pd.concat([df, df1])
-    list_rows = []
-    # Save the collected data in xlsx form
-    xlscontent = BytesIO()
-    writer = pd.ExcelWriter(xlscontent, engine='xlsxwriter')
-    # sheet = pyexcel.Sheet(list_rows)
-    # xlscontent = sheet.save_to_memory("xlsx", xlscontent)
-    df.to_excel(writer, index=False)
-    writer.save()
-    # Save the collected data in csv form
-    csvcontent = StringIO()
-    # writer = csv.writer(csvcontent)
-    # writer.writerows(list_rows)
-    df.to_csv(csvcontent, index=False)
-    # Write the two files to database
-    status.csvcontent = csvcontent.getvalue()
-    status.xlscontent = xlscontent.getvalue()
-
+    csv_content.close()
+    xls_book.close()
+    
+    xls_content.close()
     status.status = 1
     status.success = 1
     session.commit()
+
+    if query_links:
+        link_data.close()
+        filename = os.base_folder + "/exported_data/" + uuid
+        if os.path.exists(filename+".dir"):
+            os.remove(filename+".dir")
+        if os.path.exists(filename+".dat"):
+            os.remove(filename+".dat")
     return True
 
 
@@ -465,12 +475,14 @@ def export_form(uuid, form, fields=None):
         for r in result:
             keys.append(r[0])
 
-    csv_content = StringIO()
+    filename = base_folder + "/exported_data/" + uuid + "/" + form
+    os.mkdir(base_folder + "/exported_data/" + uuid)
+    csv_content = open(filename + ".csv", "w")
     csv_writer = csv.writer(csv_content)
     csv_writer.writerows([keys])
 
     # XlsxWriter with "constant_memory" set to true, flushes mem after each row
-    xls_content = BytesIO()
+    xls_content = open(filename + ".xls", "wb")
     xls_book = xlsxwriter.Workbook(xls_content, {'constant_memory': True})
     xls_sheet = xls_book.add_worksheet()
     # xls_sheet = pyexcel.Sheet([keys])
@@ -487,8 +499,6 @@ def export_form(uuid, form, fields=None):
         session.add(
             DownloadDataFiles(
                 uuid=uuid,
-                csvcontent="",
-                xlscontent=b"",
                 generation_time=datetime.now(),
                 type=form,
                 success=0,
@@ -562,11 +572,12 @@ def export_form(uuid, form, fields=None):
         csv_writer.writerows(list_rows)
 
         xls_book.close()
+        csv_content.close()
+        xls_content.close()
+        
         session.add(
             DownloadDataFiles(
                 uuid=uuid,
-                csvcontent=csv_content.getvalue(),
-                xlscontent=xls_content.getvalue(),
                 generation_time=datetime.now(),
                 type=form,
                 success=1,
