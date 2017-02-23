@@ -125,7 +125,7 @@ def export_category(uuid, form_name, category, download_name, variables, data_ty
     res = session.query(AggregationVariables).filter(
         AggregationVariables.category.has_key(category)
     )
-
+    print(uuid)
     data_keys = []
     cat_variables = {}
     for r in res:
@@ -163,7 +163,6 @@ def export_category(uuid, form_name, category, download_name, variables, data_ty
     # DB conditions
     conditions = [or_(Data.variables.has_key(key)
                       for key in data_keys)]
-    print(data_keys)
     if data_type:
         conditions.append(Data.type == data_type)
 
@@ -198,20 +197,23 @@ def export_category(uuid, form_name, category, download_name, variables, data_ty
                 AggregationVariables.category.has_key(category)
             )
             for r in res:
-                cat_variables[r.id] = r
+                cat_variables.setdefault(r.id, [])
+                cat_variables[r.id].append(r)
             icd_code_to_name[v[0]] = {}
             for i in cat_variables.keys():
-                condition = cat_variables[i].condition
-                if ";" in condition:
-                    codes = condition.split(";")[0]
-                if "," in condition:
-                    # If a variable have many icd codes
-                    # we take all of them into account
-                    codes = condition.split(",")
-                else:
-                    codes = [condition]
-                for c in codes:
-                    icd_code_to_name[v[0]][c.strip()] = cat_variables[i].name
+                for var in cat_variables[i]:
+                    condition = var.condition
+                    if ";" in condition:
+                        condition = condition.split(";")[0]
+                    if "," in condition:
+                        # If a variable have many icd codes
+                        # we take all of them into account
+                        codes = condition.split(",")
+                    else:
+                        codes = [condition]
+                    for c in codes:
+                        if c:
+                            icd_code_to_name[v[0]][c.strip()] = var.name
         if "$translate" in v[0]:
             split = v[0].split("$")
             field = "$".join(split[:-1])
@@ -226,7 +228,6 @@ def export_category(uuid, form_name, category, download_name, variables, data_ty
             translation_dict[v[1]] = v[0]
         if "gen_link$" in v[0]:
             link_ids.append(v[0].split("$")[1])
-
 
     link_ids = set(link_ids)
     links_by_type, links_by_name = get_links(config_directory +

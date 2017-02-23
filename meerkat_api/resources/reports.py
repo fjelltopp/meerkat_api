@@ -2264,7 +2264,7 @@ class WeeklyEpiMonitoring(Resource):
         var.update( variables_instance.get('mat_mortality') )
 
         ret['deaths'] = get_variables_category(
-            'deaths',
+            'deaths_epi_monitoring',
             start_date,
             end_date_limit,
             location,
@@ -2707,9 +2707,9 @@ class AFROBulletin(Resource):
         location_name = locs[int(location)]
 
         regions = [loc for loc in locs.keys()
-                   if locs[loc].parent_location == 1]
+                   if locs[loc].level == "region"]
         districts = [loc for loc in locs.keys()
-                     if locs[loc].parent_location in regions]
+                     if locs[loc].level == "district"]
 
         ret["data"]["project_region"] = location_name.name
         ret["data"]["project_region_id"] = location
@@ -2903,7 +2903,9 @@ class AFROBulletin(Resource):
 
         # FIGURE 3: INCIDENCE OF CONFIRMED MALARIA CASES BY REGION (MAP)
         ir = IncidenceRate()
-        mal_incidence = ir.get('epi_1', 'region', mult_factor=100000)
+        mal_incidence = ir.get('epi_1', 'region', mult_factor=100000,
+                               start_date=first_day_of_year,
+                               end_date=end_date_limit)
         mapped_mal_incidence = {}
 
         # Structure the data.

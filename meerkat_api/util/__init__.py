@@ -6,6 +6,7 @@ from datetime import datetime
 from flask import jsonify
 from datetime import datetime, timedelta
 from dateutil import parser
+from meerkat_api.resources.epi_week import epi_year_start
 
 def series_to_json_dict(series):
     """
@@ -18,7 +19,7 @@ def series_to_json_dict(series):
        dict: dict
     """
     if series is not None:
-        return dict( (str(key), value) for key, value in series.to_dict().items())
+        return dict((str(key), value) for key, value in series.to_dict().items())
     else:
         return {}
 
@@ -38,6 +39,8 @@ def fix_dates(start_date, end_date):
         end_date = datetime.now()
     if start_date:
         start_date = parser.parse(start_date).replace(tzinfo=None)
+        if start_date < epi_year_start(year=start_date.year):
+            start_date = epi_year_start(year=start_date.year)
     else:
         start_date = end_date.replace(month=1, day=1,
                                       hour=0, second=0,
