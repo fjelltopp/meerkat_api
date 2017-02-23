@@ -90,7 +90,7 @@ class MeerkatAPITestCase(unittest.TestCase):
                           headers={**{"Accept": "text/csv"},
                                    **settings.header})
         self.assertEqual(rv.status_code, 302)
-        self.assertIn("exported/" + uuid + "/data.csv",
+        self.assertIn("exported_data/" + uuid + "/data.csv",
                       rv.data.decode("utf-8"))
 
         filename = base_folder + "/exported_data/" + uuid + "/data.csv"
@@ -126,7 +126,7 @@ class MeerkatAPITestCase(unittest.TestCase):
                           headers={**{"Accept": "text/csv"},
                                    **settings.header})
         self.assertEqual(rv.status_code, 302)
-        self.assertIn("exported/" + uuid + "/cd.csv",
+        self.assertIn("exported_data/" + uuid + "/cd.csv",
                       rv.data.decode("utf-8"))
 
         filename = base_folder + "/exported_data/" + uuid + "/cd.csv"
@@ -187,7 +187,7 @@ class MeerkatAPITestCase(unittest.TestCase):
                           headers={**{"Accept": "text/csv"},
                                    **settings.header})
         self.assertEqual(rv.status_code, 302)
-        self.assertIn("exported/" + uuid + "/demo_case.csv",
+        self.assertIn("exported_data/" + uuid + "/demo_case.csv",
                       rv.data.decode("utf-8"))
 
         filename = base_folder + "/exported_data/" + uuid + "/demo_case.csv"
