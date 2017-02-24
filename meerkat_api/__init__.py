@@ -151,6 +151,7 @@ from meerkat_api.resources.reports import PublicHealth, CdReport, \
 from meerkat_api.resources.frontpage import KeyIndicators, TotMap, NumAlerts, ConsultationMap, RefugeePage, NumClinics
 from meerkat_api.resources.export_data import ExportData, ExportForm, Forms, ExportCategory, GetCSVDownload, GetXLSDownload, GetStatus
 from meerkat_api.resources.incidence import IncidenceRate, WeeklyIncidenceRate
+from meerkat_api.resources.indicators import Indicators
 from meerkat_api.resources.devices import Devices
 #from meerkat_api.resources.links import Link, Links
 
@@ -312,6 +313,8 @@ api.add_resource(Completeness,
                  "/completeness/<variable>/<location>/<number_per_week>/<start_week>/<exclude>/<weekend>/<non_reporting_variable>",
                  "/completeness/<variable>/<location>/<number_per_week>/<start_week>/<exclude>/<weekend>/<non_reporting_variable>/<end_date>")
 api.add_resource(Records, "/records/<variable>/<location_id>")
+
+api.add_resource(Indicators, "/indicators/<flags>/<variables>/<location>")
 
 @app.route('/')
 def hello_world():
