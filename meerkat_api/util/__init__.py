@@ -6,6 +6,7 @@ from datetime import datetime
 from flask import jsonify
 from datetime import datetime, timedelta
 from dateutil import parser
+import numpy
 
 def series_to_json_dict(series):
     """
@@ -18,7 +19,11 @@ def series_to_json_dict(series):
        dict: dict
     """
     if series is not None:
-        return dict( (str(key), value) for key, value in series.to_dict().items())
+        ret = {}
+        for key, value in series.to_dict().items():
+            if isinstance(value, numpy.generic):
+                value = numpy.asscalar(value)
+            ret[key] = value
     else:
         return {}
 

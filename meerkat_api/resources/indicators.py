@@ -105,8 +105,8 @@ class Indicators(Resource):
         # indicator_data["timeline"] = {"w1":-99,"w2":99}
         indicator_data["timeline"] = series_to_json_dict(analysis_output[1])
         #TODO: we assume that indicator data is integer!!!!
-        for key, val in indicator_data["timeline"].items():
-            indicator_data["timeline"][key] = int(val)
+        # for key, val in indicator_data["timeline"].items():
+        #     indicator_data["timeline"][key] = int(val)
         #current value is the latest week:
         last_week_date = max(indicator_data["timeline"].keys())
         #Find secon-to-last week
