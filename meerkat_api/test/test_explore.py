@@ -33,17 +33,17 @@ class MeerkatAPITestCase(unittest.TestCase):
 
         start_date = datetime(2015, 4, 3)
         end_date = datetime(2013, 4, 5)
-        new_dates = explore.sort_date(start_date.isoformat(),
+        new_dates = explore.fix_dates(start_date.isoformat(),
                                       end_date.isoformat())
         self.assertEqual(new_dates[0], start_date)
         self.assertEqual(new_dates[1], end_date)
-        new_dates = explore.sort_date(None, None)
+        new_dates = explore.fix_dates(None, None)
         self.assertEqual(new_dates[0], datetime(datetime.now().year, 1, 1))
         self.assertLess((datetime.now() - new_dates[1]).seconds, 1)
 
         start_date_timezone = pytz.UTC.localize(start_date)
         end_date_timezone = pytz.UTC.localize(end_date)
-        new_dates = explore.sort_date(start_date_timezone.isoformat(),
+        new_dates = explore.fix_dates(start_date_timezone.isoformat(),
                                       end_date_timezone.isoformat())
         self.assertEqual(new_dates[0], start_date)
         self.assertEqual(new_dates[1], end_date)

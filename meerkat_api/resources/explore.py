@@ -7,7 +7,7 @@ from datetime import datetime
 from dateutil.parser import parse
 from flask import request
 
-from meerkat_api.util import is_child
+from meerkat_api.util import is_child, fix_dates
 from meerkat_api.resources.epi_week import epi_year_start
 from meerkat_api import db
 from meerkat_abacus.model import Data
@@ -16,31 +16,7 @@ from meerkat_api.resources.variables import Variables
 from meerkat_api.resources.epi_week import EpiWeek
 from meerkat_api.authentication import authenticate
 
-import time
 
-def sort_date(start_date, end_date):
-    """
-    parses start and end date and remoces any timezone info
-
-    Args:
-       start_date: start date
-       end_date: end date
-    
-    Returns:
-       (start_date, end_date)
-    """
-    if end_date:
-        end_date = parse(end_date).replace(tzinfo=None)
-    else:
-        end_date = datetime.today()
-    if start_date:
-        start_date = parse(start_date).replace(tzinfo=None)
-        if start_date < epi_year_start(year=start_date.year):
-            start_date = epi_year_start(year=start_date.year)
-    else:
-        start_date = epi_year_start(year=end_date.year)
-
-    return start_date, end_date
 
 
 def get_variables(category):
@@ -117,7 +93,7 @@ class QueryVariable(Resource):
 
         variable = str(variable)
 
-        start_date, end_date = sort_date(start_date, end_date)
+        start_date, end_date = fix_dates(start_date, end_date)
         year = start_date.year
         if "use_ids" in request.args.keys() or use_ids:
             use_ids = True
@@ -255,7 +231,8 @@ class QueryCategory(Resource):
     def get(self, group_by1, group_by2, start_date=None,
             end_date=None, only_loc=None):
 
-        start_date, end_date = sort_date(start_date, end_date)
+        start_date, end_date = fix_dates(start_date, end_date)
+        print(start_date, end_date)
         use_ids = False
         if "use_ids" in request.args.keys():
             use_ids = True

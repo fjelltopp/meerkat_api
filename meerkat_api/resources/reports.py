@@ -295,8 +295,6 @@ class NcdReport(Resource):
     
 def create_ncd_report(location, start_date=None, end_date=None, params=['case']):
 
-          # Hack the tests for now.
-
     start_date, end_date = fix_dates(start_date, end_date)
     end_date_limit = end_date + timedelta(days=1)
     ret = {}
@@ -321,6 +319,7 @@ def create_ncd_report(location, start_date=None, end_date=None, params=['case'])
     ret["data"]["project_region"] = location_name.name
     tot_clinics = TotClinics()
     ret["data"]["clinic_num"] = tot_clinics.get(location)["total"]
+    
     #  Data on Hypertension and Diabebtes, there are two tables for each disease.
     #  One for the age breakdown, and one for labs and complications.
     #  For each table we have rows for each Region.
@@ -367,8 +366,21 @@ def create_ncd_report(location, start_date=None, end_date=None, params=['case'])
         email_report_control_hypertension = "lab_2"
         diseases = {"hypertension": hypertension_id,
                     "diabetes": diabetes_id}
-        ids_to_include = {"hypertension": [("lab_4", "lab_3"), ("lab_5", "lab_3"), ("lab_2", "lab_1"), ("com_1", "tot"), ("smo_2", "smo_4"), ("lab_11", "lab_10")],
-                          "diabetes": [("lab_4", "lab_3"), ("lab_5", "lab_3"), ("lab_7", "lab_6"), ("lab_9", "lab_8"), ("com_2", "tot"), ("smo_2", "smo_4"), ("lab_11", "lab_10")]
+        ids_to_include = {
+            "hypertension": [("lab_4", "lab_3"),
+                             ("lab_5", "lab_3"),
+                             ("lab_2", "lab_1"),
+                             ("com_1", "ncd_2"),
+                             ("smo_2", "smo_4"),
+                             ("lab_11", "lab_10")],
+            "diabetes": [
+                ("lab_4", "lab_3"),
+                ("lab_5", "lab_3"),
+                ("lab_7", "lab_6"),
+                ("lab_9", "lab_8"),
+                ("com_2", "ncd_1"),
+                ("smo_2", "smo_4"),
+                ("lab_11", "lab_10")]
         }
         additional_variables = []
 
@@ -447,30 +459,37 @@ def create_ncd_report(location, start_date=None, end_date=None, params=['case'])
 
 
             #  Get the lab breakdown
-            for new_id in ids_to_include[disease]:
-                if new_id[0]:
-                    numerator = query_sum(db, [d_id, new_id[0]] + additional_variables, start_date, end_date_limit,\
-                         region)["total"]
-                    if new_id[1] == total_variable:
-                        denominator = table_two_total
-                    else:
-                        denominator = query_sum(db, [d_id, new_id[1]] + additional_variables, start_date, end_date_limit,\
-                             region)["total"]
-                    if denominator == 0:
-                        denominator = 1
+        for new_id in ids_to_include[disease]:
+            if new_id[0]:
+                numerator = query_sum(db, [d_id, new_id[0]] + additional_variables,
+                                      start_date, end_date_limit,1, level="region")
+               
+                denominator = query_sum(db, [d_id, new_id[1]] + additional_variables,
+                                    start_date, end_date_limit, 1, level="region")
+
+                for i, r in enumerate(sorted(regions)):
+                    num = numerator["region"].get(int(r), 0)
+                    den = denominator["region"].get(int(r), 0)
+                    if den == 0:
+                        den = 1
                     ret[disease]["complications"]["data"][i]["values"].append(
-                        [numerator, numerator/ denominator * 100])
+                        [int(num), num / den * 100])
+                    
+                num = numerator["total"]
+                den = denominator["total"]
+                if den == 0:
+                    den = 1
+                ret[disease]["complications"]["data"][i+1]["values"].append(
+                    [int(num), num / den * 100])
+                if disease == "diabetes" and new_id[0] == email_report_control_diabetes:
+                    ret[disease]["email_summary"]["control"] = num/ den * 100
+                elif disease == "hypertension" and new_id[0] == email_report_control_hypertension:
+                    ret[disease]["email_summary"]["control"] = num/ den * 100
 
-                    # control for email report for the whole country
-                    if region == 1:
-                      if disease == "diabetes" and new_id[0] == email_report_control_diabetes:
-                        ret[disease]["email_summary"]["control"] = numerator/ denominator * 100
-                      elif disease == "hypertension" and new_id[0] == email_report_control_hypertension:
-                        ret[disease]["email_summary"]["control"] = numerator/ denominator * 100
-                else:
-                    #  We can N/A to the table if it includes data we are not collecting
-                    ret[disease]["complications"]["data"][i]["values"].append("N/A")
-
+            else:
+                #  We can N/A to the table if it includes data we are not collecting
+                 for r in range(len(regions) +1):
+                     ret[disease]["complications"]["data"][r]["values"].append("N/A")
     return ret
 
 
@@ -1634,6 +1653,35 @@ class NcdPublicHealth(Resource):
         clin = Clinics()
         ret["data"]["map"] = clin.get(1)
 
+        regions = [loc for loc in locs.keys()
+                   if locs[loc].parent_location == 1]
+        # Diabets map
+        ir = IncidenceRate()
+        dia_incidence = ir.get('ncd_1', 'region', mult_factor=1000)
+        hyp_incidence = ir.get('ncd_2', 'region', mult_factor=1000)
+        mapped_dia_incidence = {}
+        mapped_hyp_incidence = {}
+
+        # Structure the data.
+        for region in regions:
+            if region not in dia_incidence:
+                dia_incidence[region] = 0
+            if region not in hyp_incidence:
+                hyp_incidence[region] = 0
+                
+            mapped_dia_incidence[locs[region].name] = {
+                'value': int(dia_incidence[region])
+            }
+            mapped_hyp_incidence[locs[region].name] = {
+                'value': int(hyp_incidence[region])
+            }
+
+        ret["data"].update({
+            "figure_diabetes_map":  mapped_dia_incidence,
+            "figure_hyp_map":  mapped_hyp_incidence
+        })
+
+        
         return ret
 
 
@@ -2216,7 +2264,7 @@ class WeeklyEpiMonitoring(Resource):
         var.update( variables_instance.get('mat_mortality') )
 
         ret['deaths'] = get_variables_category(
-            'deaths',
+            'deaths_epi_monitoring',
             start_date,
             end_date_limit,
             location,
@@ -2659,9 +2707,9 @@ class AFROBulletin(Resource):
         location_name = locs[int(location)]
 
         regions = [loc for loc in locs.keys()
-                   if locs[loc].parent_location == 1]
+                   if locs[loc].level == "region"]
         districts = [loc for loc in locs.keys()
-                     if locs[loc].parent_location in regions]
+                     if locs[loc].level == "district"]
 
         ret["data"]["project_region"] = location_name.name
         ret["data"]["project_region_id"] = location
@@ -2855,7 +2903,9 @@ class AFROBulletin(Resource):
 
         # FIGURE 3: INCIDENCE OF CONFIRMED MALARIA CASES BY REGION (MAP)
         ir = IncidenceRate()
-        mal_incidence = ir.get('epi_1', 'region', mult_factor=100000)
+        mal_incidence = ir.get('epi_1', 'region', mult_factor=100000,
+                               start_date=first_day_of_year,
+                               end_date=end_date_limit)
         mapped_mal_incidence = {}
 
         # Structure the data.
