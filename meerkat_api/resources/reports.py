@@ -40,7 +40,7 @@ from meerkat_api.resources import alerts
 from meerkat_api.resources.explore import QueryVariable, QueryCategory, get_variables
 from meerkat_api.util.data_query import query_sum
 from meerkat_api.resources.incidence import IncidenceRate
-from meerkat_abacus.util import get_locations, all_location_data
+from meerkat_abacus.util import get_locations, all_location_data, get_regions_districts
 from meerkat_abacus import model
 from meerkat_api.authentication import authenticate
 
@@ -723,29 +723,33 @@ class MhReport(Resource):
         case_mh_id = 'prc_3'
         nationality_case_variables = get_variables('nationality')
 
-        # Loop through nationalities
-        for nat_id in nationality_case_variables.keys():
-            nat_name = nationality_case_variables[nat_id]
-            nat_dict = {"nationality":nat_name,'locations':[]}
+        [regions,districts] = get_regions_districts(db.session)
 
-            nat_data = query_variable.get(
+        # Loop through regions
+
+        for region_id in regions:
+            region_name = locs[int(region_id)].name
+            region_dict = {"region":region_name, "region_id": region_id,'nationalities':[]}
+
+            region_data = query_variable.get(
                 variable=nat_id, 
-                group_by="locations:region",
+                group_by="nationality",
                 start_date=start_date.isoformat(),
                 end_date=end_date.isoformat(), 
-                only_loc=None, 
+                only_loc=region_id, 
                 use_ids=True, 
                 date_variable=None, 
                 additional_variables=[case_mh_id]
                 )
-            for loc_key in nat_data.keys():
-                nat_dict["locations"].append({
-                    "location_key":loc_key,
-                    "location_name":locs[int(loc_key)].name,
-                    "cases":nat_data[loc_key]["total"]
+
+            for nat_key in region_data.keys():
+                region_dict["nationalities"].append({
+                    "nationality_key":nat_key,
+                    "nationality_name":nationality_case_variables[nat_key],
+                    "cases":region_data[nat_key]["total"]
                     })
 
-            table_3_data.append(nat_dict)
+            table_3_data.append(region_dict)
 
         ret['table_3_data'] = table_3_data
 
@@ -755,28 +759,29 @@ class MhReport(Resource):
         age_case_variables = get_variables('ncd_age')
 
         # Loop through age categories
-        for age_id in age_case_variables.keys():
-            age_name = age_case_variables[age_id]
-            age_dict = {"age_category":age_name,"locations":[]}
+        for region_id in regions:
+            region_name = locs[int(region_id)].name
+            region_dict = {"region":region_name, "region_id": region_id, 'age_categories':[]}
 
-            age_data = query_variable.get(
-                variable=age_id, 
-                group_by="locations:region",
+            region_data = query_variable.get(
+                variable='tot_1',
+                group_by="ncd_age",
                 start_date=start_date.isoformat(),
-                end_date=end_date.isoformat(), 
-                only_loc=None, 
+                end_date=end_date.isoformat(),
+                only_loc=region_id, 
                 use_ids=True, 
                 date_variable=None, 
                 additional_variables=[case_mh_id]
                 )
-            for loc_key in age_data.keys():
-                age_dict["locations"].append({
-                    "location_key":loc_key,
-                    "location_name":locs[int(loc_key)].name,
-                    "cases":age_data[loc_key]["total"]
+
+            for age_key in region_data.keys():
+                region_dict["age_categories"].append({
+                    "age_key":age_key,
+                    "age_name":age_case_variables[age_key],
+                    "cases":region_data[age_key]["total"]
                     })
 
-            table_4_data.append(age_dict)
+            table_4_data.append(region_dict)
 
         ret['table_4_data'] = table_4_data
 
