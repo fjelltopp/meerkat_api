@@ -593,40 +593,40 @@ class MhReport(Resource):
                     gender_id_index = gender_keys.index(gender_visit_variables[gender_id])+1
                     gender_keys.insert(gender_id_index, gender_visit_variables[gender_id] + '(%)')
                     gender_values.insert(
-                        gender_id_index, gender_values[gender_id_index-1]/(1 if gender_total == 0 else gender_total))
+                        gender_id_index, 100 * gender_values[gender_id_index-1]/(1 if gender_total == 0 else gender_total))
 
                 # Insert gender totals
                 gender_keys.append('Total')
                 gender_values.append(gender_total)
 
                 nat_dict.update({
-                    "keys": gender_keys,
-                    "values": gender_values
+                    "genders": gender_keys,
+                    "gen_vals": gender_values
                     })
 
                 visit_type_dict["nationalities"].append(nat_dict)
 
             # Insert national totals
-            national_totals={"keys":[],"values":[]}
+            national_totals={"genders":[],"gen_vals":[]}
 
             # 2 keys and values in the dictionary per gender code plus totat
             gender_keys_in_dict = 2*len(gender_visit_variables.keys())+1
 
             for i in range(0,gender_keys_in_dict):
-                national_totals["keys"].append(visit_type_dict["nationalities"][0]["keys"][i])
-                national_totals["values"].append(sum(item["values"][i] for item in visit_type_dict["nationalities"]))
+                national_totals["genders"].append(visit_type_dict["nationalities"][0]["genders"][i])
+                national_totals["gen_vals"].append(sum(item["gen_vals"][i] for item in visit_type_dict["nationalities"]))
 
             # Calculate national total percentages
             for i in range(1,gender_keys_in_dict,2):
-                national_totals["values"][i] = \
-                    national_totals["values"][i-1]/ \
-                    (1 if national_totals["values"][-1] == 0 else national_totals["values"][-1])
-
+                national_totals["gen_vals"][i] = \
+                    100 * national_totals["gen_vals"][i-1]/ \
+                    (1 if national_totals["gen_vals"][-1] == 0 else national_totals["gen_vals"][-1])
+            national_totals["name"]="Total"
             #return national_totals
 
             #national_total = sum(item["values"][-1] for item in visit_type_dict["nationalities"])
 
-            visit_type_dict["total"] = national_totals
+            visit_type_dict["nationalities"].append(national_totals)
 
             table_1_data.append(visit_type_dict)
 
@@ -643,7 +643,7 @@ class MhReport(Resource):
             visit_type_dict={"type":visit_type_name,"age_categories":[]}
 
             # Loop through age categories
-            for age_id in age_category_variables.keys():
+            for age_id in sorted(age_category_variables.keys()):
                 age_name = age_category_variables[age_id]
                 age_dict = {"name":age_name}
 
@@ -677,43 +677,43 @@ class MhReport(Resource):
                     gender_id_index = gender_keys.index(gender_visit_variables[gender_id])+1
                     gender_keys.insert(gender_id_index, gender_visit_variables[gender_id] + '(%)')
                     gender_values.insert(
-                        gender_id_index, gender_values[gender_id_index-1]/(1 if gender_total == 0 else gender_total))
+                        gender_id_index, (100 * gender_values[gender_id_index-1])/(1 if gender_total == 0 else gender_total))
 
                 # Insert age category totals
                 gender_keys.append('Total')
                 gender_values.append(gender_total)
 
                 age_dict.update({
-                    "keys": gender_keys,
+                    "genders": gender_keys,
                     #"ids" : gender_ids,
-                    "values": gender_values
+                    "gen_vals": gender_values
                     })
 
                 visit_type_dict["age_categories"].append(age_dict)
 
-            age_total = sum(item["values"][-1] for item in visit_type_dict["age_categories"])
+            age_total = sum(item["gen_vals"][-1] for item in visit_type_dict["age_categories"])
 
             visit_type_dict["total"] = age_total
 
             table_2_data.append(visit_type_dict)
 
             # Insert age category totals
-            age_category_totals={"keys":[],"values":[]}
+            age_category_totals={"genders":[],"gen_vals":[]}
 
             # 2 keys and values in the dictionary per gender code plus totat
             gender_keys_in_dict = 2*len(gender_visit_variables.keys())+1
 
             for i in range(0,gender_keys_in_dict):
-                age_category_totals["keys"].append(visit_type_dict["age_categories"][0]["keys"][i])
-                age_category_totals["values"].append(sum(item["values"][i] for item in visit_type_dict["age_categories"]))
+                age_category_totals["genders"].append(visit_type_dict["age_categories"][0]["genders"][i])
+                age_category_totals["gen_vals"].append(sum(item["gen_vals"][i] for item in visit_type_dict["age_categories"]))
 
             # Calculate age category total percentages
             for i in range(1,gender_keys_in_dict,2):
-                age_category_totals["values"][i] = \
-                    age_category_totals["values"][i-1]/ \
-                    (1 if age_category_totals["values"][-1] == 0 else age_category_totals["values"][-1])
+                age_category_totals["gen_vals"][i] = \
+                    100 * age_category_totals["gen_vals"][i-1]/ \
+                    (1 if age_category_totals["gen_vals"][-1] == 0 else age_category_totals["gen_vals"][-1])
 
-            visit_type_dict["total"] = age_category_totals
+            visit_type_dict["age_categories"].append(age_category_totals)
 
         ret['table_2_data'] = table_2_data
 
