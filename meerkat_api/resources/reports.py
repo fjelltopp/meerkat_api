@@ -2740,7 +2740,7 @@ class AFROBulletin(Resource):
             timeline = comp["timeline"][str(location)]['values']
             ret["data"]["weekly_highlights"]["comp_week"] = comp["score"][str(location)]
             ret["data"]["weekly_highlights"]["comp_year"] = comp["yearly_score"][str(location)]
-        except AttributeError, KeyError:
+        except (AttributeError, KeyError):
             comp = {"Error": "No data available"}
 
         # Get multi-variable figures.
