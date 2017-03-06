@@ -260,6 +260,91 @@ def order_by_name(data_list):
     return 1
 
 
+
+def generateMHtable(start_date, end_date, location, visit_type_variables, x_variables, x_variables_name, gender_visit_variables):
+    #Define variables
+    query_category = QueryCategory()
+    query_variable = QueryVariable()
+    visit_mh_id = "visit_prc_3"
+    visit_type_dict = dict()
+    table_data = []
+
+    # Loop through visit types
+    for visit_type_id in visit_type_variables.keys():
+        visit_type_name = visit_type_variables[visit_type_id]
+        visit_type_dict={"type":visit_type_name,x_variables_name:[]}
+
+        # Loop through nationalities
+        for xcat_id in x_variables.keys():
+            xcat_name = x_variables[xcat_id]
+            xcat_dict = {"name":xcat_name}
+
+            gender_data = query_variable.get(
+                variable=visit_type_id,
+                group_by='visit_gender',
+                start_date=start_date.isoformat(),
+                end_date=end_date.isoformat(),
+                only_loc=location,
+                use_ids=True,
+                date_variable=None,
+                additional_variables=[visit_mh_id,xcat_id]
+            )
+
+            gender_keys = []
+            gender_ids = []
+            gender_values = []
+
+            # Fetch standard gender values
+            for gender_id in gender_visit_variables.keys():
+                gender_keys.append(gender_visit_variables[gender_id])
+                gender_ids.append(gender_id)
+                gender_values.append(gender_data[gender_id]["total"])
+
+            # Calculate total
+            gender_total = sum(gender_values)
+
+            # Insert percentages
+            for gender_id in gender_visit_variables.keys():
+                gender_id_index = gender_keys.index(gender_visit_variables[gender_id])+1
+                gender_keys.insert(gender_id_index, gender_visit_variables[gender_id] + '(%)')
+                gender_values.insert(
+                    gender_id_index, 100 * gender_values[gender_id_index-1]/(1 if gender_total == 0 else gender_total))
+            # Insert gender totals
+            gender_keys.append('Total')
+            gender_values.append(gender_total)
+
+            xcat_dict.update({
+                "genders": gender_keys,
+                "gen_vals": gender_values
+            })
+
+            visit_type_dict[x_variables_name].append(xcat_dict)
+
+        # Insert national totals
+        national_totals={"genders":[],"gen_vals":[]}
+
+        # 2 keys and values in the dictionary per gender code plus totat
+        gender_keys_in_dict = 2*len(gender_visit_variables.keys())+1
+
+        for i in range(0,gender_keys_in_dict):
+            national_totals["genders"].append(visit_type_dict[x_variables_name][0]["genders"][i])
+            national_totals["gen_vals"].append(sum(item["gen_vals"][i] for item in visit_type_dict[x_variables_name]))
+
+        # Calculate national total percentages
+        for i in range(1,gender_keys_in_dict,2):
+            national_totals["gen_vals"][i] = \
+                                                100 * national_totals["gen_vals"][i-1]/ \
+                                                (1 if national_totals["gen_vals"][-1] == 0 else national_totals["gen_vals"][-1])
+            national_totals["name"]="Total"
+            #return national_totals
+
+        #national_total = sum(item["values"][-1] for item in visit_type_dict[x_variables_name])
+        
+        visit_type_dict[x_variables_name].append(national_totals)
+
+        table_data.append(visit_type_dict)
+    return table_data
+
 """
 Ncd Reports to show data on Hypertension and Diabetes. The data includes
 breakdowns by age and on lab data, complications and comorbidity. We create
@@ -543,179 +628,30 @@ class MhReport(Resource):
             return None
         location_name = locs[int(location)].name
 
+        # ### Visit variables
         # get the age breakdown
+        gender_visit_variables = get_variables('visit_gender')
+        visit_type_variables = {"vis_1":"new", "vis_2":"return", "vis_3":"referral"}
+        # Table 1 nationality
+        nationality_visit_variables = get_variables('visit_nationality')
+        # Table 2 age
+        age_category_variables = get_variables('visit_ncd_age')
+
+        # ### Tables
+        # ### Table 1:
+        # visity type / nationality
+        table_1_data = generateMHtable(start_date, end_date, location, visit_type_variables, nationality_visit_variables, "nationalities", gender_visit_variables)
+        ret['table_1_data'] = table_1_data
+
+        # ### Table 2:
+        # # visity type / age
+        table_2_data = generateMHtable(start_date, end_date, location, visit_type_variables, age_category_variables, "age_categories", gender_visit_variables)
+        ret['table_2_data'] = table_2_data
+
+        ##variables required outside functional code still:
         query_category = QueryCategory()
         query_variable = QueryVariable()
         visit_mh_id = "visit_prc_3"
-        gender_visit_variables = get_variables('visit_gender')
-        visit_type_variables = {"vis_1":"new", "vis_2":"return", "vis_3":"referral"}
-        nationality_visit_variables = get_variables('visit_nationality')
-
-        # Data for table 1
-        table_1_data = []
-
-        # Loop through visit types
-        for visit_type_id in visit_type_variables.keys():
-            visit_type_name = visit_type_variables[visit_type_id]
-            visit_type_dict={"type":visit_type_name,"nationalities":[]}
-
-            # Loop through nationalities
-            for nat_id in nationality_visit_variables.keys():
-                nat_name = nationality_visit_variables[nat_id]
-                nat_dict = {"name":nat_name}
-
-                gender_data = query_variable.get(
-                    variable=visit_type_id, 
-                    group_by='visit_gender', 
-                    start_date=start_date.isoformat(),
-                    end_date=end_date.isoformat(), 
-                    only_loc=location, 
-                    use_ids=True, 
-                    date_variable=None, 
-                    additional_variables=[visit_mh_id, nat_id]
-                )
-
-                gender_keys = []
-                gender_ids = []
-                gender_values = []
-
-                # Fetch standard gender values
-                for gender_id in gender_visit_variables.keys():
-                    gender_keys.append(gender_visit_variables[gender_id])
-                    gender_ids.append(gender_id)
-                    gender_values.append(gender_data[gender_id]["total"])
-
-                # Calculate total
-                gender_total = sum(gender_values)
-
-                # Insert percentages
-                for gender_id in gender_visit_variables.keys():
-                    gender_id_index = gender_keys.index(gender_visit_variables[gender_id])+1
-                    gender_keys.insert(gender_id_index, gender_visit_variables[gender_id] + '(%)')
-                    gender_values.insert(
-                        gender_id_index, 100 * gender_values[gender_id_index-1]/(1 if gender_total == 0 else gender_total))
-
-                # Insert gender totals
-                gender_keys.append('Total')
-                gender_values.append(gender_total)
-
-                nat_dict.update({
-                    "genders": gender_keys,
-                    "gen_vals": gender_values
-                    })
-
-                visit_type_dict["nationalities"].append(nat_dict)
-
-            # Insert national totals
-            national_totals={"genders":[],"gen_vals":[]}
-
-            # 2 keys and values in the dictionary per gender code plus totat
-            gender_keys_in_dict = 2*len(gender_visit_variables.keys())+1
-
-            for i in range(0,gender_keys_in_dict):
-                national_totals["genders"].append(visit_type_dict["nationalities"][0]["genders"][i])
-                national_totals["gen_vals"].append(sum(item["gen_vals"][i] for item in visit_type_dict["nationalities"]))
-
-            # Calculate national total percentages
-            for i in range(1,gender_keys_in_dict,2):
-                national_totals["gen_vals"][i] = \
-                    100 * national_totals["gen_vals"][i-1]/ \
-                    (1 if national_totals["gen_vals"][-1] == 0 else national_totals["gen_vals"][-1])
-            national_totals["name"]="Total"
-            #return national_totals
-
-            #national_total = sum(item["values"][-1] for item in visit_type_dict["nationalities"])
-
-            visit_type_dict["nationalities"].append(national_totals)
-
-            table_1_data.append(visit_type_dict)
-
-        ret['table_1_data'] = table_1_data
-
-        # Data for Table 2
-        age_category_variables = get_variables('visit_ncd_age')
-
-        table_2_data = []
-
-        # Loop through visit types
-        for visit_type_id in visit_type_variables.keys():
-            visit_type_name = visit_type_variables[visit_type_id]
-            visit_type_dict={"type":visit_type_name,"age_categories":[]}
-
-            # Loop through age categories
-            for age_id in sorted(age_category_variables.keys()):
-                age_name = age_category_variables[age_id]
-                age_dict = {"name":age_name}
-
-                gender_data = query_variable.get(
-                    variable=visit_type_id, 
-                    group_by='visit_gender', 
-                    start_date=start_date.isoformat(),
-                    end_date=end_date.isoformat(), 
-                    only_loc=location, 
-                    use_ids=True, 
-                    date_variable=None, 
-                    additional_variables=[visit_mh_id, age_id]
-                )
-
-
-                gender_keys = []
-                gender_ids = []
-                gender_values = []
-
-                # Fetch standard gender values
-                for gender_id in gender_visit_variables.keys():
-                    gender_keys.append(gender_visit_variables[gender_id])
-                    gender_ids.append(gender_id)
-                    gender_values.append(gender_data[gender_id]["total"])
-
-                # Calculate total
-                gender_total = sum(gender_values)
-
-                # Insert percentages
-                for gender_id in gender_visit_variables.keys():
-                    gender_id_index = gender_keys.index(gender_visit_variables[gender_id])+1
-                    gender_keys.insert(gender_id_index, gender_visit_variables[gender_id] + '(%)')
-                    gender_values.insert(
-                        gender_id_index, (100 * gender_values[gender_id_index-1])/(1 if gender_total == 0 else gender_total))
-
-                # Insert age category totals
-                gender_keys.append('Total')
-                gender_values.append(gender_total)
-
-                age_dict.update({
-                    "genders": gender_keys,
-                    #"ids" : gender_ids,
-                    "gen_vals": gender_values
-                    })
-
-                visit_type_dict["age_categories"].append(age_dict)
-
-            age_total = sum(item["gen_vals"][-1] for item in visit_type_dict["age_categories"])
-
-            visit_type_dict["total"] = age_total
-
-            table_2_data.append(visit_type_dict)
-
-            # Insert age category totals
-            age_category_totals={"genders":[],"gen_vals":[]}
-
-            # 2 keys and values in the dictionary per gender code plus totat
-            gender_keys_in_dict = 2*len(gender_visit_variables.keys())+1
-
-            for i in range(0,gender_keys_in_dict):
-                age_category_totals["genders"].append(visit_type_dict["age_categories"][0]["genders"][i])
-                age_category_totals["gen_vals"].append(sum(item["gen_vals"][i] for item in visit_type_dict["age_categories"]))
-
-            # Calculate age category total percentages
-            for i in range(1,gender_keys_in_dict,2):
-                age_category_totals["gen_vals"][i] = \
-                    100 * age_category_totals["gen_vals"][i-1]/ \
-                    (1 if age_category_totals["gen_vals"][-1] == 0 else age_category_totals["gen_vals"][-1])
-
-            visit_type_dict["age_categories"].append(age_category_totals)
-
-        ret['table_2_data'] = table_2_data
 
         # Table 3 data
         table_3_data = []
@@ -732,7 +668,7 @@ class MhReport(Resource):
             region_dict = {"region":region_name, "region_id": region_id,'nationalities':[]}
 
             region_data = query_variable.get(
-                variable=nat_id, 
+                variable=visit_mh_id, 
                 group_by="nationality",
                 start_date=start_date.isoformat(),
                 end_date=end_date.isoformat(), 
