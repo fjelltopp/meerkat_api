@@ -426,6 +426,21 @@ def generateMHtable(table_type, start_date, end_date, location, y_category_varia
 
     return table_data
 
+
+def transposeMHtable(table, category1, category2, key1, key2):
+    # initialize empty table
+    ret_table = []
+    # initialize category 1
+    for j in range(len(table[0][category1])):
+        ret_table.append({key1:table[0][category1][j][key1], category2:[]})
+    # loop through both categories and transpose table
+    for i in range(len(table)):
+        cat = table[i][key2]
+        for j in range(len(table[i][category1])):
+            ret_table[j][category2].append(table[i][category1][j])
+            ret_table[j][category2][i].update({key2:cat})
+    return ret_table
+
 """
 Ncd Reports to show data on Hypertension and Diabetes. The data includes
 breakdowns by age and on lab data, complications and comorbidity. We create
@@ -731,6 +746,8 @@ class MhReport(Resource):
         # ### Tables
         ### Table 1: visity type / nationality
         ret['table_1_data'] = generateMHtable("visit", start_date, end_date, location, visit_type_variables, "visits", nationality_visit_variables, "nationalities", gender_visit_variables)
+
+        ret['table_1_data'] = transposeMHtable(ret['table_1_data'], "nationalities","visit_types",'name',"type")
 
         ### Table 2: visity type / age
         ret['table_2_data'] = generateMHtable("visit", start_date, end_date, location, visit_type_variables, "visits", age_visit_variables, "age_categories", gender_visit_variables)
