@@ -277,7 +277,7 @@ class NcdReportNewVisits(Resource):
 class NcdReportReturnVisits(Resource):
 
     decorators = [authenticate]
- 
+
     def get(self, location, start_date=None, end_date=None):
         retval = create_ncd_report(location=location, start_date=start_date,\
             end_date=end_date, params=['return'])
@@ -292,7 +292,7 @@ class NcdReport(Resource):
             end_date=end_date, params=['case'])
         return retval
 
-    
+
 def create_ncd_report(location, start_date=None, end_date=None, params=['case']):
 
     start_date, end_date = fix_dates(start_date, end_date)
@@ -319,7 +319,7 @@ def create_ncd_report(location, start_date=None, end_date=None, params=['case'])
     ret["data"]["project_region"] = location_name.name
     tot_clinics = TotClinics()
     ret["data"]["clinic_num"] = tot_clinics.get(location)["total"]
-    
+
     #  Data on Hypertension and Diabebtes, there are two tables for each disease.
     #  One for the age breakdown, and one for labs and complications.
     #  For each table we have rows for each Region.
@@ -386,7 +386,7 @@ def create_ncd_report(location, start_date=None, end_date=None, params=['case'])
 
     locations, ldid, regions, districts, devices = all_location_data(db.session)
     v = Variables()
-  
+
 
     ages = v.get(age_category)
 
@@ -452,7 +452,7 @@ def create_ncd_report(location, start_date=None, end_date=None, params=['case'])
                 })
             if table_two_total == 0:
                 table_two_total = 1
-            
+
             ret[disease]["complications"]["data"][i]["values"].append([disease_gender["Male"]["total"],  disease_gender["Male"]["total"] /table_two_total * 100])
             ret[disease]["complications"]["data"][i]["values"].append([disease_gender["Female"]["total"],  disease_gender["Female"]["total"] / table_two_total * 100])
 
@@ -463,7 +463,7 @@ def create_ncd_report(location, start_date=None, end_date=None, params=['case'])
             if new_id[0]:
                 numerator = query_sum(db, [d_id, new_id[0]] + additional_variables,
                                       start_date, end_date_limit,1, level="region")
-               
+
                 denominator = query_sum(db, [d_id, new_id[1]] + additional_variables,
                                     start_date, end_date_limit, 1, level="region")
 
@@ -474,7 +474,7 @@ def create_ncd_report(location, start_date=None, end_date=None, params=['case'])
                         den = 1
                     ret[disease]["complications"]["data"][i]["values"].append(
                         [int(num), num / den * 100])
-                    
+
                 num = numerator["total"]
                 den = denominator["total"]
                 if den == 0:
@@ -1672,7 +1672,7 @@ class NcdPublicHealth(Resource):
                 dia_incidence[region] = 0
             if region not in hyp_incidence:
                 hyp_incidence[region] = 0
-                
+
             mapped_dia_incidence[locs[region].name] = {
                 'value': int(dia_incidence[region])
             }
@@ -1685,7 +1685,7 @@ class NcdPublicHealth(Resource):
             "figure_hyp_map":  mapped_hyp_incidence
         })
 
-        
+
         return ret
 
 
@@ -2740,10 +2740,11 @@ class AFROBulletin(Resource):
                                              location, 4, end_date=end_date + timedelta(days=2)).data.decode('UTF-8'))
         # Get completeness figures, assuming 4 registers to be submitted a week.
         try:
+            logging.warning(comp['timeline'])
             timeline = comp["timeline"][str(location)]['values']
             ret["data"]["weekly_highlights"]["comp_week"] = comp["score"][str(location)]
             ret["data"]["weekly_highlights"]["comp_year"] = comp["yearly_score"][str(location)]
-        except AttributeError:
+        except (AttributeError, KeyError):
             comp = {"Error": "No data available"}
 
         # Get multi-variable figures.
