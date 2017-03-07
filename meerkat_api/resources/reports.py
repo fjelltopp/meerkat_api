@@ -278,7 +278,17 @@ def generateMHtable(table_type, start_date, end_date, location, y_category_varia
         mh_id = "visit_prc_3"
         gender_groupby="visit_gender"
 
+    # Create an object for totals
+    totals_name = "Totals"
+    totals_dict = {"type":totals_name,x_variables_name:[]}
+    totals_accumulator = {}
 
+    for xcat_id in x_variables.keys():
+        totals_accumulator[xcat_id]=dict()
+        for gender_id in gender_variables.keys():
+            totals_accumulator[xcat_id][gender_id] = 0
+
+    # Here is the main loop
     # Loop through visit types / governorate
     for y_category_id in y_category_variables.keys():
         y_category_name = y_category_variables[y_category_id]
@@ -321,6 +331,7 @@ def generateMHtable(table_type, start_date, end_date, location, y_category_varia
                 gender_keys.append(gender_variables[gender_id])
                 gender_ids.append(gender_id)
                 gender_values.append(gender_data[gender_id]["total"])
+                totals_accumulator[xcat_id][gender_id] = totals_accumulator[xcat_id][gender_id] + gender_data[gender_id]["total"]
 
             # Calculate total
             gender_total = sum(gender_values)
@@ -361,6 +372,57 @@ def generateMHtable(table_type, start_date, end_date, location, y_category_varia
 
         y_category_dict[x_variables_name].append(national_totals)
         table_data.append(y_category_dict)
+    # End of category variables loop
+
+    #append y-totals
+    # Loop through nationalities/age to update percentages
+    for xcat_id in x_variables.keys():
+        gender_keys = []
+        gender_ids = []
+        gender_values = []
+        for gender_id in gender_variables.keys():
+            gender_keys.append(gender_variables[gender_id])
+            gender_ids.append(gender_id)
+            gender_values.append(totals_accumulator[xcat_id][gender_id])
+
+        gender_total = sum(gender_values)
+        # Insert percentages
+        for gender_id in gender_variables.keys():
+            gender_id_index = gender_keys.index(gender_variables[gender_id])+1
+            gender_keys.insert(gender_id_index, gender_variables[gender_id] + '(%)')
+            gender_values.insert(
+                gender_id_index, 100 * gender_values[gender_id_index-1]/(1 if gender_total == 0 else gender_total))
+        # Insert gender totals
+        gender_keys.append('Total')
+        gender_values.append(gender_total)
+
+        xcat_dict.update({
+            "genders": gender_keys,
+            "gen_vals": gender_values
+        })
+        totals_dict[x_variables_name].append(xcat_dict)
+        #for each x_category
+
+    # Insert national totals
+    national_totals={"genders":[],"gen_vals":[]}
+
+    # 2 keys and values in the dictionary per gender code plus totat
+    gender_keys_in_dict = 2*len(gender_variables.keys())+1
+
+    for i in range(0,gender_keys_in_dict):
+        national_totals["genders"].append(totals_dict[x_variables_name][0]["genders"][i])
+        national_totals["gen_vals"].append(sum(item["gen_vals"][i] for item in totals_dict[x_variables_name]))
+
+    # Calculate national/age total percentages
+    for i in range(1,gender_keys_in_dict,2):
+        national_totals["gen_vals"][i] = \
+                                            100 * national_totals["gen_vals"][i-1]/ \
+                                            (1 if national_totals["gen_vals"][-1] == 0 else national_totals["gen_vals"][-1])
+        national_totals["name"]="Total"
+
+    totals_dict[x_variables_name].append(national_totals)
+
+    table_data.append(totals_dict)
 
     return table_data
 
