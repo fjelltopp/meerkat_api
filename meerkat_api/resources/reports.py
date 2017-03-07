@@ -607,10 +607,8 @@ class CdReport(Resource):
         # For now we show last years data
         last_year = current_year - 1
         for reason in data.keys():
-            data[reason]["previous"] = previous_years.get(reason,
-                                                          list(data_list)).get(last_year,
-                                                                               data_list)
-                
+            data[reason]["previous"] = previous_years.get(reason,{last_year:list(data_list)}).get(
+                last_year, list(data_list))
         ret["data"]["communicable_diseases"] = data
         return ret
 
