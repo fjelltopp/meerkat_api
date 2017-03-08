@@ -3374,8 +3374,8 @@ class PlagueReport(Resource):
         ret["data"]["total"] = total
         ret["data"]["confirmed"] = confirmed
         ret["data"]["deaths"] = deaths
-        if deaths == 0:
-            deaths = 1
+        if total == 0:
+            total = 1
         ret["data"]["mortality_rate"] = (deaths / total) * 1000
         
                     
