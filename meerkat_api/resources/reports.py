@@ -330,9 +330,9 @@ def generateMHtable(table_type, start_date, end_date, location, y_category_varia
             for gender_id in gender_variables.keys():
                 gender_keys.append(gender_variables[gender_id])
                 gender_ids.append(gender_id)
-                gender_values.append(gender_data[gender_id]["total"])
-                totals_accumulator[xcat_id][gender_id] = totals_accumulator[xcat_id][gender_id] + gender_data[gender_id]["total"]
-
+                current_val = gender_data[gender_id]["total"]
+                gender_values.append(current_val)
+                totals_accumulator[xcat_id][gender_id] = totals_accumulator[xcat_id][gender_id] + current_val
             # Calculate total
             gender_total = sum(gender_values)
 
