@@ -747,10 +747,10 @@ class MhReport(Resource):
         ### Table 1: visity type / nationality
         ret['table_1_data'] = generateMHtable("visit", start_date, end_date, location, visit_type_variables, "visits", nationality_visit_variables, "nationalities", gender_visit_variables)
 
-        ret['table_1_data'] = transposeMHtable(ret['table_1_data'], "nationalities","visit_types",'name',"type")
 
         ### Table 2: visity type / age
         ret['table_2_data'] = generateMHtable("visit", start_date, end_date, location, visit_type_variables, "visits", age_visit_variables, "age_categories", gender_visit_variables)
+
 
         ### Table 3: governorate / nationality
         ret['table_3_data'] = generateMHtable("case", start_date, end_date, location, region_variables, "regions",  nationality_case_variables, "nationalities", gender_case_variables)
@@ -763,6 +763,12 @@ class MhReport(Resource):
 
         ### Table 6: governorate / age
         ret[ "table_6_data" ] = generateMHtable("case", start_date, end_date, location, disease_variables, "diseases",  age_case_variables, "age_categories", gender_case_variables)
+        ret['table_1_data'] = transposeMHtable(ret['table_1_data'], "nationalities","visit_types",'name',"type")
+        ret['table_2_data'] = transposeMHtable(ret['table_2_data'], "age_categories","visit_types",'name',"type")
+        ret['table_3_data'] = transposeMHtable(ret['table_3_data'], "nationalities","regions",'name',"type")
+        ret['table_4_data'] = transposeMHtable(ret['table_4_data'], "age_categories","regions",'name',"type")
+        ret['table_5_data'] = transposeMHtable(ret['table_5_data'], "nationalities","diseases",'name',"type")
+        ret['table_6_data'] = transposeMHtable(ret['table_6_data'], "age_categories","diseases",'name',"type")
 
         return ret
  
