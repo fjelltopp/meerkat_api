@@ -396,11 +396,10 @@ def generateMHtable(table_type, start_date, end_date, location, y_category_varia
         gender_keys.append('Total')
         gender_values.append(gender_total)
 
-        xcat_dict.update({
+        totals_dict[x_variables_name].append({
             "genders": gender_keys,
             "gen_vals": gender_values
         })
-        totals_dict[x_variables_name].append(xcat_dict)
         #for each x_category
 
     # Insert national totals
