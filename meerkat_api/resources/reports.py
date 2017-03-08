@@ -2736,7 +2736,7 @@ class AFROBulletin(Resource):
                                              location, 4, end_date=end_date + timedelta(days=2)).data.decode('UTF-8'))
         # Get completeness figures, assuming 4 registers to be submitted a week.
         try:
-            logging.warning(comp['timeline'])
+            # TODO: Handle case where there is no completeness data properly.
             timeline = comp["timeline"][str(location)]['values']
             ret["data"]["weekly_highlights"]["comp_week"] = comp["score"][str(location)]
             ret["data"]["weekly_highlights"]["comp_year"] = comp["yearly_score"][str(location)]
