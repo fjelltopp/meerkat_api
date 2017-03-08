@@ -63,3 +63,5 @@ target/
 
 #libreoffice
 .~*
+#for mac
+*.DS_Store
