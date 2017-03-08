@@ -11,15 +11,11 @@ from datetime import datetime
 from geoalchemy2.elements import WKBElement
 from geoalchemy2.shape import to_shape
 # from werkzeug.contrib.profiler import ProfilerMiddleware
-from io import BytesIO
-import flask_excel as excel
 
 import io
 import csv
 import os
 import resource
-import pyexcel
-import logging
 
 # Create the Flask app
 app = Flask(__name__)

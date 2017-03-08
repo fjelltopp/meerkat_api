@@ -277,7 +277,7 @@ class NcdReportNewVisits(Resource):
 class NcdReportReturnVisits(Resource):
 
     decorators = [authenticate]
- 
+
     def get(self, location, start_date=None, end_date=None):
         retval = create_ncd_report(location=location, start_date=start_date,\
             end_date=end_date, params=['return'])
@@ -292,7 +292,7 @@ class NcdReport(Resource):
             end_date=end_date, params=['case'])
         return retval
 
-    
+
 def create_ncd_report(location, start_date=None, end_date=None, params=['case']):
 
     start_date, end_date = fix_dates(start_date, end_date)
@@ -319,7 +319,7 @@ def create_ncd_report(location, start_date=None, end_date=None, params=['case'])
     ret["data"]["project_region"] = location_name.name
     tot_clinics = TotClinics()
     ret["data"]["clinic_num"] = tot_clinics.get(location)["total"]
-    
+
     #  Data on Hypertension and Diabebtes, there are two tables for each disease.
     #  One for the age breakdown, and one for labs and complications.
     #  For each table we have rows for each Region.
@@ -386,7 +386,7 @@ def create_ncd_report(location, start_date=None, end_date=None, params=['case'])
 
     locations, ldid, regions, districts, devices = all_location_data(db.session)
     v = Variables()
-  
+
 
     ages = v.get(age_category)
 
@@ -452,7 +452,7 @@ def create_ncd_report(location, start_date=None, end_date=None, params=['case'])
                 })
             if table_two_total == 0:
                 table_two_total = 1
-            
+
             ret[disease]["complications"]["data"][i]["values"].append([disease_gender["Male"]["total"],  disease_gender["Male"]["total"] /table_two_total * 100])
             ret[disease]["complications"]["data"][i]["values"].append([disease_gender["Female"]["total"],  disease_gender["Female"]["total"] / table_two_total * 100])
 
@@ -463,7 +463,7 @@ def create_ncd_report(location, start_date=None, end_date=None, params=['case'])
             if new_id[0]:
                 numerator = query_sum(db, [d_id, new_id[0]] + additional_variables,
                                       start_date, end_date_limit,1, level="region")
-               
+
                 denominator = query_sum(db, [d_id, new_id[1]] + additional_variables,
                                     start_date, end_date_limit, 1, level="region")
 
@@ -474,7 +474,7 @@ def create_ncd_report(location, start_date=None, end_date=None, params=['case'])
                         den = 1
                     ret[disease]["complications"]["data"][i]["values"].append(
                         [int(num), num / den * 100])
-                    
+
                 num = numerator["total"]
                 den = denominator["total"]
                 if den == 0:
@@ -558,19 +558,7 @@ class CdReport(Resource):
         start_year = ewg["year"]
         year_diff = end_date.year - start_year
         start_epi_week = start_epi_week - year_diff * 52
-        weeks = [i for i in range(start_epi_week, epi_week + 1, 1)]
-
-        nice_weeks = []
-        for w in weeks:
-            i = 0
-            while w <= 0:
-                w += 52
-                i += 1
-            if w == 1:
-                #  This is to add an indication that this is a new year
-                w = "Week 1, " + str(end_date.year - i)
-            nice_weeks.append(w)
-
+        weeks = list(range(1, 53))
         data_list = [0 for week in weeks]
         variable_query = db.session.query(AggregationVariables).filter(
             AggregationVariables.alert == 1)
@@ -578,35 +566,49 @@ class CdReport(Resource):
         for v in variable_query.all():
             variable_names[v.id] = v.name
         #  The loop through all alerts
-        print(all_alerts)
+        current_year = start_date.year
+        previous_years = {}
         for a in all_alerts:
-            if a["date"] <= end_date and a["date"] >= start_date:
-                reason = variable_names[a["variables"]["alert_reason"]]
-                report_status = None
-                if central_review:
-                    if "cre_2" in a["variables"]:
-                        report_status = "confirmed"
-                    elif "cre_3" in a["variables"]:
-                        continue
-                    else:
-                        report_status = "suspected"
+            alert_year = a["date"].year
+            reason = variable_names[a["variables"]["alert_reason"]]
+            report_status = None
+            if central_review:
+                if "cre_2" in a["variables"]:
+                    report_status = "confirmed"
+                elif "cre_3" in a["variables"]:
+                    continue
                 else:
-                    if "ale_2" in a["variables"]:
-                        report_status = "confirmed"
-                    elif "ale_3" in a["variables"]:
-                        continue
-                    else:
-                        report_status = "suspected"
-
-                epi_week = ew.get(a["date"].isoformat())["epi_week"]
-                year_diff = end_date.year - a["date"].year
-                epi_week = epi_week - 52 * year_diff
-                if report_status:
-                    data.setdefault(reason, {"weeks": nice_weeks,
+                    report_status = "suspected"
+            else:
+                if "ale_2" in a["variables"]:
+                    report_status = "confirmed"
+                elif "ale_3" in a["variables"]:
+                    continue
+                else:
+                    report_status = "suspected"
+            
+            epi_week = ew.get(a["date"].isoformat())["epi_week"]
+            if epi_week == 53:
+                if a["date"].month == 1:
+                    epi_week = 1
+                else:
+                    epi_week = 52
+            if report_status:
+                if alert_year == current_year:
+                    data.setdefault(reason, {"weeks": weeks,
                                              "suspected": list(data_list),
                                              "confirmed": list(data_list)})
                     data[reason][report_status][weeks.index(epi_week)] += 1
+                else:
+                    previous_years.setdefault(reason, {})
+                    previous_years[reason].setdefault(alert_year, list(data_list))
+                    previous_years[reason][alert_year][weeks.index(epi_week)] += 1
 
+        # For now we show last years data
+        last_year = current_year - 1
+        for reason in data.keys():
+            data[reason]["previous"] = previous_years.get(reason,{last_year:list(data_list)}).get(
+                last_year, list(data_list))
         ret["data"]["communicable_diseases"] = data
         return ret
 
@@ -786,7 +788,7 @@ class Pip(Resource):
                     make_dict(l.name,
                               num,
                               num / total_cases * 100))
-
+        ret["data"]["reporting_sites"].sort(key=lambda x: x["quantity"], reverse=True)
         # Demographics
         ret["data"]["demographics"] = []
         age =  query_variable.get(sari_code,"age_gender",
@@ -989,7 +991,7 @@ class PublicHealth(Resource):
                               num,
                               num / total_cases * 100))
 
-
+        ret["data"]["reporting_sites"].sort(key=lambda x: x["quantity"], reverse=True)
         # Alerts
         alerts = db.session.query(
             Data.variables["alert_reason"], func.count(Data.uuid).label("count")).filter(
@@ -1281,7 +1283,7 @@ class CdPublicHealth(Resource):
                               num,
                               num / total_cases * 100))
 
-
+        ret["data"]["reporting_sites"].sort(key=lambda x: x["quantity"], reverse=True)
 
 
 
@@ -1569,7 +1571,7 @@ class NcdPublicHealth(Resource):
                     make_dict(l.name,
                               num,
                               num / total_cases * 100))
-
+        ret["data"]["reporting_sites"].sort(key=lambda x: x["quantity"], reverse=True)
         # Demographics
         ret["data"]["demographics"] = []
         age =  query_variable.get("prc_2","ncd_age_gender",
@@ -1668,7 +1670,7 @@ class NcdPublicHealth(Resource):
                 dia_incidence[region] = 0
             if region not in hyp_incidence:
                 hyp_incidence[region] = 0
-                
+
             mapped_dia_incidence[locs[region].name] = {
                 'value': int(dia_incidence[region])
             }
@@ -1681,7 +1683,7 @@ class NcdPublicHealth(Resource):
             "figure_hyp_map":  mapped_hyp_incidence
         })
 
-        
+
         return ret
 
 
@@ -1848,7 +1850,7 @@ class RefugeePublicHealth(Resource):
                     make_dict(locs[clinic].name,
                               num,
                               num / total_cases * 100))
-
+        ret["data"]["reporting_sites"].sort(key=lambda x: x["quantity"], reverse=True)
         #  Demographics
         ret["data"]["demographics"] = []
 
@@ -2736,10 +2738,11 @@ class AFROBulletin(Resource):
                                              location, 4, end_date=end_date + timedelta(days=2)).data.decode('UTF-8'))
         # Get completeness figures, assuming 4 registers to be submitted a week.
         try:
+            logging.warning(comp['timeline'])
             timeline = comp["timeline"][str(location)]['values']
             ret["data"]["weekly_highlights"]["comp_week"] = comp["score"][str(location)]
             ret["data"]["weekly_highlights"]["comp_year"] = comp["yearly_score"][str(location)]
-        except AttributeError:
+        except (AttributeError, KeyError):
             comp = {"Error": "No data available"}
 
         # Get multi-variable figures.
