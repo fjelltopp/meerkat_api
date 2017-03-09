@@ -726,7 +726,7 @@ class MhReport(Resource):
         # Visit variables
         visit_type_variables = {"vis_1":"new", "vis_2":"return", "vis_3":"referral"}
         gender_visit_variables = get_variables('visit_gender')
-        nationality_visit_variables = get_variables('visit_nationality')
+        nationality_visit_variables = get_variables('mh_visit_nationality')
         age_visit_variables = get_variables('visit_ncd_age')
 
         #Case based tables:
