@@ -430,7 +430,7 @@ def export_category(uuid, form_name, category, download_name, variables, data_ty
             # If a translation dictionary is defined in which the key exists...
             if min_translation and k in min_translation and list_row[index]:
                 tr_dict = min_translation[k]
-                parts = [x.strip() for x in list_row[index].split(',')]
+                parts = [x.strip() for x in str(list_row[index]).split(',')]
                 for x in range(len(parts)):
                     # Get the translation using the appropriate key.
                     # If that doesn't exist get the wild card key: *
@@ -446,6 +446,7 @@ def export_category(uuid, form_name, category, download_name, variables, data_ty
         write_xls_row(list_row, i+1, xls_sheet)
         # Append the row to list of rows to be written to csv.
         if i % 200 == 0:
+            logging.warning("{} rows completed...".format(i))
             csv_writer.writerows(list_rows)
             list_rows = []
         i += 1
