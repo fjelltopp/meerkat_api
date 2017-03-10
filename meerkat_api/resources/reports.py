@@ -379,7 +379,7 @@ def generateMHtable(table_type, start_date, end_date, location, y_category_varia
 
     #append y-totals
     # Loop through nationalities/age to update percentages
-    for xcat_id in x_variables.keys():
+    for xcat_id in sorted(x_variables.keys()):
         gender_keys = []
         gender_ids = []
         gender_values = []
