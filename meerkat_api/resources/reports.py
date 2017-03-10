@@ -356,8 +356,11 @@ def generateMHtable(table_type, start_date, end_date, location, y_category_varia
         # Insert national totals
         national_totals={"genders":[],"gen_vals":[]}
 
-        # 2 keys and values in the dictionary per gender code plus totat
-        gender_keys_in_dict = 2*len(gender_variables.keys())+1
+        # 2 keys and values in the dictionary per gender code plus total
+        if len(gender_variables.keys())>0:
+            gender_keys_in_dict = 2*len(gender_variables.keys())+1
+        else:
+            gender_keys_in_dict = 0
 
         for i in range(0,gender_keys_in_dict):
             national_totals["genders"].append(y_category_dict[x_variables_name][0]["genders"][i])
@@ -406,7 +409,10 @@ def generateMHtable(table_type, start_date, end_date, location, y_category_varia
     national_totals={"genders":[],"gen_vals":[]}
 
     # 2 keys and values in the dictionary per gender code plus totat
-    gender_keys_in_dict = 2*len(gender_variables.keys())+1
+    if len(gender_variables.keys())>0:
+        gender_keys_in_dict = 2*len(gender_variables.keys())+1
+    else:
+        gender_keys_in_dict = 0
 
     for i in range(0,gender_keys_in_dict):
         national_totals["genders"].append(totals_dict[x_variables_name][0]["genders"][i])
@@ -427,6 +433,9 @@ def generateMHtable(table_type, start_date, end_date, location, y_category_varia
 
 
 def transposeMHtable(table, category1, category2, key1, key2):
+    if len(table)==0:
+        return table
+
     # initialize empty table
     ret_table = []
     # initialize category 1
