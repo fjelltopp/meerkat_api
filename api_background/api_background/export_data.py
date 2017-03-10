@@ -67,7 +67,7 @@ def export_data(uuid, use_loc_ids=False):
                   "district", "clinic", "clinic_type",
                   "geolocation", "date", "uuid"] + list(variables)
     dict_rows = []
-    
+
     filename = base_folder + "/exported_data/" + uuid + "/data"
     os.mkdir(base_folder + "/exported_data/" + uuid)
     output = open(filename + ".csv", "w")
@@ -318,20 +318,11 @@ def export_category(uuid, form_name, category, download_name, variables, data_ty
                 else:
                     list_row[index] = None
                     continue
-            
+
             if "icd_name$" in form_var:
                 if raw_data["icd_code"] in icd_code_to_name[form_var]:
                     list_row[index] = icd_code_to_name[form_var][raw_data[
                         "icd_code"]]
-                else:
-                    list_row[index] = None
-
-            elif "$date" in form_var:
-                field = form_var.split("$")[0]
-                if field in raw_data and raw_data[field]:
-                    list_row[index] = parse(raw_data[field]).strftime(
-                        "%d/%m/%Y"
-                    )
                 else:
                     list_row[index] = None
             elif form_var == "clinic":
@@ -375,7 +366,10 @@ def export_category(uuid, form_name, category, download_name, variables, data_ty
                 link = form_var.split("$")[1]
                 link_index = link_id_index[link]
                 if r[link_index]:
-                    list_row[index] = r[link_index].get(form_var.split("$")[-1], None)
+                    list_row[index] = r[link_index].get(
+                        form_var.split("$")[2],
+                        None
+                    )
                 else:
                     list_row[index] = None
 
@@ -406,8 +400,17 @@ def export_category(uuid, form_name, category, download_name, variables, data_ty
             elif "value" == form_var.split(":")[0]:
                 list_row[index] = form_var.split(":")[1]
             else:
-                if form_var in raw_data:
-                    list_row[index] = raw_data[form_var]
+                if form_var.split("$")[0] in raw_data:
+                    list_row[index] = raw_data[form_var.split("$")[0]]
+                else:
+                    list_row[index] = None
+
+            # Standardise date formating
+            if "$date" in form_var:
+                if list_row[index]:
+                    list_row[index] = parse(list_row[index]).strftime(
+                        "%d/%m/%Y"
+                    )
                 else:
                     list_row[index] = None
 
@@ -424,11 +427,17 @@ def export_category(uuid, form_name, category, download_name, variables, data_ty
             except (ValueError, TypeError):
                 pass
 
+            # If a translation dictionary is defined in which the key exists...
             if min_translation and k in min_translation and list_row[index]:
                 tr_dict = min_translation[k]
                 parts = [x.strip() for x in list_row[index].split(',')]
                 for x in range(len(parts)):
-                    parts[x] = str(tr_dict.get(parts[x], parts[x]))
+                    # Get the translation using the appropriate key.
+                    # If that doesn't exist get the wild card key: *
+                    # If that doesn't exist just return the value
+                    parts[x] = str(
+                        tr_dict.get(parts[x], tr_dict.get('*', parts[x]))
+                    )
                 list_row[index] = ', '.join(list(filter(bool, parts)))
             if translation_dir and language != "en" and list_row[index]:
                 list_row[index] = t.gettext(list_row[index])
@@ -444,7 +453,7 @@ def export_category(uuid, form_name, category, download_name, variables, data_ty
 
     csv_content.close()
     xls_book.close()
-    
+
     xls_content.close()
     status.status = 1
     status.success = 1
@@ -452,7 +461,9 @@ def export_category(uuid, form_name, category, download_name, variables, data_ty
 
     if query_links:
         link_data.close()
-        filename = os.base_folder + "/exported_data/" + uuid
+        dir_path = os.path.dirname(os.path.realpath(__file__))
+        filename = dir_path + "/exported_data/" + uuid
+        logging.warning("Filename: " + filename)
         if os.path.exists(filename+".dir"):
             os.remove(filename+".dir")
         if os.path.exists(filename+".dat"):
@@ -590,7 +601,7 @@ def export_form(uuid, form, fields=None):
         xls_book.close()
         csv_content.close()
         xls_content.close()
-        
+
         session.add(
             DownloadDataFiles(
                 uuid=uuid,
