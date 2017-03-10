@@ -11,15 +11,12 @@ from datetime import datetime
 from geoalchemy2.elements import WKBElement
 from geoalchemy2.shape import to_shape
 # from werkzeug.contrib.profiler import ProfilerMiddleware
-from io import BytesIO
-import flask_excel as excel
-
+from raven.contrib.flask import Sentry
+from werkzeug.contrib.fixers import ProxyFix
 import io
 import csv
 import os
 import resource
-import pyexcel
-import logging
 
 # Create the Flask app
 app = Flask(__name__)
@@ -33,6 +30,9 @@ if os.environ.get("MEERKAT_API_DB_SETTINGS"):
 
 db = SQLAlchemy(app)
 api = Api(app)
+if app.config["SENTRY_DNS"]:
+    sentry = Sentry(app, dsn=app.config["SENTRY_DNS"])
+app.wsgi_app = ProxyFix(app.wsgi_app)
 
 
 class CustomJSONEncoder(JSONEncoder):
@@ -147,7 +147,7 @@ from meerkat_api.resources.reports import PublicHealth, CdReport, \
     CdPublicHealth, CdPublicHealthMad, NcdPublicHealth,RefugeePublicHealth, \
     RefugeeCd,RefugeeDetail, Pip, WeeklyEpiMonitoring, Malaria, \
     VaccinationReport, AFROBulletin, MhReport, \
-    NcdReport, NcdReportNewVisits, NcdReportReturnVisits
+    NcdReport, NcdReportNewVisits, NcdReportReturnVisits, PlagueReport
 from meerkat_api.resources.frontpage import KeyIndicators, TotMap, NumAlerts, ConsultationMap, RefugeePage, NumClinics
 from meerkat_api.resources.export_data import ExportData, ExportForm, Forms, ExportCategory, GetCSVDownload, GetXLSDownload, GetStatus
 from meerkat_api.resources.incidence import IncidenceRate, WeeklyIncidenceRate
@@ -303,6 +303,9 @@ api.add_resource(AFROBulletin, "/reports/afro/<location>",
 api.add_resource(MhReport, "/reports/mh_report/<location>",
                  "/reports/mh_report/<location>/<end_date>",
                  "/reports/mh_report/<location>/<end_date>/<start_date>")
+api.add_resource(PlagueReport, "/reports/plague/<location>",
+                 "/reports/plague/<location>/<end_date>",
+                 "/reports/plague/<location>/<end_date>/<start_date>")
 
 # Misc
 api.add_resource(NonReporting, "/non_reporting/<variable>/<location>",

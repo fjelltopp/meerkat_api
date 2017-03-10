@@ -344,6 +344,7 @@ cd_report = [
     # Data(**{ "variables":{"alert": 1, "alert_reason": "cmd_11"}, 'clinic': 7, 'uuid': 'uuid:b013c24a-4790-43d6-8b43-4d28a4ce9343', 'date': datetime.datetime(2015, 5, 3, 0, 0), 'region': 2, 'country': 1}),
     Data(**{ "variables":{"alert": 1, "alert_reason": "cmd_11"}, 'clinic': 7, 'uuid': 'uuid:b013c24a-4790-43d6-8b43-4d28a4ce9344', 'date': datetime.datetime(2015, 5, 3, 0, 0), 'region': 2, 'country': 1}),
     Data(**{ "variables":{"alert": 1, "alert_reason": "cmd_1"}, 'clinic': 10, 'uuid': 'uuid:20b2022f-fbe7-43cb-8467-c569397f3f68', 'date': datetime.datetime(2015, 4, 18, 0, 0), 'region': 2, 'country': 1}),
+        Data(**{ "variables":{"alert": 1, "alert_reason": "cmd_1"}, 'clinic': 10, 'uuid': 'uuid:20b2022f-fbe7-43cb-8467-c569397f3f68', 'date': datetime.datetime(2014, 4, 20, 0, 0), 'region': 2, 'country': 1}),
     Data(**{"variables":{"alert": 1, "alert_reason": "cmd_2"}, 'clinic': 7, 'uuid': 'uuid:c51ea7a2-5e2d-4c83-a9a9-85cce0928509', 'date': datetime.datetime(2015, 3, 2, 0, 0), 'region': 2, 'country': 1}),
     Data(**{"variables":{"alert": 1, "alert_reason": "cmd_2"}, 'clinic': 7, 'uuid': 'uuid:c51ea7a2-5e2d-4c83-a9a9-85cce0928510', 'date': datetime.datetime(2015, 5, 2, 0, 0), 'region': 2, 'country': 1}),
     Data(**{"variables":{"alert": 1, "alert_reason": "cmd_19"}, 'clinic': 11, 'uuid': 'uuid:e4e92687-e7e1-4eff-9ec3-4f45421c1e93', 'date': datetime.datetime(2016, 4, 20, 0, 0), 'region': 3, 'country': 1})
