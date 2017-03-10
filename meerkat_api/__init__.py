@@ -11,7 +11,8 @@ from datetime import datetime
 from geoalchemy2.elements import WKBElement
 from geoalchemy2.shape import to_shape
 # from werkzeug.contrib.profiler import ProfilerMiddleware
-
+from raven.contrib.flask import Sentry
+from werkzeug.contrib.fixers import ProxyFix
 import io
 import csv
 import os
@@ -29,6 +30,9 @@ if os.environ.get("MEERKAT_API_DB_SETTINGS"):
 
 db = SQLAlchemy(app)
 api = Api(app)
+if app.config["SENTRY_DNS"]:
+    sentry = Sentry(app, dsn=app.config["SENTRY_DNS"])
+app.wsgi_app = ProxyFix(app.wsgi_app)
 
 
 class CustomJSONEncoder(JSONEncoder):
@@ -143,7 +147,7 @@ from meerkat_api.resources.reports import PublicHealth, CdReport, \
     CdPublicHealth, CdPublicHealthMad, NcdPublicHealth,RefugeePublicHealth, \
     RefugeeCd,RefugeeDetail, Pip, WeeklyEpiMonitoring, Malaria, \
     VaccinationReport, AFROBulletin,\
-    NcdReport, NcdReportNewVisits, NcdReportReturnVisits
+    NcdReport, NcdReportNewVisits, NcdReportReturnVisits, PlagueReport
 from meerkat_api.resources.frontpage import KeyIndicators, TotMap, NumAlerts, ConsultationMap, RefugeePage, NumClinics
 from meerkat_api.resources.export_data import ExportData, ExportForm, Forms, ExportCategory, GetCSVDownload, GetXLSDownload, GetStatus
 from meerkat_api.resources.incidence import IncidenceRate, WeeklyIncidenceRate
@@ -296,6 +300,9 @@ api.add_resource(VaccinationReport, "/reports/vaccination/<location>",
 api.add_resource(AFROBulletin, "/reports/afro/<location>",
                  "/reports/afro/<location>/<end_date>",
                  "/reports/afro/<location>/<end_date>/<start_date>")
+api.add_resource(PlagueReport, "/reports/plague/<location>",
+                 "/reports/plague/<location>/<end_date>",
+                 "/reports/plague/<location>/<end_date>/<start_date>")
 
 # Misc
 api.add_resource(NonReporting, "/non_reporting/<variable>/<location>",

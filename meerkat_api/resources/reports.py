@@ -558,19 +558,7 @@ class CdReport(Resource):
         start_year = ewg["year"]
         year_diff = end_date.year - start_year
         start_epi_week = start_epi_week - year_diff * 52
-        weeks = [i for i in range(start_epi_week, epi_week + 1, 1)]
-
-        nice_weeks = []
-        for w in weeks:
-            i = 0
-            while w <= 0:
-                w += 52
-                i += 1
-            if w == 1:
-                #  This is to add an indication that this is a new year
-                w = "Week 1, " + str(end_date.year - i)
-            nice_weeks.append(w)
-
+        weeks = list(range(1, 53))
         data_list = [0 for week in weeks]
         variable_query = db.session.query(AggregationVariables).filter(
             AggregationVariables.alert == 1)
@@ -578,35 +566,49 @@ class CdReport(Resource):
         for v in variable_query.all():
             variable_names[v.id] = v.name
         #  The loop through all alerts
-        print(all_alerts)
+        current_year = start_date.year
+        previous_years = {}
         for a in all_alerts:
-            if a["date"] <= end_date and a["date"] >= start_date:
-                reason = variable_names[a["variables"]["alert_reason"]]
-                report_status = None
-                if central_review:
-                    if "cre_2" in a["variables"]:
-                        report_status = "confirmed"
-                    elif "cre_3" in a["variables"]:
-                        continue
-                    else:
-                        report_status = "suspected"
+            alert_year = a["date"].year
+            reason = variable_names[a["variables"]["alert_reason"]]
+            report_status = None
+            if central_review:
+                if "cre_2" in a["variables"]:
+                    report_status = "confirmed"
+                elif "cre_3" in a["variables"]:
+                    continue
                 else:
-                    if "ale_2" in a["variables"]:
-                        report_status = "confirmed"
-                    elif "ale_3" in a["variables"]:
-                        continue
-                    else:
-                        report_status = "suspected"
-
-                epi_week = ew.get(a["date"].isoformat())["epi_week"]
-                year_diff = end_date.year - a["date"].year
-                epi_week = epi_week - 52 * year_diff
-                if report_status:
-                    data.setdefault(reason, {"weeks": nice_weeks,
+                    report_status = "suspected"
+            else:
+                if "ale_2" in a["variables"]:
+                    report_status = "confirmed"
+                elif "ale_3" in a["variables"]:
+                    continue
+                else:
+                    report_status = "suspected"
+            
+            epi_week = ew.get(a["date"].isoformat())["epi_week"]
+            if epi_week == 53:
+                if a["date"].month == 1:
+                    epi_week = 1
+                else:
+                    epi_week = 52
+            if report_status:
+                if alert_year == current_year:
+                    data.setdefault(reason, {"weeks": weeks,
                                              "suspected": list(data_list),
                                              "confirmed": list(data_list)})
                     data[reason][report_status][weeks.index(epi_week)] += 1
+                else:
+                    previous_years.setdefault(reason, {})
+                    previous_years[reason].setdefault(alert_year, list(data_list))
+                    previous_years[reason][alert_year][weeks.index(epi_week)] += 1
 
+        # For now we show last years data
+        last_year = current_year - 1
+        for reason in data.keys():
+            data[reason]["previous"] = previous_years.get(reason,{last_year:list(data_list)}).get(
+                last_year, list(data_list))
         ret["data"]["communicable_diseases"] = data
         return ret
 
@@ -786,7 +788,7 @@ class Pip(Resource):
                     make_dict(l.name,
                               num,
                               num / total_cases * 100))
-
+        ret["data"]["reporting_sites"].sort(key=lambda x: x["quantity"], reverse=True)
         # Demographics
         ret["data"]["demographics"] = []
         age =  query_variable.get(sari_code,"age_gender",
@@ -989,7 +991,7 @@ class PublicHealth(Resource):
                               num,
                               num / total_cases * 100))
 
-
+        ret["data"]["reporting_sites"].sort(key=lambda x: x["quantity"], reverse=True)
         # Alerts
         alerts = db.session.query(
             Data.variables["alert_reason"], func.count(Data.uuid).label("count")).filter(
@@ -1281,7 +1283,7 @@ class CdPublicHealth(Resource):
                               num,
                               num / total_cases * 100))
 
-
+        ret["data"]["reporting_sites"].sort(key=lambda x: x["quantity"], reverse=True)
 
 
 
@@ -1569,7 +1571,7 @@ class NcdPublicHealth(Resource):
                     make_dict(l.name,
                               num,
                               num / total_cases * 100))
-
+        ret["data"]["reporting_sites"].sort(key=lambda x: x["quantity"], reverse=True)
         # Demographics
         ret["data"]["demographics"] = []
         age =  query_variable.get("prc_2","ncd_age_gender",
@@ -1848,7 +1850,7 @@ class RefugeePublicHealth(Resource):
                     make_dict(locs[clinic].name,
                               num,
                               num / total_cases * 100))
-
+        ret["data"]["reporting_sites"].sort(key=lambda x: x["quantity"], reverse=True)
         #  Demographics
         ret["data"]["demographics"] = []
 
@@ -2736,7 +2738,7 @@ class AFROBulletin(Resource):
                                              location, 4, end_date=end_date + timedelta(days=2)).data.decode('UTF-8'))
         # Get completeness figures, assuming 4 registers to be submitted a week.
         try:
-            logging.warning(comp['timeline'])
+            # TODO: Handle case where there is no completeness data properly.
             timeline = comp["timeline"][str(location)]['values']
             ret["data"]["weekly_highlights"]["comp_week"] = comp["score"][str(location)]
             ret["data"]["weekly_highlights"]["comp_year"] = comp["yearly_score"][str(location)]
@@ -3254,4 +3256,169 @@ class AFROBulletin(Resource):
             except KeyError:
                 pass
 
+        return ret
+
+
+
+class PlagueReport(Resource):
+    """
+    PlagueReport
+
+    This reports gives a summary of the plague situation
+
+    Args:\n
+       location: Location to generate report for\n
+       start_date: Start date of report\n
+       end_date: End date of report\n
+    Returns:\n
+       report_data\n
+    """
+    decorators = [authenticate]
+
+    def get(self, location, start_date=None, end_date=None):
+
+        # Set default date values to last epi week.
+        today = datetime.now()
+        epi_week = EpiWeek().get()
+        # Initialise some stuff.
+        start_date, end_date = fix_dates(start_date, end_date)
+        end_date_limit = end_date + timedelta(days=1)
+        first_day_of_year = datetime(year=end_date.year,
+                                     month=1, day=1)
+        ret = {}
+
+        #  Meta data.
+        ret["meta"] = {"uuid": str(uuid.uuid4()),
+                       "project_id": 1,
+                       "generation_timestamp": datetime.now().isoformat(),
+                       "schema_version": 0.1
+        }
+
+        #  Dates and Location Information
+        ew = EpiWeek()
+        epi_week = ew.get(end_date.isoformat())["epi_week"]
+        ret["data"] = {"epi_week_num": epi_week,
+                       "end_date": end_date.isoformat(),
+                       "project_epoch": datetime(2015, 5, 20).isoformat(),
+                       "start_date": start_date.isoformat()
+        }
+        locs = get_locations(db.session)
+        if int(location) not in locs:
+            return None
+        location_name = locs[int(location)]
+
+        regions = [loc for loc in locs.keys()
+                   if locs[loc].level == "region"]
+        districts = [loc for loc in locs.keys()
+                     if locs[loc].level == "district"]
+        ret["data"]["project_region"] = location_name.name
+        ret["data"]["project_region_id"] = location
+
+        tot_clinics = TotClinics()
+        ret["data"]["clinic_num"] = tot_clinics.get(location)["total"]
+        plague_code = "cmd_7"
+        start_week = 34
+        current_year = end_date.year
+
+        weeks = list(range(34, 53)) + list(range(1, start_week))
+        print(weeks)
+        data_list = [0 for week in weeks]
+        if epi_week > start_week:
+            current_year = current_year + 1
+        plague_cases = alerts.get_alerts({"location": location, "reason": plague_code})
+
+        # Figure 1: Epi curve for plague cases
+        # Figure 2: Status breakdown 
+        fig_1 = {"weeks": weeks,
+                 "total": list(data_list)}
+        fig_2 = {"weeks": weeks,
+                  "suspected": list(data_list),
+                  "confirmed": list(data_list)}
+
+        total = 0
+        confirmed = 0
+        deaths = 0
+        for case in plague_cases:
+            case_year = case["date"].year
+
+            report_status = None
+            if "ale_2" in case["variables"]:
+                report_status = "confirmed"
+            elif "ale_3" in case["variables"]:
+                continue
+            else:
+                report_status = "suspected"
+            
+            epi_week = ew.get(case["date"].isoformat())["epi_week"]
+            if epi_week == 53:
+                if case["date"].month == 1:
+                    epi_week = 1
+                else:
+                    epi_week = 52
+            if report_status:
+                total += 1
+                if report_status == "confirmed":
+                    confirmed += 1
+                if "pla_3" in case["variables"]:
+                    deaths += 1
+
+                if ((case_year == current_year and epi_week < start_week) or
+                    (case_year == current_year -1 and epi_week >= start_week)):
+                  
+                    fig_2[report_status][weeks.index(epi_week)] += 1
+
+                    fig_1["total"][weeks.index(epi_week)] += 1
+
+        ret["data"]["epi_curve"] = fig_1
+        ret["data"]["status"] = fig_2
+        ret["data"]["total"] = total
+        ret["data"]["confirmed"] = confirmed
+        ret["data"]["deaths"] = deaths
+        if total == 0:
+            total = 1
+        ret["data"]["mortality_rate"] = (deaths / total) * 1000
+        
+                    
+       
+        first_day_of_season = epi_week_start(current_year - 1, start_week)
+        end_date_season = epi_week_start(current_year, start_week) - timedelta(days=1)
+        
+
+        # FIGURE 3: MAP of plague cases
+        plague_cases = {}
+        plague_cases_ret = query_sum(
+            db,
+            [plague_code],
+            first_day_of_season,
+            end_date_season,
+            location,
+            level="district"
+        )["district"]
+        for district in plague_cases_ret.keys():
+            plague_cases[locs[district].name] = {
+                "value": plague_cases_ret[district]
+            }
+        # fill the rest of the districts with zeroes
+        for district in districts:
+            if not locs[district].name in plague_cases:
+                plague_cases.update(
+                    {
+                        locs[district].name: {
+                            "value": 0
+                        }
+                    }
+                )
+        print(plague_cases_ret)
+        ret["data"].update({"plague_map": plague_cases})
+
+        plague_top_3 = top(plague_cases_ret, 3)
+        # For each of the top three regions, structure the data.
+        plague_top = []
+        for dist in plague_top_3:
+            plague_top.insert(0, {
+                'district': locs[dist].name,
+                'number': plague_cases_ret[dist]
+            })
+        ret["data"]["top_plague_dists"] = plague_top
+        
         return ret
