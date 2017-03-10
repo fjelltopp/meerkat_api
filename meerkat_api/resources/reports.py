@@ -295,7 +295,7 @@ def generateMHtable(table_type, start_date, end_date, location, y_category_varia
         y_category_dict={"type":y_category_name,x_variables_name:[]}
 
         # Loop through nationalities/age
-        for xcat_id in x_variables.keys():
+        for xcat_id in sorted(x_variables.keys()):
             xcat_name = x_variables[xcat_id]
             xcat_dict = {"name":xcat_name}
 
