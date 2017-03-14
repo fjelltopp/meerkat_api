@@ -6,6 +6,17 @@ from meerkat_abacus.util import all_location_data, get_db_engine, get_links
 from meerkat_abacus.model import form_tables, Data, Links
 from meerkat_abacus.model import DownloadDataFiles, AggregationVariables
 from meerkat_abacus.config import country_config, config_directory
+import gettext
+
+translation_dir = country_config.get("translation_dir", None)
+
+if translation_dir:
+    try: 
+        t = gettext.translation('messages',  translation_dir, languages=["en", "fr"])
+    except FileNotFoundError:
+        print("Translations not found")
+    
+
 import resource
 import shelve
 from sqlalchemy.orm import aliased
@@ -86,7 +97,7 @@ def export_data(uuid, use_loc_ids=False):
 
 
 @task
-def export_category(uuid, form_name, category, download_name, variables, data_type):
+def export_category(uuid, form_name, category, download_name, variables, data_type, language="en"):
     """
     We take a variable dictionary of form field name: display_name.
     There are some special commands that can be given in the form field name:
@@ -125,6 +136,10 @@ def export_category(uuid, form_name, category, download_name, variables, data_ty
     res = session.query(AggregationVariables).filter(
         AggregationVariables.category.has_key(category)
     )
+    print(language)
+    if language != "en":
+        os.environ["LANGUAGE"] = language
+    
     print(uuid)
     data_keys = []
     cat_variables = {}
@@ -415,7 +430,8 @@ def export_category(uuid, form_name, category, download_name, variables, data_ty
                 for x in range(len(parts)):
                     parts[x] = str(tr_dict.get(parts[x], parts[x]))
                 list_row[index] = ', '.join(list(filter(bool, parts)))
-
+            if translation_dir and language != "en" and list_row[index]:
+                list_row[index] = t.gettext(list_row[index])
         list_rows.append(list_row)
         # Can write row immediately to xls file as memory is flushed after.
         write_xls_row(list_row, i+1, xls_sheet)
