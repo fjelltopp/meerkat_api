@@ -742,7 +742,7 @@ class MhReport(Resource):
         [regions,districts] = get_regions_districts(db.session)
         disease_variables = get_variables('mhgap')
         gender_case_variables = get_variables('gender')
-        nationality_case_variables = get_variables('nationality')
+        nationality_case_variables = get_variables('mh_case_nationality')
         age_case_variables = get_variables('ncd_age')
 
         #Prepare region data to be in the same form as a visit list
