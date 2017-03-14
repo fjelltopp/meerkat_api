@@ -123,7 +123,7 @@ def export_category(uuid, form_name, category, download_name, variables, data_ty
 
     """
     db, session = get_db_engine()
-
+    db2, session2 = get_db_engine()
     status = DownloadDataFiles(
         uuid=uuid,
         generation_time=datetime.now(),
@@ -266,12 +266,19 @@ def export_category(uuid, form_name, category, download_name, variables, data_ty
         link_id_index[l] = i + 2
         columns.append(form.data)
 
-    results = session.query(*columns).join(
+    number_query = session2.query(func.count(Data.id)).join(
+        form_tables[form_name], Data.uuid == form_tables[form_name].uuid)
+    
+    results = session2.query(*columns).join(
         form_tables[form_name], Data.uuid == form_tables[form_name].uuid)
     for join in joins:
         results = results.outerjoin(join[0], join[1])
 
+
+    total_number = number_query.filter(*conditions).first()[0]
     results = results.filter(*conditions).yield_per(200)
+
+    
     locs = get_locations(session)
     list_rows = []
 
@@ -298,6 +305,7 @@ def export_category(uuid, form_name, category, download_name, variables, data_ty
     # Prepare each row
     for r in results:
         list_row = ['']*len(return_keys)
+        dates = {}
         for k in return_keys:
             form_var = translation_dict[k]
             index = return_keys.index(k)
@@ -337,25 +345,33 @@ def export_category(uuid, form_name, category, download_name, variables, data_ty
             elif "$year" in form_var:
                 field = form_var.split("$")[0]
                 if field in raw_data and raw_data[field]:
-                    list_row[index] = parse(raw_data[field]).year
+                    if field not in dates:
+                        dates[field] = parse(raw_data[field])
+                    list_row[index] = dates[field].year
                 else:
                     list_row[index] = None
             elif "$month" in form_var:
                 field = form_var.split("$")[0]
                 if field in raw_data and raw_data[field]:
-                    list_row[index] = parse(raw_data[field]).month
+                    if field not in dates:
+                        dates[field] = parse(raw_data[field])
+                    list_row[index] = dates[field].month
                 else:
                     list_row[index] = None
             elif "$day" in form_var:
                 field = form_var.split("$")[0]
                 if field in raw_data and raw_data[field]:
-                    list_row[index] = parse(raw_data[field]).day
+                    if field not in dates:
+                        dates[field] = parse(raw_data[field])
+                    list_row[index] = dates[field].day
                 else:
                     list_row[index] = None
             elif "$epi_week" in form_var:
                 field = form_var.split("$")[0]
                 if field in raw_data and raw_data[field]:
-                    list_row[index] = epi_week(parse(raw_data[field]))[1]
+                    if field not in dates:
+                        dates[field] = parse(raw_data[field])
+                    list_row[index] = epi_week(dates[field])[1]
                 else:
                     list_row[index] = None
 
@@ -407,8 +423,11 @@ def export_category(uuid, form_name, category, download_name, variables, data_ty
 
             # Standardise date formating
             if "$date" in form_var:
+                field = form_var.split("$")[0]
                 if list_row[index]:
-                    list_row[index] = parse(list_row[index]).strftime(
+                    if field not in dates:
+                        dates[field] = parse(list_row[index])
+                    list_row[index] = dates[field].strftime(
                         "%d/%m/%Y"
                     )
                 else:
@@ -445,10 +464,12 @@ def export_category(uuid, form_name, category, download_name, variables, data_ty
         # Can write row immediately to xls file as memory is flushed after.
         write_xls_row(list_row, i+1, xls_sheet)
         # Append the row to list of rows to be written to csv.
-        if i % 200 == 0:
+        if i % 1000 == 0:
             logging.warning("{} rows completed...".format(i))
             csv_writer.writerows(list_rows)
             list_rows = []
+            status.status = i / total_number
+            session.commit()
         i += 1
     csv_writer.writerows(list_rows)
 
