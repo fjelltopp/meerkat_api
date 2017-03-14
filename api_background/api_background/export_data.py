@@ -94,7 +94,7 @@ def export_data(uuid, use_loc_ids=False):
 
 
 @task
-def export_category(uuid, form_name, category, download_name, variables, data_type, language="fr"):
+def export_category(uuid, form_name, category, download_name, variables, data_type, language="en"):
     """
     We take a variable dictionary of form field name: display_name.
     There are some special commands that can be given in the form field name:
@@ -133,7 +133,7 @@ def export_category(uuid, form_name, category, download_name, variables, data_ty
     res = session.query(AggregationVariables).filter(
         AggregationVariables.category.has_key(category)
     )
-
+    print(language)
     if language != "en":
         os.environ["LANGUAGE"] = language
     
@@ -427,8 +427,7 @@ def export_category(uuid, form_name, category, download_name, variables, data_ty
                 for x in range(len(parts)):
                     parts[x] = str(tr_dict.get(parts[x], parts[x]))
                 list_row[index] = ', '.join(list(filter(bool, parts)))
-            if translation_dir and language != "en":
-                print("translating")
+            if translation_dir and language != "en" and list_row[index]:
                 list_row[index] = t.gettext(list_row[index])
         list_rows.append(list_row)
         # Can write row immediately to xls file as memory is flushed after.

@@ -78,9 +78,9 @@ class ExportCategory(Resource):
             variables = json.loads(request.args["variables"])
         else:
             return "No variables"
-
+        language = request.args.get("language", "en")
         export_category.delay(uid, form_name, category,
-                              download_name, variables, data_type)
+                              download_name, variables, data_type, language=language)
         return uid
 
 
