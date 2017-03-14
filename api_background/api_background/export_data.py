@@ -11,8 +11,11 @@ import gettext
 translation_dir = country_config.get("translation_dir", None)
 
 if translation_dir:
-    print(translation_dir)
-    t = gettext.translation('messages',  translation_dir, languages=["en", "fr"])
+    try: 
+        t = gettext.translation('messages',  translation_dir, languages=["en", "fr"])
+    except FileNotFoundError:
+        print("Translations not found")
+    
 
 import resource
 import shelve
