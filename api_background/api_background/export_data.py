@@ -6,6 +6,17 @@ from meerkat_abacus.util import all_location_data, get_db_engine, get_links
 from meerkat_abacus.model import form_tables, Data, Links
 from meerkat_abacus.model import DownloadDataFiles, AggregationVariables
 from meerkat_abacus.config import country_config, config_directory
+import gettext
+
+translation_dir = country_config.get("translation_dir", None)
+
+if translation_dir:
+    try: 
+        t = gettext.translation('messages',  translation_dir, languages=["en", "fr"])
+    except FileNotFoundError:
+        print("Translations not found")
+    
+
 import resource
 import shelve
 from sqlalchemy.orm import aliased
@@ -56,7 +67,7 @@ def export_data(uuid, use_loc_ids=False):
                   "district", "clinic", "clinic_type",
                   "geolocation", "date", "uuid"] + list(variables)
     dict_rows = []
-    
+
     filename = base_folder + "/exported_data/" + uuid + "/data"
     os.mkdir(base_folder + "/exported_data/" + uuid)
     output = open(filename + ".csv", "w")
@@ -86,7 +97,7 @@ def export_data(uuid, use_loc_ids=False):
 
 
 @task
-def export_category(uuid, form_name, category, download_name, variables, data_type):
+def export_category(uuid, form_name, category, download_name, variables, data_type, language="en"):
     """
     We take a variable dictionary of form field name: display_name.
     There are some special commands that can be given in the form field name:
@@ -112,7 +123,7 @@ def export_category(uuid, form_name, category, download_name, variables, data_ty
 
     """
     db, session = get_db_engine()
-
+    db2, session2 = get_db_engine()
     status = DownloadDataFiles(
         uuid=uuid,
         generation_time=datetime.now(),
@@ -125,6 +136,10 @@ def export_category(uuid, form_name, category, download_name, variables, data_ty
     res = session.query(AggregationVariables).filter(
         AggregationVariables.category.has_key(category)
     )
+    print(language)
+    if language != "en":
+        os.environ["LANGUAGE"] = language
+    
     print(uuid)
     data_keys = []
     cat_variables = {}
@@ -251,12 +266,19 @@ def export_category(uuid, form_name, category, download_name, variables, data_ty
         link_id_index[l] = i + 2
         columns.append(form.data)
 
-    results = session.query(*columns).join(
+    number_query = session2.query(func.count(Data.id)).join(
+        form_tables[form_name], Data.uuid == form_tables[form_name].uuid)
+    
+    results = session2.query(*columns).join(
         form_tables[form_name], Data.uuid == form_tables[form_name].uuid)
     for join in joins:
         results = results.outerjoin(join[0], join[1])
 
+
+    total_number = number_query.filter(*conditions).first()[0]
     results = results.filter(*conditions).yield_per(200)
+
+    
     locs = get_locations(session)
     list_rows = []
 
@@ -283,6 +305,7 @@ def export_category(uuid, form_name, category, download_name, variables, data_ty
     # Prepare each row
     for r in results:
         list_row = ['']*len(return_keys)
+        dates = {}
         for k in return_keys:
             form_var = translation_dict[k]
             index = return_keys.index(k)
@@ -303,20 +326,11 @@ def export_category(uuid, form_name, category, download_name, variables, data_ty
                 else:
                     list_row[index] = None
                     continue
-            
+
             if "icd_name$" in form_var:
                 if raw_data["icd_code"] in icd_code_to_name[form_var]:
                     list_row[index] = icd_code_to_name[form_var][raw_data[
                         "icd_code"]]
-                else:
-                    list_row[index] = None
-
-            elif "$date" in form_var:
-                field = form_var.split("$")[0]
-                if field in raw_data and raw_data[field]:
-                    list_row[index] = parse(raw_data[field]).strftime(
-                        "%d/%m/%Y"
-                    )
                 else:
                     list_row[index] = None
             elif form_var == "clinic":
@@ -331,25 +345,33 @@ def export_category(uuid, form_name, category, download_name, variables, data_ty
             elif "$year" in form_var:
                 field = form_var.split("$")[0]
                 if field in raw_data and raw_data[field]:
-                    list_row[index] = parse(raw_data[field]).year
+                    if field not in dates:
+                        dates[field] = parse(raw_data[field])
+                    list_row[index] = dates[field].year
                 else:
                     list_row[index] = None
             elif "$month" in form_var:
                 field = form_var.split("$")[0]
                 if field in raw_data and raw_data[field]:
-                    list_row[index] = parse(raw_data[field]).month
+                    if field not in dates:
+                        dates[field] = parse(raw_data[field])
+                    list_row[index] = dates[field].month
                 else:
                     list_row[index] = None
             elif "$day" in form_var:
                 field = form_var.split("$")[0]
                 if field in raw_data and raw_data[field]:
-                    list_row[index] = parse(raw_data[field]).day
+                    if field not in dates:
+                        dates[field] = parse(raw_data[field])
+                    list_row[index] = dates[field].day
                 else:
                     list_row[index] = None
             elif "$epi_week" in form_var:
                 field = form_var.split("$")[0]
                 if field in raw_data and raw_data[field]:
-                    list_row[index] = epi_week(parse(raw_data[field]))[1]
+                    if field not in dates:
+                        dates[field] = parse(raw_data[field])
+                    list_row[index] = epi_week(dates[field])[1]
                 else:
                     list_row[index] = None
 
@@ -360,7 +382,10 @@ def export_category(uuid, form_name, category, download_name, variables, data_ty
                 link = form_var.split("$")[1]
                 link_index = link_id_index[link]
                 if r[link_index]:
-                    list_row[index] = r[link_index].get(form_var.split("$")[-1], None)
+                    list_row[index] = r[link_index].get(
+                        form_var.split("$")[2],
+                        None
+                    )
                 else:
                     list_row[index] = None
 
@@ -391,8 +416,20 @@ def export_category(uuid, form_name, category, download_name, variables, data_ty
             elif "value" == form_var.split(":")[0]:
                 list_row[index] = form_var.split(":")[1]
             else:
-                if form_var in raw_data:
-                    list_row[index] = raw_data[form_var]
+                if form_var.split("$")[0] in raw_data:
+                    list_row[index] = raw_data[form_var.split("$")[0]]
+                else:
+                    list_row[index] = None
+
+            # Standardise date formating
+            if "$date" in form_var:
+                field = form_var.split("$")[0]
+                if list_row[index]:
+                    if field not in dates:
+                        dates[field] = parse(list_row[index])
+                    list_row[index] = dates[field].strftime(
+                        "%d/%m/%Y"
+                    )
                 else:
                     list_row[index] = None
 
@@ -409,26 +446,36 @@ def export_category(uuid, form_name, category, download_name, variables, data_ty
             except (ValueError, TypeError):
                 pass
 
+            # If a translation dictionary is defined in which the key exists...
             if min_translation and k in min_translation and list_row[index]:
                 tr_dict = min_translation[k]
-                parts = [x.strip() for x in list_row[index].split(',')]
+                parts = [x.strip() for x in str(list_row[index]).split(',')]
                 for x in range(len(parts)):
-                    parts[x] = str(tr_dict.get(parts[x], parts[x]))
+                    # Get the translation using the appropriate key.
+                    # If that doesn't exist get the wild card key: *
+                    # If that doesn't exist just return the value
+                    parts[x] = str(
+                        tr_dict.get(parts[x], tr_dict.get('*', parts[x]))
+                    )
                 list_row[index] = ', '.join(list(filter(bool, parts)))
-
+            if translation_dir and language != "en" and list_row[index]:
+                list_row[index] = t.gettext(list_row[index])
         list_rows.append(list_row)
         # Can write row immediately to xls file as memory is flushed after.
         write_xls_row(list_row, i+1, xls_sheet)
         # Append the row to list of rows to be written to csv.
-        if i % 200 == 0:
+        if i % 1000 == 0:
+            logging.warning("{} rows completed...".format(i))
             csv_writer.writerows(list_rows)
             list_rows = []
+            status.status = i / total_number
+            session.commit()
         i += 1
     csv_writer.writerows(list_rows)
 
     csv_content.close()
     xls_book.close()
-    
+
     xls_content.close()
     status.status = 1
     status.success = 1
@@ -436,7 +483,9 @@ def export_category(uuid, form_name, category, download_name, variables, data_ty
 
     if query_links:
         link_data.close()
-        filename = os.base_folder + "/exported_data/" + uuid
+        dir_path = os.path.dirname(os.path.realpath(__file__))
+        filename = dir_path + "/exported_data/" + uuid
+        logging.warning("Filename: " + filename)
         if os.path.exists(filename+".dir"):
             os.remove(filename+".dir")
         if os.path.exists(filename+".dat"):
@@ -574,7 +623,7 @@ def export_form(uuid, form, fields=None):
         xls_book.close()
         csv_content.close()
         xls_content.close()
-        
+
         session.add(
             DownloadDataFiles(
                 uuid=uuid,
