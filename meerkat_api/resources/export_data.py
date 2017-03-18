@@ -12,8 +12,8 @@ from meerkat_api.authentication import authenticate
 from meerkat_abacus.task_queue import export_form, export_category, export_data
 
 # Uncomment to run export data during request
-from meerkat_abacus.task_queue import app as celery_app
-celery_app.conf.CELERY_ALWAYS_EAGER = True
+# from meerkat_abacus.task_queue import app as celery_app
+# celery_app.conf.CELERY_ALWAYS_EAGER = True
 
 
 class Forms(Resource):
@@ -80,7 +80,8 @@ class ExportCategory(Resource):
             return "No variables"
         language = request.args.get("language", "en")
         export_category.delay(uid, form_name, category,
-                              download_name, variables, data_type, language=language)
+                              download_name, variables, data_type,
+                              language=language)
         return uid
 
 
