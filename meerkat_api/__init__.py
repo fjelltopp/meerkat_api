@@ -147,7 +147,7 @@ from meerkat_api.resources.reports import PublicHealth, CdReport, \
     CdPublicHealth, CdPublicHealthMad, NcdPublicHealth,RefugeePublicHealth, \
     RefugeeCd,RefugeeDetail, Pip, WeeklyEpiMonitoring, Malaria, \
     VaccinationReport, AFROBulletin,\
-    NcdReport, NcdReportNewVisits, NcdReportReturnVisits, PlagueReport, EBSReport, MHReport
+    NcdReport, NcdReportNewVisits, NcdReportReturnVisits, PlagueReport, EBSReport, MhReport
 
 from meerkat_api.resources.frontpage import KeyIndicators, TotMap, NumAlerts, ConsultationMap, RefugeePage, NumClinics
 from meerkat_api.resources.export_data import ExportData, ExportForm, Forms, ExportCategory, GetCSVDownload, GetXLSDownload, GetStatus
