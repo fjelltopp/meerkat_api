@@ -18,7 +18,7 @@ Vaccination Report
 """
 
 from flask_restful import Resource
-from flask import request
+from flask import request, jsonify
 from sqlalchemy import or_, func, desc, Integer
 from datetime import datetime, timedelta
 from dateutil import parser
@@ -27,7 +27,7 @@ import uuid
 import traceback
 from gettext import gettext
 import logging, json, operator
-from meerkat_api.util import get_children, is_child, fix_dates
+from meerkat_api.util import get_children, is_child, fix_dates, rows_to_dicts
 from meerkat_api import db, app
 from meerkat_abacus.model import Data, Locations, AggregationVariables
 from meerkat_api.resources.completeness import Completeness, NonReporting
@@ -3800,3 +3800,150 @@ class PlagueReport(Resource):
         ret["data"]["top_plague_dists"] = plague_top
         
         return ret
+class EBSReport(Resource):
+    """
+    EBSReport
+
+    This reports gives a summary of the plague situation
+
+    Args:\n
+       location: Location to generate report for\n
+       start_date: Start date of report\n
+       end_date: End date of report\n
+    Returns:\n
+       report_data\n
+    """
+    decorators = [authenticate]
+
+    def get(self, location, start_date=None, end_date=None):
+
+        # Set default date values to last epi week.
+        today = datetime.now()
+        epi_week = EpiWeek().get()
+        # Initialise some stuff.
+        start_date, end_date = fix_dates(start_date, end_date)
+        end_date_limit = end_date + timedelta(days=1)
+        first_day_of_year = datetime(year=end_date.year,
+                                     month=1, day=1)
+        ret = {}
+
+        #  Meta data.
+        ret["meta"] = {"uuid": str(uuid.uuid4()),
+                       "project_id": 1,
+                       "generation_timestamp": datetime.now().isoformat(),
+                       "schema_version": 0.1
+        }
+
+        #  Dates and Location Information
+        ew = EpiWeek()
+        epi_week = ew.get(end_date.isoformat())["epi_week"]
+        ret["data"] = {"epi_week_num": epi_week,
+                       "end_date": end_date.isoformat(),
+                       "project_epoch": datetime(2015, 5, 20).isoformat(),
+                       "start_date": start_date.isoformat()
+        }
+        locs = get_locations(db.session)
+        if int(location) not in locs:
+            return None
+        location_name = locs[int(location)]
+
+        regions = [loc for loc in locs.keys()
+                   if locs[loc].level == "region"]
+        districts = [loc for loc in locs.keys()
+                     if locs[loc].level == "district"]
+        ret["data"]["project_region"] = location_name.name
+        ret["data"]["project_region_id"] = location
+
+        tot_clinics = TotClinics()
+        ret["data"]["clinic_num"] = tot_clinics.get(location)["total"]
+
+
+        # Tot events:
+        tot_events = query_sum(
+            db,
+            ["ebs_case"],
+            start_date,
+            end_date_limit,
+            location,
+            )["total"]
+        ret["data"]["total_events"] = tot_events
+        tot_cases = query_sum(
+            db,
+            ["ebs_cases"],
+            start_date,
+            end_date_limit,
+            location,
+            )["total"]
+        ret["data"]["total_cases"] = tot_cases
+        confirmed = query_sum(
+            db,
+            ["ebs_confirmed"],
+            start_date,
+            end_date_limit,
+            location,
+            )["total"]
+        ret["data"]["confirmed_events"] = confirmed
+        disregarded= query_sum(
+            db,
+            ["ebs_no_confirm"],
+            start_date,
+            end_date_limit,
+            location,
+            )["total"]
+        ret["data"]["disregarded_events"] = disregarded
+
+
+        
+        event_types = get_variables_category("ebs_event_type", start_date, end_date_limit,
+                                              location, db)
+        event_risks = get_variables_category("ebs_risk_level", start_date, end_date_limit,
+                                              location, db)
+        ret["data"]["event_types"] = event_types
+        ret["data"]["event_types_top_2"] = top(event_types, 2)
+        ret["data"]["event_risk_level"] = event_risks
+        ret["data"]["event_risk_level_top_2"] = top(event_risks, 2)
+
+
+        records = db.session.query(Data).filter(
+            Data.variables.has_key(str("ebs_case")),
+            Data.date >= start_date,
+            Data.date < end_date_limit,
+            or_(
+                loc == location for loc in (Data.country,
+                                               Data.region,
+                                               Data.district,
+                                               Data.clinic))).all()
+
+        ret["data"]["records"] = []
+
+        var = Variables()
+
+        ebs_variables = var.get("ebs")
+        ebs_variables["-"] = {"name": "-"}
+        for r in records:
+
+            row = {
+                "reported_date": r.date.isoformat().split("T")[0],
+                "clinic": locs[r.clinic].name,
+                "region": locs[r.region].name,
+                "initial_investigation": r.variables.get("ebs_initial", "-").split("T")[0],
+                "followup_date": r.variables.get("ebs_followup", "-").split("T")[0],
+                "event_type": ebs_variables[r.categories.get("ebs_event_type", "-")]["name"],
+                "risk_level": ebs_variables[r.categories.get("ebs_risk_level", "-")]["name"],
+                "central_review_date":r.variables.get("ebs_central_review", "-").split("T")[0],
+                "outcome": ebs_variables[r.categories.get("ebs_outcome", "-")]["name"],
+            }
+            ret["data"]["records"].append(row)
+
+        ret["data"]["records"].sort(key=lambda element: element["reported_date"],
+                                    reverse=True)
+            
+        mv = MapVariable()
+
+        ebs_map = mv.get("ebs_case", location=location, start_date=start_date.isoformat(),
+                         end_date=end_date_limit.isoformat())
+        ret["data"]["map"] = ebs_map
+        return ret
+
+
+    
