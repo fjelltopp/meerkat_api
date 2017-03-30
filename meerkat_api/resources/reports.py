@@ -297,9 +297,6 @@ def generateMHtable(table_type, start_date, end_date, location, y_category_varia
         for xcat_id in sorted(x_variables.keys()):
             xcat_name = x_variables[xcat_id]
             xcat_dict = {"name": xcat_name}
-
-
-            
             if y_variables_name == "regions":
                 additional_variables = [xcat_id]
                 if require_variable:
@@ -767,6 +764,9 @@ class MhReport(Resource):
 
         service_provider_variables = get_variables('service_provider')
         icd_codes_variables = get_variables('mh_icd_block')
+
+        result_new = get_variables("mh_result_new")
+        result_return = get_variables("mh_result_return")
         
         #Prepare region data to be in the same form as a visit list
         region_variables = dict()
@@ -818,39 +818,38 @@ class MhReport(Resource):
             "case", start_date, end_date, location, mhgap_variables,
             "mhgap",  nationality_case_variables, "nationalities",
             gender_case_variables,
-            "gender")
+            "gender", require_variable="mh_provider_mhgap")
         
         ret['table_8_data'] = generateMHtable(
             "case", start_date, end_date, location, mhgap_variables,
             "mhgap",  age_case_variables, "age_categories",
-            gender_case_variables, "gender")
+            gender_case_variables, "gender",require_variable="mh_provider_mhgap")
         
         ret['table_9_data'] = generateMHtable(
             "case", start_date, end_date, location, icd_codes_variables,
             "mh_icd_block",  nationality_case_variables, "nationalities",
             gender_case_variables,
-            "gender")
+            "gender",require_variable="mh_provider_icd")
         
         ret['table_10_data'] = generateMHtable(
             "case", start_date, end_date, location, icd_codes_variables,
             "mh_icd_block",  age_case_variables, "age_categories",
+            gender_case_variables, "gender",require_variable="mh_provider_icd")
+
+        ret['table_11_data'] = generateMHtable(
+            "visit", start_date, end_date, location, result_new,
+            "mh_result_new",  age_case_variables, "age_categories",
             gender_case_variables, "gender")
-
-
         ret['table_12_data'] = generateMHtable(
+            "visit", start_date, end_date, location, result_return,
+            "mh_result_return",  age_case_variables, "age_categories",
+            gender_case_variables, "gender")
+        ret['table_13_data'] = generateMHtable(
             "visit", start_date, end_date, location, service_provider_variables,
             "service_provider",  age_case_variables, "age_categories",
             gender_case_variables, "gender")
-        
-        ### Table 4: governorate / age
-        # ret['table_4_data'] = generateMHtable("case", start_date, end_date, location, region_variables, "regions",  age_case_variables, "age_categories", gender_case_variables, "gender")
-
-        ### Table 5: governorate / age
-        # ret[ "table_5_data" ] = generateMHtable("case", start_date, end_date, location, disease_variables, "diseases",  nationality_case_variables, "nationalities", gender_case_variables, "gender")
-
-        ### Table 6: governorate / age
-        # ret[ "table_6_data" ] = generateMHtable("case", start_date, end_date, location, disease_variables, "diseases",  age_case_variables, "age_categories", gender_case_variables, "gender")
-
+       
+       
         # Transposing
         
         ret['table_1_data'] = transposeMHtable(ret['table_1_data'], "nationalities","visit_types",'name',"type")
@@ -864,11 +863,11 @@ class MhReport(Resource):
         ret['table_8_data'] = transposeMHtable(ret['table_8_data'], "age_categories","mhgap",'name',"type")
         ret['table_9_data'] = transposeMHtable(ret['table_9_data'], "nationalities","mh_icd_block",'name',"type")
         ret['table_10_data'] = transposeMHtable(ret['table_10_data'], "age_categories","mh_icd_block",'name',"type")
+        ret['table_11_data'] = transposeMHtable(ret['table_11_data'], "age_categories", "mh_result_new",'name',"type")
+        ret['table_12_data'] = transposeMHtable(ret['table_12_data'], "age_categories", "mh_result_return",'name',"type")
 
-        ret['table_12_data'] = transposeMHtable(ret['table_12_data'], "age_categories","service_provider",'name',"type")
-        # ret['table_5_data'] = transposeMHtable(ret['table_5_data'], "nationalities","diseases",'name',"type")
-        # ret['table_6_data'] = transposeMHtable(ret['table_6_data'], "age_categories","diseases",'name',"type")
-
+        ret['table_13_data'] = transposeMHtable(ret['table_13_data'], "age_categories","service_provider",'name',"type")
+        print(ret["table_13_data"])
         return ret
  
 class CdReport(Resource):
