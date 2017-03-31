@@ -1288,7 +1288,6 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
                              "45-64": 0, 
                              ">65": 0
                              })
-        print(data["mental_health"])
         for key in data["mental_health"]["diseases"]:
             if key == "Alcohol or other substance use disorder":
                 self.assertEqual(data["mental_health"]["diseases"][key],
