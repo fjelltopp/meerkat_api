@@ -261,7 +261,7 @@ def order_by_name(data_list):
 
 
 
-def generateMHtable(table_type, start_date, end_date, location, y_category_variables, y_variables_name, x_variables, x_variables_name, gender_variables):
+def generateMHtable(table_type, start_date, end_date, location, y_category_variables, y_variables_name, x_variables, x_variables_name, sub_category_variables, sub_category_name, require_variable=None):
 
     #Define variables
     query_category = QueryCategory()
@@ -269,14 +269,11 @@ def generateMHtable(table_type, start_date, end_date, location, y_category_varia
     y_category_dict = dict()
     table_data = []
     mh_id = ""
-    gender_groupby = ""
 
     if table_type == "case":
         mh_id = "prc_3"
-        gender_groupby = "gender"
     elif table_type == "visit":
         mh_id = "visit_prc_3"
-        gender_groupby = "visit_gender"
 
     # Create an object for totals
     totals_name = "Totals"
@@ -286,98 +283,107 @@ def generateMHtable(table_type, start_date, end_date, location, y_category_varia
 
     for xcat_id in x_variables.keys():
         totals_accumulator[xcat_id] = dict()
-        for gender_id in gender_variables.keys():
-            totals_accumulator[xcat_id][gender_id] = 0
+        for sub_id in sub_category_variables.keys():
+            totals_accumulator[xcat_id][sub_id] = 0
 
     # Here is the main loop
     # Loop through visit types / governorate
     for y_category_id in y_category_variables.keys():
         y_category_name = y_category_variables[y_category_id]
-        y_category_dict={"type": y_category_name,
-                         x_variables_name: []}
+        y_category_dict = {"type": y_category_name,
+                           x_variables_name: []}
 
         # Loop through nationalities/age
         for xcat_id in sorted(x_variables.keys()):
             xcat_name = x_variables[xcat_id]
             xcat_dict = {"name": xcat_name}
-
             if y_variables_name == "regions":
-                gender_data = query_variable.get(
+                additional_variables = [xcat_id]
+                if require_variable:
+                    additional_variables.append(require_variable)
+                sub_data = query_variable.get(
                     variable=mh_id,
-                    group_by=gender_groupby,
+                    group_by=sub_category_name,
                     start_date=start_date.isoformat(),
                     end_date=end_date.isoformat(),
                     only_loc=y_category_id,
                     use_ids=True,
                     date_variable=None,
-                    additional_variables=[xcat_id]
+                    additional_variables=additional_variables,
+
                 )
             else:
-                gender_data = query_variable.get(
+                additional_variables = [y_category_id, xcat_id]
+                if require_variable:
+                    additional_variables.append(require_variable)
+                sub_data = query_variable.get(
                     variable=mh_id,
-                    group_by=gender_groupby,
+                    group_by=sub_category_name,
                     start_date=start_date.isoformat(),
                     end_date=end_date.isoformat(),
                     only_loc=location,
                     use_ids=True,
                     date_variable=None,
-                    additional_variables=[y_category_id, xcat_id]
+                    additional_variables=[y_category_id, xcat_id],
+                    group_by_variables=sub_category_variables,
                 )
 
-            gender_keys = []
-            gender_ids = []
-            gender_values = []
+            sub_category_keys = []
+            sub_category_ids = []
+            sub_category_values = []
 
             # Fetch standard gender values
-            for gender_id in gender_variables.keys():
-                gender_keys.append(gender_variables[gender_id])
-                gender_ids.append(gender_id)
-                current_val = gender_data[gender_id]["total"]
-                gender_values.append(current_val)
-                totals_accumulator[xcat_id][gender_id] = totals_accumulator[xcat_id][gender_id] + current_val
+            for sub_id in sub_category_variables.keys():
+                sub_category_keys.append(sub_category_variables[sub_id])
+                sub_category_ids.append(sub_id)
+                current_val = sub_data[sub_id]["total"]
+                sub_category_values.append(current_val)
+                totals_accumulator[xcat_id][sub_id] = totals_accumulator[xcat_id][sub_id] + current_val
             # Calculate total
-            gender_total = sum(gender_values)
+            sub_category_total = sum(sub_category_values)
 
             # Insert percentages
-            for gender_id in gender_variables.keys():
-                gender_id_index = gender_keys.index(gender_variables[gender_id])+1
-                gender_keys.insert(gender_id_index, gender_variables[gender_id] + '(%)')
-                gender_values.insert(
-                    gender_id_index, 100 * gender_values[gender_id_index-1]/(1 if gender_total == 0 else gender_total))
+            for sub_id in sub_category_variables.keys():
+                sub_id_index = sub_category_keys.index(sub_category_variables[sub_id])+1
+                sub_category_keys.insert(sub_id_index, sub_category_variables[sub_id] + '(%)')
+                sub_category_values.insert(
+                    sub_id_index, 100 *sub_category_values[sub_id_index-1]/(1 if sub_category_total == 0 else sub_category_total))
             # Insert gender totals
-            gender_keys.append('Total')
-            gender_values.append(gender_total)
+            sub_category_keys.append('Total')
+            sub_category_values.append(sub_category_total)
 
             xcat_dict.update({
-                "genders": gender_keys,
-                "gen_vals": gender_values
+                sub_category_name: sub_category_keys,
+                sub_category_name + "_values": sub_category_values
             })
 
             y_category_dict[x_variables_name].append(xcat_dict)
 
         # Insert national totals
-        national_totals={"genders": [],
-                         "gen_vals": []}
+        national_totals = {
+            sub_category_name: [],
+            sub_category_name + "_values": []
+        }
 
         # 2 keys and values in the dictionary per gender code plus total
-        if len(gender_variables.keys()) > 0:
-            gender_keys_in_dict = 2*len(gender_variables.keys())+1
+        if len(sub_category_variables.keys()) > 0:
+            sub_keys_in_dict = 2*len(sub_category_variables.keys())+1
         else:
-            gender_keys_in_dict = 0
+            sub_keys_in_dict = 0
 
-        for i in range(0, gender_keys_in_dict):
+        for i in range(0, sub_keys_in_dict):
             try: 
-                national_totals["genders"].append(y_category_dict[x_variables_name][0]["genders"][i])
-                national_totals["gen_vals"].append(sum(item["gen_vals"][i] for item in y_category_dict[x_variables_name]))
+                national_totals[sub_category_name].append(y_category_dict[x_variables_name][0][sub_category_name][i])
+                national_totals[sub_category_name + "_values"].append(sum(item[sub_category_name + "_values"][i] for item in y_category_dict[x_variables_name]))
             except IndexError:
-                national_totals["genders"].append(0)
-                national_totals["gen_vals"].append(0)
+                national_totals[sub_category_name].append(0)
+                national_totals[sub_category_name + "_values"].append(0)
 
         # Calculate national/age total percentages
-        for i in range(1,gender_keys_in_dict,2):
-            national_totals["gen_vals"][i] = \
-                                                100 * national_totals["gen_vals"][i-1]/ \
-                                                (1 if national_totals["gen_vals"][-1] == 0 else national_totals["gen_vals"][-1])
+        for i in range(1, sub_keys_in_dict, 2):
+            national_totals[sub_category_name + "_values"][i] = \
+                                                100 * national_totals[sub_category_name + "_values"][i-1]/ \
+                                                (1 if national_totals[sub_category_name + "_values"][-1] == 0 else national_totals[sub_category_name + "_values"][-1])
             national_totals["name"]="Total"
 
         y_category_dict[x_variables_name].append(national_totals)
@@ -387,54 +393,57 @@ def generateMHtable(table_type, start_date, end_date, location, y_category_varia
     #append y-totals
     # Loop through nationalities/age to update percentages
     for xcat_id in sorted(x_variables.keys()):
-        gender_keys = []
-        gender_ids = []
-        gender_values = []
-        for gender_id in gender_variables.keys():
-            gender_keys.append(gender_variables[gender_id])
-            gender_ids.append(gender_id)
-            gender_values.append(totals_accumulator[xcat_id][gender_id])
+        sub_category_keys = []
+        sub_category_ids = []
+        sub_category_values = []
+        for sub_category_id in sub_category_variables.keys():
+            sub_category_keys.append(sub_category_variables[sub_category_id])
+            sub_category_ids.append(sub_category_id)
+            sub_category_values.append(totals_accumulator[xcat_id][sub_category_id])
 
-        gender_total = sum(gender_values)
+        sub_category_total = sum(sub_category_values)
         # Insert percentages
-        for gender_id in gender_variables.keys():
-            gender_id_index = gender_keys.index(gender_variables[gender_id])+1
-            gender_keys.insert(gender_id_index, gender_variables[gender_id] + '(%)')
-            gender_values.insert(
-                gender_id_index, 100 * gender_values[gender_id_index-1]/(1 if gender_total == 0 else gender_total))
-        # Insert gender totals
-        gender_keys.append('Total')
-        gender_values.append(gender_total)
+        for sub_category_id in sub_category_variables.keys():
+            sub_category_id_index = sub_category_keys.index(sub_category_variables[sub_category_id])+1
+            sub_category_keys.insert(sub_category_id_index, sub_category_variables[sub_category_id] + '(%)')
+            sub_category_values.insert(
+                sub_category_id_index, 100 * sub_category_values[sub_category_id_index-1]/(1 if sub_category_total == 0 else sub_category_total))
+        # Insert sub_category totals
+        sub_category_keys.append('Total')
+        sub_category_values.append(sub_category_total)
 
         totals_dict[x_variables_name].append({
-            "genders": gender_keys,
-            "gen_vals": gender_values
+            sub_category_name: sub_category_keys,
+            sub_category_name + "_values": sub_category_values
         })
         #for each x_category
 
     # Insert national totals
-    national_totals={"genders":[],"gen_vals":[]}
+    national_totals = {
+        sub_category_name: [],
+        sub_category_name + "_values": []
+    }
 
     # 2 keys and values in the dictionary per gender code plus totat
-    if len(gender_variables.keys())>0:
-        gender_keys_in_dict = 2*len(gender_variables.keys())+1
+    if len(sub_category_variables.keys())>0:
+        sub_category_keys_in_dict = 2*len(sub_category_variables.keys())+1
     else:
-        gender_keys_in_dict = 0
+        sub_category_keys_in_dict = 0
 
-    for i in range(0,gender_keys_in_dict):
+    for i in range(0,sub_category_keys_in_dict):
         try:
-            national_totals["genders"].append(totals_dict[x_variables_name][0]["genders"][i])
-            national_totals["gen_vals"].append(sum(item["gen_vals"][i] for item in totals_dict[x_variables_name]))
+            national_totals[sub_category_name].append(totals_dict[x_variables_name][0][sub_category_name][i])
+            national_totals[sub_category_name + "_values"].append(sum(item[sub_category_name + "_values"][i] for item in totals_dict[x_variables_name]))
         except IndexError:
-            national_totals["genders"].append(0)
-            national_totals["gen_vals"].append(0)
+            national_totals[sub_category_name].append(0)
+            national_totals[sub_category_name + "_values"].append(0)
             
 
     # Calculate national/age total percentages
-    for i in range(1,gender_keys_in_dict,2):
-        national_totals["gen_vals"][i] = \
-                                            100 * national_totals["gen_vals"][i-1]/ \
-                                            (1 if national_totals["gen_vals"][-1] == 0 else national_totals["gen_vals"][-1])
+    for i in range(1,sub_category_keys_in_dict,2):
+        national_totals[sub_category_name + "_values"][i] = \
+                                            100 * national_totals[sub_category_name + "_values"][i-1]/ \
+                                            (1 if national_totals[sub_category_name + "_values"][-1] == 0 else national_totals[sub_category_name + "_values"][-1])
         national_totals["name"]="Total"
 
     totals_dict[x_variables_name].append(national_totals)
@@ -445,9 +454,8 @@ def generateMHtable(table_type, start_date, end_date, location, y_category_varia
 
 
 def transposeMHtable(table, category1, category2, key1, key2):
-    if len(table)==0:
+    if len(table) == 0:
         return table
-
     # initialize empty table
     ret_table = []
     # initialize category 1
@@ -745,51 +753,123 @@ class MhReport(Resource):
         location_name = locs[int(location)].name
 
         # Visit variables
-        visit_type_variables = {"vis_1":"new", "vis_2":"return", "vis_3":"referral"}
+        visit_type_variables = get_variables('visit')
         gender_visit_variables = get_variables('visit_gender')
         nationality_visit_variables = get_variables('mh_visit_nationality')
         age_visit_variables = get_variables('visit_ncd_age')
-
         #Case based tables:
         [regions,districts] = get_regions_districts(db.session)
-        disease_variables = get_variables('mhgap')
+        mhgap_variables = get_variables('mhgap')
         gender_case_variables = get_variables('gender')
         nationality_case_variables = get_variables('mh_case_nationality')
         age_case_variables = get_variables('ncd_age')
 
+        service_provider_variables = get_variables('service_provider')
+        icd_codes_variables = get_variables('mh_icd_block')
+
+        result_new = get_variables("mh_result_new")
+        result_return = get_variables("mh_result_return")
+        
         #Prepare region data to be in the same form as a visit list
         region_variables = dict()
         for region_id in regions:
             region_name = locs[int(region_id)].name
             region_variables[region_id]=region_name
 
-        # ### Tables
-        ### Table 1: visity type / nationality
-        ret['table_1_data'] = generateMHtable("visit", start_date, end_date, location, visit_type_variables, "visits", nationality_visit_variables, "nationalities", gender_visit_variables)
+        # Tables
+        # Table 1: visity type / nationality
+        ret['table_1_data'] = generateMHtable("visit", start_date,
+                                              end_date, location,
+                                              visit_type_variables,
+                                              "visit_types",
+                                              nationality_visit_variables,
+                                              "nationalities",
+                                              gender_visit_variables,
+                                              "visit_gender")
+        # Table 2: visity type / age
+        ret['table_2_data'] = generateMHtable(
+            "visit", start_date, end_date, location, visit_type_variables,
+            "visit_types", age_visit_variables, "age_categories",
+            gender_visit_variables, "visit_gender")
 
+        # Table 3: governorate / nationality / gender
+        ret['table_3_data'] = generateMHtable(
+            "case", start_date, end_date, location, region_variables,
+            "regions",  nationality_case_variables, "nationalities",
+            gender_case_variables,
+            "gender")
+        # Table 4: governorate / nationality / visit_type
+        ret['table_4_data'] = generateMHtable(
+            "visit", start_date, end_date, location, region_variables,
+            "regions",  nationality_visit_variables, "nationalities",
+            visit_type_variables, "visit")
 
-        ### Table 2: visity type / age
-        ret['table_2_data'] = generateMHtable("visit", start_date, end_date, location, visit_type_variables, "visits", age_visit_variables, "age_categories", gender_visit_variables)
+        ret['table_5_data'] = generateMHtable(
+            "case", start_date, end_date, location, region_variables,
+            "regions",  age_case_variables, "age_categories",
+            gender_case_variables,
+            "gender")
+        
+        ret['table_6_data'] = generateMHtable(
+            "visit", start_date, end_date, location, region_variables,
+            "regions",  age_visit_variables, "age_categories",
+            visit_type_variables, "visit")
 
+        ret['table_7_data'] = generateMHtable(
+            "case", start_date, end_date, location, mhgap_variables,
+            "mhgap",  nationality_case_variables, "nationalities",
+            gender_case_variables,
+            "gender", require_variable="mh_provider_mhgap")
+        
+        ret['table_8_data'] = generateMHtable(
+            "case", start_date, end_date, location, mhgap_variables,
+            "mhgap",  age_case_variables, "age_categories",
+            gender_case_variables, "gender",require_variable="mh_provider_mhgap")
+        
+        ret['table_9_data'] = generateMHtable(
+            "case", start_date, end_date, location, icd_codes_variables,
+            "mh_icd_block",  nationality_case_variables, "nationalities",
+            gender_case_variables,
+            "gender",require_variable="mh_provider_icd")
+        
+        ret['table_10_data'] = generateMHtable(
+            "case", start_date, end_date, location, icd_codes_variables,
+            "mh_icd_block",  age_case_variables, "age_categories",
+            gender_case_variables, "gender",require_variable="mh_provider_icd")
 
-        ### Table 3: governorate / nationality
-        ret['table_3_data'] = generateMHtable("case", start_date, end_date, location, region_variables, "regions",  nationality_case_variables, "nationalities", gender_case_variables)
-
-        ### Table 4: governorate / age
-        ret['table_4_data'] = generateMHtable("case", start_date, end_date, location, region_variables, "regions",  age_case_variables, "age_categories", gender_case_variables)
-
-        ### Table 5: governorate / age
-        ret[ "table_5_data" ] = generateMHtable("case", start_date, end_date, location, disease_variables, "diseases",  nationality_case_variables, "nationalities", gender_case_variables)
-
-        ### Table 6: governorate / age
-        ret[ "table_6_data" ] = generateMHtable("case", start_date, end_date, location, disease_variables, "diseases",  age_case_variables, "age_categories", gender_case_variables)
+        ret['table_11_data'] = generateMHtable(
+            "visit", start_date, end_date, location, result_new,
+            "mh_result_new",  age_visit_variables, "age_categories",
+            gender_visit_variables, "gender")
+        ret['table_12_data'] = generateMHtable(
+            "visit", start_date, end_date, location, result_return,
+            "mh_result_return",  age_visit_variables, "age_categories",
+            gender_visit_variables, "gender")
+        ret['table_13_data'] = generateMHtable(
+            "case", start_date, end_date, location, service_provider_variables,
+            "service_provider",  age_case_variables, "age_categories",
+            gender_case_variables, "gender")
+       
+       
+        # Transposing
+        
         ret['table_1_data'] = transposeMHtable(ret['table_1_data'], "nationalities","visit_types",'name',"type")
         ret['table_2_data'] = transposeMHtable(ret['table_2_data'], "age_categories","visit_types",'name',"type")
         ret['table_3_data'] = transposeMHtable(ret['table_3_data'], "nationalities","regions",'name',"type")
-        ret['table_4_data'] = transposeMHtable(ret['table_4_data'], "age_categories","regions",'name',"type")
-        ret['table_5_data'] = transposeMHtable(ret['table_5_data'], "nationalities","diseases",'name',"type")
-        ret['table_6_data'] = transposeMHtable(ret['table_6_data'], "age_categories","diseases",'name',"type")
+        ret['table_4_data'] = transposeMHtable(ret['table_4_data'], "nationalities","regions",'name',"type")
+        
+        ret['table_5_data'] = transposeMHtable(ret['table_5_data'], "age_categories","regions",'name',"type")
+        ret['table_6_data'] = transposeMHtable(ret['table_6_data'], "age_categories","regions",'name',"type")
+        ret['table_7_data'] = transposeMHtable(ret['table_7_data'], "nationalities","mhgap",'name',"type")
+        ret['table_8_data'] = transposeMHtable(ret['table_8_data'], "age_categories","mhgap",'name',"type")
+        ret['table_9_data'] = transposeMHtable(ret['table_9_data'], "nationalities","mh_icd_block",'name',"type")
 
+        ret['table_10_data'] = transposeMHtable(ret['table_10_data'], "age_categories","mh_icd_block",'name',"type")
+        ret['table_11_data'] = transposeMHtable(ret['table_11_data'], "age_categories", "mh_result_new",'name',"type")
+        ret['table_12_data'] = transposeMHtable(ret['table_12_data'], "age_categories", "mh_result_return",'name',"type")
+
+        ret['table_13_data'] = transposeMHtable(ret['table_13_data'], "age_categories","service_provider",'name',"type")
+        print(ret["table_13_data"])
         return ret
  
 class CdReport(Resource):
@@ -1488,7 +1568,6 @@ class CdPublicHealth(Resource):
 
         ret["data"]["public_health_indicators"] = [
             make_dict(gettext("Cases Reported"), total_cases, 100)]
-
         if total_cases == 0:
             total_cases = 1
         query_variable = QueryVariable()
