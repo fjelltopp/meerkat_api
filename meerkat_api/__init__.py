@@ -10,7 +10,7 @@ from flask_restful import Api
 from datetime import datetime
 from geoalchemy2.elements import WKBElement
 from geoalchemy2.shape import to_shape
-#from werkzeug.contrib.profiler import ProfilerMiddleware
+# from werkzeug.contrib.profiler import ProfilerMiddleware
 from raven.contrib.flask import Sentry
 from werkzeug.contrib.fixers import ProxyFix
 import io
@@ -33,7 +33,7 @@ api = Api(app)
 if app.config["SENTRY_DNS"]:
     sentry = Sentry(app, dsn=app.config["SENTRY_DNS"])
 app.wsgi_app = ProxyFix(app.wsgi_app)
-
+# app.wsgi_app = ProfilerMiddleware(app.wsgi_app, restrictions=(50,))
 
 class CustomJSONEncoder(JSONEncoder):
     """

@@ -16,9 +16,6 @@ from meerkat_api.resources.variables import Variables
 from meerkat_api.resources.epi_week import EpiWeek
 from meerkat_api.authentication import authenticate
 
-
-
-
 def get_variables(category):
     """
     Get variables with category
@@ -89,7 +86,8 @@ class QueryVariable(Resource):
     decorators = [authenticate]
 
     def get(self, variable, group_by, start_date=None,
-            end_date=None, only_loc=None, use_ids=None, date_variable=None, additional_variables=None):
+            end_date=None, only_loc=None, use_ids=None, date_variable=None, additional_variables=None,
+            group_by_variables=None):
 
         variable = str(variable)
 
@@ -114,8 +112,7 @@ class QueryVariable(Resource):
                 Data.country, Data.region, Data.district, Data.clinic))]
         else:
             conditions = [Data.variables.has_key(variable)] + date_conditions
-
-            if additional_variables: 
+            if additional_variables:
             # add additional variable filters if there are and
                 for i in additional_variables:
                     conditions.append(Data.variables.has_key(i))
@@ -129,7 +126,6 @@ class QueryVariable(Resource):
         epi_week_start = epi_year_start(year)
         # Determine which columns we want to extract from the Data table
         columns_to_extract = [func.count(Data.id).label('value')]
-
         if date_variable:
             columns_to_extract.append(func.floor(
                 extract('days', func.to_date(Data.variables[date_variable].astext, "YYYY-MM-DDTHH-MI-SS") -
@@ -144,7 +140,7 @@ class QueryVariable(Resource):
             )
         # We want to add the columns to extract based on the group_by value
         # in addition we create a names dict that translates ids to names
-        
+
         if "locations" in group_by:
             # If we have locations in group_by we also specify the level at
             #  which we want to group the locations, clinic, district or region
@@ -160,7 +156,10 @@ class QueryVariable(Resource):
             columns_to_extract += [getattr(Data, level, None)]
             group_by_query = level
         else:
-            names = get_variables(group_by)
+            if not group_by_variables:
+                names = get_variables(group_by)
+            else:
+                names = group_by_variables
             if len(names) == 0:
                 return {}
             ids = names.keys()
@@ -168,10 +167,8 @@ class QueryVariable(Resource):
                 columns_to_extract.append(
                     Data.variables.has_key(str(i)).label("id" + str(i)))
             group_by_query = ",".join(["id" + str(i) for i in ids])
-
         if use_ids:
             names = {vid: vid for vid in names.keys()}
-
         ew = EpiWeek()
         start_week = ew.get(start_date.isoformat())["epi_week"]
         end_week = ew.get(end_date.isoformat())["epi_week"]
@@ -181,16 +178,19 @@ class QueryVariable(Resource):
             end_week += 53 * (end_date.year - start_date.year)
         if start_week == 0:
             start_week = 1
+
         # DB Query
+
+
         results = db.session.query(
             *tuple(columns_to_extract)
         ).filter(*conditions).group_by("week," + group_by_query)
-
         # Assemble return dict
         ret = {}
         for n in names.values():
             ret[n] = {"total": 0,
                       "weeks": {i: 0 for i in range(start_week, end_week + 1)}}
+            
         for r in results:
             # r = (number, week, other_columns_to_extract
             if "locations" in group_by:

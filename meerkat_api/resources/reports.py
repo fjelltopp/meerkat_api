@@ -309,7 +309,8 @@ def generateMHtable(table_type, start_date, end_date, location, y_category_varia
                     only_loc=y_category_id,
                     use_ids=True,
                     date_variable=None,
-                    additional_variables=additional_variables
+                    additional_variables=additional_variables,
+
                 )
             else:
                 additional_variables = [y_category_id, xcat_id]
@@ -323,7 +324,8 @@ def generateMHtable(table_type, start_date, end_date, location, y_category_varia
                     only_loc=location,
                     use_ids=True,
                     date_variable=None,
-                    additional_variables=[y_category_id, xcat_id]
+                    additional_variables=[y_category_id, xcat_id],
+                    group_by_variables=sub_category_variables,
                 )
 
             sub_category_keys = []
@@ -784,7 +786,6 @@ class MhReport(Resource):
                                               "nationalities",
                                               gender_visit_variables,
                                               "visit_gender")
-
         # Table 2: visity type / age
         ret['table_2_data'] = generateMHtable(
             "visit", start_date, end_date, location, visit_type_variables,
@@ -838,14 +839,14 @@ class MhReport(Resource):
 
         ret['table_11_data'] = generateMHtable(
             "visit", start_date, end_date, location, result_new,
-            "mh_result_new",  age_case_variables, "age_categories",
-            gender_case_variables, "gender")
+            "mh_result_new",  age_visit_variables, "age_categories",
+            gender_visit_variables, "gender")
         ret['table_12_data'] = generateMHtable(
             "visit", start_date, end_date, location, result_return,
-            "mh_result_return",  age_case_variables, "age_categories",
-            gender_case_variables, "gender")
+            "mh_result_return",  age_visit_variables, "age_categories",
+            gender_visit_variables, "gender")
         ret['table_13_data'] = generateMHtable(
-            "visit", start_date, end_date, location, service_provider_variables,
+            "case", start_date, end_date, location, service_provider_variables,
             "service_provider",  age_case_variables, "age_categories",
             gender_case_variables, "gender")
        
@@ -862,6 +863,7 @@ class MhReport(Resource):
         ret['table_7_data'] = transposeMHtable(ret['table_7_data'], "nationalities","mhgap",'name',"type")
         ret['table_8_data'] = transposeMHtable(ret['table_8_data'], "age_categories","mhgap",'name',"type")
         ret['table_9_data'] = transposeMHtable(ret['table_9_data'], "nationalities","mh_icd_block",'name',"type")
+
         ret['table_10_data'] = transposeMHtable(ret['table_10_data'], "age_categories","mh_icd_block",'name',"type")
         ret['table_11_data'] = transposeMHtable(ret['table_11_data'], "age_categories", "mh_result_new",'name',"type")
         ret['table_12_data'] = transposeMHtable(ret['table_12_data'], "age_categories", "mh_result_return",'name',"type")
@@ -1566,7 +1568,6 @@ class CdPublicHealth(Resource):
 
         ret["data"]["public_health_indicators"] = [
             make_dict(gettext("Cases Reported"), total_cases, 100)]
-
         if total_cases == 0:
             total_cases = 1
         query_variable = QueryVariable()
