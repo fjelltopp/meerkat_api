@@ -33,7 +33,7 @@ api = Api(app)
 if app.config["SENTRY_DNS"]:
     sentry = Sentry(app, dsn=app.config["SENTRY_DNS"])
 app.wsgi_app = ProxyFix(app.wsgi_app)
-
+# app.wsgi_app = ProfilerMiddleware(app.wsgi_app, restrictions=(50,))
 
 class CustomJSONEncoder(JSONEncoder):
     """
@@ -146,8 +146,9 @@ from meerkat_api.resources.completeness import Completeness, NonReporting
 from meerkat_api.resources.reports import PublicHealth, CdReport, \
     CdPublicHealth, CdPublicHealthMad, NcdPublicHealth,RefugeePublicHealth, \
     RefugeeCd,RefugeeDetail, Pip, WeeklyEpiMonitoring, Malaria, \
-    VaccinationReport, AFROBulletin, MhReport, \
-    NcdReport, NcdReportNewVisits, NcdReportReturnVisits, PlagueReport
+    VaccinationReport, AFROBulletin,\
+    NcdReport, NcdReportNewVisits, NcdReportReturnVisits, PlagueReport, EBSReport, MhReport
+
 from meerkat_api.resources.frontpage import KeyIndicators, TotMap, NumAlerts, ConsultationMap, RefugeePage, NumClinics
 from meerkat_api.resources.export_data import ExportData, ExportForm, Forms, ExportCategory, GetCSVDownload, GetXLSDownload, GetStatus
 from meerkat_api.resources.incidence import IncidenceRate, WeeklyIncidenceRate
@@ -306,6 +307,9 @@ api.add_resource(MhReport, "/reports/mh_report/<location>",
 api.add_resource(PlagueReport, "/reports/plague/<location>",
                  "/reports/plague/<location>/<end_date>",
                  "/reports/plague/<location>/<end_date>/<start_date>")
+api.add_resource(EBSReport, "/reports/ebs/<location>",
+                 "/reports/ebs/<location>/<end_date>",
+                 "/reports/ebs/<location>/<end_date>/<start_date>")
 
 # Misc
 api.add_resource(NonReporting, "/non_reporting/<variable>/<location>",

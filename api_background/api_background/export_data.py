@@ -206,7 +206,7 @@ def export_category(uuid, form_name, category, download_name, variables, data_ty
             return_keys.append(v[1])
             translation_dict[v[1]] = v[0]
         if "icd_name$" in v[0]:
-            category = v[0].split("$")[1]
+            category = v[0].split("$")[-1]
             cat_variables = {}
             res = session.query(AggregationVariables).filter(
                 AggregationVariables.category.has_key(category)
@@ -328,9 +328,14 @@ def export_category(uuid, form_name, category, download_name, variables, data_ty
                     continue
 
             if "icd_name$" in form_var:
-                if raw_data["icd_code"] in icd_code_to_name[form_var]:
+                fields = form_var.split("$")
+                if len(fields) > 2:
+                    field = fields[1]
+                else:
+                    field = "icd_code"
+                if raw_data[field] in icd_code_to_name[form_var]:
                     list_row[index] = icd_code_to_name[form_var][raw_data[
-                        "icd_code"]]
+                        field]]
                 else:
                     list_row[index] = None
             elif form_var == "clinic":
