@@ -324,7 +324,7 @@ def generateMHtable(table_type, start_date, end_date, location, y_category_varia
                     only_loc=location,
                     use_ids=True,
                     date_variable=None,
-                    additional_variables=[y_category_id, xcat_id],
+                    additional_variables=additional_variables,
                     group_by_variables=sub_category_variables,
                 )
 
