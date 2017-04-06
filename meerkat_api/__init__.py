@@ -13,6 +13,7 @@ from geoalchemy2.shape import to_shape
 # from werkzeug.contrib.profiler import ProfilerMiddleware
 from raven.contrib.flask import Sentry
 from werkzeug.contrib.fixers import ProxyFix
+from meerkat_libs.logger_client import FlaskActivityLogger
 import io
 import csv
 import os
@@ -27,7 +28,7 @@ if os.environ.get("MEERKAT_API_DB_SETTINGS"):
         "MEERKAT_API_DB_URL"
     )
 
-
+FlaskActivityLogger(app)
 db = SQLAlchemy(app)
 api = Api(app)
 if app.config["SENTRY_DNS"]:

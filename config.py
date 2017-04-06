@@ -41,7 +41,10 @@ class Config(object):
     SENTRY_DNS = from_env('SENTRY_DNS', '')
     INTERNAL_DEVICE_API_ROOT = from_env("INTERNAL_API_ROOT", 'http://dev_nginx_1/mob')
     EXTERNAL_DEVICE_API_ROOT = '/mob'
-
+    LOGGING_URL = "http://nginx/logging"
+    LOGGING_SOURCE = "api"
+    LOGGING_SOUCRE_TYPE = "api"
+    LOGGING_IMPLEMENTAION = "demo"
     
 class Production(Config):
     DEBUG = False
