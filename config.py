@@ -44,7 +44,7 @@ class Config(object):
 
     LOGGING_URL = os.getenv("LOGGING_URL", None)
     LOGGING_SOURCE = os.getenv("LOGGING_SOURCE", "frontend")
-    LOGGING_SOUCRE_TYPE = "api"
+    LOGGING_SOURCE_TYPE = "api"
     LOGGING_IMPLEMENTAION = os.getenv("LOGGING_IMPLEMENTAION", "demo")
     
 class Production(Config):
