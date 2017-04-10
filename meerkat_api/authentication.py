@@ -1,13 +1,14 @@
-from flask import abort, request, current_app
+from flask import request, current_app
 from functools import wraps
-import authorise as auth
+from meerkat_libs.auth_client import auth
 import logging
+
 
 def authenticate(f):
     """
-    Decorator to require api authentication 
-    
-    Args: 
+    Decorator to require api authentication
+
+    Args:
         f: flask function
     Returns:
        function: decorated function or abort(401)

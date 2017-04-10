@@ -10,7 +10,6 @@ from flask_restful import Api
 from datetime import datetime
 from geoalchemy2.elements import WKBElement
 from geoalchemy2.shape import to_shape
-# from werkzeug.contrib.profiler import ProfilerMiddleware
 from raven.contrib.flask import Sentry
 from werkzeug.contrib.fixers import ProxyFix
 import io
@@ -33,7 +32,7 @@ api = Api(app)
 if app.config["SENTRY_DNS"]:
     sentry = Sentry(app, dsn=app.config["SENTRY_DNS"])
 app.wsgi_app = ProxyFix(app.wsgi_app)
-# app.wsgi_app = ProfilerMiddleware(app.wsgi_app, restrictions=(50,))
+
 
 class CustomJSONEncoder(JSONEncoder):
     """
@@ -144,10 +143,11 @@ from meerkat_api.resources.explore import QueryVariable, QueryCategory
 from meerkat_api.resources.epi_week import EpiWeek, EpiWeekStart
 from meerkat_api.resources.completeness import Completeness, NonReporting
 from meerkat_api.resources.reports import PublicHealth, CdReport, \
-    CdPublicHealth, CdPublicHealthMad, NcdPublicHealth,RefugeePublicHealth, \
-    RefugeeCd,RefugeeDetail, Pip, WeeklyEpiMonitoring, Malaria, \
+    CdPublicHealth, CdPublicHealthMad, NcdPublicHealth, RefugeePublicHealth, \
+    RefugeeCd, RefugeeDetail, Pip, WeeklyEpiMonitoring, Malaria, \
     VaccinationReport, AFROBulletin,\
-    NcdReport, NcdReportNewVisits, NcdReportReturnVisits, PlagueReport, EBSReport, MhReport
+    NcdReport, NcdReportNewVisits, NcdReportReturnVisits, PlagueReport, \
+    EBSReport, MhReport
 
 from meerkat_api.resources.frontpage import KeyIndicators, TotMap, NumAlerts, ConsultationMap, RefugeePage, NumClinics
 from meerkat_api.resources.export_data import ExportData, ExportForm, Forms, ExportCategory, GetCSVDownload, GetXLSDownload, GetStatus
@@ -155,10 +155,7 @@ from meerkat_api.resources.incidence import IncidenceRate, WeeklyIncidenceRate
 from meerkat_api.resources.devices import Devices
 #from meerkat_api.resources.links import Link, Links
 
-
-
 # All urls
-
 # Epi weeks
 api.add_resource(EpiWeek, "/epi_week",
                  "/epi_week/<date>")
