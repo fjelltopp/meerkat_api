@@ -6,7 +6,7 @@ env:
   MEERKAT_BRANCH='development' MEERKAT_API_SETTINGS='../.travis_config'
   DATA_DIRECTORY='/home/travis/build/meerkat-code/meerkat_api/meerkat_abacus/meerkat_abacus/data/'
   COUNTRY_CONFIG_DIR='/home/travis/build/meerkat-code/meerkat_api/meerkat_abacus/meerkat_abacus/country_config/'
-  MEERKAT_AUTH_SETTINGS='/home/travis/build/meerkat-code/meerkat_api/meerkat_auth/auth.cfg'
+  MEERKAT_AUTH_SETTINGS='/home/travis/build/meerkat-code/meerkat_api/meerkat_libs/meerkat_libs/auth_client/sample_auth.cfg'
 
 addons:
   postgresql: '9.4'
@@ -25,9 +25,9 @@ install:
 - cd api_background
 - pip install .
 - cd ..
-- git clone https://github.com/meerkat-code/meerkat_auth.git
-- pip install -r meerkat_auth/requirements.txt
-- export PYTHONPATH=$PYTHONPATH:$HOME/build/meerkat-code/meerkat_api/meerkat_auth/meerkat_auth
+- git clone https://github.com/meerkat-code/meerkat_libs.git
+- pip install -r meerkat_libs/requirements.txt
+- export PYTHONPATH=$PYTHONPATH:$HOME/build/meerkat-code/meerkat_api/meerkat_libs
 - git clone https://github.com/meerkat-code/meerkat_abacus.git
 - pip install -r meerkat_abacus/requirements.txt
 - cd meerkat_abacus
