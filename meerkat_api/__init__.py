@@ -19,7 +19,7 @@ import resource
 
 # Create the Flask app
 app = Flask(__name__)
-app.config.from_object('config.Config')
+app.config.from_object('meerkat_api.config.Config')
 app.config.from_envvar('MEERKAT_API_SETTINGS', silent=True)
 if os.environ.get("MEERKAT_API_DB_SETTINGS"):
     app.config["SQLALCHEMY_DATABASE_URL"] = os.environ.get(
