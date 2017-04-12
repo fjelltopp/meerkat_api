@@ -4024,5 +4024,25 @@ class CTCReport(Resource):
 
         # List of clinics that do not have case management or wash etc.
 
+
+        # Clinic sheets
+
+        # Get list of clinics that will be in scope
+        clinic_list = []
+
+        # Initialize data structure for clinic data
+        clinic_data_list = []
+
+        # Loop through clinics
+        for clinic in clinic_list:
+
+            # Initialize data structure for current clinic
+            clinic_data = {}
+
+            # Append clinic data to clinic data list
+            clinic_data_list.append(clinic_data)
+
+        ret.update({'clinic_data' : clinic_data_list})
+
         return ret
     
