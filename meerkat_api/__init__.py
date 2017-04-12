@@ -147,7 +147,7 @@ from meerkat_api.resources.reports import PublicHealth, CdReport, \
     RefugeeCd, RefugeeDetail, Pip, WeeklyEpiMonitoring, Malaria, \
     VaccinationReport, AFROBulletin,\
     NcdReport, NcdReportNewVisits, NcdReportReturnVisits, PlagueReport, \
-    EBSReport, MhReport
+    EBSReport, MhReport, CTCReport
 
 from meerkat_api.resources.frontpage import KeyIndicators, TotMap, NumAlerts, ConsultationMap, RefugeePage, NumClinics
 from meerkat_api.resources.export_data import ExportData, ExportForm, Forms, ExportCategory, GetCSVDownload, GetXLSDownload, GetStatus
@@ -307,6 +307,9 @@ api.add_resource(PlagueReport, "/reports/plague/<location>",
 api.add_resource(EBSReport, "/reports/ebs/<location>",
                  "/reports/ebs/<location>/<end_date>",
                  "/reports/ebs/<location>/<end_date>/<start_date>")
+api.add_resource(CTCReport, "/reports/ctc/<location>",
+                 "/reports/ctc/<location>/<end_date>",
+                 "/reports/ctc/<location>/<end_date>/<start_date>")
 
 # Misc
 api.add_resource(NonReporting, "/non_reporting/<variable>/<location>",

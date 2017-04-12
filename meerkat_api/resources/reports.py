@@ -3945,5 +3945,63 @@ class EBSReport(Resource):
         ret["data"]["map"] = ebs_map
         return ret
 
+class CTCReport(Resource):
 
+    """
+    CTCReport
+
+    This reports gives a summary of the Cholera Treatment Centre surveillance
+
+    Args:\n
+       location: Location to generate report for\n
+       start_date: Start date of report\n
+       end_date: End date of report\n
+    Returns:\n
+       report_data\n
+    """
+    decorators = [authenticate]
+
+    def get(self, location, start_date=None, end_date=None):
+
+        # Set default date values to last epi week.
+        today = datetime.now()
+        epi_week = EpiWeek().get()
+        # Initialise some stuff.
+        start_date, end_date = fix_dates(start_date, end_date)
+        end_date_limit = end_date + timedelta(days=1)
+        first_day_of_year = datetime(year=end_date.year,
+                                     month=1, day=1)
+        ret = {}
+
+        #  Meta data.
+        ret["meta"] = {"uuid": str(uuid.uuid4()),
+                       "project_id": 1,
+                       "generation_timestamp": datetime.now().isoformat(),
+                       "schema_version": 0.1
+        }
+
+        #  Dates and Location Information
+        ew = EpiWeek()
+        epi_week = ew.get(end_date.isoformat())["epi_week"]
+        ret["data"] = {"epi_week_num": epi_week,
+                       "end_date": end_date.isoformat(),
+                       "project_epoch": datetime(2015, 5, 20).isoformat(),
+                       "start_date": start_date.isoformat()
+        }
+        locs = get_locations(db.session)
+        if int(location) not in locs:
+            return None
+        location_name = locs[int(location)]
+
+        regions = [loc for loc in locs.keys()
+                   if locs[loc].level == "region"]
+        districts = [loc for loc in locs.keys()
+                     if locs[loc].level == "district"]
+        ret["data"]["project_region"] = location_name.name
+        ret["data"]["project_region_id"] = location
+
+        tot_clinics = TotClinics()
+        ret["data"]["clinic_num"] = tot_clinics.get(location)["total"]
+
+        return ret
     
