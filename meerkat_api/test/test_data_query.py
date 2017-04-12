@@ -16,6 +16,7 @@ class DataQueryTests(unittest.TestCase):
         db_util.insert_codes(db.session)
         db_util.insert_locations(db.session)
         db_util.insert_cases(db.session, "public_health_report")
+
         
     def test_query_sum(self):
         """ Test basic query_sum functionality"""
@@ -104,3 +105,41 @@ class DataQueryTests(unittest.TestCase):
         self.assertEqual(result["region"][3]["weeks"][18], 3)
         self.assertEqual(result["region"][3]["weeks"][22], 1)
         self.assertEqual(result["region"][3]["total"], 4)
+
+    def test_latest_query(self):
+        """ Test the latest query"""
+        db_util.insert_cases(db.session, "latest_test")
+        start_date = datetime(2017, 1, 1)
+        end_date = datetime(2017, 1, 12)
+        result = data_query.latest_query(db, "test_2", "test_1", start_date,
+                                         end_date, 1)
+
+        self.assertEqual(result["total"], 7)
+        self.assertEqual(result["clinics"][7], 7)
+        self.assertEqual(result["clinics"][8], 0)
+        self.assertEqual(result["districts"][4], 7)
+        self.assertEqual(result["regions"][2], 7)
+        start_date = datetime(2017, 1, 1)
+        end_date = datetime(2017, 1, 8) # Exclude the last record
+        result = data_query.latest_query(db, "test_2", "test_1", start_date,
+                                         end_date, 1)
+        print(result)
+        self.assertEqual(result["total"], 12)
+        self.assertEqual(result["clinics"][7], 7)
+        self.assertEqual(result["clinics"][8], 5)
+        self.assertEqual(result["districts"][4], 12)
+        self.assertEqual(result["regions"][2], 12)
+        start_date = datetime(2017, 1, 1)
+        end_date = datetime(2017, 1, 12)
+        result = data_query.latest_query(db, "test_2", "test_1", start_date,
+                                         end_date, 1, weeks=True)
+        
+        print(result)
+        self.assertEqual(result["total"], 12)
+        self.assertEqual(result["weeks"][1], 12)
+        self.assertEqual(result["weeks"][2], 0)
+        self.assertEqual(result["clinics"][7]["weeks"][1], 7)
+        self.assertEqual(result["clinics"][8]["weeks"][1], 5)
+        self.assertEqual(result["clinics"][8]["weeks"][2], 0)
+        self.assertEqual(result["districts"][4]["total"], 12)
+        self.assertEqual(result["regions"][2]["total"], 12)

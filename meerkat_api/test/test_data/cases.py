@@ -3,7 +3,6 @@ import datetime
 mental_health = [
     # Registers, total cases = 15
     Data(**{'uuid': 'uuid:b59474ed-29e7-490b-a947-558babdf80a1', 'clinic_type': 'Primary', 'district': 4, 'variables': { "mh_visit_nat_jordan": 1, "age_21": 1, "age_24": 1, "prc_3": 1, "visit_prc_3": 1, "visit_age_21": 1, "gen_1": 1, "visit_gen_1": 1 , "mhgap_1": 1, "mh_icd_block_2": 1, "service_provider_moh": 1, "mh_result_new_treatment": 1, "mh_result_return_admission": 1, "mh_provider_mhgap": 1, "mh_provider_icd": 1 }, 'clinic': 8, 'geolocation': 'POINT(0.2 0.2)',  'region': 2, 'country': 1, 'date': datetime.datetime(2015, 4, 30, 11, 32, 51, 80545)})
-
 ]
 public_health_report = [
     # Registers, total cases = 15
@@ -654,4 +653,12 @@ completeness = [
     Data(**{'uuid': 'uuid:b59474ed-29e7-490b-a947-558babdf80a4', 'clinic_type': 'Primary', 'district': 4, 'variables': { 'reg_1': 1}, 'clinic': 7, 'geolocation': 'POINT(0.2 0.2)',  'region': 2, 'country': 1, 'date': date - datetime.timedelta(days=8 + offset)}),
     Data(**{'uuid': 'uuid:b59474ed-29e7-490b-a947-558babdf80a5', 'clinic_type': 'Primary', 'district': 4, 'variables': { 'reg_1': 1}, 'clinic': 8, 'geolocation': 'POINT(0.2 0.2)',  'region': 2, 'country': 1, 'date': date - datetime.timedelta(days=1 + offset)}),
     Data(**{'uuid': 'uuid:b59474ed-29e7-490b-a947-558babdf80a6', 'clinic_type': 'Primary', 'district': 4, 'variables': { 'reg_1': 1}, 'clinic': 8, 'geolocation': 'POINT(0.2 0.2)',  'region': 2, 'country': 1, 'date': date - datetime.timedelta(days=1 + offset)}) # Same day should not count,
+]
+
+latest_test = [
+    Data(**{'uuid': 'uuid:b59474ed-29e7-490b-a947-558babdf80a1', 'clinic_type': 'Primary', 'district': 4, 'variables': {'test_1': 1, 'test_2': 5}, 'clinic': 7,  'region': 2, 'country': 1, "date":"2017-01-02T00:00:00"}),
+    Data(**{'uuid': 'uuid:b59474ed-29e7-490b-a947-558babdf80a1', 'clinic_type': 'Primary', 'district': 4, 'variables': {'test_1': 1, 'test_2': 7}, 'clinic': 7, 'region': 2, 'country': 1, "date":"2017-01-03T00:00:00"}),
+    Data(**{'uuid': 'uuid:b59474ed-29e7-490b-a947-558babdf80a1', 'clinic_type': 'Primary', 'district': 4, 'variables': {'test_1': 1, 'test_2': 5}, 'clinic': 8, 'region': 2, 'country': 1, "date":"2017-01-02T00:00:00"}),
+    Data(**{'uuid': 'uuid:b59474ed-29e7-490b-a947-558babdf80a1', 'clinic_type': 'Primary', 'district': 4, 'variables': {'test_1': 1, 'test_2': 5}, 'clinic': 8, 'region': 2, 'country': 1, "date":"2017-01-03T00:00:00"}),
+    Data(**{'uuid': 'uuid:b59474ed-29e7-490b-a947-558babdf80a1', 'clinic_type': 'Primary', 'district': 4, 'variables': {'test_1': 1 }, 'clinic': 8, 'region': 2, 'country': 1, "date":"2017-01-10T00:00:00"})
 ]
