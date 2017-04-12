@@ -32,7 +32,7 @@ class Devices(Resource):
             device_ids=[]
             for item in devices_dict:
                 device_ids.append(item["device_id"])
-            return_data = c.device_api(url='/mob', data=json.dumps(device_ids))
+            return_data = c.device_api(url='/device', data=json.dumps(device_ids))
             return return_data
         else:
             return {"message":"No devices registered"}

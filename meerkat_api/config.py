@@ -39,7 +39,7 @@ class Config(object):
     CELERY_RESULT_SERIALIZER = 'json'
     CELERY_ACCEPT_CONTENT = ['json']
     SENTRY_DNS = from_env('SENTRY_DNS', '')
-    INTERNAL_DEVICE_API_ROOT = from_env("INTERNAL_API_ROOT", 'http://dev_nginx_1/mob')
+    INTERNAL_DEVICE_API_ROOT = from_env("MOB_API_ROOT", 'http://dev_nginx_1/mob')
     EXTERNAL_DEVICE_API_ROOT = '/mob'
 
     
