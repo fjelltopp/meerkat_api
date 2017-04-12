@@ -4003,5 +4003,26 @@ class CTCReport(Resource):
         tot_clinics = TotClinics()
         ret["data"]["clinic_num"] = tot_clinics.get(location)["total"]
 
+        cholera_cases_variable = 'ctc_cases'
+        cholera_deaths_variable = 'ctc_deaths'
+
+        # Summary data
+        ret['summary']={}
+
+        # Aggregate numbers of cholera cases and deaths as an epi curve and a map.
+        ret['summary'].update({
+            'cholera_cases' : query_sum(db, [cholera_cases_variable], start_date, end_date_limit, location, weeks=True)
+            })
+        
+        ret['summary'].update({
+            'cholera_deaths' : query_sum(db, [cholera_deaths_variable], start_date, end_date_limit, location, weeks=True)
+            })
+
+        # Displaying indicators like the percentage of CTC with case management protocols etc.
+
+        # A list of clinics with no report in the last week ( A form of completeness).
+
+        # List of clinics that do not have case management or wash etc.
+
         return ret
     
