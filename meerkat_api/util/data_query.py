@@ -112,7 +112,7 @@ def query_sum(db, var_ids, start_date, end_date, location, level=None, weeks=Fal
 
 
 def latest_query(db, var_id, identifier_id, start_date, end_date,
-                 location, level=None, weeks=False, date_variable=None
+                 location, level=None, weeks=False, date_variable=None, week_offset=0
                  ):
     """
     To query register like data where we want to get the latest value.
@@ -166,32 +166,32 @@ def latest_query(db, var_id, identifier_id, start_date, end_date,
                                              Data.clinic).order_by(c).order_by(Data.date.desc())
         ret = {"total": 0,
                "weeks": {},
-               "districts": {},
-               "clinics": {},
-               "regions": {}}
+               "district": {},
+               "clinic": {},
+               "region": {}}
 
         for r in query:
             val = r.variables.get(var_id, 0)
             ret["total"] += val
-            week = r.week
+            week = int(r.week) - week_offset
             ret["weeks"].setdefault(week, 0)
             ret["weeks"][week] += val
 
-            ret["clinics"].setdefault(r.clinic,
-                                      {"total": 0,
+            ret["clinic"].setdefault(r.clinic,
+                                     {"total": 0,
+                                      "weeks": {}})
+            ret["clinic"][r.clinic]["total"] += val
+            ret["clinic"][r.clinic]["weeks"][week] = val
+            ret["district"].setdefault(r.district,
+                                       {"total": 0,
+                                        "weeks": {}})
+            ret["district"][r.district]["total"] += val
+            ret["district"][r.district]["weeks"][week] = +val
+            ret["region"].setdefault(r.region,
+                                     {"total": 0,
                                        "weeks": {}})
-            ret["clinics"][r.clinic]["total"] += val
-            ret["clinics"][r.clinic]["weeks"][week] = val
-            ret["districts"].setdefault(r.district,
-                                        {"total": 0,
-                                         "weeks": {}})
-            ret["districts"][r.district]["total"] += val
-            ret["districts"][r.district]["weeks"][week] = +val
-            ret["regions"].setdefault(r.region,
-                                      {"total": 0,
-                                       "weeks": {}})
-            ret["regions"][r.region]["total"] += val
-            ret["regions"][r.region]["weeks"][week] = +val
+            ret["region"][r.region]["total"] += val
+            ret["region"][r.region]["weeks"][week] = +val
         return ret
     else:
         # This query selects that latest record for each clinic
@@ -203,17 +203,17 @@ def latest_query(db, var_id, identifier_id, start_date, end_date,
                                              Data.clinic).order_by(Data.date.desc())
 
         ret = {"total": 0,
-               "clinics": {},
-               "districts": {},
-               "regions": {}}
+               "clinic": {},
+               "district": {},
+               "region": {}}
         for r in query:
             val = r.variables.get(var_id, 0)
             ret["total"] += val
-            ret["clinics"][r.clinic] = val
-            ret["districts"].setdefault(r.district, 0)
-            ret["districts"][r.district] += val
-            ret["regions"].setdefault(r.region, 0)
-            ret["regions"][r.region] += val
+            ret["clinic"][r.clinic] = val
+            ret["district"].setdefault(r.district, 0)
+            ret["district"][r.district] += val
+            ret["region"].setdefault(r.region, 0)
+            ret["region"][r.region] += val
         return ret
 
 

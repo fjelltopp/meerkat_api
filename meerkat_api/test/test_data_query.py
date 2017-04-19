@@ -123,7 +123,6 @@ class DataQueryTests(unittest.TestCase):
         end_date = datetime(2017, 1, 8) # Exclude the last record
         result = data_query.latest_query(db, "test_2", "test_1", start_date,
                                          end_date, 1)
-        print(result)
         self.assertEqual(result["total"], 12)
         self.assertEqual(result["clinics"][7], 7)
         self.assertEqual(result["clinics"][8], 5)
@@ -134,7 +133,6 @@ class DataQueryTests(unittest.TestCase):
         result = data_query.latest_query(db, "test_2", "test_1", start_date,
                                          end_date, 1, weeks=True)
         
-        print(result)
         self.assertEqual(result["total"], 12)
         self.assertEqual(result["weeks"][1], 12)
         self.assertEqual(result["weeks"][2], 0)

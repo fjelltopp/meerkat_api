@@ -121,7 +121,7 @@ def is_child(parent, child, locations):
     return False
 
 
-def get_children(parent, locations, clinic_type=None):
+def get_children(parent, locations, clinic_type=None, require_case_report=True):
     """
     Return all clinics that are children of parent
 
@@ -134,7 +134,7 @@ def get_children(parent, locations, clinic_type=None):
     """
     ret = []
     for location_id in locations.keys():
-        if (locations[location_id].case_report and
+        if ( (not require_case_report or locations[location_id].case_report) and
             (not clinic_type or locations[location_id].clinic_type == clinic_type)):
             if is_child(parent, location_id, locations):
                 ret.append(location_id)

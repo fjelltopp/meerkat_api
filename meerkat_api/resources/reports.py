@@ -38,11 +38,12 @@ from meerkat_api.resources.data import AggregateYear
 from meerkat_api.resources.map import Clinics, MapVariable
 from meerkat_api.resources import alerts
 from meerkat_api.resources.explore import QueryVariable, QueryCategory, get_variables
-from meerkat_api.util.data_query import query_sum
+from meerkat_api.util.data_query import query_sum, latest_query
 from meerkat_api.resources.incidence import IncidenceRate
 from meerkat_abacus.util import get_locations, all_location_data, get_regions_districts
 from meerkat_abacus import model
 from meerkat_api.authentication import authenticate
+from geoalchemy2.shape import to_shape
 
 def mean(input_list):
 
@@ -4000,24 +4001,91 @@ class CTCReport(Resource):
         ret["data"]["project_region"] = location_name.name
         ret["data"]["project_region_id"] = location
 
-        tot_clinics = TotClinics()
-        ret["data"]["clinic_num"] = tot_clinics.get(location)["total"]
+        children = get_children(location, locs, require_case_report=False)
+
+        ctcs = db.session.query(Locations).filter(
+            Locations.clinic_type == "CTC").filter(
+                Locations.id.in_(children)
+                ).all()
+        
+        ret["data"]["clinic_num"] = len(ctcs)
 
         cholera_cases_variable = 'ctc_cases'
+        cholera_cases_u5_variable = 'ctc_cases_u5'
         cholera_deaths_variable = 'ctc_deaths'
 
+
+        cholera_var = "ctc_1"
         # Summary data
         ret['summary']={}
 
         # Aggregate numbers of cholera cases and deaths as an epi curve and a map.
+
+        cholera_cases = latest_query(db, cholera_cases_variable, cholera_var, start_date, end_date_limit, location, weeks=True, week_offset=1)
+        cholera_cases_u5 = latest_query(db, cholera_cases_u5_variable, cholera_var, start_date, end_date_limit, location, weeks=True, week_offset=1)
+
+        cholera_deaths = latest_query(db, cholera_deaths_variable, cholera_var, start_date, end_date_limit, location, weeks=True, week_offset=1)
+        cholera_cases_o5 = {"total": cholera_cases["total"] - cholera_cases_u5["total"]}
+        cholera_cases_o5["weeks"] = {week: cholera_cases["weeks"][week] - cholera_cases_u5["weeks"].get(week, 0) for week in cholera_cases["weeks"].keys()}
         ret['summary'].update({
-            'cholera_cases' : query_sum(db, [cholera_cases_variable], start_date, end_date_limit, location, weeks=True)
+            'cholera_cases': cholera_cases
+            })
+        ret['summary'].update({
+            'cholera_cases_u5': cholera_cases_u5
+            })
+        ret['summary'].update({
+            'cholera_cases_o5': cholera_cases_o5
             })
         
         ret['summary'].update({
-            'cholera_deaths' : query_sum(db, [cholera_deaths_variable], start_date, end_date_limit, location, weeks=True)
+            'cholera_deaths': cholera_deaths
             })
 
+
+        protocols = ["ctc_case_management", "ctc_ipc", "ctc_wash", "ctc_lab_protocol"]
+        total = latest_query(db, cholera_var, cholera_var,
+                             start_date, end_date_limit, location,
+                             weeks=True)["weeks"][epi_week -1]
+        ret["summary"]["surveyed"] = total
+        for p in protocols:
+            r = latest_query(db, p, cholera_var, start_date, end_date_limit, location, weeks=True)
+            value = r["weeks"][epi_week - 1] / total
+            ret["summary"][p] = value * 100
+
+
+        
+        # FIGURE 2: MAP of cholera cases
+        cholera_cases_map = {}
+        cholera_cases_ret = latest_query(
+            db,
+            cholera_cases_variable,
+            cholera_var,
+            start_date,
+            end_date_limit,
+            location,
+            weeks=True
+        )["region"]
+        for region in cholera_cases_ret.keys():
+            cholera_cases_map[locs[region].name] = {
+                "value": cholera_cases_ret[region]["total"]
+            }
+        # fill the rest of the districts with zeroes
+        for region in regions:
+            if not locs[region].name in cholera_cases_map:
+                cholera_cases_map.update(
+                    {
+                        locs[region].name: {
+                            "value": 0
+                        }
+                    }
+                )
+        ret["data"].update({"cholera_map": cholera_cases_map})
+
+
+
+
+
+        
         # Displaying indicators like the percentage of CTC with case management protocols etc.
 
         # A list of clinics with no report in the last week ( A form of completeness).
@@ -4028,16 +4096,51 @@ class CTCReport(Resource):
         # Clinic sheets
 
         # Get list of clinics that will be in scope
-        clinic_list = []
-
-        # Initialize data structure for clinic data
+        # Loop through clinics
         clinic_data_list = []
 
-        # Loop through clinics
-        for clinic in clinic_list:
+        location_condtion = [
+                or_(loc == location for loc in (
+                    Data.country, Data.region, Data.district, Data.clinic))]
+        conditions = location_condtion  + [Data.variables.has_key(cholera_var)]
+        query = db.session.query(Data.clinic, Data.date, Data.region,
+                                 Data.district,
+                                 Data.variables).distinct(
+                                    Data.clinic).filter(*conditions).order_by(
+                                             Data.clinic).order_by(Data.date.desc())
 
+
+        latest_ctc = {}
+        for r in query:
+            latest_ctc[r.clinic] = r
+        for ctc in ctcs:
+            clinic_data = {"name": ctc.name}
+            district = locs[ctc.id].parent_location
+            region = locs[district].parent_location
+            clinic_data["region"] = locs[region].name
+            clinic_data["district"] = locs[district].name
+            point = to_shape(locs[ctc.id].point_location)
+            clinic_data["gps"] = [point.y, point.x]
+            if ctc.id in latest_ctc:
+                ctc_data = latest_ctc[ctc.id]
+                clinic_data["status"] = "Surveyed"
+                clinic_data["latest_data"] = ctc_data.variables
+                clinic_data["latest_date"] = ctc_data.date.isoformat().split("T")[0]
+                clinic_data["cases_history"] = cholera_cases["clinic"][ctc.id]
+
+                cholera_cases_o5_ctc = {"total": cholera_cases["clinic"][ctc.id]["total"] - cholera_cases_u5["clinic"][ctc.id]["total"]}
+                cholera_cases_o5_ctc["weeks"] = {week: cholera_cases["clinic"][ctc.id]["weeks"][week] - cholera_cases_u5["clinic"][ctc.id]["weeks"].get(week, 0) for week in cholera_cases["clinic"][ctc.id]["weeks"].keys()}
+                
+                clinic_data["deaths_history"] = cholera_deaths["clinic"][ctc.id]
+                clinic_data["cases_u5_history"] = cholera_cases_u5["clinic"][ctc.id]
+                clinic_data["cases_o5_history"] =cholera_cases_o5_ctc
+                
+
+
+       
+            else:
+                clinic_data["status"] = "Not Surveyed"
             # Initialize data structure for current clinic
-            clinic_data = {}
 
             # Append clinic data to clinic data list
             clinic_data_list.append(clinic_data)
