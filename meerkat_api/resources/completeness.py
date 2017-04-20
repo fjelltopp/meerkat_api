@@ -288,11 +288,14 @@ class NonReporting(Resource):
     """
     decorators = [authenticate]
 
-    def get(self, variable, location, exclude=None, num_weeks=0, include=None):
+    def get(self, variable, location, exclude=None, num_weeks=0,
+            include=None, require_case_report=True):
+        if require_case_report in [0, "0"]:
+            require_case_report = False
         locations = get_locations(db.session)
         location = int(location)
-        #clinics = get_children(location, locations)
-        clinics = [l for l in locations.keys() if locations[l].level == "clinic"]
+        clinics = get_children(location, locations, require_case_report=require_case_report)
+        #clinics = [l for l in locations.keys() if locations[l].level == "clinic"]
         conditions = [Data.variables.has_key(variable)]
 
         if num_weeks:

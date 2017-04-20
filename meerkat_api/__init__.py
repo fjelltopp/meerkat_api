@@ -327,7 +327,8 @@ api.add_resource(CTCReport, "/reports/ctc/<location>",
 # Misc
 api.add_resource(NonReporting, "/non_reporting/<variable>/<location>",
                  "/non_reporting/<variable>/<location>/<exclude>",
-                 "/non_reporting/<variable>/<location>/<exclude>/<num_weeks>/<include>"
+                 "/non_reporting/<variable>/<location>/<exclude>/<num_weeks>/<include>",
+                 "/non_reporting/<variable>/<location>/<exclude>/<num_weeks>/<include>/<require_case_report>"
 )
 
 api.add_resource(Completeness,

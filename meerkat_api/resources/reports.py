@@ -4045,11 +4045,14 @@ class CTCReport(Resource):
         protocols = ["ctc_case_management", "ctc_ipc", "ctc_wash", "ctc_lab_protocol"]
         total = latest_query(db, cholera_var, cholera_var,
                              start_date, end_date_limit, location,
-                             weeks=True)["weeks"][epi_week -1]
+                             weeks=True)["weeks"].get(epi_week -1, 0)
         ret["summary"]["surveyed"] = total
+
+        if total == 0:
+            total = 1
         for p in protocols:
             r = latest_query(db, p, cholera_var, start_date, end_date_limit, location, weeks=True)
-            value = r["weeks"][epi_week - 1] / total
+            value = r["weeks"].get(epi_week - 1, 0) / total
             ret["summary"][p] = value * 100
 
 
