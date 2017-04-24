@@ -24,6 +24,7 @@ from datetime import datetime, timedelta
 from dateutil import parser
 from sqlalchemy.sql import text
 import uuid
+import numpy as np
 import traceback
 from gettext import gettext
 import logging, json, operator
@@ -4084,22 +4085,39 @@ class CTCReport(Resource):
                 )
         ret["data"].update({"cholera_map": cholera_cases_map})
 
-
-
-
-
-        
         # Displaying indicators like the percentage of CTC with case management protocols etc.
 
         # A list of clinics with no report in the last week ( A form of completeness).
 
         # List of clinics that do not have case management or wash etc.
 
+        # We also build up an overview dictionary
+        var = Variables()
+        num_codes = var.get("ctc_structure").keys()
+        yes_codes = var.get("ctc_overview_yes_no")
 
-        # Clinic sheets
+        overview_data = {}
 
-        # Get list of clinics that will be in scope
-        # Loop through clinics
+
+        overview_data["cases_last_week"] = cholera_cases["weeks"].get(epi_week -1, 0)
+        overview_data["cases_u5_last_week"] = cholera_cases_u5["weeks"].get(epi_week -1, 0)
+        overview_data["deaths_last_week"] = cholera_deaths["weeks"].get(epi_week -1, 0)
+
+        weekly_cases = np.array([cholera_cases["weeks"][w] for w in sorted(cholera_cases["weeks"])])
+        weekly_deaths = np.array([cholera_deaths["weeks"][w] for w in sorted(cholera_cases["weeks"])])
+
+        weekly_cfr = weekly_deaths / weekly_cases * 100
+        
+        average_cfr = np.mean(weekly_cfr)
+        #cfr_std = np.std(weekly_cfr)
+
+        overview_data["cfr"] = (average_cfr, average_cfr - 1 , average_cfr +1)
+
+        
+        ctc_lat_variables = var.get("ctc_lat_type")
+        ret["variables"] = ctc_lat_variables
+        ctc_rec_variables = var.get("ctc_recommendations")
+
         clinic_data_list = []
 
         location_condtion = [
@@ -4108,11 +4126,12 @@ class CTCReport(Resource):
         conditions = location_condtion  + [Data.variables.has_key(cholera_var)]
         query = db.session.query(Data.clinic, Data.date, Data.region,
                                  Data.district,
-                                 Data.variables).distinct(
+                                 Data.variables,
+                                 Data.categories).distinct(
                                     Data.clinic).filter(*conditions).order_by(
                                              Data.clinic).order_by(Data.date.desc())
 
-
+        
         latest_ctc = {}
         for r in query:
             latest_ctc[r.clinic] = r
@@ -4128,6 +4147,7 @@ class CTCReport(Resource):
                 ctc_data = latest_ctc[ctc.id]
                 clinic_data["status"] = "Surveyed"
                 clinic_data["latest_data"] = ctc_data.variables
+                clinic_data["latest_categories"] = ctc_data.categories
                 clinic_data["latest_date"] = ctc_data.date.isoformat().split("T")[0]
                 clinic_data["cases_history"] = cholera_cases["clinic"][ctc.id]
 
@@ -4138,16 +4158,51 @@ class CTCReport(Resource):
                 clinic_data["cases_u5_history"] = cholera_cases_u5["clinic"][ctc.id]
                 clinic_data["cases_o5_history"] =cholera_cases_o5_ctc
                 
+                # Deal with recomendations
+
+                recommendations = []
+                cases = ctc_data.variables.get("ctc_cases", 0)
+                if cases == 0:
+                    cases = 1
+                cfr = ctc_data.variables.get("ctc_deaths", 0) / cases * 100
+                cfr_threshold = 2
+                if cfr > cfr_threshold:
+                    recommendations.append("High CFR ratio of {} %".format(round(cfr, 1)))
+
+                if ctc_data.variables.get("ctc_beds", 0) < ctc_data.variables.get("ctc_patients", 0):
+                    recommendations.append("Not sufficent beds")
+                    
+                for code in ctc_rec_variables.keys():
+                    if ctc_data.variables.get(code, "missing") =="no":
+                        recommendations.append("No {}".format(ctc_rec_variables[code]["name"]))
+                        
+                clinic_data["recommendations"] = recommendations
 
 
-       
+
+                # Overview data
+
+                for num_code in num_codes:
+                    overview_data.setdefault(num_code, 0)
+                    overview_data[num_code] += ctc_data.variables.get(num_code, 0)
+                for yes_code in yes_codes:
+                    overview_data.setdefault(yes_code, {"Y": 0, "N": 0})
+                    overview_data[yes_code]["N"] += 1
+                    if ctc_data.variables.get(yes_code, "missing") == "yes":
+                        overview_data[yes_code]["Y"] += 1
+                overview_data.setdefault("ctc_beds_sufficient", {"Y": 0, "N": 0})
+                overview_data["ctc_beds_sufficient"]["N"] += 1
+                if "ctc_beds_sufficient" in ctc_data.variables:
+                    overview_data["ctc_beds_sufficient"]["Y"] += 1
+
+                
             else:
                 clinic_data["status"] = "Not Surveyed"
             # Initialize data structure for current clinic
 
             # Append clinic data to clinic data list
             clinic_data_list.append(clinic_data)
-
+        ret["overview"] = overview_data
         ret.update({'clinic_data' : clinic_data_list})
 
         return ret
