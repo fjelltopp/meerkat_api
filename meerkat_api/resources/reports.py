@@ -4103,15 +4103,14 @@ class CTCReport(Resource):
         overview_data["cases_u5_last_week"] = cholera_cases_u5["weeks"].get(epi_week -1, 0)
         overview_data["deaths_last_week"] = cholera_deaths["weeks"].get(epi_week -1, 0)
 
-        weekly_cases = np.array([cholera_cases["weeks"][w] for w in sorted(cholera_cases["weeks"])])
-        weekly_deaths = np.array([cholera_deaths["weeks"][w] for w in sorted(cholera_cases["weeks"])])
+        weekly_cases = np.array([cholera_cases["clinic"][c]["total"] for c in sorted(cholera_cases["clinic"].keys())])
+        weekly_deaths = np.array([cholera_deaths["clinic"][c]["total"] for c in sorted(cholera_cases["clinic"].keys())])
 
         weekly_cfr = weekly_deaths / weekly_cases * 100
         
         average_cfr = np.mean(weekly_cfr)
-        #cfr_std = np.std(weekly_cfr)
 
-        overview_data["cfr"] = (average_cfr, average_cfr - 1 , average_cfr +1)
+        overview_data["cfr"] = (average_cfr, np.min(weekly_cfr), np.max(weekly_cfr))
 
         
         ctc_lat_variables = var.get("ctc_lat_type")
@@ -4143,12 +4142,21 @@ class CTCReport(Resource):
             clinic_data["district"] = locs[district].name
             point = to_shape(locs[ctc.id].point_location)
             clinic_data["gps"] = [point.y, point.x]
+
+            overview_data.setdefault("baseline", {"Y": 0, "N": 0})
+            overview_data.setdefault("surveyed_last_week", {"Y": 0, "N": 0})
+            overview_data["baseline"]["N"] += 1
+            overview_data["surveyed_last_week"]["N"] += 1
             if ctc.id in latest_ctc:
+                overview_data["baseline"]["Y"] += 1
                 ctc_data = latest_ctc[ctc.id]
                 clinic_data["status"] = "Surveyed"
                 clinic_data["latest_data"] = ctc_data.variables
                 clinic_data["latest_categories"] = ctc_data.categories
                 clinic_data["latest_date"] = ctc_data.date.isoformat().split("T")[0]
+
+                if ew.get(ctc_data.date.isoformat())["epi_week"] in [epi_week, epi_week - 1]:
+                    overview_data["surveyed_last_week"]["Y"] += 1
                 clinic_data["cases_history"] = cholera_cases["clinic"][ctc.id]
 
                 cholera_cases_o5_ctc = {"total": cholera_cases["clinic"][ctc.id]["total"] - cholera_cases_u5["clinic"][ctc.id]["total"]}
