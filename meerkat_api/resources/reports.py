@@ -4085,6 +4085,10 @@ class CTCReport(Resource):
                 )
         ret["data"].update({"cholera_map": cholera_cases_map})
 
+        
+
+
+
         # Displaying indicators like the percentage of CTC with case management protocols etc.
 
         # A list of clinics with no report in the last week ( A form of completeness).
@@ -4132,6 +4136,8 @@ class CTCReport(Resource):
 
         
         latest_ctc = {}
+        surveyed_clinics_map = []
+        non_surveyed_clinics_map = []
         for r in query:
             latest_ctc[r.clinic] = r
         for ctc in ctcs:
@@ -4151,6 +4157,7 @@ class CTCReport(Resource):
                 overview_data["baseline"]["Y"] += 1
                 ctc_data = latest_ctc[ctc.id]
                 clinic_data["status"] = "Surveyed"
+                surveyed_clinics_map.append(clinic_data["gps"])
                 clinic_data["latest_data"] = ctc_data.variables
                 clinic_data["latest_categories"] = ctc_data.categories
                 clinic_data["latest_date"] = ctc_data.date.isoformat().split("T")[0]
@@ -4206,12 +4213,17 @@ class CTCReport(Resource):
                 
             else:
                 clinic_data["status"] = "Not Surveyed"
+                non_surveyed_clinics_map.append(clinic_data["gps"])
             # Initialize data structure for current clinic
 
             # Append clinic data to clinic data list
             clinic_data_list.append(clinic_data)
         ret["overview"] = overview_data
         ret.update({'clinic_data' : clinic_data_list})
+        ret["data"].update({"surveyed_clinics_map":{
+            "surveyed":surveyed_clinics_map,
+            "non_surveyed":non_surveyed_clinics_map
+        }})
 
         return ret
     
