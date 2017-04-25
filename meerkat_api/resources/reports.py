@@ -4110,12 +4110,21 @@ class CTCReport(Resource):
         weekly_cases = np.array([cholera_cases["clinic"][c]["total"] for c in sorted(cholera_cases["clinic"].keys())])
         weekly_deaths = np.array([cholera_deaths["clinic"][c]["total"] for c in sorted(cholera_cases["clinic"].keys())])
 
-        weekly_cfr = weekly_deaths / weekly_cases * 100
+        clinic_cfr = weekly_deaths / weekly_cases * 100
         
-        average_cfr = np.mean(weekly_cfr)
+        average_cfr = np.mean(clinic_cfr)
 
-        overview_data["cfr"] = (average_cfr, np.min(weekly_cfr), np.max(weekly_cfr))
+        if len(clinic_cfr) == 0:
+            max_cfr = 0
+            min_cfr = 0
+        else:
+            max_cfr = np.max(clinic_cfr)
+            min_cfr = np.min(clinic_cfr)
+        
+        overview_data["cfr"] = (average_cfr, min_cfr ,max_cfr )
 
+
+        
         
         ctc_lat_variables = var.get("ctc_lat_type")
         ret["variables"] = ctc_lat_variables
