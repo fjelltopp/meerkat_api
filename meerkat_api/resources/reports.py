@@ -4166,7 +4166,7 @@ class CTCReport(Resource):
                 overview_data["baseline"]["Y"] += 1
                 ctc_data = latest_ctc[ctc.id]
                 clinic_data["status"] = "Surveyed"
-                surveyed_clinics_map.append(clinic_data["gps"])
+                surveyed_clinics_map.append(clinic_data["gps"]+[ctc.name])
                 clinic_data["latest_data"] = ctc_data.variables
                 clinic_data["latest_categories"] = ctc_data.categories
                 clinic_data["latest_date"] = ctc_data.date.isoformat().split("T")[0]
@@ -4222,7 +4222,7 @@ class CTCReport(Resource):
                 
             else:
                 clinic_data["status"] = "Not Surveyed"
-                non_surveyed_clinics_map.append(clinic_data["gps"])
+                non_surveyed_clinics_map.append(clinic_data["gps"]+[ctc.name])
             # Initialize data structure for current clinic
 
             # Append clinic data to clinic data list
