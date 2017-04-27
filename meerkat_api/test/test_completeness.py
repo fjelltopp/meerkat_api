@@ -32,15 +32,16 @@ class MeerkatAPIDataTestCase(unittest.TestCase):
     @freeze_time("2016-07-02")
     def test_non_reporting(self):
         """Check non_reporting"""
-        db_util.insert_cases(meerkat_api.db.session, "completeness", "2016-07-02")
+        db_util.insert_cases(meerkat_api.db.session,
+                             "completeness", "2016-07-02")
         rv = self.app.get('/non_reporting/reg_1/1', headers=settings.header)
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(rv.status_code, 200)
-        self.assertEqual(sorted(data["clinics"]), [10,11])
+        self.assertEqual(sorted(data["clinics"]), [10, 11])
         rv = self.app.get('/non_reporting/reg_2/1', headers=settings.header)
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(rv.status_code, 200)
-        self.assertEqual(sorted(data["clinics"]), [7,8,10,11])
+        self.assertEqual(sorted(data["clinics"]), [7, 8, 10, 11])
         rv = self.app.get('/non_reporting/reg_1/2', headers=settings.header)
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(rv.status_code, 200)
