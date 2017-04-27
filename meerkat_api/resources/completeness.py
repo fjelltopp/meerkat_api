@@ -288,24 +288,42 @@ class NonReporting(Resource):
     """
     decorators = [authenticate]
 
-    def get(self, variable, location, exclude=None):
+    def get(self, variable, location, exclude=None, num_weeks=0,
+            include=None, require_case_report=True):
+        if require_case_report in [0, "0"]:
+            require_case_report = False
         locations = get_locations(db.session)
         location = int(location)
-        clinics = get_children(location, locations)
-        #        ew = EpiWeek()
-        #       epi_week = ew.get()
-        # start_date = epi_week_start(epi_week["year"],
-        #   epi_week["epi_week"]) - timedelta(days=7 * num_weeks)
-        clinics_with_variable = [r[0]
-                                 for r in db.session.query(Data.clinic).filter(
-                                     Data.variables.has_key(variable)).all()]
+        clinics = get_children(location, locations, require_case_report=require_case_report)
+        #clinics = [l for l in locations.keys() if locations[l].level == "clinic"]
+        conditions = [Data.variables.has_key(variable)]
+
+        if num_weeks:
+            ew = EpiWeek()
+            epi_week = ew.get()
+            start_date = epi_week_start(epi_week["year"],
+                                        int(epi_week["epi_week"]) - int(num_weeks))
+            end_date = epi_week_start(epi_week["year"],
+                                        epi_week["epi_week"])
+            conditions.append(Data.date >= start_date)
+            conditions.append(Data.date < end_date)
+        
+        query = db.session.query(Data.clinic).filter(*conditions)
+        
+        clinics_with_variable = [r[0] for r in query.all()]
         non_reporting_clinics = []
         for clinic in clinics:
             if clinic not in clinics_with_variable:
-                if exclude:
+                if include:
+                    if locations[clinic].clinic_type == include:
+                        non_reporting_clinics.append(clinic)
+                elif exclude:
                     if locations[clinic].case_type != exclude:
                         non_reporting_clinics.append(clinic)
                 else:
                     non_reporting_clinics.append(clinic)
 
         return {"clinics": non_reporting_clinics}
+
+
+    
