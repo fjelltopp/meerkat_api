@@ -1673,7 +1673,7 @@ class CdPublicHealth(Resource):
                                   end_date=end_date_limit.isoformat(),
                                   start_date=start_date.isoformat(),
                                   only_loc=location)
-
+        
         age_gender={}
         tot = sum([group["total"] for group in age.values()])
         for a in age:
@@ -1682,7 +1682,7 @@ class CdPublicHealth(Resource):
                 age_gender[ac][gender] = age[a]["total"]
             else:
                 age_gender[ac] = {gender: age[a]["total"]}
-
+        print(age_gender)
         age_variables = variables_instance.get("age")
         for age_key in sorted(age_variables.keys()):
             a = age_variables[age_key]["name"]
@@ -4103,16 +4103,20 @@ class CTCReport(Resource):
         overview_data = {}
 
 
-        overview_data["cases_last_week"] = cholera_cases["weeks"].get(epi_week -1, 0)
-        overview_data["cases_u5_last_week"] = cholera_cases_u5["weeks"].get(epi_week -1, 0)
-        overview_data["deaths_last_week"] = cholera_deaths["weeks"].get(epi_week -1, 0)
+        overview_data["cases_total"] = cholera_cases.get("total", 0)
+        overview_data["cases_u5_total"] = cholera_cases_u5.get("total", 0)
+        overview_data["deaths_total"] = cholera_deaths.get("total", 0)
 
         weekly_cases = np.array([cholera_cases["clinic"][c]["total"] for c in sorted(cholera_cases["clinic"].keys())])
         weekly_deaths = np.array([cholera_deaths["clinic"][c]["total"] for c in sorted(cholera_cases["clinic"].keys())])
 
+
+        weekly_cases[weekly_cases == 0] = 1
         clinic_cfr = weekly_deaths / weekly_cases * 100
-        
-        average_cfr = np.mean(clinic_cfr)
+        tot_cases = overview_data["cases_total"]
+        if tot_cases == 0:
+            tot_cases = 1
+        average_cfr = np.mean((overview_data["deaths_total"] / tot_cases)* 100)
 
         if len(clinic_cfr) == 0:
             max_cfr = 0
@@ -4173,14 +4177,14 @@ class CTCReport(Resource):
 
                 if ew.get(ctc_data.date.isoformat())["epi_week"] in [epi_week, epi_week - 1]:
                     overview_data["surveyed_last_week"]["Y"] += 1
-                clinic_data["cases_history"] = cholera_cases["clinic"][ctc.id]
+                # clinic_data["cases_history"] = cholera_cases["clinic"].get(ctc.id, {})
 
-                cholera_cases_o5_ctc = {"total": cholera_cases["clinic"][ctc.id]["total"] - cholera_cases_u5["clinic"][ctc.id]["total"]}
-                cholera_cases_o5_ctc["weeks"] = {week: cholera_cases["clinic"][ctc.id]["weeks"][week] - cholera_cases_u5["clinic"][ctc.id]["weeks"].get(week, 0) for week in cholera_cases["clinic"][ctc.id]["weeks"].keys()}
+                # cholera_cases_o5_ctc = {"total": cholera_cases["clinic"][ctc.id]["total"] - cholera_cases_u5["clinic"][ctc.id]["total"]}
+                # cholera_cases_o5_ctc["weeks"] = {week: cholera_cases["clinic"][ctc.id]["weeks"][week] - cholera_cases_u5["clinic"][ctc.id]["weeks"].get(week, 0) for week in cholera_cases["clinic"][ctc.id]["weeks"].keys()}
                 
-                clinic_data["deaths_history"] = cholera_deaths["clinic"][ctc.id]
-                clinic_data["cases_u5_history"] = cholera_cases_u5["clinic"][ctc.id]
-                clinic_data["cases_o5_history"] =cholera_cases_o5_ctc
+            #    clinic_data["deaths_history"] = cholera_deaths["clinic"][ctc.id]
+             #   clinic_data["cases_u5_history"] = cholera_cases_u5["clinic"][ctc.id]
+              #  clinic_data["cases_o5_history"] =cholera_cases_o5_ctc
                 
                 # Deal with recomendations
 
@@ -4227,6 +4231,8 @@ class CTCReport(Resource):
 
             # Append clinic data to clinic data list
             clinic_data_list.append(clinic_data)
+        overview_data["ctc_doctors_per_facility"] = overview_data.get("ctc_doctors", 0) / overview_data["baseline"]["Y"]
+        overview_data["ctc_nurses_per_facility"] = overview_data.get("ctc_nurses", 0) / overview_data["baseline"]["Y"] 
         ret["overview"] = overview_data
         ret.update({'clinic_data' : clinic_data_list})
         ret["data"].update({"surveyed_clinics_map":{
