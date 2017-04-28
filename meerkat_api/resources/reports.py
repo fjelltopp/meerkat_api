@@ -4153,6 +4153,8 @@ class CTCReport(Resource):
         non_surveyed_clinics_map = []
         for r in query:
             latest_ctc[r.clinic] = r
+        overview_data.setdefault("baseline", {"Y": 0, "N": 0})
+        overview_data.setdefault("surveyed_last_week", {"Y": 0, "N": 0})
         for ctc in ctcs:
             clinic_data = {"name": ctc.name}
             district = locs[ctc.id].parent_location
@@ -4162,8 +4164,7 @@ class CTCReport(Resource):
             point = to_shape(locs[ctc.id].point_location)
             clinic_data["gps"] = [point.y, point.x]
 
-            overview_data.setdefault("baseline", {"Y": 0, "N": 0})
-            overview_data.setdefault("surveyed_last_week", {"Y": 0, "N": 0})
+         
             overview_data["baseline"]["N"] += 1
             overview_data["surveyed_last_week"]["N"] += 1
             if ctc.id in latest_ctc:
@@ -4231,8 +4232,11 @@ class CTCReport(Resource):
 
             # Append clinic data to clinic data list
             clinic_data_list.append(clinic_data)
-        overview_data["ctc_doctors_per_facility"] = overview_data.get("ctc_doctors", 0) / overview_data["baseline"]["Y"]
-        overview_data["ctc_nurses_per_facility"] = overview_data.get("ctc_nurses", 0) / overview_data["baseline"]["Y"] 
+        num_clin = overview_data["baseline"]["Y"]
+        if num_clin == 0:
+            num_clin = 1
+        overview_data["ctc_doctors_per_facility"] = overview_data.get("ctc_doctors", 0) / num_clin
+        overview_data["ctc_nurses_per_facility"] = overview_data.get("ctc_nurses", 0) / num_clin
         ret["overview"] = overview_data
         ret.update({'clinic_data' : clinic_data_list})
         ret["data"].update({"surveyed_clinics_map":{
