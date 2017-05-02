@@ -92,7 +92,8 @@ def valid_urls(app):
         "identifier_id": 'tot_1',
         "include": "CTC",
         "num_weeks": "2",
-        "require_case_report": "0"
+        "require_case_report": "0",
+        "weeks": "1"
     }
     urls = []
     for url in meerkat_api.app.url_map.iter_rules():
