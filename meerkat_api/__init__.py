@@ -136,6 +136,7 @@ def output_xls(data, code, headers=None):
 from meerkat_api.resources.locations import Location, Locations, LocationTree, TotClinics
 from meerkat_api.resources.variables import Variables, Variable
 from meerkat_api.resources.data import Aggregate, AggregateYear
+from meerkat_api.resources.data import AggregateLatestCategory, AggregateLatestYear, AggregateLatestLevel
 from meerkat_api.resources.data import AggregateCategory, Records
 from meerkat_api.resources.map import Clinics, MapVariable, IncidenceMap, Shapes
 from meerkat_api.resources.alerts import Alert, Alerts, AggregateAlerts
@@ -147,7 +148,7 @@ from meerkat_api.resources.reports import PublicHealth, CdReport, \
     RefugeeCd, RefugeeDetail, Pip, WeeklyEpiMonitoring, Malaria, \
     VaccinationReport, AFROBulletin,\
     NcdReport, NcdReportNewVisits, NcdReportReturnVisits, PlagueReport, \
-    EBSReport, MhReport
+    EBSReport, MhReport, CTCReport
 
 from meerkat_api.resources.frontpage import KeyIndicators, TotMap, NumAlerts, ConsultationMap, RefugeePage, NumClinics
 from meerkat_api.resources.export_data import ExportData, ExportForm, Forms, ExportCategory, GetCSVDownload, GetXLSDownload, GetStatus
@@ -198,6 +199,21 @@ api.add_resource(AggregateAlerts, "/aggregate_alerts",
 api.add_resource(AggregateYear,
                  "/aggregate_year/<variable_id>/<location_id>",
                  "/aggregate_year/<variable_id>/<location_id>/<year>")
+api.add_resource(AggregateLatestYear,
+                 "/aggregate_latest_year/<variable_id>/<identifier_id>/<location_id>",
+                 "/aggregate_latest_year/<variable_id>/<identifier_id>/<location_id>/<weeks>",
+                 "/aggregate_latest_year/<variable_id>/<identifier_id>/<location_id>/<weeks>/<year>")
+api.add_resource(AggregateLatestLevel,
+                 "/aggregate_latest_level/<variable_id>/<identifier_id>/<level>",
+                 "/aggregate_latest_level/<variable_id>/<identifier_id>/<level>/<weekly>",
+                 "/aggregate_latest_level/<variable_id>/<identifier_id>/<level>/<weekly>/<location_id>")
+api.add_resource(AggregateLatestCategory,
+                 "/aggregate_latest_category/<category>/<identifier_id>/<location_id>",
+                 "/aggregate_latest_category/<category>/<identifier_id>/<location_id>/<weeks>",
+                 "/aggregate_latest_category/<category>/<identifier_id>/<location_id>/<weeks>/<year>"
+                 
+                )
+
 api.add_resource(AggregateCategory,
                  "/aggregate_category/<category>/<location_id>",
                  "/aggregate_category/<category>/<location_id>/<year>",
@@ -307,10 +323,17 @@ api.add_resource(PlagueReport, "/reports/plague/<location>",
 api.add_resource(EBSReport, "/reports/ebs/<location>",
                  "/reports/ebs/<location>/<end_date>",
                  "/reports/ebs/<location>/<end_date>/<start_date>")
+api.add_resource(CTCReport, "/reports/ctc/<location>",
+                 "/reports/ctc/<location>/<end_date>",
+                 "/reports/ctc/<location>/<end_date>/<start_date>")
 
 # Misc
 api.add_resource(NonReporting, "/non_reporting/<variable>/<location>",
-                 "/non_reporting/<variable>/<location>/<exclude>")
+                 "/non_reporting/<variable>/<location>/<exclude>",
+                 "/non_reporting/<variable>/<location>/<exclude>/<num_weeks>/<include>",
+                 "/non_reporting/<variable>/<location>/<exclude>/<num_weeks>/<include>/<require_case_report>"
+)
+
 api.add_resource(Completeness,
                  "/completeness/<variable>/<location>/<number_per_week>",
                  "/completeness/<variable>/<location>/<number_per_week>/<start_week>",
