@@ -121,16 +121,20 @@ class AggregateLatestYear(Resource):
     """
     decorators = [authenticate]
 
-    def get(self, variable_id, identifier_id, location_id, year=datetime.today().year):
+    def get(self, variable_id, identifier_id, location_id, year=datetime.today().year, weeks=True):
         variable_id = str(variable_id)
         identifier_id = str(identifier_id)
         year = int(year)
         start_date = datetime(year, 1, 1)
         end_date = datetime(year + 1, 1, 1)
         result = latest_query(
-            db, variable_id, identifier_id, start_date, end_date, location_id, weeks=True
+            db, variable_id, identifier_id, start_date, end_date, location_id, weeks=weeks
         )
-        return {"weeks": result["weeks"], "year": result["total"]}
+        if weeks:
+            ret = {"weeks": result["weeks"], "year": result["total"]}
+        else:
+            ret = result
+        return ret
 
 
 class AggregateLatestCategory(Resource):
@@ -149,9 +153,12 @@ class AggregateLatestCategory(Resource):
     """
     decorators = [authenticate]
 
-    def get(self, category,  identifier_id, location_id, year=None):
+    def get(self, category,  identifier_id, location_id, weeks=True, year=None):
         if year is None:
             year = datetime.today().year
+
+        if weeks in ["0", 0]:
+            weeks = False
         variables_instance = Variables()
         variables = variables_instance.get(category)
         aggregate_latest_year = AggregateLatestYear()
@@ -162,7 +169,8 @@ class AggregateLatestCategory(Resource):
                 variable,
                 identifier_id,
                 location_id,
-                year)
+                year,
+                weeks=weeks)
                 
         return return_data
 

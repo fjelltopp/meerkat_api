@@ -189,7 +189,7 @@ def latest_query(db, var_id, identifier_id, start_date, end_date,
             ret["district"][r.district]["weeks"][week] = +val
             ret["region"].setdefault(r.region,
                                      {"total": 0,
-                                       "weeks": {}})
+                                      "weeks": {}})
             ret["region"][r.region]["total"] += val
             ret["region"][r.region]["weeks"][week] = +val
         return ret
@@ -200,7 +200,7 @@ def latest_query(db, var_id, identifier_id, start_date, end_date,
                                  Data.district,
                                  Data.variables).distinct(
                                     Data.clinic).filter(*conditions).order_by(
-                                             Data.clinic).order_by(Data.date.desc())
+                                        Data.clinic).order_by(Data.date.desc())
 
         ret = {"total": 0,
                "clinic": {},

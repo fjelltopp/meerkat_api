@@ -292,12 +292,13 @@ class NonReporting(Resource):
             include=None, require_case_report=True):
         if require_case_report in [0, "0"]:
             require_case_report = False
+        if num_weeks == "0":
+            num_weeks = 0
         locations = get_locations(db.session)
         location = int(location)
         clinics = get_children(location, locations, require_case_report=require_case_report)
         #clinics = [l for l in locations.keys() if locations[l].level == "clinic"]
         conditions = [Data.variables.has_key(variable)]
-
         if num_weeks:
             ew = EpiWeek()
             epi_week = ew.get()

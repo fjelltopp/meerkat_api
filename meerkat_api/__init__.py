@@ -201,16 +201,19 @@ api.add_resource(AggregateYear,
                  "/aggregate_year/<variable_id>/<location_id>/<year>")
 api.add_resource(AggregateLatestYear,
                  "/aggregate_latest_year/<variable_id>/<identifier_id>/<location_id>",
-                 "/aggregate_latest_year/<variable_id>/<identifier_id>/<location_id>/<year>")
+                 "/aggregate_latest_year/<variable_id>/<identifier_id>/<location_id>/<weeks>",
+                 "/aggregate_latest_year/<variable_id>/<identifier_id>/<location_id>/<weeks>/<year>")
 api.add_resource(AggregateLatestLevel,
                  "/aggregate_latest_level/<variable_id>/<identifier_id>/<level>",
                  "/aggregate_latest_level/<variable_id>/<identifier_id>/<level>/<weekly>",
                  "/aggregate_latest_level/<variable_id>/<identifier_id>/<level>/<weekly>/<location_id>")
 api.add_resource(AggregateLatestCategory,
                  "/aggregate_latest_category/<category>/<identifier_id>/<location_id>",
-                 "/aggregate_latest_category/<category>/<identifier_id>/<location_id>/<year>"
+                 "/aggregate_latest_category/<category>/<identifier_id>/<location_id>/<weeks>",
+                 "/aggregate_latest_category/<category>/<identifier_id>/<location_id>/<weeks>/<year>"
                  
                 )
+
 api.add_resource(AggregateCategory,
                  "/aggregate_category/<category>/<location_id>",
                  "/aggregate_category/<category>/<location_id>/<year>",
