@@ -1849,6 +1849,33 @@ class CdPublicHealthSom(Resource):
 
         ret["data"]["reporting_sites"]=somalia_reporting_sites
 
+
+        # FIGURE 3: INCIDENCE OF CONFIRMED MALARIA CASES BY REGION (MAP)
+        ir = IncidenceRate()
+
+        severe_malnutrition = "cmd_7"
+        mal_incidence = ir.get(severe_malnutrition, 'district', mult_factor=10000,
+                               start_date=start_date,
+                               end_date=end_date_limit)
+        
+        mapped_mal_incidence = {}
+        locs = get_locations(db.session)
+        districts = [loc for loc in locs.keys()
+                     if locs[loc].level == "district"]
+        # Structure the data.
+        for district in districts:
+            if district not in mal_incidence:
+                mal_incidence[district] = 0
+            mapped_mal_incidence[locs[district].name] = {
+                'value': int(mal_incidence[district])
+            }
+        print(mapped_mal_incidence)
+        ret["data"].update({
+            "figure_malnutrition_map":  mapped_mal_incidence
+        })
+
+
+        
         return ret
 
 
