@@ -144,9 +144,9 @@ from meerkat_api.resources.explore import QueryVariable, QueryCategory
 from meerkat_api.resources.epi_week import EpiWeek, EpiWeekStart
 from meerkat_api.resources.completeness import Completeness, NonReporting
 from meerkat_api.resources.reports import PublicHealth, CdReport, \
-    CdPublicHealth, CdPublicHealthMad, NcdPublicHealth, RefugeePublicHealth, \
-    RefugeeCd, RefugeeDetail, Pip, WeeklyEpiMonitoring, Malaria, \
-    VaccinationReport, AFROBulletin,\
+    CdPublicHealth, CdPublicHealthMad, CdPublicHealthSom, NcdPublicHealth, \
+    RefugeePublicHealth, RefugeeCd, RefugeeDetail, Pip, \
+    WeeklyEpiMonitoring, Malaria, VaccinationReport, AFROBulletin,\
     NcdReport, NcdReportNewVisits, NcdReportReturnVisits, PlagueReport, \
     EBSReport, MhReport, CTCReport
 
@@ -284,6 +284,9 @@ api.add_resource(CdPublicHealth, "/reports/cd_public_health/<location>",
 api.add_resource(CdPublicHealthMad, "/reports/cd_public_health_mad/<location>",
                  "/reports/cd_public_health_mad/<location>/<end_date>",
                  "/reports/cd_public_health_mad/<location>/<end_date>/<start_date>")
+api.add_resource(CdPublicHealthSom, "/reports/cd_public_health_som/<location>",
+                 "/reports/cd_public_health_som/<location>/<end_date>",
+                 "/reports/cd_public_health_som/<location>/<end_date>/<start_date>")
 api.add_resource(NcdPublicHealth, "/reports/ncd_public_health/<location>",
                  "/reports/ncd_public_health/<location>/<end_date>",
                  "/reports/ncd_public_health/<location>/<end_date>/<start_date>")

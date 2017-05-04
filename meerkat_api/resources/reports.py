@@ -1799,6 +1799,52 @@ class CdPublicHealthMad(Resource):
         return ret
 
 
+
+class CdPublicHealthSom(Resource):
+    """
+    Public Health Profile Report for Communicable Diseases
+
+    This reports gives an overview summary over the CD data from the project
+    Including disease brekdowns reporting locations and demographics
+
+    Args:\n
+       location: Location to generate report for\n
+       start_date: Start date of report\n
+       end_date: End date of report\n
+    Returns:\n
+       report_data\n
+    """
+    decorators = [authenticate]
+
+    def get(self, location, start_date=None, end_date=None):
+
+        start_date, end_date = fix_dates(start_date, end_date)
+        end_date_limit = end_date + timedelta(days=1)
+        conn = db.engine.connect()
+
+        # This report is nearly the same as the CDPublicHealth Report
+        # Let's just get that report and tweak it slightly.
+        rv = CdPublicHealth()
+        ret = rv.get( location, start_date.isoformat(), end_date.isoformat() )
+
+        # Other values required for the email.
+        ret['email'] = {
+            'cases': int(round(query_sum(db, ['tot_1'], start_date, end_date_limit, location)["total"])),
+            'consultations': int(round(query_sum(db, ['reg_2'],
+                                                 start_date, end_date_limit, location)["total"])),
+            'clinics': int(round(TotClinics().get(location)["total"]))
+        }
+
+        # Delete unwanted indicators.
+        del ret["data"]["public_health_indicators"][1:3]
+
+        # Replace with new indicators.
+        comp = Completeness()
+
+        return ret
+
+
+
 class NcdPublicHealth(Resource):
     """
     Public Health Profile Report for Non-Communicable Diseases
