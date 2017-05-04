@@ -1849,6 +1849,10 @@ class CdPublicHealthSom(Resource):
 
         ret["data"]["reporting_sites"]=somalia_reporting_sites
 
+        # Add demographic totals
+        gender_totals=sum(item['quantity'] for item in ret["data"]["gender"])
+        ret["data"]["gender_totals"] = gender_totals
+
         return ret
 
 
