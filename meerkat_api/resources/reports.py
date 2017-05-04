@@ -1841,6 +1841,14 @@ class CdPublicHealthSom(Resource):
         # Replace with new indicators.
         comp = Completeness()
 
+        # Remove non-reporting sites from data structure
+        somalia_reporting_sites = []
+        for site in ret["data"]["reporting_sites"]:
+            if site["quantity"]> 0:
+                somalia_reporting_sites.append(site)
+
+        ret["data"]["reporting_sites"]=somalia_reporting_sites
+
         return ret
 
 
