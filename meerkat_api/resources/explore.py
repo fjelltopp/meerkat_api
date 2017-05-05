@@ -195,8 +195,9 @@ class QueryVariable(Resource):
             # r = (number, week, other_columns_to_extract
             if "locations" in group_by:
                 # r[2] = location
-                ret[names[r[2]]]["total"] += r[0]
-                ret[names[r[2]]]["weeks"][int(r[1])] = int(r[0])
+                if r[2]:
+                    ret[names[r[2]]]["total"] += r[0]
+                    ret[names[r[2]]]["weeks"][int(r[1])] = int(r[0])
             else:
                 # r[2:] are the ids that the record has
                 for i, i_d in enumerate(ids):
