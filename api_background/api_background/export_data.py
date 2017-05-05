@@ -454,15 +454,19 @@ def export_category(uuid, form_name, category, download_name, variables, data_ty
             # If a translation dictionary is defined in which the key exists...
             if min_translation and k in min_translation and list_row[index]:
                 tr_dict = min_translation[k]
-                parts = [x.strip() for x in str(list_row[index]).split(',')]
-                for x in range(len(parts)):
-                    # Get the translation using the appropriate key.
-                    # If that doesn't exist get the wild card key: *
-                    # If that doesn't exist just return the value
-                    parts[x] = str(
-                        tr_dict.get(parts[x], tr_dict.get('*', parts[x]))
-                    )
-                list_row[index] = ', '.join(list(filter(bool, parts)))
+                if list_row[index] in tr_dict:
+                    list_row[index] = tr_dict[list_row[index]]
+                else:                              
+                    parts = [x.strip() for x in str(list_row[index]).split(' ')]
+                    for x in range(len(parts)):
+                        # Get the translation using the appropriate key.
+                        # If that doesn't exist get the wild card key: *
+                        # If that doesn't exist just return the value
+                        parts[x] = str(
+                            tr_dict.get(parts[x], tr_dict.get('*', parts[x]))
+                        )
+                    list_row[index] = ' '.join(list(filter(bool, parts)))
+                
             if translation_dir and language != "en" and list_row[index]:
                 list_row[index] = t.gettext(list_row[index])
         list_rows.append(list_row)
