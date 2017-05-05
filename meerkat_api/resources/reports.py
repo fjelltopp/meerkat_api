@@ -1877,6 +1877,8 @@ class CdPublicHealthSom(Resource):
             "figure_malnutrition_map":  mapped_mal_incidence
         })
 
+        ret["data"]["morbidity_communicable_imci"] = get_disease_types("imci", start_date, end_date_limit, location, conn)
+
         return ret
 
 
