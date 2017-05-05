@@ -1822,6 +1822,16 @@ class CdPublicHealthSom(Resource):
         end_date_limit = end_date + timedelta(days=1)
         conn = db.engine.connect()
 
+        locs = get_locations(db.session)
+        if int(location) not in locs:
+            return None
+        location_name = locs[int(location)]
+
+        regions = [loc for loc in locs.keys()
+                   if locs[loc].level == "region"]
+        districts = [loc for loc in locs.keys()
+                     if locs[loc].level == "district"]
+
         # This report is nearly the same as the CDPublicHealth Report
         # Let's just get that report and tweak it slightly.
         rv = CdPublicHealth()
@@ -1852,6 +1862,38 @@ class CdPublicHealthSom(Resource):
         # Add demographic totals
         gender_totals=sum(item['quantity'] for item in ret["data"]["gender"])
         ret["data"]["gender_totals"] = gender_totals
+
+        # COMPLETENESS CHART
+        ret["data"]["figure_completeness"] = []
+        district_completeness_data = {}
+        district_timeliness_data = {}
+        comp_reg = {}
+        for reg in regions:
+            try: # If data is completely missing there is no information for districts in the region
+                comp_reg = json.loads(Completeness().get('reg_1',
+                                                           reg, 4, end_date=end_date + timedelta(days=2)).data.decode('UTF-8'))
+                time_reg = json.loads(Completeness().get('reg_5',
+                                                         reg, 4, end_date=end_date + timedelta(days=2)).data.decode('UTF-8'))
+                for loc_s in comp_reg["yearly_score"].keys():
+                    try:
+                        ret["data"]["figure_completeness"].append({
+                            "district": locs[int(loc_s)].name,
+                            "value": comp_reg["yearly_score"][loc_s]
+                        })
+                    except KeyError:
+                        ret["data"]["figure_completeness"].append({
+                            "district": locs[int(loc_s)].name,
+                            "value": -1
+                        })
+                for loc_s in comp_reg["score"].keys():
+                    district_completeness_data[loc_s] = comp_reg["score"][loc_s]
+                for loc_s in time_reg["score"].keys():
+                    district_timeliness_data[loc_s] = time_reg["score"][loc_s]
+
+            except AttributeError:
+                pass
+
+
 
         # FIGURE 3: INCIDENCE OF CONFIRMED MALARIA CASES BY REGION (MAP)
         ir = IncidenceRate()
