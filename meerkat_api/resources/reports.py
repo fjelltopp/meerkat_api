@@ -1821,6 +1821,7 @@ class CdPublicHealthSom(Resource):
         start_date, end_date = fix_dates(start_date, end_date)
         end_date_limit = end_date + timedelta(days=1)
         conn = db.engine.connect()
+        query_variable = QueryVariable()
 
         locs = get_locations(db.session)
         if int(location) not in locs:
@@ -1846,10 +1847,39 @@ class CdPublicHealthSom(Resource):
         }
 
         # Delete unwanted indicators.
-        del ret["data"]["public_health_indicators"][1:3]
+        # leaving only Case Reported and Alerts Investigated
+        del ret["data"]["public_health_indicators"][1:3] #TODO, we are relying here on the structure of standard profile report. 
+
+        # IMCI algorithm indicator
+        less_5yo = query_variable.get(
+            "prc_2", "under_five",
+            end_date=end_date_limit.isoformat(),
+            start_date=start_date.isoformat(),
+            only_loc=location
+        )
+        less_5yo = sum(less_5yo[k]["total"] for k in less_5yo.keys())
+        modules = get_variables_category("module", start_date, end_date_limit, location, conn)
+        ret["data"]["public_health_indicators"].append(
+            make_dict(gettext("Child Health (IMCI) algorithm followed"),
+                      modules["Child Health (IMCI)"],
+                      modules["Child Health (IMCI)"] / less_5yo * 100))
 
         # Replace with new indicators.
         comp = Completeness()
+        comp_reg = json.loads(Completeness().get('reg_1',
+                                                    1, 4, end_date=end_date + timedelta(days=2)).data.decode('UTF-8')) #TODO HARDCODED no of registers required per week
+        time_reg = json.loads(Completeness().get('reg_5',
+                                                    1, 4, end_date=end_date + timedelta(days=2)).data.decode('UTF-8'))
+
+        ret["data"]["public_health_indicators"].append(
+            make_dict(gettext("Completeness"),
+                      "-",
+                      comp_reg["yearly_score"]["1"]))
+
+        ret["data"]["public_health_indicators"].append(
+            make_dict(gettext("Timeliness"),
+                      "-",
+                      time_reg["yearly_score"]["1"]))
 
         # Remove non-reporting sites from data structure
         somalia_reporting_sites = []
