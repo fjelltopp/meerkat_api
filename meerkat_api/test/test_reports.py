@@ -719,7 +719,7 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
 
         # Public Health Indicators
         self.assertEqual(data["public_health_indicators"][0]["quantity"], 7)
-        self.assertEqual(data["public_health_indicators"][1]["quantity"], 0)
+        self.assertEqual(data["public_health_indicators"][1]["quantity"], 3)
 
 
         # Test with a different Location
