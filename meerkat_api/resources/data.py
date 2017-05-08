@@ -123,6 +123,8 @@ class AggregateLatestYear(Resource):
 
     def get(self, variable_id, identifier_id, location_id, year=datetime.today().year, weeks=True):
         variable_id = str(variable_id)
+        if weeks in [0, "0"]:
+            weeks = False
         identifier_id = str(identifier_id)
         year = int(year)
         start_date = datetime(year, 1, 1)
@@ -194,6 +196,8 @@ class AggregateLatestLevel(Resource):
     def get(self, variable_id, identifier_id, level, weekly=True, location_id=1):
         variable_id = str(variable_id)
         identifier_id = str(identifier_id)
+        if weekly == "0":
+            weekly = False
         year = datetime.today().year
         start_date = datetime(year, 1, 1)
         end_date = datetime(year + 1, 1, 1)
