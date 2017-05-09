@@ -944,8 +944,10 @@ class CdReport(Resource):
         variable_query = db.session.query(AggregationVariables).filter(
             AggregationVariables.alert == 1)
         variable_names = {}
+        variable_type = {}
         for v in variable_query.all():
             variable_names[v.id] = v.name
+            variable_type[v.name] = v.alert_type
         #  The loop through all alerts
         current_year = start_date.year
         previous_years = {}
@@ -991,6 +993,7 @@ class CdReport(Resource):
             data[reason]["previous"] = previous_years.get(reason,{last_year:list(data_list)}).get(
                 last_year, list(data_list))
         ret["data"]["communicable_diseases"] = data
+        ret["data"]["variables"] = variable_type
         return ret
 
 
@@ -1605,23 +1608,23 @@ class CdPublicHealth(Resource):
 
         # public health indicators
 
-        medicines = query_variable.get("prc_1", "medicine",
-                                     end_date=end_date_limit.isoformat(),
-                                     start_date=start_date.isoformat(),
-                                     only_loc=location, use_ids=True)
+        # medicines = query_variable.get("prc_1", "medicine",
+        #                              end_date=end_date_limit.isoformat(),
+        #                              start_date=start_date.isoformat(),
+        #                              only_loc=location, use_ids=True)
 
-        if "med_1" in medicines and "med_2" in medicines:
-            tot_med = medicines["med_1"]["total"]
-            if tot_med == 0:
-                tot_med = 1
-            ret["data"]["public_health_indicators"].append(
-                make_dict(gettext("Availability of prescribed medicines"),
-                          medicines["med_2"]["total"],
-                          medicines["med_2"]["total"] / tot_med * 100))
-        else:
-            ret["data"]["public_health_indicators"].append(
-                make_dict(gettext("Availability of prescribed medicines"),
-                          0,0))
+        # if "med_1" in medicines and "med_2" in medicines:
+        #     tot_med = medicines["med_1"]["total"]
+        #     if tot_med == 0:
+        #         tot_med = 1
+        #     ret["data"]["public_health_indicators"].append(
+        #         make_dict(gettext("Availability of prescribed medicines"),
+        #                   medicines["med_2"]["total"],
+        #                   medicines["med_2"]["total"] / tot_med * 100))
+        # else:
+        #     ret["data"]["public_health_indicators"].append(
+        #         make_dict(gettext("Availability of prescribed medicines"),
+        #                   0,0))
 
 
         # Alerts
