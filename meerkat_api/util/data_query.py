@@ -6,7 +6,7 @@ from meerkat_abacus.model import Data
 from sqlalchemy import or_, func, extract
 from meerkat_api.resources.epi_week import epi_year_start
 
-qu = "SELECT sum(CAST(data.variables ->> :variables_1 AS FLOAT)) AS sum_1 extra_columns FROM data WHERE where_clause AND data.date >= :date_1 AND data.date < :date_2 AND (data.country = :country_1 OR data.region = :region_1 OR data.district = :district_1 OR data.clinic = :clinic_1) group_by_clause"
+qu = "SELECT sum(CAST(data.variables ->> :variables_1 AS FLOAT)) AS sum_1 extra_columns FROM data WHERE where_clause AND data.date >= :date_1 AND data.date < :date_2 AND (data.country = :country_1 OR data.zone = :zone_1 OR data.region = :region_1 OR data.district = :district_1 OR data.clinic = :clinic_1) group_by_clause"
 
 
 def query_sum(db, var_ids, start_date, end_date, location, level=None, weeks=False, date_variable=None):
@@ -39,6 +39,7 @@ def query_sum(db, var_ids, start_date, end_date, location, level=None, weeks=Fal
         "date_1": start_date,
         "date_2": end_date,
         "country_1": location,
+        "zone_1": location,
         "region_1": location,
         "district_1": location,
         "clinic_1": location,
@@ -135,7 +136,7 @@ def latest_query(db, var_id, identifier_id, start_date, end_date,
     """
     location_condtion = [
                 or_(loc == location for loc in (
-                    Data.country, Data.region, Data.district, Data.clinic))]
+                    Data.country, Data.zone, Data.region, Data.district, Data.clinic))]
     if date_variable:
         date_conditions = [func.to_date(
             Data.variables[date_variable].astext, "YYYY-MM-DDTHH-MI-SS") >= start_date,

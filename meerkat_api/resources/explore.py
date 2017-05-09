@@ -109,7 +109,7 @@ class QueryVariable(Resource):
         if "location" in variable:
             location_id = variable.split(":")[1]
             conditions = date_conditions + [or_(loc == location_id for loc in (
-                Data.country, Data.region, Data.district, Data.clinic))]
+                Data.country, Data.zone, Data.region, Data.district, Data.clinic))]
         else:
             conditions = [Data.variables.has_key(variable)] + date_conditions
             if additional_variables:
@@ -122,7 +122,7 @@ class QueryVariable(Resource):
                     # only loc is in request variables
                     only_loc = request.args["only_loc"]
                 conditions += [or_(loc == only_loc for loc in (
-                    Data.country, Data.region, Data.district, Data.clinic))]
+                    Data.country, Data.zone, Data.region, Data.district, Data.clinic))]
         epi_week_start = epi_year_start(year)
         # Determine which columns we want to extract from the Data table
         columns_to_extract = [func.count(Data.id).label('value')]
@@ -244,7 +244,7 @@ class QueryCategory(Resource):
             if not only_loc:
                 only_loc = request.args["only_loc"]
                 conditions += [or_(loc == only_loc for loc in (
-                    Data.country, Data.region, Data.district, Data.clinic))]
+                    Data.country, Data.zone, Data.region, Data.district, Data.clinic))]
 
         columns_to_query = [Data.categories[group_by1].astext, Data.categories[group_by2].astext]
         if "locations" in group_by1:

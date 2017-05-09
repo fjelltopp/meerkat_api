@@ -10,7 +10,7 @@ from meerkat_abacus import model
 from meerkat_abacus.util import get_locations
 from meerkat_api.authentication import authenticate
 
-
+from dateutil.parser import parse
 class Alert(Resource):
     """
     Get alert with alert_id
@@ -56,7 +56,11 @@ class Alerts(Resource):
     decorators = [authenticate]
 
     def get(self):
-        args = request.args
+        args = request.args.to_dict()
+
+        if "start_date" in args:
+            print(args["start_date"])
+            args["start_date"] = parse(args["start_date"])
         return jsonify({"alerts": get_alerts(args)})
 
 
@@ -82,16 +86,19 @@ def get_alerts(args):
         disregarded_conditions.append(
             model.DisregardedData.variables["alert_reason"].astext ==
             args["reason"])
+       
     if "location" in args.keys():
         locations = get_locations(db.session)
         children = get_children(int(args["location"]), locations)
         cond = or_(loc == args["location"] for loc in (
             model.Data.country,
+            model.Data.zone,
             model.Data.region,
             model.Data.district,
             model.Data.clinic))
         disregarded_cond = or_(loc == args["location"] for loc in (
             model.DisregardedData.country,
+            model.DisregardedData.zone,
             model.DisregardedData.region,
             model.DisregardedData.district,
             model.DisregardedData.clinic)
@@ -125,49 +132,56 @@ class AggregateAlerts(Resource):
     """
     decorators = [authenticate]
 
-    def get(self, central_review=False):
+    def get(self, central_review=False, hard_date_limit=None):
         args = request.args
         all_alerts = get_alerts(args)
         ret = {}
+        total = 0
+        if hard_date_limit:
+            hard_date_limit = parse(hard_date_limit)
+            print(hard_date_limit)
         for a in all_alerts:
-            reason = a["variables"]["alert_reason"]
-
-            if central_review:
-                status = "Pending"
-                if "ale_1" in a["variables"]:
-                    if "ale_2" in a["variables"]:
-                        status = "Ongoing"
-                    elif "ale_3" in a["variables"]:
-                        status = "Disregarded"
-                    elif "ale_4" in a["variables"]:
-                        status = "Ongoing"
-                    else:
-                        status = "Ongoing"
-                        
-                if "cre_1" in a["variables"]:
-                    if "cre_2" in a["variables"]:
-                        status = "Confirmed"
-                    elif "cre_3" in a["variables"]:
-                        status = "Disregarded"
-                    elif "cre_4" in a["variables"]:
-                        status = "Ongoing"
-                    else:
-                        status = "Ongoing"
-
+            if hard_date_limit and a["date"] < hard_date_limit:
+                pass
             else:
-                if "ale_1" in a["variables"]:
-                    if "ale_2" in a["variables"]:
-                        status = "Confirmed"
-                    elif "ale_3" in a["variables"]:
-                        status = "Disregarded"
-                    elif "ale_4" in a["variables"]:
-                        status = "Ongoing"
-                else:
-                    # We set all  without an investigation to Pending
+                reason = a["variables"]["alert_reason"]
+                if central_review:
                     status = "Pending"
-            r = ret.setdefault(str(reason), {})
-            r.setdefault(status, 0)
-            r[status] += 1
+                    if "ale_1" in a["variables"]:
+                        if "ale_2" in a["variables"]:
+                            status = "Ongoing"
+                        elif "ale_3" in a["variables"]:
+                            status = "Disregarded"
+                        elif "ale_4" in a["variables"]:
+                            status = "Ongoing"
+                        else:
+                            status = "Ongoing"
 
-        ret["total"] = len(all_alerts)
+                    if "cre_1" in a["variables"]:
+                        if "cre_2" in a["variables"]:
+                            status = "Confirmed"
+                        elif "cre_3" in a["variables"]:
+                            status = "Disregarded"
+                        elif "cre_4" in a["variables"]:
+                            status = "Ongoing"
+                        else:
+                            status = "Ongoing"
+
+                else:
+                    if "ale_1" in a["variables"]:
+                        if "ale_2" in a["variables"]:
+                            status = "Confirmed"
+                        elif "ale_3" in a["variables"]:
+                            status = "Disregarded"
+                        elif "ale_4" in a["variables"]:
+                            status = "Ongoing"
+                    else:
+                        # We set all  without an investigation to Pending
+                        status = "Pending"
+                r = ret.setdefault(str(reason), {})
+                r.setdefault(status, 0)
+                r[status] += 1
+                total += 1
+
+        ret["total"] = total
         return jsonify(ret)

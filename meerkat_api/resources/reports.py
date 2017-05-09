@@ -944,8 +944,10 @@ class CdReport(Resource):
         variable_query = db.session.query(AggregationVariables).filter(
             AggregationVariables.alert == 1)
         variable_names = {}
+        variable_type = {}
         for v in variable_query.all():
             variable_names[v.id] = v.name
+            variable_type[v.name] = v.alert_type
         #  The loop through all alerts
         current_year = start_date.year
         previous_years = {}
@@ -991,6 +993,7 @@ class CdReport(Resource):
             data[reason]["previous"] = previous_years.get(reason,{last_year:list(data_list)}).get(
                 last_year, list(data_list))
         ret["data"]["communicable_diseases"] = data
+        ret["data"]["variables"] = variable_type
         return ret
 
 
