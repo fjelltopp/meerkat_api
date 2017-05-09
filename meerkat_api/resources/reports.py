@@ -1838,6 +1838,42 @@ class CdPublicHealthSom(Resource):
         rv = CdPublicHealth()
         ret = rv.get( location, start_date.isoformat(), end_date.isoformat() )
 
+
+
+        query_variable = QueryVariable()
+        total_cases = query_sum(db, ["tot_1"], start_date, end_date_limit, location)["total"]
+        gender = query_variable.get("tot_1", "gender",
+                                    end_date=end_date_limit.isoformat(),
+                                    start_date=start_date.isoformat(),
+                                    only_loc=location)
+        age = query_variable.get("tot_1", "age",
+                                 end_date=end_date_limit.isoformat(),
+                                 start_date=start_date.isoformat(),
+                                 only_loc=location)
+        female = gender["Female"]["total"]
+        male = gender["Male"]["total"]
+        ret["data"]["gender"] = [
+            make_dict("Female",
+                      female,
+                      female / total_cases * 100),
+            make_dict("Male",
+                      male,
+                      male / total_cases * 100)
+        ]
+        ret["data"]["percent_cases_male"] = male / total_cases * 100
+        ret["data"]["percent_cases_female"] = female / total_cases * 100
+        less_5yo = query_variable.get("tot_1", "under_five",
+                                 end_date=end_date_limit.isoformat(),
+                                 start_date=start_date.isoformat(),
+                                 only_loc=location)
+        less_5yo = sum(less_5yo[k]["total"] for k in less_5yo.keys())
+
+        ret["data"]["percent_cases_lt_5yo"] = less_5yo / total_cases * 100
+        if less_5yo == 0:
+            less_5yo = 1
+
+
+
         # Other values required for the email.
         ret['email'] = {
             'cases': int(round(query_sum(db, ['tot_1'], start_date, end_date_limit, location)["total"])),
@@ -1848,21 +1884,25 @@ class CdPublicHealthSom(Resource):
 
         # Delete unwanted indicators.
         # leaving only Case Reported and Alerts Investigated
-        del ret["data"]["public_health_indicators"][1:3] #TODO, we are relying here on the structure of standard profile report. 
+        del ret["data"]["public_health_indicators"][0:3] #TODO, we are relying here on the structure of standard profile report. 
 
         # IMCI algorithm indicator
-        less_5yo = query_variable.get(
-            "prc_2", "under_five",
-            end_date=end_date_limit.isoformat(),
-            start_date=start_date.isoformat(),
-            only_loc=location
-        )
-        less_5yo = sum(less_5yo[k]["total"] for k in less_5yo.keys())
-        modules = get_variables_category("module", start_date, end_date_limit, location, conn)
+        ret["data"]["total_cases"] = total_cases
+        ret["data"]["public_health_indicators"].append(
+            make_dict(gettext("Cases Reported"),
+                      total_cases,
+                      100))
+        imci_cases = query_sum(
+            db,
+            ["imci_case"],
+            start_date.isoformat(),
+            end_date_limit.isoformat(),
+            location
+        )["total"]
         ret["data"]["public_health_indicators"].append(
             make_dict(gettext("Child Health (IMCI) algorithm followed"),
-                      modules["Child Health (IMCI)"],
-                      modules["Child Health (IMCI)"] / less_5yo * 100))
+                      imci_cases,
+                      imci_cases / total_cases * 100))
 
         # Replace with new indicators.
         comp = Completeness()
@@ -1932,7 +1972,6 @@ class CdPublicHealthSom(Resource):
         mal_incidence = ir.get(severe_malnutrition, 'district', mult_factor=10000,
                                start_date=start_date,
                                end_date=end_date_limit)
-        
         mapped_mal_incidence = {}
         locs = get_locations(db.session)
         districts = [loc for loc in locs.keys()
