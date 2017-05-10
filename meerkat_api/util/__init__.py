@@ -120,6 +120,25 @@ def is_child(parent, child, locations):
             return True
     return False
 
+def find_level(location, sublevel, locations):
+    """
+    Returns the isntance of level that location is a child of
+
+    Args:
+        location: location
+        sublevel: the sublevel we are interested in
+        locations: all locations in dict
+
+    Returns:
+       location_id(int): id of the mathcing location
+    """
+    location = int(location)
+
+    for loc in locations:
+        if locations[loc].level == sublevel and is_child(loc, location, locations):
+            return loc
+        
+    return None
 
 def get_children(parent, locations, clinic_type=None, require_case_report=True):
     """

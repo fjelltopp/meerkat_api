@@ -74,15 +74,19 @@ class Completeness(Resource):
         location = int(location)
         location_type = locs[location].level
         if not sublevel:
+            zones = db.session.query(func.count(Locations.id)).filter(Locations.level == 'zone').first()
             sublevels = {"country": "region",
                          "region": "district",
                          "district": "clinic",
                          "clinic": None}
-            sublevel = sublevels[location_type]
 
+            if zones[0] > 0:
+                sublevels["country"] = "zone"
+                sublevels["zone"] = "region"
+            sublevel = sublevels[location_type]
         conditions = [Data.variables.has_key(variable), or_(
             loc == location
-            for loc in (Data.country, Data.region, Data.district, Data.clinic)),
+            for loc in (Data.country, Data.zone, Data.region, Data.district, Data.clinic)),
                       ]
         if exclude and exclude != "None":
             conditions.append(or_(Data.case_type is not None,
@@ -92,7 +96,7 @@ class Completeness(Resource):
         # get the data
 
         data = pd.read_sql(
-            db.session.query(Data.region, Data.district, Data.clinic,
+            db.session.query(Data.region, Data.zone, Data.district, Data.clinic,
                              Data.date,
                              Data.variables[variable].label(variable)).filter(
                                  *conditions).statement, db.session.bind)
