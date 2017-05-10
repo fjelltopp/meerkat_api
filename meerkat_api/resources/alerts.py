@@ -175,6 +175,8 @@ class AggregateAlerts(Resource):
                             status = "Disregarded"
                         elif "ale_4" in a["variables"]:
                             status = "Ongoing"
+                        else:
+                            status = "Ongoing"
                     else:
                         # We set all  without an investigation to Pending
                         status = "Pending"

@@ -92,16 +92,24 @@ class AggregateCategory(Resource):
     def get(self, category, location_id, lim_variable="", year=None):
         if year is None:
             year = datetime.today().year
+        year = int(year)
+        start_date = datetime(year, 1, 1)
+        end_date = datetime(year + 1, 1, 1)
+
+        result = query_sum(
+            db, ["tot_1"], start_date, end_date, location_id,
+            group_by_category=category, weeks=True
+        )
+        return_data = {}
+
         variables_instance = Variables()
         variables = variables_instance.get(category)
-        aggregate_year = AggregateYear()
-
-        return_data = {}
-        for variable in variables.keys():
-            return_data[variable] = aggregate_year.get(variable,
-                                                       location_id,
-                                                       year,
-                                                       lim_variable)
+        for r in variables.keys():
+            if r in result[category]:
+                return_data[r] = result[category][r]
+                return_data[r]["year"] = return_data[r]["total"]
+            else:
+                return_data[r] = {"year": 0, "weeks": {}}
         return return_data
 
     

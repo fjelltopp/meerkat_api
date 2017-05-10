@@ -76,6 +76,26 @@ class DataQueryTests(unittest.TestCase):
         self.assertEqual(result["district"][6], 3)
         self.assertEqual(result["district"][5], 1)
 
+    def test_query_sum_category(self):
+        start_date = datetime(2015, 1, 1)
+        end_date = datetime(2016, 1, 1)
+        
+        result = data_query.query_sum(db, "tot_1", start_date,
+                                      end_date, 1,
+                                      group_by_category="gender")
+        self.assertEqual(result["total"], 10)
+        self.assertEqual(result["gender"]["gen_1"], 3)
+        self.assertEqual(result["gender"]["gen_2"], 7)
+        result = data_query.query_sum(db, "tot_1", start_date,
+                                      end_date, 1,
+                                      group_by_category="gender",
+                                      weeks=True)
+        self.assertEqual(result["total"], 10)
+        self.assertEqual(result["gender"]["gen_1"]["total"], 3)
+        self.assertEqual(result["gender"]["gen_1"]["weeks"], {18: 3})
+        self.assertEqual(result["gender"]["gen_2"]["total"], 7)
+        
+        
     def test_query_sum_weeks(self):
         """ Test that the week breakdown works"""
         start_date = datetime(2015, 1, 1)

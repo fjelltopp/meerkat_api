@@ -3657,6 +3657,7 @@ class AFROBulletin(Resource):
                     }
                 })
             for region in regions:
+                print(region)
                 ret["data"]['table_priority_diseases'][disease].update(
                     {
                         locs[region].name: 0
@@ -3674,25 +3675,20 @@ class AFROBulletin(Resource):
         )
         # insert case figures
         for disease in priority_diseases:
-            priority_disease_cases = query_sum(
+            priority_disease_cases_q = query_sum(
                 db,
                 [disease],
                 start_date,
                 end_date_limit,
                 location,
                 level="region"
-            )["region"]
-            priority_disease_cases_total = query_sum(
-                db,
-                [disease],
-                start_date,
-                end_date_limit,
-                location,
-            )["total"]
+            )
+            priority_disease_cases = priority_disease_cases_q["region"]
+            priority_disease_cases_total = priority_disease_cases_q["total"]
 
             # add regional case breakdown
 
-
+            print(disease, priority_disease_cases)
             for region in priority_disease_cases:
                 try:
                     ret["data"]["table_priority_diseases"][disease][locs[region].name] = priority_disease_cases[region]
