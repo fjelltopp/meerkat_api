@@ -9,8 +9,9 @@ from geoalchemy2.shape import to_shape
 from meerkat_api import db
 from meerkat_abacus.util import get_locations
 from meerkat_api.util import get_children
-from meerkat_api.resources.data import AggregateCategory
+from meerkat_api.resources.data import AggregateCategory, AggregateYear
 from meerkat_api.resources.map import MapVariable
+from meerkat_api.resources.variables import Variables
 from meerkat_api.resources.alerts import Alerts, get_alerts
 from meerkat_api.resources.reports import get_latest_category
 from meerkat_api.resources.locations import TotClinics
@@ -22,8 +23,17 @@ class KeyIndicators(Resource):
     """
 
     def get(self):
-        ac = AggregateCategory()
-        return ac.get("key_indicators", 1)
+        year = datetime.today().year
+        variables_instance = Variables()
+        variables = variables_instance.get("key_indicators")
+        aggregate_year = AggregateYear()
+
+        return_data = {}
+        for variable in variables.keys():
+            return_data[variable] = aggregate_year.get(variable,
+                                                       1,
+                                                       year)
+        return return_data
 
 
 class TotMap(Resource):

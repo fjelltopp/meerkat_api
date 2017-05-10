@@ -63,7 +63,7 @@ def export_data(uuid, use_loc_ids=False):
     for row in results:
         variables.append(row[0])
 
-    fieldnames = ["id", "country", "region",
+    fieldnames = ["id", "zone", "country", "region",
                   "district", "clinic", "clinic_type",
                   "geolocation", "date", "uuid"] + list(variables)
     dict_rows = []
@@ -80,7 +80,7 @@ def export_data(uuid, use_loc_ids=False):
             (col, getattr(row, col)) for col in row.__table__.columns.keys()
         )
         if not use_loc_ids:
-            for l in ["country", "region", "district", "clinic"]:
+            for l in ["country", "zone", "region", "district", "clinic"]:
                 if dict_row[l]:
                     dict_row[l] = locs[dict_row[l]].name
         dict_row.update(dict_row.pop("variables"))
@@ -342,6 +342,8 @@ def export_category(uuid, form_name, category, download_name, variables, data_ty
                 list_row[index] = locs[r[0].clinic].name
             elif form_var == "region":
                 list_row[index] = locs[r[0].region].name
+            elif form_var == "zone":
+                list_row[index] = locs[r[0].zone].name
             elif form_var == "district":
                 if r[0].district:
                     list_row[index] = locs[r[0].district].name

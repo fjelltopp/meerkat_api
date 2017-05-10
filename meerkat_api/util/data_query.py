@@ -6,10 +6,12 @@ from meerkat_abacus.model import Data
 from sqlalchemy import or_, func, extract
 from meerkat_api.resources.epi_week import epi_year_start
 
-qu = "SELECT sum(CAST(data.variables ->> :variables_1 AS FLOAT)) AS sum_1 extra_columns FROM data WHERE where_clause AND data.date >= :date_1 AND data.date < :date_2 AND (data.country = :country_1 OR data.region = :region_1 OR data.district = :district_1 OR data.clinic = :clinic_1) group_by_clause"
+qu = "SELECT sum(CAST(data.variables ->> :variables_1 AS FLOAT)) AS sum_1 extra_columns FROM data WHERE where_clause AND data.date >= :date_1 AND data.date < :date_2 AND (data.country = :country_1 OR data.zone = :zone_1 OR data.region = :region_1 OR data.district = :district_1 OR data.clinic = :clinic_1) group_by_clause"
 
 
-def query_sum(db, var_ids, start_date, end_date, location, level=None, weeks=False, date_variable=None):
+def query_sum(db, var_ids, start_date, end_date, location,
+              group_by_category=None,
+              level=None, weeks=False, date_variable=None):
     """
     Calculates the total number of records with every variable in var_ids.
     If var_ids is only one variable it can also be used to sum up the numbers
@@ -39,6 +41,7 @@ def query_sum(db, var_ids, start_date, end_date, location, level=None, weeks=Fal
         "date_1": start_date,
         "date_2": end_date,
         "country_1": location,
+        "zone_1": location,
         "region_1": location,
         "district_1": location,
         "clinic_1": location,
@@ -61,12 +64,21 @@ def query_sum(db, var_ids, start_date, end_date, location, level=None, weeks=Fal
         variables["date_3"] = epi_week_start
         group_by.append("week")
         ret["weeks"] = {}
-        
+
+    if group_by_category and level:
+        return {}
+    
+    if group_by_category:
+        extra_columns += ", categories->>:category1 as category"
+        variables["category1"] = group_by_category
+        ret[group_by_category] = {}
+        group_by.append("category")
     if level:
         ret[level] = {}
         group_by.append(level)
         extra_columns += ', "' + level + '"'
     if group_by:
+
         group_by_clause = "group by " + ", ".join(group_by)
         
     query = qu.replace("where_clause", " AND ".join(where_clauses))
@@ -77,36 +89,55 @@ def query_sum(db, var_ids, start_date, end_date, location, level=None, weeks=Fal
         variables["date_variable"] = date_variable
         query.replace("data.date", date_string)
 
-    
     conn = db.engine.connect()
     result = conn.execute(query, **variables).fetchall()
     if result:
-        if level and weeks:
-            for r in result:
-                week = int(r[1])
-                ret[level].setdefault(r[2], {"total": 0, "weeks": {}})
-                ret[level][r[2]]["weeks"][week] = r[0]
-                ret[level][r[2]]["total"] += r[0]
-                ret["weeks"].setdefault(week, 0)
-                ret["weeks"][week] += r[0]
-                ret["total"] += r[0]
-        elif level:
-            for r in result:
-                if r[1]:
-                    ret[level][r[1]] = r[0]
+        if level:
+            if weeks:
+                for r in result:
+                    week = int(r[1])
+                    ret[level].setdefault(r[2], {"total": 0, "weeks": {}})
+                    ret[level][r[2]]["weeks"][week] = r[0]
+                    ret[level][r[2]]["total"] += r[0]
+                    ret["weeks"].setdefault(week, 0)
+                    ret["weeks"][week] += r[0]
                     ret["total"] += r[0]
+            else:
+                for r in result:
+                    if r[1]:
+                        ret[level][r[1]] = r[0]
+                        ret["total"] += r[0]
+        elif group_by_category:
+            if weeks:
+                for r in result:
+                    week = int(r[1])
+                    if r[2]:
+                        ret[group_by_category].setdefault(r[2],
+                                                          {"total": 0, "weeks": {}})
+                        ret[group_by_category][r[2]]["weeks"][week] = r[0]
+                        ret[group_by_category][r[2]]["total"] += r[0]
+                        ret["weeks"].setdefault(week, 0)
+                        ret["weeks"][week] += r[0]
+                        ret["total"] += r[0]
 
-        elif weeks:
-            for r in result:
-                if r[1]:
-                    ret["weeks"][int(r[1])] = r[0]
-                    ret["total"] += r[0]
+            else:
+                for r in result:
+                    if r[1]:
+                        ret[group_by_category][r[1]] = r[0]
+                        ret["total"] += r[0]
 
         else:
-            if result[0][0]:
-                ret["total"] = result[0][0]
+
+            if weeks:
+                for r in result:
+                    if r[1]:
+                        ret["weeks"][int(r[1])] = r[0]
+                        ret["total"] += r[0]
             else:
-                ret["total"] = 0
+                if result[0][0]:
+                    ret["total"] = result[0][0]
+                else:
+                    ret["total"] = 0
 
     return ret
 
@@ -135,7 +166,7 @@ def latest_query(db, var_id, identifier_id, start_date, end_date,
     """
     location_condtion = [
                 or_(loc == location for loc in (
-                    Data.country, Data.region, Data.district, Data.clinic))]
+                    Data.country, Data.zone, Data.region, Data.district, Data.clinic))]
     if date_variable:
         date_conditions = [func.to_date(
             Data.variables[date_variable].astext, "YYYY-MM-DDTHH-MI-SS") >= start_date,
@@ -219,5 +250,8 @@ def latest_query(db, var_id, identifier_id, start_date, end_date,
 
 if __name__ == '__main__':
     from meerkat_api import db
-    print(latest_query(db, "ctc_beds", "ctc_1", datetime(2017, 1, 1),
-                       datetime(2017, 12, 31), 1, by_week=True))
+
+    print(query_sum(db, "tot_1", datetime(2017, 1, 1), datetime(2017, 12, 31), 1,
+                    group_by_category="gender", weeks=True))
+    #print(latest_query(db, "ctc_beds", "ctc_1", datetime(2017, 1, 1),
+                       #datetime(2017, 12, 31), 1, by_week=True))
