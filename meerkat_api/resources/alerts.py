@@ -92,11 +92,13 @@ def get_alerts(args):
         children = get_children(int(args["location"]), locations)
         cond = or_(loc == args["location"] for loc in (
             model.Data.country,
+            model.Data.zone,
             model.Data.region,
             model.Data.district,
             model.Data.clinic))
         disregarded_cond = or_(loc == args["location"] for loc in (
             model.DisregardedData.country,
+            model.DisregardedData.zone,
             model.DisregardedData.region,
             model.DisregardedData.district,
             model.DisregardedData.clinic)

@@ -28,7 +28,7 @@ import numpy as np
 import traceback
 from gettext import gettext
 import logging, json, operator
-from meerkat_api.util import get_children, is_child, fix_dates, rows_to_dicts
+from meerkat_api.util import get_children, is_child, fix_dates, rows_to_dicts, find_level
 from meerkat_api import db, app
 from meerkat_abacus.model import Data, Locations, AggregationVariables
 from meerkat_api.resources.completeness import Completeness, NonReporting
@@ -1802,6 +1802,221 @@ class CdPublicHealthMad(Resource):
         return ret
 
 
+
+class CdPublicHealthSom(Resource):
+    """
+    Public Health Profile Report for Communicable Diseases
+
+    This reports gives an overview summary over the CD data from the project
+    Including disease brekdowns reporting locations and demographics
+
+    Args:\n
+       location: Location to generate report for\n
+       start_date: Start date of report\n
+       end_date: End date of report\n
+    Returns:\n
+       report_data\n
+    """
+    decorators = [authenticate]
+
+    def get(self, location, start_date=None, end_date=None):
+
+        start_date, end_date = fix_dates(start_date, end_date)
+        end_date_limit = end_date + timedelta(days=1)
+        conn = db.engine.connect()
+        query_variable = QueryVariable()
+
+        locs = get_locations(db.session)
+        if int(location) not in locs:
+            return None
+        location_name = locs[int(location)]
+
+        regions = [loc for loc in locs.keys()
+                   if locs[loc].level == "region"]
+        districts = [loc for loc in locs.keys()
+                     if locs[loc].level == "district"]
+
+
+        zone_location = location
+        # Determine zone
+        logo_dict = {"Puntland": "moh_pl.png",
+                     "Somaliland": "moh_sl.png"}
+        zone_name = locs[int(location)].name        
+        if location == "1":
+            #All of somalia
+            logo = "som_moh.png"
+            zone_location = location
+        else:
+            zone_location = find_level(location, "zone", locs)
+            zone_name = locs[zone_location].name
+            logo = logo_dict.get(zone_name, "som_moh.png")
+        
+
+        # This report is nearly the same as the CDPublicHealth Report
+        # Let's just get that report and tweak it slightly.
+        rv = CdPublicHealth()
+        ret = rv.get( location, start_date.isoformat(), end_date.isoformat() )
+
+        ret["data"]["logo"] = logo
+        ret["data"]["project_region"] = zone_name
+        query_variable = QueryVariable()
+        total_cases = query_sum(db, ["tot_1"], start_date, end_date_limit, location)["total"]
+        gender = query_variable.get("tot_1", "gender",
+                                    end_date=end_date_limit.isoformat(),
+                                    start_date=start_date.isoformat(),
+                                    only_loc=location)
+        age = query_variable.get("tot_1", "age",
+                                 end_date=end_date_limit.isoformat(),
+                                 start_date=start_date.isoformat(),
+                                 only_loc=location)
+        ret["data"]["total_cases"] = total_cases
+        if total_cases == 0:
+            total_cases = 1
+        female = gender["Female"]["total"]
+        male = gender["Male"]["total"]
+        ret["data"]["gender"] = [
+            make_dict("Female",
+                      female,
+                      female / total_cases * 100),
+            make_dict("Male",
+                      male,
+                      male / total_cases * 100)
+        ]
+        ret["data"]["percent_cases_male"] = male / total_cases * 100
+        ret["data"]["percent_cases_female"] = female / total_cases * 100
+        less_5yo = query_variable.get("tot_1", "under_five",
+                                 end_date=end_date_limit.isoformat(),
+                                 start_date=start_date.isoformat(),
+                                 only_loc=location)
+        less_5yo = sum(less_5yo[k]["total"] for k in less_5yo.keys())
+
+        ret["data"]["percent_cases_lt_5yo"] = less_5yo / total_cases * 100
+        if less_5yo == 0:
+            less_5yo = 1
+
+
+
+        # Other values required for the email.
+        ret['email'] = {
+            'cases': int(round(query_sum(db, ['tot_1'], start_date, end_date_limit, location)["total"])),
+            'consultations': int(round(query_sum(db, ['reg_2'],
+                                                 start_date, end_date_limit, location)["total"])),
+            'clinics': int(round(TotClinics().get(location)["total"]))
+        }
+
+        # Delete unwanted indicators.
+        # leaving only Case Reported and Alerts Investigated
+        del ret["data"]["public_health_indicators"][0:3] #TODO, we are relying here on the structure of standard profile report. 
+
+        # IMCI algorithm indicator
+  
+        ret["data"]["public_health_indicators"].append(
+            make_dict(gettext("Cases Reported"),
+                      total_cases,
+                      100))
+        imci_cases = query_sum(
+            db,
+            ["imci_case"],
+            start_date.isoformat(),
+            end_date_limit.isoformat(),
+            location
+        )["total"]
+        ret["data"]["public_health_indicators"].append(
+            make_dict(gettext("Child Health (IMCI) algorithm followed"),
+                      imci_cases,
+                      imci_cases / total_cases * 100))
+
+        # Replace with new indicators.
+        comp = Completeness()
+        comp_reg = json.loads(Completeness().get('reg_1',
+                                                    location, 4, end_date=end_date + timedelta(days=2)).data.decode('UTF-8')) #TODO HARDCODED no of registers required per week
+        time_reg = json.loads(Completeness().get('reg_5',
+                                                    location, 4, end_date=end_date + timedelta(days=2)).data.decode('UTF-8'))
+
+        print(comp_reg)
+        ret["data"]["public_health_indicators"].append(
+            make_dict(gettext("Completeness"),
+                      "-",
+                      comp_reg["yearly_score"].get(str(location), "-")))
+
+        ret["data"]["public_health_indicators"].append(
+            make_dict(gettext("Timeliness"),
+                      "-",
+                      time_reg["yearly_score"].get(str(location), "-")))
+
+        # Remove non-reporting sites from data structure
+        somalia_reporting_sites = []
+        for site in ret["data"]["reporting_sites"]:
+            if site["quantity"]> 0:
+                somalia_reporting_sites.append(site)
+
+        ret["data"]["reporting_sites"]=somalia_reporting_sites
+
+        # Add demographic totals
+        gender_totals=sum(item['quantity'] for item in ret["data"]["gender"])
+        ret["data"]["gender_totals"] = gender_totals
+
+        # COMPLETENESS CHART
+        ret["data"]["figure_completeness"] = []
+        district_completeness_data = {}
+        district_timeliness_data = {}
+        comp_reg = {}
+        comp_reg = json.loads(Completeness().get('reg_1',
+                                                 zone_location, 4,
+                                                 sublevel="district",
+                                                 end_date=end_date + timedelta(days=2)).data.decode('UTF-8'))
+        time_reg = json.loads(Completeness().get('reg_5',
+                                                 zone_location, 4,
+                                                 sublevel="district",
+                                                 end_date=end_date + timedelta(days=2)).data.decode('UTF-8'))
+        for loc_s in comp_reg["yearly_score"].keys():
+            if loc_s != str(zone_location):
+                try:
+                    ret["data"]["figure_completeness"].append({
+                        "district": locs[int(loc_s)].name,
+                        "value": comp_reg["yearly_score"][loc_s]
+                    })
+                except KeyError:
+                    ret["data"]["figure_completeness"].append({
+                        "district": locs[int(loc_s)].name,
+                        "value": -1
+                    })
+
+
+
+        # FIGURE 3: INCIDENCE OF CONFIRMED MALARIA CASES BY REGION (MAP)
+        ir = IncidenceRate()
+
+        severe_malnutrition = "cmd_7"
+        mal_incidence = ir.get(severe_malnutrition, 'district', mult_factor=10000,
+                               start_date=start_date,
+                               end_date=end_date_limit)
+        mapped_mal_incidence = {}
+        locs = get_locations(db.session)
+        districts = [loc for loc in locs.keys()
+                     if locs[loc].level == "district"]
+        # Structure the data.
+        for district in districts:
+            if district not in mal_incidence:
+                mal_incidence[district] = 0
+            if is_child(zone_location, district, locs):
+                mapped_mal_incidence[locs[district].name] = {
+                    'value': int(mal_incidence[district])
+                }
+        ret["data"].update({
+            "figure_malnutrition_map":  mapped_mal_incidence
+        })
+
+        ret["data"]["morbidity_communicable_imci"] = get_disease_types("imci", start_date, end_date_limit, location, conn)
+
+        clin = Clinics()
+        ret["data"]["map"] = clin.get(zone_location)
+
+        
+        return ret
+
+
+
 class NcdPublicHealth(Resource):
     """
     Public Health Profile Report for Non-Communicable Diseases
@@ -3028,7 +3243,6 @@ class VaccinationReport(Resource):
 
         return ret
 
-
 class AFROBulletin(Resource):
     """
     AFRO Bulletin
@@ -3045,7 +3259,6 @@ class AFROBulletin(Resource):
     decorators = [authenticate]
 
     def get(self, location, start_date=None, end_date=None):
-
         # Set default date values to last epi week.
         today = datetime.now()
         epi_week = EpiWeek().get()
@@ -3085,7 +3298,6 @@ class AFROBulletin(Resource):
                        "project_epoch": datetime(2015, 5, 20).isoformat(),
                        "start_date": start_date.isoformat()
         }
-        print(epi_week)
         locs = get_locations(db.session)
         if int(location) not in locs:
             return None
@@ -3103,7 +3315,7 @@ class AFROBulletin(Resource):
         conn = db.engine.connect()
 
         # WEEKLY HIGHLIGHTS-----------------------------------------------------------------
-
+        
         # Get single variables
         ret["data"]["weekly_highlights"] = get_variables_category(
             'afro',
@@ -3149,7 +3361,6 @@ class AFROBulletin(Resource):
                 end_date,
                 location
             )["total"]
-
         # Add a figure that is the sum of simple and sever malaria to the return data.
         # Used specifically to calulate a percentage.
         mls = ret["data"]["weekly_highlights"]["mls_12"] + ret["data"]["weekly_highlights"]["mls_24"]
@@ -3227,37 +3438,35 @@ class AFROBulletin(Resource):
                 })
         ret["data"]["weekly_highlights"]["mortality"] = mort_top
 
-
         # FIGURE 1: COMPLETENESS BY DISTRICT
         ret["data"]["figure_completeness"] = []
         district_completeness_data = {}
         district_timeliness_data = {}
         comp_reg = {}
-        for reg in regions:
-            try: # If data is completely missing there is no iformation for districts in the region
-                comp_reg = json.loads(Completeness().get('reg_1',
-                                                           reg, 4, end_date=end_date + timedelta(days=2)).data.decode('UTF-8'))
-                time_reg = json.loads(Completeness().get('reg_5',
-                                                         reg, 4, end_date=end_date + timedelta(days=2)).data.decode('UTF-8'))
-                for loc_s in comp_reg["yearly_score"].keys():
-                    try:
-                        ret["data"]["figure_completeness"].append({
-                            "district": locs[int(loc_s)].name,
-                            "value": comp_reg["yearly_score"][loc_s]
-                        })
-                    except KeyError:
-                        ret["data"]["figure_completeness"].append({
-                            "district": locs[int(loc_s)].name,
-                            "value": -1
-                        })
-                for loc_s in comp_reg["score"].keys():
-                    district_completeness_data[loc_s] = comp_reg["score"][loc_s]
-                for loc_s in time_reg["score"].keys():
-                    district_timeliness_data[loc_s] = time_reg["score"][loc_s]
-
-            except AttributeError:
-                pass
-
+        comp_reg = json.loads(Completeness().get('reg_1',
+                                                 location, 4,
+                                                 sublevel="district",
+                                                 end_date=end_date + timedelta(days=2)).data.decode('UTF-8'))
+        time_reg = json.loads(Completeness().get('reg_5',
+                                                 location, 4,
+                                                 sublevel="district",
+                                                 end_date=end_date + timedelta(days=2)).data.decode('UTF-8'))
+        for loc_s in comp_reg["yearly_score"].keys():
+            if loc_s != location:
+                try:
+                    ret["data"]["figure_completeness"].append({
+                        "district": locs[int(loc_s)].name,
+                        "value": comp_reg["yearly_score"][loc_s]
+                    })
+                except KeyError:
+                    ret["data"]["figure_completeness"].append({
+                        "district": locs[int(loc_s)].name,
+                        "value": -1
+                    })
+        for loc_s in comp_reg["score"].keys():
+            district_completeness_data[loc_s] = comp_reg["score"][loc_s]
+        for loc_s in time_reg["score"].keys():
+            district_timeliness_data[loc_s] = time_reg["score"][loc_s]
 
         # FIGURE 2: CUMULATIVE REPORTED MATERNAL DEATHS BY DISTRICT (MAP)
         mat_deaths = {}
@@ -3329,7 +3538,6 @@ class AFROBulletin(Resource):
             "severe_malaria": severe,
             "positivity": dict(map(calc_positivity, all_weeks)),
         }
-
         # FIGURE 5: TREND OF SUSPECTED MEASLES CASES BY AGE GROUP
         qv = QueryVariable()
         measles = qv.get(variable="cmd_15", group_by="age", only_loc=location,
@@ -3365,7 +3573,6 @@ class AFROBulletin(Resource):
         ret["data"].update({"figure_malnutrition": {
             "malnutrition": malnutrition,
         }})
-
 
         # TABLE 1: Reported Priority Diseases, Conditions and Events by District, week X
         # TODO: Connect cmd_codes to mortality
@@ -3465,7 +3672,6 @@ class AFROBulletin(Resource):
             conn,
             use_ids=True
         )
-
         # insert case figures
         for disease in priority_diseases:
             priority_disease_cases = query_sum(
@@ -3519,7 +3725,6 @@ class AFROBulletin(Resource):
         # TABLE 2: Summary of Priority Diseases, Conditions and Events for Weeks 1 to X, 2016 -----------
 
         ret["data"]["table_priority_diseases_cumulative"]={}
-
 
         mort = get_variables_category(
               'deaths',
@@ -3606,23 +3811,30 @@ class AFROBulletin(Resource):
             except ZeroDivisionError:
                 ret["data"]["table_priority_diseases_cumulative"][disease]["cfr_cumulative"] = 'N/A'
 
-
         # TABLE 3: Timeliness and Completeness of reporting for Week X, 2016
         ret["data"]["table_timeliness_completeness"] = {}
+
+        nr = NonReporting().get("reg_1", 1)["clinics"]
+
+        
+        
         for district in districts:
             try:
-                if tot_clinics.get(district)["total"] > 0:
+                n_clin = tot_clinics.get(district)["total"]
+                if n_clin> 0:
                 #  District names
                     ret["data"]["table_timeliness_completeness"].update(
                         {str(district): {"name": locs[district].name}})
 
+                    clinics = get_children(district, locs, require_case_report=True)
+                    n_nr = sum([1 if c in nr else 0 for c in clinics])
                     #  Number of clinics in district
                     ret["data"]["table_timeliness_completeness"][str(district)].update({
-                        "clinics": tot_clinics.get(district)["total"]
+                        "clinics": n_clin
                     })
                     #  Number of clinics that reported
                     ret["data"]["table_timeliness_completeness"][str(district)].update({
-                        "clinics_reported": tot_clinics.get(district)["total"] - len(NonReporting().get("reg_1", district))
+                        "clinics_reported": n_clin - n_nr
                     })
 
                     #  District completeness
@@ -3638,7 +3850,6 @@ class AFROBulletin(Resource):
                 pass
             except KeyError:
                 pass
-
         return ret
 
 
@@ -3704,7 +3915,6 @@ class PlagueReport(Resource):
         current_year = end_date.year
 
         weeks = list(range(34, 53)) + list(range(1, start_week))
-        print(weeks)
         data_list = [0 for week in weeks]
         if epi_week > start_week:
             current_year = current_year + 1
