@@ -16,7 +16,7 @@ import io
 import csv
 import os
 import resource
-
+# from werkzeug.contrib.profiler import ProfilerMiddleware
 # Create the Flask app
 app = Flask(__name__)
 app.config.from_object('meerkat_api.config.Config')
@@ -33,6 +33,7 @@ if app.config["SENTRY_DNS"]:
     sentry = Sentry(app, dsn=app.config["SENTRY_DNS"])
 app.wsgi_app = ProxyFix(app.wsgi_app)
 
+# app.wsgi_app = ProfilerMiddleware(app.wsgi_app, restrictions=(30,))
 
 class CustomJSONEncoder(JSONEncoder):
     """
