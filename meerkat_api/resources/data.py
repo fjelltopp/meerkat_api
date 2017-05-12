@@ -111,7 +111,39 @@ class AggregateCategory(Resource):
             else:
                 return_data[r] = {"year": 0, "weeks": {}}
         return return_data
+    
+class AggregateCategorySum(Resource):
+    """
+    Get total and weekly aggregate for a year for all variables
+    with a given category. Only aggregate over the given location.
 
+    Args:\n
+        category: category\n
+        location: location_id\n
+        year: year\n
+        lim_variable: limit results to those with this variable\n
+
+    Returns:\n
+        result_dict: {variable_id: AggregateYear result_dict}\n
+    """
+    decorators = [authenticate]
+
+    def get(self, category, location_id, lim_variable="", year=None):
+
+        
+        if year is None:
+            year = datetime.today().year
+        variables_instance = Variables()
+        variables = variables_instance.get(category)
+        aggregate_year = AggregateYear()
+
+        return_data = {}
+        for variable in variables.keys():
+            return_data[variable] = aggregate_year.get(variable,
+                                                       location_id,
+                                                       year,
+                                                       lim_variable)
+        return return_data
     
 class AggregateLatestYear(Resource):
     """

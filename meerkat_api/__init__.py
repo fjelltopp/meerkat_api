@@ -136,7 +136,7 @@ def output_xls(data, code, headers=None):
 # Importing all the resources here to avoid circular imports
 from meerkat_api.resources.locations import Location, Locations, LocationTree, TotClinics
 from meerkat_api.resources.variables import Variables, Variable
-from meerkat_api.resources.data import Aggregate, AggregateYear
+from meerkat_api.resources.data import Aggregate, AggregateYear, AggregateCategorySum
 from meerkat_api.resources.data import AggregateLatestCategory, AggregateLatestYear, AggregateLatestLevel
 from meerkat_api.resources.data import AggregateCategory, Records
 from meerkat_api.resources.map import Clinics, MapVariable, IncidenceMap, Shapes
@@ -220,6 +220,10 @@ api.add_resource(AggregateCategory,
                  "/aggregate_category/<category>/<location_id>",
                  "/aggregate_category/<category>/<location_id>/<year>",
                  "/aggregate_category/<category>/<location_id>/<year>/<lim_variable>")
+api.add_resource(AggregateCategorySum,
+                 "/aggregate_category_sum/<category>/<location_id>",
+                 "/aggregate_category_sum/<category>/<location_id>/<year>",
+                 "/aggregate_category_sum/<category>/<location_id>/<year>/<lim_variable>")
 # Alerts
 api.add_resource(Alert, "/alert/<alert_id>")
 api.add_resource(Alerts, "/alerts")
