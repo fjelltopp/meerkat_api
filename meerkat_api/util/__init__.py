@@ -39,13 +39,14 @@ def fix_dates(start_date, end_date):
         end_date = datetime.now()
     if start_date:
         start_date = parser.parse(start_date).replace(tzinfo=None)
-        if start_date < epi_year_start(year=start_date.year):
-            start_date = epi_year_start(year=start_date.year)
+      
     else:
         start_date = end_date.replace(month=1, day=1,
                                       hour=0, second=0,
                                       minute=0,
                                       microsecond=0)
+    if start_date < epi_year_start(year=start_date.year):
+        start_date = epi_year_start(year=start_date.year)
     return start_date, end_date
 
 
