@@ -144,6 +144,7 @@ from meerkat_api.resources.alerts import Alert, Alerts, AggregateAlerts
 from meerkat_api.resources.explore import QueryVariable, QueryCategory
 from meerkat_api.resources.epi_week import EpiWeek, EpiWeekStart
 from meerkat_api.resources.completeness import Completeness, NonReporting
+from meerkat_api.resources.prescriptions import Prescriptions
 from meerkat_api.resources.reports import PublicHealth, CdReport, \
     CdPublicHealth, CdPublicHealthMad, CdPublicHealthSom, NcdPublicHealth, \
     RefugeePublicHealth, RefugeeCd, RefugeeDetail, Pip, \
@@ -351,6 +352,9 @@ api.add_resource(Completeness,
                  "/completeness/<variable>/<location>/<number_per_week>/<start_week>/<exclude>/<weekend>/<non_reporting_variable>",
                  "/completeness/<variable>/<location>/<number_per_week>/<start_week>/<exclude>/<weekend>/<non_reporting_variable>/<end_date>")
 api.add_resource(Records, "/records/<variable>/<location_id>")
+api.add_resource(Prescriptions, "/prescriptions/<location>",
+                 "/prescriptions/<location>/<end_date>",
+                 "/prescriptions/<location>/<end_date>/<start_date>")
 
 @app.route('/')
 def hello_world():
