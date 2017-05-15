@@ -58,6 +58,9 @@ class Completeness(Resource):
 
     def get(self, variable, location, number_per_week, exclude=None,
             weekend=None, start_week=1, end_date=None, non_reporting_variable=None, sublevel=None):
+        if sublevel == None:
+            sublevel = request.args.get('sublevel')
+
         if not end_date:
             end_date = datetime.now()
         else:

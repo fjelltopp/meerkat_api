@@ -3518,12 +3518,15 @@ class AFROBulletin(Resource):
         # FIGURE 4: NUMBER OF CONFIRMED MALARIA CASES BY TYPE AND WEEK
         aggregate_year = AggregateYear()
 
-        simple = aggregate_year.get(variable_id="mls_12",
-                                    location_id=location,year=end_date.year)['weeks']
-        severe = aggregate_year.get(variable_id="mls_24",
-                                    location_id=location,year=end_date.year)['weeks']
-        rdt = aggregate_year.get(variable_id="mls_3",
-                                 location_id=location,year=end_date.year)['weeks']
+        simple =  query_sum(
+            db, ["mls_12"], first_day_of_year, end_date_limit, location, weeks=True
+        )["weeks"]
+        severe =  query_sum(
+            db, ["mls_24"], first_day_of_year, end_date_limit, location, weeks=True
+        )["weeks"]
+        rdt = query_sum(
+            db, ["mls_3"], first_day_of_year, end_date_limit, location, weeks=True
+        )["weeks"]
         all_weeks = set(simple.keys()) | set(severe.keys()) | set(rdt.keys())
 
         def calc_positivity(key):
@@ -3531,6 +3534,7 @@ class AFROBulletin(Resource):
                 return (key,
                         100 * (simple.get(key, 0) + severe.get(key, 0)) / rdt.get(key, 0))
             except ZeroDivisionError:
+                print("hei")
                 return (key, 0)
 
         ret["data"]["figure_malaria"] = {
@@ -3568,10 +3572,13 @@ class AFROBulletin(Resource):
 
         # FIGURE 6: TREND OF REPORTED SEVERE MALNUTRITION CASES IN UNDER FIVES
         # Epi 8 tracks severe malnutrition in under 5s. epi_8
-        malnutrition = aggregate_year.get(variable_id="epi_8",
-                                          location_id=location, year=end_date.year)
+
+        malnutrition = query_sum(
+            db, ["epi_8"], first_day_of_year, end_date_limit, location, weeks=True
+        )
+
         ret["data"].update({"figure_malnutrition": {
-            "malnutrition": malnutrition,
+            "malnutrition": {"weeks": malnutrition["weeks"], "year": malnutrition["total"]},
         }})
 
         # TABLE 1: Reported Priority Diseases, Conditions and Events by District, week X
@@ -3657,7 +3664,6 @@ class AFROBulletin(Resource):
                     }
                 })
             for region in regions:
-                print(region)
                 ret["data"]['table_priority_diseases'][disease].update(
                     {
                         locs[region].name: 0
