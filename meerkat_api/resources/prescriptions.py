@@ -43,17 +43,33 @@ class Prescriptions(Resource):
         conditions = [Data.categories.has_key(barcode_category)] + date_conditions
 
         
-        query = db.session.query(Data.clinic,
+        prescription_query = db.session.query(Data.clinic,
                              Data.categories[barcode_category].astext,func.count(Data.id)).filter(
                                  *conditions).group_by(Data.clinic, Data.categories[barcode_category].astext)
 
-        ret = query.all()
+        prescriptions = {}
 
-        return ret
+
+        #115,
+        #"barcode_fefu",
+        #5
+
+
+        for item in prescription_query.all():
+            if str(item[0]) in prescriptions.keys():
+                prescriptions[str(item[0])].update({
+                    item[1]:item[2]})
+            else:
+                prescriptions.update({
+                    str(item[0]):{
+                            item[1]:item[2]
+                        }
+                    })
+
+
+
+        return prescriptions
         
 
         #select clinic, categories->>'barcode_prescription', count(*) 
         # from data where categories->>'barcode_prescription' is not null group by clinic, categories->>'barcode_prescription';
-
-
-        return str(ret)
