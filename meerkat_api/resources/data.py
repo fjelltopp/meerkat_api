@@ -76,8 +76,7 @@ class AggregateYear(Resource):
 class AggregateCategory(Resource):
     """
     Get total and weekly aggregate for a year for all variables
-    with a given category. Only aggregate over the given location.
-
+    with a given category. Only aggregate over the given location. It is faster than AggregateCategorySum() if each variable in the categories are mutually exclusive (for instance for gender) but gives exactly the same output.
     Args:\n
         category: category\n
         location: location_id\n
@@ -97,11 +96,10 @@ class AggregateCategory(Resource):
         end_date = datetime(year + 1, 1, 1)
 
         result = query_sum(
-            db, ["tot_1"], start_date, end_date, location_id,
+            db, ["data_entry"], start_date, end_date, location_id,
             group_by_category=category, weeks=True
         )
         return_data = {}
-
         variables_instance = Variables()
         variables = variables_instance.get(category)
         for r in variables.keys():
@@ -114,8 +112,7 @@ class AggregateCategory(Resource):
     
 class AggregateCategorySum(Resource):
     """
-    Get total and weekly aggregate for a year for all variables
-    with a given category. Only aggregate over the given location.
+    This function does the same as AggregateCategory. Get total and weekly aggregate for a year for all variables with a given category. Only aggregate over the given location. It gives the same output as AggregateCategory() and is better suited if variables within a category are overlapping.
 
     Args:\n
         category: category\n
