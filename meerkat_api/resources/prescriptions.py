@@ -17,6 +17,81 @@ from meerkat_api.authentication import authenticate
 
 from meerkat_api.resources.explore import QueryVariable, get_variables
 
+
+kit_contents= {
+    "barcode_albe": {
+        "total":2,
+        "dose":1,
+        "tablets_in_kit":200
+    },
+    "barcode_magn": {
+        "total":1,
+        "dose":2,
+        "tablets_in_kit":1000
+    },
+    "barcode_amox": {
+        "total":30,
+        "dose":2,
+        "tablets_in_kit":3000
+    },
+    "barcode_benz": {
+        "total":1,
+        "dose":10,
+        "tablets_in_kit":1
+    },
+    "barcode_chlo": {
+        "total":1,
+        "dose":"",
+        "tablets_in_kit":""
+    },
+    "barcode_fefu": {
+        "total":2,
+        "dose":2,
+        "tablets_in_kit":2000
+    },
+    "barcode_ibup": {
+        "total":20,
+        "dose":2,
+        "tablets_in_kit":200
+    },
+    "barcode_mico": {
+        "total":20,
+        "dose":"",
+        "tablets_in_kit":""
+    },
+    "barcode_orsl": {
+        "total":2,
+        "dose":"",
+        "tablets_in_kit":""
+    },
+    "barcode_par1": {
+        "total":10,
+        "dose":20,
+        "tablets_in_kit":1000
+    },
+    "barcode_par5": {
+        "total":20,
+        "dose":1,
+        "tablets_in_kit":2000
+    },
+    "barcode_povi": {
+        "total":12,
+        "dose":"",
+        "tablets_in_kit":""
+    },
+    "barcode_tetr": {
+        "total":50,
+        "dose":"",
+        "tablets_in_kit":""
+    },
+    "barcode_zinc": {
+        "total":10,
+        "dose":2,
+        "tablets_in_kit":1000
+    }
+}
+
+
 class Prescriptions(Resource):
     """
     Return medicine prescription data based on scanned barcodes
@@ -65,7 +140,12 @@ class Prescriptions(Resource):
                     str(item[1]):{
                         "min_date":item[3].strftime("%Y-%m-%d"),
                         "max_date":item[4].strftime("%Y-%m-%d"),
-                        "total_prescriptions":item[2]
+                        "total_prescriptions":item[2],
+                        "inventory":
+                            (0 
+                                if kit_contents[item[1]]["tablets_in_kit"] == "" 
+                                else int(kit_contents[item[1]]["tablets_in_kit"]) - item[2]
+                            ) 
                         }
                     })
             else:
@@ -75,7 +155,12 @@ class Prescriptions(Resource):
                             {
                             "min_date":item[3].strftime("%Y-%m-%d"),
                             "max_date":item[4].strftime("%Y-%m-%d"),
-                            "total_prescriptions":item[2]
+                            "total_prescriptions":item[2],
+                            "inventory":
+                                (0 
+                                    if kit_contents[item[1]]["tablets_in_kit"] == "" 
+                                    else int(kit_contents[item[1]]["tablets_in_kit"]) - item[2]
+                                ) 
                             }
                         }
                     })
