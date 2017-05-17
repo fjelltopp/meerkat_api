@@ -40,36 +40,48 @@ class Prescriptions(Resource):
 
         date_conditions = [Data.date >= start_date, Data.date < end_date]
 
+        conditions = [Data.categories.has_key(barcode_category), Data.clinic.in_(clinics)]
+        
+        # Get first and last prescription for a clinic and medicine without time constraints
+        first_last_prescr_query = db.session.query(Data.clinic,
+                             Data.categories[barcode_category].astext,func.count(Data.id),func.min(Data.date),func.max(Data.date)).filter(
+                                 *conditions).group_by(Data.clinic, Data.categories[barcode_category].astext)
+
         conditions = [Data.categories.has_key(barcode_category)] + date_conditions
 
-        
+        # Get number of prescriptions within time constraints
         prescription_query = db.session.query(Data.clinic,
                              Data.categories[barcode_category].astext,func.count(Data.id)).filter(
                                  *conditions).group_by(Data.clinic, Data.categories[barcode_category].astext)
 
+
+
         prescriptions = {}
 
-
-        #115,
-        #"barcode_fefu",
-        #5
-
-
-        for item in prescription_query.all():
+        #( Restructure the DB return sets into a JSON
+        for item in first_last_prescr_query.all():
             if str(item[0]) in prescriptions.keys():
                 prescriptions[str(item[0])].update({
-                    item[1]:item[2]})
+                    str(item[1]):{
+                        "min_date":item[3].strftime("%Y-%m-%d"),
+                        "max_date":item[4].strftime("%Y-%m-%d"),
+                        "total_prescriptions":item[2]
+                        }
+                    })
             else:
                 prescriptions.update({
                     str(item[0]):{
-                            item[1]:item[2]
+                        str(item[1]):
+                            {
+                            "min_date":item[3].strftime("%Y-%m-%d"),
+                            "max_date":item[4].strftime("%Y-%m-%d"),
+                            "total_prescriptions":item[2]
+                            }
                         }
                     })
 
-
+        for item in prescription_query:
+            prescriptions[str(item[0])][str(item[1])]['prescriptions'] = item[2]
 
         return prescriptions
         
-
-        #select clinic, categories->>'barcode_prescription', count(*) 
-        # from data where categories->>'barcode_prescription' is not null group by clinic, categories->>'barcode_prescription';
