@@ -25,15 +25,17 @@ class IncidenceRate(Resource):
 
     decorators = [authenticate]
 
-    def get(self, variable_id, level, mult_factor=1000, location_names=False):
+    def get(self, variable_id, level, mult_factor=1000,
+            location_names=False, start_date=datetime(2010, 1, 1),
+            end_date=datetime(2100, 1, 1)):
         mult_factor = int(mult_factor)
         if level not in ["region", "district", "clinic"]:
             return {}
 
         results = query_sum(
             db, [variable_id],
-            datetime(2010, 1, 1),
-            datetime(2100, 1, 1),
+            start_date,
+            end_date,
             1,
             level=level)
         locations = db.session.query(Locations).filter(

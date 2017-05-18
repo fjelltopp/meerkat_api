@@ -93,6 +93,7 @@ class MeerkatAPIDataTestCase(unittest.TestCase):
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(sorted(list(data.keys())), sorted(["gen_1", "gen_2"]))
+        print(data)
         self.assertEqual(data["gen_1"]["year"], 3)
         self.assertEqual(data["gen_2"]["year"], 7)
         self.assertEqual(data["gen_1"]["weeks"]["18"], 3)
@@ -102,6 +103,7 @@ class MeerkatAPIDataTestCase(unittest.TestCase):
         rv = self.app.get('/aggregate_category/gender/3/2015', headers=settings.header)
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))
+        print(data)
         self.assertEqual(sorted(list(data.keys())), sorted(["gen_1", "gen_2"]))
         self.assertEqual(data["gen_1"]["year"], 0)
         self.assertEqual(data["gen_2"]["year"], 4)
@@ -135,7 +137,7 @@ class MeerkatAPIDataTestCase(unittest.TestCase):
         self.assertEqual(len(data["records"]), 1)
         self.assertEqual(
             data["records"][0]["variables"],
-            { "tot_1":1, "gen_2": 1, "age_4": 1, "age_10": 1, 
+            { "data_entry":1, "tot_1":1, "gen_2": 1, "age_4": 1, "age_10": 1, 
               "nat_2": 1, "sta_1": 1, "prc_1": 1, "cmd_1": 1, "icb_1": 1 }
         )
         self.assertEqual(data["records"][0]["clinic_type"], "Hospital")

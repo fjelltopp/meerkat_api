@@ -1,4 +1,6 @@
 language: python
+dist: 
+   - trusty
 python:
 - '3.5'
 env:
@@ -6,14 +8,16 @@ env:
   MEERKAT_BRANCH='development' MEERKAT_API_SETTINGS='../.travis_config'
   DATA_DIRECTORY='/home/travis/build/meerkat-code/meerkat_api/meerkat_abacus/meerkat_abacus/data/'
   COUNTRY_CONFIG_DIR='/home/travis/build/meerkat-code/meerkat_api/meerkat_abacus/meerkat_abacus/country_config/'
-  MEERKAT_AUTH_SETTINGS='/home/travis/build/meerkat-code/meerkat_api/meerkat_auth/auth.cfg'
+  MEERKAT_AUTH_SETTINGS='/home/travis/build/meerkat-code/meerkat_api/meerkat_libs/meerkat_libs/auth_client/sample_auth.cfg'
 
 addons:
-  postgresql: '9.4'
+  postgresql: '9.6'
 services:
 - postgresql
+
 install:
 - sudo apt-get update
+- sudo apt-get install postgresql-9.6-postgis-2.3
 - wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh;
 - bash miniconda.sh -b -p $HOME/miniconda
 - export PATH="$HOME/miniconda/bin:$PATH"
@@ -25,9 +29,9 @@ install:
 - cd api_background
 - pip install .
 - cd ..
-- git clone https://github.com/meerkat-code/meerkat_auth.git
-- pip install -r meerkat_auth/requirements.txt
-- export PYTHONPATH=$PYTHONPATH:$HOME/build/meerkat-code/meerkat_api/meerkat_auth/meerkat_auth
+- git clone https://github.com/meerkat-code/meerkat_libs.git
+- pip install -r meerkat_libs/requirements.txt
+- export PYTHONPATH=$PYTHONPATH:$HOME/build/meerkat-code/meerkat_api/meerkat_libs
 - git clone https://github.com/meerkat-code/meerkat_abacus.git
 - pip install -r meerkat_abacus/requirements.txt
 - cd meerkat_abacus
@@ -35,7 +39,7 @@ install:
 - pip install .
 - python meerkat_abacus/manage.py create-db
 - cd ..
-script: nosetests -v meerkat_api.test.test_reports 
+script: nosetests -v
 notifications:
   slack:
     secure: 1xYND1jMCeczxf0kP+dclEF59T/7Sc1i2Z05iq5emMLfKiOgBmmi2NDAn1QUwMx0hT0d4F6pp+O598K5M3IswvOayy5Y4x2YtC8s3VY3mqqU0RnDNzz9ghX1m79jNPMC22JsQ+7IUCVrSbJmy2RvJCe2r78i4O/JadShK3CrU2AwACk7UVlkGO+19cQitihXZhkXpy8I6rqslJe0Zk4iMgT/ri2kgcHo1Axwz0DBMTBGBbTmLRcNafQEWtnkTmEtp7UULtf38ZB9pNQc1gdfc6XzBozRu8+PwrVOPn56ukKyNbaR22LRdLUBxBMvezjhEpjBW109+WN0poZtBFdZFZu6vFF/tjb3jJDz1pvdxmghWdYZuHQ8y6HeX3XMVrox6Zw8p3PcaVCQB187GSFB0sL9D5gWdnzCDRGKSxPLVjrxD2Qc+lx7MzgACjE+Yk1Zmv/uIqGG/xU5fXom418OQEfipqCwrW3K8Sh79KTA8B0PRSMk5qF3zlDX9nUqjqNCd9GnauAX5XfPbOFOJ10yRVwEjVmfML9FNIJz/NYHq8lIu45eaoUlFoEgahFnx9MqMQDDJ6fkV4XXoDtXNr99qY7z9CXKZbANHhzIqNZUpGQ1ufjPoRyb/4QztAAk4KSSyrqU6IW3japmxK2ytsxIPD++U0AMBvC0RDI94UBh9Sc=

@@ -2,7 +2,7 @@
 Data resource for exporting data
 """
 from flask_restful import Resource
-from flask import request
+from flask import request, redirect
 import json
 import uuid
 
@@ -78,9 +78,10 @@ class ExportCategory(Resource):
             variables = json.loads(request.args["variables"])
         else:
             return "No variables"
-
+        language = request.args.get("language", "en")
         export_category.delay(uid, form_name, category,
-                              download_name, variables, data_type)
+                              download_name, variables, data_type,
+                              language=language)
         return uid
 
 
@@ -98,8 +99,8 @@ class GetCSVDownload(Resource):
         res = db.session.query(DownloadDataFiles).filter(
             DownloadDataFiles.uuid == uid).first()
         if res:
-            return {"string": res.csvcontent, "filename": res.type}
-        return {"string": "", "filename": "missing"}
+            return redirect("/exported_data/" + uid + "/" + res.type + ".csv")
+        return {"url": "", "filename": "missing"}
 
 
 class GetXLSDownload(Resource):
@@ -118,8 +119,8 @@ class GetXLSDownload(Resource):
             DownloadDataFiles.uuid == uid
         ).first()
         if res:
-            return {"data": res.xlscontent, "filename": res.type}
-        return {"string": "", "filename": "missing"}
+            return redirect("/exported_data/" + uid + "/" + res.type + ".xlsx")
+        return {"url": "", "filename": "missing"}
 
 
 class GetStatus(Resource):

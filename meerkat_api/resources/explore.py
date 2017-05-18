@@ -7,7 +7,7 @@ from datetime import datetime
 from dateutil.parser import parse
 from flask import request
 
-from meerkat_api.util import is_child
+from meerkat_api.util import is_child, fix_dates
 from meerkat_api.resources.epi_week import epi_year_start
 from meerkat_api import db
 from meerkat_abacus.model import Data
@@ -15,33 +15,6 @@ from meerkat_abacus.util import get_locations
 from meerkat_api.resources.variables import Variables
 from meerkat_api.resources.epi_week import EpiWeek
 from meerkat_api.authentication import authenticate
-
-import time
-
-def sort_date(start_date, end_date):
-    """
-    parses start and end date and remoces any timezone info
-
-    Args:
-       start_date: start date
-       end_date: end date
-    
-    Returns:
-       (start_date, end_date)
-    """
-    if end_date:
-        end_date = parse(end_date).replace(tzinfo=None)
-    else:
-        end_date = datetime.today()
-    if start_date:
-        start_date = parse(start_date).replace(tzinfo=None)
-        if start_date < epi_year_start(year=start_date.year):
-            start_date = epi_year_start(year=start_date.year)
-    else:
-        start_date = epi_year_start(year=end_date.year)
-
-    return start_date, end_date
-
 
 def get_variables(category):
     """
@@ -113,11 +86,12 @@ class QueryVariable(Resource):
     decorators = [authenticate]
 
     def get(self, variable, group_by, start_date=None,
-            end_date=None, only_loc=None, use_ids=None, date_variable=None, additional_variables=None):
+            end_date=None, only_loc=None, use_ids=None, date_variable=None, additional_variables=None,
+            group_by_variables=None):
 
         variable = str(variable)
 
-        start_date, end_date = sort_date(start_date, end_date)
+        start_date, end_date = fix_dates(start_date, end_date)
         year = start_date.year
         if "use_ids" in request.args.keys() or use_ids:
             use_ids = True
@@ -135,11 +109,10 @@ class QueryVariable(Resource):
         if "location" in variable:
             location_id = variable.split(":")[1]
             conditions = date_conditions + [or_(loc == location_id for loc in (
-                Data.country, Data.region, Data.district, Data.clinic))]
+                Data.country, Data.zone, Data.region, Data.district, Data.clinic))]
         else:
             conditions = [Data.variables.has_key(variable)] + date_conditions
-
-            if additional_variables: 
+            if additional_variables:
             # add additional variable filters if there are and
                 for i in additional_variables:
                     conditions.append(Data.variables.has_key(i))
@@ -149,11 +122,10 @@ class QueryVariable(Resource):
                     # only loc is in request variables
                     only_loc = request.args["only_loc"]
                 conditions += [or_(loc == only_loc for loc in (
-                    Data.country, Data.region, Data.district, Data.clinic))]
+                    Data.country, Data.zone, Data.region, Data.district, Data.clinic))]
         epi_week_start = epi_year_start(year)
         # Determine which columns we want to extract from the Data table
         columns_to_extract = [func.count(Data.id).label('value')]
-
         if date_variable:
             columns_to_extract.append(func.floor(
                 extract('days', func.to_date(Data.variables[date_variable].astext, "YYYY-MM-DDTHH-MI-SS") -
@@ -168,7 +140,7 @@ class QueryVariable(Resource):
             )
         # We want to add the columns to extract based on the group_by value
         # in addition we create a names dict that translates ids to names
-        
+
         if "locations" in group_by:
             # If we have locations in group_by we also specify the level at
             #  which we want to group the locations, clinic, district or region
@@ -184,7 +156,10 @@ class QueryVariable(Resource):
             columns_to_extract += [getattr(Data, level, None)]
             group_by_query = level
         else:
-            names = get_variables(group_by)
+            if not group_by_variables:
+                names = get_variables(group_by)
+            else:
+                names = group_by_variables
             if len(names) == 0:
                 return {}
             ids = names.keys()
@@ -192,10 +167,8 @@ class QueryVariable(Resource):
                 columns_to_extract.append(
                     Data.variables.has_key(str(i)).label("id" + str(i)))
             group_by_query = ",".join(["id" + str(i) for i in ids])
-
         if use_ids:
             names = {vid: vid for vid in names.keys()}
-
         ew = EpiWeek()
         start_week = ew.get(start_date.isoformat())["epi_week"]
         end_week = ew.get(end_date.isoformat())["epi_week"]
@@ -205,22 +178,26 @@ class QueryVariable(Resource):
             end_week += 53 * (end_date.year - start_date.year)
         if start_week == 0:
             start_week = 1
+
         # DB Query
+
+
         results = db.session.query(
             *tuple(columns_to_extract)
         ).filter(*conditions).group_by("week," + group_by_query)
-
         # Assemble return dict
         ret = {}
         for n in names.values():
             ret[n] = {"total": 0,
                       "weeks": {i: 0 for i in range(start_week, end_week + 1)}}
+            
         for r in results:
             # r = (number, week, other_columns_to_extract
             if "locations" in group_by:
                 # r[2] = location
-                ret[names[r[2]]]["total"] += r[0]
-                ret[names[r[2]]]["weeks"][int(r[1])] = int(r[0])
+                if r[2]:
+                    ret[names[r[2]]]["total"] += r[0]
+                    ret[names[r[2]]]["weeks"][int(r[1])] = int(r[0])
             else:
                 # r[2:] are the ids that the record has
                 for i, i_d in enumerate(ids):
@@ -255,7 +232,8 @@ class QueryCategory(Resource):
     def get(self, group_by1, group_by2, start_date=None,
             end_date=None, only_loc=None):
 
-        start_date, end_date = sort_date(start_date, end_date)
+        start_date, end_date = fix_dates(start_date, end_date)
+        print(start_date, end_date)
         use_ids = False
         if "use_ids" in request.args.keys():
             use_ids = True
@@ -266,7 +244,7 @@ class QueryCategory(Resource):
             if not only_loc:
                 only_loc = request.args["only_loc"]
                 conditions += [or_(loc == only_loc for loc in (
-                    Data.country, Data.region, Data.district, Data.clinic))]
+                    Data.country, Data.zone, Data.region, Data.district, Data.clinic))]
 
         columns_to_query = [Data.categories[group_by1].astext, Data.categories[group_by2].astext]
         if "locations" in group_by1:

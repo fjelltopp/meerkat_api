@@ -6,7 +6,7 @@ from datetime import datetime
 from flask import jsonify
 from datetime import datetime, timedelta
 from dateutil import parser
-import numpy
+from meerkat_api.resources.epi_week import epi_year_start
 
 def series_to_json_dict(series):
     """
@@ -19,11 +19,7 @@ def series_to_json_dict(series):
        dict: dict
     """
     if series is not None:
-        ret = {}
-        for key, value in series.to_dict().items():
-            if isinstance(value, numpy.generic):
-                value = numpy.asscalar(value)
-            ret[key] = value
+        return dict((str(key), value) for key, value in series.to_dict().items())
     else:
         return {}
 
@@ -43,11 +39,14 @@ def fix_dates(start_date, end_date):
         end_date = datetime.now()
     if start_date:
         start_date = parser.parse(start_date).replace(tzinfo=None)
+      
     else:
         start_date = end_date.replace(month=1, day=1,
                                       hour=0, second=0,
                                       minute=0,
                                       microsecond=0)
+    if start_date < epi_year_start(year=start_date.year):
+        start_date = epi_year_start(year=start_date.year)
     return start_date, end_date
 
 
@@ -61,6 +60,8 @@ def row_to_dict(row):
     Returns:
       data_dict(dict): data as dictionary
     """
+    if not row:
+        return {}
     if hasattr(row, "__table__"):
         return dict((col, getattr(row, col))
                     for col in row.__table__.columns.keys())
@@ -120,8 +121,27 @@ def is_child(parent, child, locations):
             return True
     return False
 
+def find_level(location, sublevel, locations):
+    """
+    Returns the isntance of level that location is a child of
 
-def get_children(parent, locations, clinic_type=None):
+    Args:
+        location: location
+        sublevel: the sublevel we are interested in
+        locations: all locations in dict
+
+    Returns:
+       location_id(int): id of the mathcing location
+    """
+    location = int(location)
+
+    for loc in locations:
+        if locations[loc].level == sublevel and is_child(loc, location, locations):
+            return loc
+        
+    return None
+
+def get_children(parent, locations, clinic_type=None, require_case_report=True):
     """
     Return all clinics that are children of parent
 
@@ -134,7 +154,7 @@ def get_children(parent, locations, clinic_type=None):
     """
     ret = []
     for location_id in locations.keys():
-        if (locations[location_id].case_report and
+        if ( (not require_case_report or locations[location_id].case_report) and
             (not clinic_type or locations[location_id].clinic_type == clinic_type)):
             if is_child(parent, location_id, locations):
                 ret.append(location_id)
