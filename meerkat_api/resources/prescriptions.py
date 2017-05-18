@@ -136,7 +136,7 @@ class Prescriptions(Resource):
 
 
 
-        prescriptions = {}
+        prescriptions = {'clinic_table':{'title':'Prescribing clinics'}}
 
         # Restructure the DB return sets into a JSON
         for item in first_last_prescr_query.all():
@@ -182,6 +182,8 @@ class Prescriptions(Resource):
                 "max_date":item[3].strftime("%Y-%m-%d")
                 })
 
+        #create table info
+        #for item in 
 
         return prescriptions
         
