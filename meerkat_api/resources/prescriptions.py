@@ -121,6 +121,11 @@ class Prescriptions(Resource):
         first_last_prescr_query = db.session.query(Data.clinic,
                              Data.categories[barcode_category].astext,func.count(Data.id),func.min(Data.date),func.max(Data.date)).filter(
                                  *conditions).group_by(Data.clinic, Data.categories[barcode_category].astext)
+        
+        # Get first and last prescription for a clinic without time constraints
+        clinic_info = db.session.query(Data.clinic,
+                             func.count(Data.id),func.min(Data.date),func.max(Data.date)).filter(
+                                 *conditions).group_by(Data.clinic)
 
         conditions = [Data.categories.has_key(barcode_category)] + date_conditions
 
@@ -133,8 +138,9 @@ class Prescriptions(Resource):
 
         prescriptions = {}
 
-        #( Restructure the DB return sets into a JSON
+        # Restructure the DB return sets into a JSON
         for item in first_last_prescr_query.all():
+            # If clinic is already in JSON 
             if str(item[0]) in prescriptions.keys():
                 prescriptions[str(item[0])].update({
                     str(item[1]):{
@@ -148,6 +154,7 @@ class Prescriptions(Resource):
                             ) 
                         }
                     })
+            # If clinic is not in the JSON object yet    
             else:
                 prescriptions.update({
                     str(item[0]):{
@@ -165,8 +172,16 @@ class Prescriptions(Resource):
                         }
                     })
 
-        for item in prescription_query:
+        # Assign the number of prescriptions to data object
+        for item in prescription_query.all():
             prescriptions[str(item[0])][str(item[1])]['prescriptions'] = item[2]
+
+        for item in clinic_info.all():
+            prescriptions[str(item[0])].update({
+                "min_date":item[2].strftime("%Y-%m-%d"),
+                "max_date":item[3].strftime("%Y-%m-%d")
+                })
+
 
         return prescriptions
         
