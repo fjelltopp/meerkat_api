@@ -21,3 +21,5 @@ token_payload = {
 }
 token = jwt.encode(token_payload, JWT_SECRET_KEY, algorithm=JWT_ALGORITHM).decode("utf-8")
 header = { 'Authorization': JWT_HEADER_PREFIX + token }
+
+header_non_authorised =  { 'Authorization': ''}

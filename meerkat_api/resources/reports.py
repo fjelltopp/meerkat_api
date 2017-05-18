@@ -18,7 +18,7 @@ Vaccination Report
 """
 
 from flask_restful import Resource
-from flask import request, jsonify
+from flask import request, jsonify, g
 from sqlalchemy import or_, func, desc, Integer
 from datetime import datetime, timedelta
 from dateutil import parser
@@ -26,6 +26,7 @@ from sqlalchemy.sql import text
 import uuid
 import numpy as np
 import traceback
+from functools import wraps
 from gettext import gettext
 import logging, json, operator
 from meerkat_api.util import get_children, is_child, fix_dates, rows_to_dicts, find_level
@@ -43,8 +44,21 @@ from meerkat_api.util.data_query import query_sum, latest_query
 from meerkat_api.resources.incidence import IncidenceRate
 from meerkat_abacus.util import get_locations, all_location_data, get_regions_districts
 from meerkat_abacus import model
-from meerkat_api.authentication import authenticate
+from meerkat_api.authentication import authenticate, is_allowed_location
 from geoalchemy2.shape import to_shape
+
+
+def report_allowed_location(f):
+    """
+    Decorator to check allowed locations for reports
+    """
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        location = kwargs["location"]
+        if not is_allowed_location(location, g.allowed_location):
+            return {}
+        return f(*args, **kwargs)
+    return decorated
 
 def mean(input_list):
 
@@ -485,7 +499,7 @@ Returns:\n
 """
 class NcdReportNewVisits(Resource):
 
-    decorators = [authenticate]
+    decorators = [authenticate, report_allowed_location]
 
     def get(self, location, start_date=None, end_date=None):
         retval = create_ncd_report(location=location, start_date=start_date,\
@@ -494,7 +508,7 @@ class NcdReportNewVisits(Resource):
 
 class NcdReportReturnVisits(Resource):
 
-    decorators = [authenticate]
+    decorators = [authenticate, report_allowed_location]
 
     def get(self, location, start_date=None, end_date=None):
         retval = create_ncd_report(location=location, start_date=start_date,\
@@ -503,7 +517,7 @@ class NcdReportReturnVisits(Resource):
 
 class NcdReport(Resource):
 
-    decorators = [authenticate]
+    decorators = [authenticate, report_allowed_location]
 
     def get(self, location, start_date=None, end_date=None):
         retval = create_ncd_report(location=location, start_date=start_date,\
@@ -721,7 +735,7 @@ class MhReport(Resource):
     Returns:\n
        report_data\n
     """
-    decorators = [authenticate]
+    decorators = [authenticate, report_allowed_location]
     def get(self, location, start_date=None, end_date=None):
         start_date, end_date = fix_dates(start_date, end_date)
         end_date_limit = end_date + timedelta(days=1)
@@ -890,7 +904,7 @@ class CdReport(Resource):
     Returns:\n
        report_data\n
     """
-    decorators = [authenticate]
+    decorators = [authenticate, report_allowed_location]
 
     def get(self, location, start_date = None,end_date=None):
         start_date, end_date = fix_dates(start_date, end_date)
@@ -1012,7 +1026,7 @@ class Pip(Resource):
     Returns:\n
        report_data\n
     """
-    decorators = [authenticate]
+    decorators = [authenticate, report_allowed_location]
 
     def get(self, location, start_date=None, end_date=None):
 
@@ -1271,7 +1285,7 @@ class PublicHealth(Resource):
     Returns:\n
        report_data\n
     """
-    decorators = [authenticate]
+    decorators = [authenticate, report_allowed_location]
 
     def get(self, location, start_date=None, end_date=None):
         start_date, end_date = fix_dates(start_date, end_date)
@@ -1530,7 +1544,7 @@ class CdPublicHealth(Resource):
     Returns:\n
        report_data\n
     """
-    decorators = [authenticate]
+    decorators = [authenticate, report_allowed_location]
 
     def get(self, location, start_date=None, end_date=None):
 
@@ -1767,7 +1781,7 @@ class CdPublicHealthMad(Resource):
     Returns:\n
        report_data\n
     """
-    decorators = [authenticate]
+    decorators = [authenticate, report_allowed_location]
 
     def get(self, location, start_date=None, end_date=None):
 
@@ -1817,7 +1831,7 @@ class CdPublicHealthSom(Resource):
     Returns:\n
        report_data\n
     """
-    decorators = [authenticate]
+    decorators = [authenticate, report_allowed_location]
 
     def get(self, location, start_date=None, end_date=None):
 
@@ -1933,7 +1947,6 @@ class CdPublicHealthSom(Resource):
         time_reg = json.loads(Completeness().get('reg_5',
                                                     location, 4, end_date=end_date + timedelta(days=2)).data.decode('UTF-8'))
 
-        print(comp_reg)
         ret["data"]["public_health_indicators"].append(
             make_dict(gettext("Completeness"),
                       "-",
@@ -2031,7 +2044,7 @@ class NcdPublicHealth(Resource):
     Returns:\n
        report_data\n
     """
-    decorators = [authenticate]
+    decorators = [authenticate, report_allowed_location]
 
     def get(self, location, start_date=None, end_date=None):
 
@@ -2301,7 +2314,7 @@ class RefugeePublicHealth(Resource):
        report_data\n
     """
 
-    decorators = [authenticate]
+    decorators = [authenticate, report_allowed_location]
 
     def get(self, location, start_date=None, end_date=None):
         if not app.config["TESTING"] and "jor_refugee" not in model.form_tables:
@@ -2517,7 +2530,7 @@ class RefugeeDetail(Resource):
     Returns:\n
        report_data\n
     """
-    decorators = [authenticate]
+    decorators = [authenticate, report_allowed_location]
 
     def get(self, location, start_date=None, end_date=None):
         if not app.config["TESTING"] and "jor_refugee" not in model.form_tables:
@@ -2681,7 +2694,7 @@ class RefugeeCd(Resource):
        report_data\n
     """
 
-    decorators = [authenticate]
+    decorators = [authenticate, report_allowed_location]
 
     def get(self, location, start_date=None, end_date=None):
         if not app.config["TESTING"] and "jor_refugee" not in model.form_tables:
@@ -2804,7 +2817,7 @@ class WeeklyEpiMonitoring(Resource):
     Returns:\n
        report_data\n
     """
-    decorators = [authenticate]
+    decorators = [authenticate, report_allowed_location]
 
     def get(self, location, start_date=None, end_date=None):
         start_date, end_date = fix_dates(start_date, end_date)
@@ -2937,7 +2950,7 @@ class Malaria(Resource):
     Returns:\n
        report_data\n
     """
-    decorators = [authenticate]
+    decorators = [authenticate, report_allowed_location]
 
     def get(self, location, start_date=None, end_date=None):
 
@@ -3044,7 +3057,7 @@ class VaccinationReport(Resource):
     Returns:\n
        report_data\n
     """
-    decorators = [authenticate]
+    decorators = [authenticate, report_allowed_location]
 
     def get(self, location, start_date=None, end_date=None):
         start_date, end_date = fix_dates(start_date, end_date)
@@ -3256,7 +3269,7 @@ class AFROBulletin(Resource):
     Returns:\n
        report_data\n
     """
-    decorators = [authenticate]
+    decorators = [authenticate, report_allowed_location]
 
     def get(self, location, start_date=None, end_date=None):
         # Set default date values to last epi week.
@@ -3869,7 +3882,7 @@ class PlagueReport(Resource):
     Returns:\n
        report_data\n
     """
-    decorators = [authenticate]
+    decorators = [authenticate, report_allowed_location]
 
     def get(self, location, start_date=None, end_date=None):
 
@@ -4030,7 +4043,7 @@ class EBSReport(Resource):
     Returns:\n
        report_data\n
     """
-    decorators = [authenticate]
+    decorators = [authenticate, report_allowed_location]
 
     def get(self, location, start_date=None, end_date=None):
 
@@ -4176,7 +4189,7 @@ class CTCReport(Resource):
     Returns:\n
        report_data\n
     """
-    decorators = [authenticate]
+    decorators = [authenticate, report_allowed_location]
 
     def get(self, location, start_date=None, end_date=None):
 

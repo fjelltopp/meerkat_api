@@ -3,7 +3,7 @@ meerkat_api.py
 
 Root Flask app for the Meerkat API.
 """
-from flask import Flask, make_response, abort
+from flask import Flask, make_response, abort, g
 from flask.json import JSONEncoder
 from flask_sqlalchemy import SQLAlchemy
 from flask_restful import Api
@@ -12,6 +12,7 @@ from geoalchemy2.elements import WKBElement
 from geoalchemy2.shape import to_shape
 from raven.contrib.flask import Sentry
 from werkzeug.contrib.fixers import ProxyFix
+
 import io
 import csv
 import os
@@ -32,6 +33,8 @@ api = Api(app)
 if app.config["SENTRY_DNS"]:
     sentry = Sentry(app, dsn=app.config["SENTRY_DNS"])
 app.wsgi_app = ProxyFix(app.wsgi_app)
+
+from meerkat_api.authentication import auth
 
 # app.wsgi_app = ProfilerMiddleware(app.wsgi_app, restrictions=(30,))
 
@@ -132,7 +135,21 @@ def output_xls(data, code, headers=None):
     else:
         abort(404)
 
+        
+@app.before_request
+def before_request():
+    token = auth.get_token()
+    g.allowed_location = 1
+    if token:
+        try:
+            user = auth.get_user(token)['usr']
+            if user == "root":
+                g.allowed_location = 1
+        except:
+            pass
 
+
+    
 # Importing all the resources here to avoid circular imports
 from meerkat_api.resources.locations import Location, Locations, LocationTree, TotClinics
 from meerkat_api.resources.variables import Variables, Variable
@@ -155,6 +172,7 @@ from meerkat_api.resources.frontpage import KeyIndicators, TotMap, NumAlerts, Co
 from meerkat_api.resources.export_data import ExportData, ExportForm, Forms, ExportCategory, GetCSVDownload, GetXLSDownload, GetStatus
 from meerkat_api.resources.incidence import IncidenceRate, WeeklyIncidenceRate
 from meerkat_api.resources.devices import Devices
+
 #from meerkat_api.resources.links import Link, Links
 
 # All urls

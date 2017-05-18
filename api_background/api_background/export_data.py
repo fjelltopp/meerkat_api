@@ -1,12 +1,14 @@
 """
 Functions to export data
 """
-from meerkat_abacus.util import epi_week, get_locations
+from meerkat_abacus.util import epi_week, get_locations, is_child
 from meerkat_abacus.util import all_location_data, get_db_engine, get_links
 from meerkat_abacus.model import form_tables, Data, Links
 from meerkat_abacus.model import DownloadDataFiles, AggregationVariables
 from meerkat_abacus.config import country_config, config_directory
+
 import gettext
+
 
 translation_dir = country_config.get("translation_dir", None)
 
@@ -34,7 +36,7 @@ import os
 base_folder = os.path.dirname(os.path.realpath(__file__))
 
 @task
-def export_data(uuid, use_loc_ids=False):
+def export_data(uuid, allowed_location, use_loc_ids=False):
     """
     Exports the data table from db
 
@@ -59,10 +61,9 @@ def export_data(uuid, use_loc_ids=False):
         func.distinct(
             func.jsonb_object_keys(Data.variables)))
     variables = []
-    locs = get_locations(session)
     for row in results:
         variables.append(row[0])
-
+    locs = get_locations(session)
     fieldnames = ["id", "zone", "country", "region",
                   "district", "clinic", "clinic_type",
                   "geolocation", "date", "uuid"] + list(variables)
@@ -79,11 +80,16 @@ def export_data(uuid, use_loc_ids=False):
         dict_row = dict(
             (col, getattr(row, col)) for col in row.__table__.columns.keys()
         )
-        if not use_loc_ids:
-            for l in ["country", "zone", "region", "district", "clinic"]:
-                if dict_row[l]:
-                    dict_row[l] = locs[dict_row[l]].name
+        if not is_child(allowed_location, dict_row["clinic"], locs):
+            continue
+
+        for l in ["country", "zone", "region", "district", "clinic"]:
+            if dict_row[l]:
+                dict_row[l + "_id"] = dict_row[l]
+                dict_row[l] = locs[dict_row[l]].name
+
         dict_row.update(dict_row.pop("variables"))
+        print("bjarne")
         dict_rows.append(dict_row)
         if i % 1000 == 0:
             writer.writerows(dict_rows)
@@ -97,7 +103,7 @@ def export_data(uuid, use_loc_ids=False):
 
 
 @task
-def export_category(uuid, form_name, category, download_name, variables, data_type, language="en"):
+def export_category(uuid, form_name, category, download_name, variables,  data_type, allowed_location, language="en"):
     """
     We take a variable dictionary of form field name: display_name.
     There are some special commands that can be given in the form field name:
@@ -139,7 +145,8 @@ def export_category(uuid, form_name, category, download_name, variables, data_ty
     print(language)
     if language != "en":
         os.environ["LANGUAGE"] = language
-    
+        
+    locs = get_locations(session)
     print(uuid)
     data_keys = []
     cat_variables = {}
@@ -305,6 +312,9 @@ def export_category(uuid, form_name, category, download_name, variables, data_ty
     # Prepare each row
     for r in results:
         list_row = ['']*len(return_keys)
+        if not is_child(allowed_location, r[0].clinic,  locs):
+            continue
+
         dates = {}
         for k in return_keys:
             form_var = translation_dict[k]
@@ -505,7 +515,7 @@ def export_category(uuid, form_name, category, download_name, variables, data_ty
 
 
 @task
-def export_form(uuid, form, fields=None):
+def export_form(uuid, form, allowed_location, fields=None):
     """
     Export a form. If fields is in the request variable we only include
     those fields.
@@ -522,7 +532,8 @@ def export_form(uuid, form, fields=None):
     db, session = get_db_engine()
     (locations, locs_by_deviceid, regions,
      districts, devices) = all_location_data(session)
-
+    
+    locs = get_locations(session)
     if fields:
         keys = fields
     else:
@@ -542,7 +553,7 @@ def export_form(uuid, form, fields=None):
     csv_writer.writerows([keys])
 
     # XlsxWriter with "constant_memory" set to true, flushes mem after each row
-    xls_content = open(filename + ".xls", "wb")
+    xls_content = open(filename + ".xlsx", "wb")
     xls_book = xlsxwriter.Workbook(xls_content, {'constant_memory': True})
     xls_sheet = xls_book.add_worksheet()
     # xls_sheet = pyexcel.Sheet([keys])
@@ -590,6 +601,9 @@ def export_form(uuid, form, fields=None):
                     None
                 )
             if clinic_id:
+                if not is_child(allowed_location,clinic_id, locs):
+                    continue
+                
                 if 'clinic' in keys:
                     list_row[keys.index("clinic")] = locations[clinic_id].name
                 # Sort out district and region
@@ -610,6 +624,8 @@ def export_form(uuid, form, fields=None):
                             locations[clinic_id].parent_location
                         ].name
             else:
+                if allowed_location != 1:
+                    continue
                 if 'clinic' in keys:
                     list_row[keys.index("clinic")] = ""
                 if 'district' in keys:

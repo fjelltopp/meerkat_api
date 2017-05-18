@@ -2,7 +2,7 @@
 Locations resource for querying location data
 """
 from flask_restful import Resource
-from flask import jsonify
+from flask import jsonify, g
 from sqlalchemy import func
 
 from meerkat_api.util import row_to_dict, rows_to_dicts, is_child, get_children
@@ -24,6 +24,7 @@ class Locations(Resource):
         return jsonify(rows_to_dicts(db.session.query(model.Locations).all(),
                              dict_id="id"))
 
+    
 class Location(Resource):
     """
     Location by location_id
@@ -34,6 +35,7 @@ class Location(Resource):
        location: location
     """
     def get(self, location_id):
+        
         return jsonify(row_to_dict(db.session.query(model.Locations).filter(
             model.Locations.id == location_id).first()))
 
@@ -49,15 +51,16 @@ class LocationTree(Resource):
     """
     def get(self, only_case_reports=True):
         locs = get_locations(db.session)
-        loc = 1
+        loc = g.allowed_location
         ret = {loc: {"id": loc, "text": locs[loc].name, "nodes": []}}
         for l in sorted(locs.keys()):
-            if not only_case_reports or (locs[l].case_report == 1 or not locs[l].deviceid):
-                if is_child(l, loc, locs):
-                    ret.setdefault(locs[l].parent_location, {"nodes": []})
-                ret.setdefault(l, {"nodes": []})
-                ret[l].update({"id": l, "text": locs[l].name})
-                ret[locs[l].parent_location]["nodes"].append(ret[l])
+            if l >= loc:
+                if not only_case_reports or (locs[l].case_report == 1 or not locs[l].deviceid):
+                    if is_child(l, loc, locs):
+                        ret.setdefault(locs[l].parent_location, {"nodes": []})
+                    ret.setdefault(l, {"nodes": []})
+                    ret[l].update({"id": l, "text": locs[l].name})
+                    ret[locs[l].parent_location]["nodes"].append(ret[l])
         return jsonify(ret[loc])
 
     

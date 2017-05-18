@@ -107,7 +107,7 @@ def valid_urls(app):
     return urls
 
 
-def get_url(app, url):
+def get_url(app, url, header):
     """ get a url from the app
 
     Args: 
@@ -118,10 +118,10 @@ def get_url(app, url):
        rv: return variable
     """
     if need_csv_representation(url):
-        h = {**settings.header,**{"Accept": "text/csv"}}
+        h = {**header,**{"Accept": "text/csv"}}
         rv = app.get(url, headers=h)
     else:
-        rv = app.get(url, headers=settings.header)
+        rv = app.get(url, headers=header)
     return rv
 
 class MeerkatAPITestCase(unittest.TestCase):
@@ -178,7 +178,7 @@ class MeerkatAPITestCase(unittest.TestCase):
         urls = valid_urls(meerkat_api.app)
         for url in urls:
             print(url)
-            rv = get_url(self.app, url)
+            rv = get_url(self.app, url, settings.header)
             isOK = rv.status_code == 200
             if not isOK:
                 print( "URL NOT OK: " + str(url) )                
@@ -186,8 +186,40 @@ class MeerkatAPITestCase(unittest.TestCase):
     
         
     def test_authentication(self):
-        #TODO: Test new authentication.
-        self.assertTrue(True)
+        urls = valid_urls(meerkat_api.app)
+        no_authentication = ["key_indicators",
+                             "tot_map",
+                             "consultation_map",
+                             "num_alerts",
+                             "num_clinics",
+                             "refugee_page",
+                             "locations",
+                             "locationtree",
+                             "location",
+                             "clinics",
+                             "epi_week",
+                             "geo_shapes",
+                             "variables",
+                             "variable/tot_1"]
+        for url in urls:
+            needs_auth = True
+            for na in no_authentication:
+                if na in url:
+                    needs_auth = False
+            if url == "/" or url == "":
+                needs_auth = False
+            print(url)
+            if needs_auth:
+                rv = get_url(self.app, url, settings.header_non_authorised)
+                self.assertEqual(rv.status_code, 401)
+                rv = get_url(self.app, url, settings.header)
+                self.assertEqual(rv.status_code, 200)
+            else:
+                rv = get_url(self.app, url, settings.header_non_authorised)
+                self.assertEqual(rv.status_code, 200)
+                rv = get_url(self.app, url, settings.header)
+                self.assertEqual(rv.status_code, 200)
+                
 
 
 if __name__ == '__main__':

@@ -7,6 +7,7 @@ from flask import jsonify
 from datetime import datetime, timedelta
 from dateutil import parser
 from meerkat_api.resources.epi_week import epi_year_start
+from meerkat_abacus.util import is_child
 
 def series_to_json_dict(series):
     """
@@ -22,6 +23,7 @@ def series_to_json_dict(series):
         return dict((str(key), value) for key, value in series.to_dict().items())
     else:
         return {}
+
 
 def fix_dates(start_date, end_date):
     """
@@ -97,29 +99,6 @@ def rows_to_dicts(rows, dict_id=None):
             data_dicts.append(row_to_dict(row))
     return data_dicts
 
-
-def is_child(parent, child, locations):
-    """
-    Determines if child is child of parent
-
-    Args:
-        parent: parent_id
-        child: child_id
-        locations: all locations in dict
-
-    Returns:
-       is_child(Boolean): True if child is child of parent
-    """
-    parent = int(parent)
-    child = int(child)
-    if child == parent or parent == 1:
-        return True
-    loc_id = child
-    while loc_id != 1:
-        loc_id = locations[loc_id].parent_location
-        if loc_id == parent:
-            return True
-    return False
 
 def find_level(location, sublevel, locations):
     """

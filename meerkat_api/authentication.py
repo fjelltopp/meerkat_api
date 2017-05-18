@@ -1,7 +1,36 @@
 from flask import request, current_app
 from functools import wraps
+from meerkat_api.util import is_child
 from meerkat_libs.auth_client import auth
+from meerkat_abacus.util import get_locations
 import logging
+from meerkat_api import db
+
+
+
+allowed_locations_locs = None
+
+
+def is_allowed_location(location, allowed_location):
+    """"
+    Returns true if the location is allowed_location
+
+    Args:
+        location: location id
+        allowed_location: allowed_location
+    Returns:
+        is_allowed(bool): Is location allowed.
+
+    """
+    if location == 1:
+        return True
+    global allowed_locations_locs
+    if allowed_locations_locs is None:
+        allowed_locations_locs = get_locations(db.session)
+    if is_child(allowed_location, int(location), allowed_locations_locs):
+        return True
+    return False
+  
 
 
 def authenticate(f):
