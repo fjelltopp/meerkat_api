@@ -136,13 +136,13 @@ class Prescriptions(Resource):
 
 
 
-        prescriptions = {'clinic_table':{'title':'Prescribing clinics'}}
+        prescriptions = {'clinic_table':{'title':'Prescribing clinics'},'clinic_data':{}}
 
         # Restructure the DB return sets into a JSON
         for item in first_last_prescr_query.all():
             # If clinic is already in JSON 
-            if str(item[0]) in prescriptions.keys():
-                prescriptions[str(item[0])].update({
+            if str(item[0]) in prescriptions['clinic_data'].keys():
+                prescriptions['clinic_data'][str(item[0])].update({
                     str(item[1]):{
                         "min_date":item[3].strftime("%Y-%m-%d"),
                         "max_date":item[4].strftime("%Y-%m-%d"),
@@ -151,12 +151,17 @@ class Prescriptions(Resource):
                             (0 
                                 if kit_contents[item[1]]["tablets_in_kit"] == "" 
                                 else int(kit_contents[item[1]]["tablets_in_kit"]) - item[2]
-                            ) 
+                            ) ,
+                        "depletion":                            
+                            (0 
+                                if kit_contents[item[1]]["tablets_in_kit"] == "" 
+                                else item[2]/float(kit_contents[item[1]]["tablets_in_kit"])
+                            )
                         }
                     })
             # If clinic is not in the JSON object yet    
             else:
-                prescriptions.update({
+                prescriptions['clinic_data'].update({
                     str(item[0]):{
                         str(item[1]):
                             {
@@ -167,23 +172,43 @@ class Prescriptions(Resource):
                                 (0 
                                     if kit_contents[item[1]]["tablets_in_kit"] == "" 
                                     else int(kit_contents[item[1]]["tablets_in_kit"]) - item[2]
-                                ) 
+                                ) ,
+                            "depletion":
+                                (0 
+                                    if kit_contents[item[1]]["tablets_in_kit"] == "" 
+                                    else item[2]/float(kit_contents[item[1]]["tablets_in_kit"])
+                                )
                             }
                         }
                     })
 
         # Assign the number of prescriptions to data object
         for item in prescription_query.all():
-            prescriptions[str(item[0])][str(item[1])]['prescriptions'] = item[2]
+            prescriptions['clinic_data'][str(item[0])][str(item[1])]['prescriptions'] = item[2]
 
-        for item in clinic_info.all():
-            prescriptions[str(item[0])].update({
-                "min_date":item[2].strftime("%Y-%m-%d"),
-                "max_date":item[3].strftime("%Y-%m-%d")
-                })
 
         #create table info
-        #for item in 
+        for item in clinic_info.all():
+
+            highest_depletion = findHighestDepletion(prescriptions['clinic_data'][str(item[0])])
+            prescriptions['clinic_table'].update({str(item[0]):{
+                    "clinic_name":str(item[0]),
+                    "min_date":item[2].strftime("%Y-%m-%d"),
+                    "max_date":item[3].strftime("%Y-%m-%d"),
+                    "most_depleted_medicine":highest_depletion['medicine'],
+                    "depletion":highest_depletion['depletion']
+                }})
 
         return prescriptions
+
+def findHighestDepletion(clinic_medicines):
+    depletion_list = []
+    for medicine in clinic_medicines.keys():
+        depletion_list.append({
+            'medicine':medicine,
+            'depletion':clinic_medicines[medicine]['depletion']
+        })
+
+    sorted_depletion_list = sorted(depletion_list, key=lambda k: k['depletion'], reverse=True)
+    return sorted_depletion_list[0]
         
