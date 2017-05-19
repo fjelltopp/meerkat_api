@@ -136,7 +136,7 @@ class Prescriptions(Resource):
 
 
 
-        prescriptions = {'clinic_table':{'title':'Prescribing clinics'},'clinic_data':{}}
+        prescriptions = {'clinic_table':[], 'clinic_table_title':'Prescribing clinics','clinic_data':{}}
 
         # Restructure the DB return sets into a JSON
         for item in first_last_prescr_query.all():
@@ -191,13 +191,14 @@ class Prescriptions(Resource):
         for item in clinic_info.all():
 
             highest_depletion = findHighestDepletion(prescriptions['clinic_data'][str(item[0])])
-            prescriptions['clinic_table'].update({str(item[0]):{
+            prescriptions['clinic_table'].append({
+                    "clinic_id": str(item[0]),
                     "clinic_name":str(item[0]),
                     "min_date":item[2].strftime("%Y-%m-%d"),
                     "max_date":item[3].strftime("%Y-%m-%d"),
                     "most_depleted_medicine":highest_depletion['medicine'],
                     "depletion":highest_depletion['depletion']
-                }})
+                })
 
         return prescriptions
 
