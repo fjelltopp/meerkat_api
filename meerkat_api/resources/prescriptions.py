@@ -107,6 +107,7 @@ class Prescriptions(Resource):
         start_date, end_date = fix_dates(start_date, end_date)
 
         locs = get_locations(db.session)
+
         clinics = get_children(parent = location, locations = locs, require_case_report = True)
 
         barcode_category = 'barcode_prescription'
@@ -193,11 +194,12 @@ class Prescriptions(Resource):
             highest_depletion = findHighestDepletion(prescriptions['clinic_data'][str(item[0])])
             prescriptions['clinic_table'].append({
                     "clinic_id": str(item[0]),
-                    "clinic_name":str(item[0]),
+                    "clinic_name":locs[item[0]].name,
                     "min_date":item[2].strftime("%Y-%m-%d"),
                     "max_date":item[3].strftime("%Y-%m-%d"),
-                    "most_depleted_medicine":highest_depletion['medicine'],
-                    "depletion":highest_depletion['depletion']
+                    "most_depleted_medicine":barcode_variables[highest_depletion['medicine']],
+                    "depletion":highest_depletion['depletion'],
+                    "str_depletion": str(round(highest_depletion['depletion'] * 100,1)) + '%' 
                 })
 
         return prescriptions
