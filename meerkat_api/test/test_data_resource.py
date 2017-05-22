@@ -137,7 +137,7 @@ class MeerkatAPIDataTestCase(unittest.TestCase):
         self.assertEqual(len(data["records"]), 1)
         self.assertEqual(
             data["records"][0]["variables"],
-            { "tot_1":1, "gen_2": 1, "age_4": 1, "age_10": 1, 
+            { "data_entry":1, "tot_1":1, "gen_2": 1, "age_4": 1, "age_10": 1, 
               "nat_2": 1, "sta_1": 1, "prc_1": 1, "cmd_1": 1, "icb_1": 1 }
         )
         self.assertEqual(data["records"][0]["clinic_type"], "Hospital")
