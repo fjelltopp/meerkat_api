@@ -141,7 +141,7 @@ class Prescriptions(Resource):
 
 
 
-        prescriptions = {'clinic_table':[], 'clinic_table_title':'Prescribing clinics','clinic_data':{}}
+        prescriptions = {'clinic_table':[], 'medicine_table':[], 'clinic_table_title':'Prescribing clinics','clinic_data':{}}
 
         # Restructure the DB return sets into a JSON
         for item in first_last_prescr_query.all():
@@ -161,7 +161,13 @@ class Prescriptions(Resource):
                             (0 
                                 if kit_contents[item[1]]["tablets_in_kit"] == "" 
                                 else item[2]/float(kit_contents[item[1]]["tablets_in_kit"])
-                            )
+                            ),
+                        "stock":
+                            (0 
+                                if kit_contents[item[1]]["tablets_in_kit"] == "" 
+                                else 1-item[2]/float(kit_contents[item[1]]["tablets_in_kit"])
+                            ),
+                        "total_prescriptions": item[2]
                         }
                     })
             # If clinic is not in the JSON object yet    
@@ -181,8 +187,14 @@ class Prescriptions(Resource):
                             "depletion":
                                 (0 
                                     if kit_contents[item[1]]["tablets_in_kit"] == "" 
-                                    else 1 - item[2]/float(kit_contents[item[1]]["tablets_in_kit"])
-                                )
+                                    else item[2]/float(kit_contents[item[1]]["tablets_in_kit"])
+                                ),
+                            "stock":
+                                (0 
+                                    if kit_contents[item[1]]["tablets_in_kit"] == "" 
+                                    else 1-item[2]/float(kit_contents[item[1]]["tablets_in_kit"])
+                                ),
+                            "total_prescriptions": item[2]
                             }
                         }
                     })
@@ -192,7 +204,7 @@ class Prescriptions(Resource):
             prescriptions['clinic_data'][str(item[0])][str(item[1])]['prescriptions'] = item[2]
 
 
-        #create table info
+        #create clinic table info
         for item in clinic_info.all():
 
             highest_depletion = findHighestDepletion(prescriptions['clinic_data'][str(item[0])])
@@ -205,6 +217,25 @@ class Prescriptions(Resource):
                     "depletion":highest_depletion['depletion'],
                     "str_depletion": str(round(highest_depletion['depletion'] * 100,1)) + '%' 
                 })
+
+        #create medicine table info
+        for clinic in prescriptions['clinic_data']:
+            for medicine in prescriptions['clinic_data'][clinic]:
+                prescriptions['medicine_table'].append({
+                    "clinic_id": clinic,
+                    "clinic_name": locs[int(clinic)].name,
+                    "medicine_name": barcode_variables[medicine],
+                    "min_date":prescriptions['clinic_data'][clinic][medicine]['min_date'],
+                    "max_date":prescriptions['clinic_data'][clinic][medicine]['max_date'],
+                    "stock":prescriptions['clinic_data'][clinic][medicine]['stock'],
+                    "str_stock":(
+                        "-" 
+                        if kit_contents[medicine]["tablets_in_kit"] == "" 
+                        else str(round(prescriptions['clinic_data'][clinic][medicine]['stock'] * 100,1)) + '%'
+                    ),
+                    "total_prescriptions": prescriptions['clinic_data'][clinic][medicine]['total_prescriptions']
+                    })
+
 
         return prescriptions
 
