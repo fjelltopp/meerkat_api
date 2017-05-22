@@ -122,13 +122,17 @@ class Prescriptions(Resource):
         first_last_prescr_query = db.session.query(Data.clinic,
                              Data.categories[barcode_category].astext,func.count(Data.id),func.min(Data.date),func.max(Data.date)).filter(
                                  *conditions).group_by(Data.clinic, Data.categories[barcode_category].astext)
+
+        #return str(first_last_prescr_query.all())
         
         # Get first and last prescription for a clinic without time constraints
         clinic_info = db.session.query(Data.clinic,
                              func.count(Data.id),func.min(Data.date),func.max(Data.date)).filter(
                                  *conditions).group_by(Data.clinic)
 
-        conditions = [Data.categories.has_key(barcode_category)] + date_conditions
+        #return str(clinic_info.all())
+
+        conditions = conditions + date_conditions
 
         # Get number of prescriptions within time constraints
         prescription_query = db.session.query(Data.clinic,
@@ -177,7 +181,7 @@ class Prescriptions(Resource):
                             "depletion":
                                 (0 
                                     if kit_contents[item[1]]["tablets_in_kit"] == "" 
-                                    else item[2]/float(kit_contents[item[1]]["tablets_in_kit"])
+                                    else 1 - item[2]/float(kit_contents[item[1]]["tablets_in_kit"])
                                 )
                             }
                         }
