@@ -2,7 +2,7 @@
 Data resource for completeness data
 """
 from flask_restful import Resource
-from flask import jsonify, request
+from flask import jsonify, request, g
 from dateutil.parser import parse
 from sqlalchemy import extract, func, Integer, or_
 from datetime import datetime, timedelta
@@ -13,7 +13,7 @@ from meerkat_api.resources.epi_week import EpiWeek, epi_week_start, epi_year_sta
 from meerkat_abacus.model import Data, Locations
 from meerkat_api.util import get_children, is_child
 from meerkat_abacus.util import get_locations
-from meerkat_api.authentication import authenticate
+from meerkat_api.authentication import authenticate, is_allowed_location
 from meerkat_abacus.util import get_locations
 from pandas.tseries.offsets import CustomBusinessDay
 
@@ -61,6 +61,9 @@ class Completeness(Resource):
         if sublevel == None:
             sublevel = request.args.get('sublevel')
 
+        if not is_allowed_location(location, g.allowed_location):
+            return {}
+            
         if not end_date:
             end_date = datetime.now()
         else:
@@ -291,6 +294,10 @@ class NonReporting(Resource):
 
     def get(self, variable, location, exclude=None, num_weeks=0,
             include=None, require_case_report=True):
+
+        if not is_allowed_location(location, g.allowed_location):
+            return {}
+            
         if require_case_report in [0, "0"]:
             require_case_report = False
         if num_weeks == "0":

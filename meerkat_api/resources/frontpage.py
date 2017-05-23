@@ -2,8 +2,8 @@
 Resource for frontpage, so that certain data can be accessed without authentication
 """
 from flask_restful import Resource
+from flask import g
 from datetime import datetime
-import json
 from geoalchemy2.shape import to_shape
 
 from meerkat_api import db
@@ -23,6 +23,7 @@ class KeyIndicators(Resource):
     """
 
     def get(self):
+        g.allowed_locations = 1
         year = datetime.today().year
         variables_instance = Variables()
         variables = variables_instance.get("key_indicators")
@@ -43,6 +44,7 @@ class TotMap(Resource):
 
     def get(self):
         mv = MapVariable()
+        g.allowed_locations = 1
         return mv.get("tot_1", include_all_clinics=True)
 
 
@@ -52,6 +54,7 @@ class ConsultationMap(Resource):
     """
 
     def get(self):
+        g.allowed_locations = 1
         mv = MapVariable()
         return mv.get("reg_2", include_all_clinics=True)
 
@@ -62,6 +65,7 @@ class NumAlerts(Resource):
     """
 
     def get(self):
+        g.allowed_locations = 1
         al = Alerts()
         alerts = get_alerts({})
         return {"num_alerts": len(alerts)}
@@ -74,6 +78,7 @@ class NumClinics(Resource):
     """
 
     def get(self):
+        g.allowed_locations = 1
         tc = TotClinics()
         return {"total": tc.get(1)["total"]}
 

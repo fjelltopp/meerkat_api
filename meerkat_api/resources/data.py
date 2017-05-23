@@ -5,12 +5,12 @@ Resource for aggregating and querying data
 from flask_restful import Resource
 from sqlalchemy import or_
 from datetime import datetime
-from flask import jsonify
+from flask import jsonify, g
 from meerkat_api.util import rows_to_dicts
 from meerkat_api import db
 from meerkat_abacus.model import Data
 from meerkat_api.resources.variables import Variables
-from meerkat_api.authentication import authenticate
+from meerkat_api.authentication import authenticate, is_allowed_location
 from meerkat_api.util.data_query import query_sum
 from meerkat_api.util.data_query import latest_query
 from meerkat_abacus.util import get_locations
@@ -243,10 +243,11 @@ class AggregateLatestLevel(Resource):
         )
         ret = {}
         locs = get_locations(db.session)
-        for r in result[level]:
-            ret[locs[r].name] = {"total": result[level][r]["total"],
-                                 "weeks": result[level][r]["weeks"],
-                                 "id": r}
+        if result: 
+            for r in result[level]:
+                ret[locs[r].name] = {"total": result[level][r]["total"],
+                                     "weeks": result[level][r]["weeks"],
+                                     "id": r}
             
         return ret
 
@@ -266,6 +267,9 @@ class Records(Resource):
     decorators = [authenticate]
 
     def get(self, variable, location_id):
+        if not is_allowed_location(location_id, g.allowed_location):
+            return {"records": []}
+            
         results = db.session.query(Data).filter(
             Data.variables.has_key(str(variable)), or_(
                 loc == location_id for loc in (Data.country,

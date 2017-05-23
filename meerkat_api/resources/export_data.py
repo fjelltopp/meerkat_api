@@ -2,7 +2,7 @@
 Data resource for exporting data
 """
 from flask_restful import Resource
-from flask import request, redirect
+from flask import request, redirect, g
 import json
 import uuid
 
@@ -55,7 +55,7 @@ class ExportData(Resource):
     def get(self, use_loc_ids=False):
 
         uid = str(uuid.uuid4())
-        export_data.delay(uid, use_loc_ids)
+        export_data.delay(uid, g.allowed_location, use_loc_ids)
         return uid
 
 
@@ -81,6 +81,7 @@ class ExportCategory(Resource):
         language = request.args.get("language", "en")
         export_category.delay(uid, form_name, category,
                               download_name, variables, data_type,
+                              g.allowed_location,
                               language=language)
         return uid
 
@@ -162,5 +163,5 @@ class ExportForm(Resource):
             fields = request.args["fields"].split(",")
         else:
             fields = None
-        export_form.delay(uid, form, fields)
+        export_form.delay(uid, form, g.allowed_location, fields)
         return uid

@@ -2,7 +2,7 @@
 Resources for creating maps
 """
 from flask_restful import Resource
-from flask import abort
+from flask import abort, g
 from geojson import Point, FeatureCollection, Feature
 from sqlalchemy import extract, func, Float, or_
 from datetime import datetime
@@ -14,7 +14,7 @@ from meerkat_abacus import model
 from meerkat_abacus.model import Data, Locations
 from meerkat_api.resources.incidence import IncidenceRate
 from meerkat_abacus.util import get_locations
-from meerkat_api.authentication import authenticate
+from meerkat_api.authentication import authenticate, is_allowed_location
 
 
 class Clinics(Resource):
@@ -31,6 +31,9 @@ class Clinics(Resource):
     def get(self, location_id, clinic_type=None):
         locations = get_locations(db.session)
         points = []
+        if not is_allowed_location(location_id, g.allowed_location):
+            return FeatureCollection(points)
+        
         for l in locations:
             if (locations[l].case_report and is_child(
                     location_id, l, locations) and locations[l].point_location is not None
@@ -63,6 +66,12 @@ class MapVariable(Resource):
 
         start_date, end_date = fix_dates(start_date, end_date)
         location = int(location)
+
+        allowed_location = 1
+        if g:
+            allowed_location = g.allowed_location
+        if not is_allowed_location(location, allowed_location):
+            return {}
         vi = str(variable_id)
 
         results = db.session.query(

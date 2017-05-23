@@ -2,13 +2,13 @@
 Data resource for getting Alert data
 """
 from flask_restful import Resource
-from flask import jsonify, request, current_app
+from flask import jsonify, request, current_app, g
 from sqlalchemy import or_
 from meerkat_api.util import row_to_dict, rows_to_dicts, get_children
 from meerkat_api import db
 from meerkat_abacus import model
 from meerkat_abacus.util import get_locations
-from meerkat_api.authentication import authenticate
+from meerkat_api.authentication import authenticate, is_allowed_location
 
 from dateutil.parser import parse
 class Alert(Resource):
@@ -26,7 +26,11 @@ class Alert(Resource):
     def get(self, alert_id):
         result = db.session.query(model.Data).filter(
             model.Data.variables["alert_id"].astext == alert_id).first()
+        
         if result:
+            if not is_allowed_location(result.clinic, g.allowed_location):
+                return {}
+
             if result.variables.get("alert_type", None) == "threshold":
                 other_data = rows_to_dicts(
                     db.session.query(model.Data)
@@ -59,12 +63,11 @@ class Alerts(Resource):
         args = request.args.to_dict()
 
         if "start_date" in args:
-            print(args["start_date"])
             args["start_date"] = parse(args["start_date"])
-        return jsonify({"alerts": get_alerts(args)})
+        return jsonify({"alerts": get_alerts(args, allowed_location=g.allowed_location)})
 
 
-def get_alerts(args):
+def get_alerts(args, allowed_location=1):
     """
     Gets all alerts where if reason is a key in args we only get alerts with a matching reason. 
     If "location" is in the key we get all alerts from the location or any child clinics. 
@@ -88,8 +91,8 @@ def get_alerts(args):
             args["reason"])
        
     if "location" in args.keys():
-        locations = get_locations(db.session)
-        children = get_children(int(args["location"]), locations)
+        if not is_allowed_location(args["location"], allowed_location):
+            return {}
         cond = or_(loc == args["location"] for loc in (
             model.Data.country,
             model.Data.zone,
@@ -97,6 +100,22 @@ def get_alerts(args):
             model.Data.district,
             model.Data.clinic))
         disregarded_cond = or_(loc == args["location"] for loc in (
+            model.DisregardedData.country,
+            model.DisregardedData.zone,
+            model.DisregardedData.region,
+            model.DisregardedData.district,
+            model.DisregardedData.clinic)
+        )
+        conditions.append(cond)
+        disregarded_conditions.append(disregarded_cond)
+    else:
+        cond = or_(loc == allowed_location for loc in (
+            model.Data.country,
+            model.Data.zone,
+            model.Data.region,
+            model.Data.district,
+            model.Data.clinic))
+        disregarded_cond = or_(loc == allowed_location for loc in (
             model.DisregardedData.country,
             model.DisregardedData.zone,
             model.DisregardedData.region,
@@ -134,7 +153,7 @@ class AggregateAlerts(Resource):
 
     def get(self, central_review=False, hard_date_limit=None):
         args = request.args
-        all_alerts = get_alerts(args)
+        all_alerts = get_alerts(args, allowed_location=g.allowed_location)
         ret = {}
         total = 0
         if hard_date_limit:

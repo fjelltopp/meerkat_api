@@ -16,6 +16,7 @@ import io
 import csv
 import os
 import resource
+
 # from werkzeug.contrib.profiler import ProfilerMiddleware
 # Create the Flask app
 app = Flask(__name__)
@@ -33,8 +34,15 @@ if app.config["SENTRY_DNS"]:
     sentry = Sentry(app, dsn=app.config["SENTRY_DNS"])
 app.wsgi_app = ProxyFix(app.wsgi_app)
 
-# app.wsgi_app = ProfilerMiddleware(app.wsgi_app, restrictions=(30,))
 
+# Set the default values of the g object
+class FlaskG(app.app_ctx_globals_class):
+    allowed_location = 1
+
+app.app_ctx_globals_class = FlaskG
+
+
+# app.wsgi_app = ProfilerMiddleware(app.wsgi_app, restrictions=(30,))
 class CustomJSONEncoder(JSONEncoder):
     """
     Custom JSON encoder to encode all datetime objects as ISO fromat
@@ -156,6 +164,7 @@ from meerkat_api.resources.frontpage import KeyIndicators, TotMap, NumAlerts, Co
 from meerkat_api.resources.export_data import ExportData, ExportForm, Forms, ExportCategory, GetCSVDownload, GetXLSDownload, GetStatus
 from meerkat_api.resources.incidence import IncidenceRate, WeeklyIncidenceRate
 from meerkat_api.resources.devices import Devices
+
 #from meerkat_api.resources.links import Link, Links
 
 # All urls
@@ -214,7 +223,7 @@ api.add_resource(AggregateLatestCategory,
                  "/aggregate_latest_category/<category>/<identifier_id>/<location_id>",
                  "/aggregate_latest_category/<category>/<identifier_id>/<location_id>/<weeks>",
                  "/aggregate_latest_category/<category>/<identifier_id>/<location_id>/<weeks>/<year>"
-                 
+
                 )
 
 api.add_resource(AggregateCategory,
