@@ -4,7 +4,7 @@ Locations resource for querying location data
 from flask_restful import Resource
 from flask import jsonify, g
 from sqlalchemy import func
-
+from meerkat_api.authentication import authenticate
 from meerkat_api.util import row_to_dict, rows_to_dicts, is_child, get_children
 from meerkat_api import db, app
 from meerkat_abacus import model
@@ -18,13 +18,13 @@ class Locations(Resource):
 
     Returns:\n
        locations: Locations indexed by location_id
-    
+
     """
     def get(self):
         return jsonify(rows_to_dicts(db.session.query(model.Locations).all(),
                              dict_id="id"))
 
-    
+
 class Location(Resource):
     """
     Location by location_id
@@ -35,23 +35,25 @@ class Location(Resource):
        location: location
     """
     def get(self, location_id):
-        
+
         return jsonify(row_to_dict(db.session.query(model.Locations).filter(
             model.Locations.id == location_id).first()))
 
-    
+
 class LocationTree(Resource):
     """
     Location Tree
 
-    Args: 
+    Args:
        only_case_reports: Only include clinics that submitt case reports
-    Returns: 
+    Returns:
        Returns a location Tree
     """
+    decorators = [authenticate]
     def get(self, only_case_reports=True):
         locs = get_locations(db.session)
         loc = g.allowed_location
+        app.logger.debug("LOCTREE: " + str(g.allowed_location))
         ret = {loc: {"id": loc, "text": locs[loc].name, "nodes": []}}
         for l in sorted(locs.keys()):
             if l >= loc:
@@ -63,11 +65,11 @@ class LocationTree(Resource):
                     ret[locs[l].parent_location]["nodes"].append(ret[l])
         return jsonify(ret[loc])
 
-    
+
 class TotClinics(Resource):
     """
     Returns the number of clinics below location_id in the location tree
-    Args: 
+    Args:
         location_id
     Returns:
         number of clinics
@@ -75,7 +77,7 @@ class TotClinics(Resource):
     def get(self, location_id, clinic_type=None):
         locs = get_locations(db.session)
         children = get_children(location_id, locs)
-        if clinic_type: 
+        if clinic_type:
             res = db.session.query(func.count(model.Locations.id)).filter(
                 model.Locations.id.in_(children),
                 model.Locations.case_report == 1,

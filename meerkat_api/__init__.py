@@ -3,7 +3,7 @@ meerkat_api.py
 
 Root Flask app for the Meerkat API.
 """
-from flask import Flask, make_response, abort, g
+from flask import Flask, make_response, abort
 from flask.json import JSONEncoder
 from flask_sqlalchemy import SQLAlchemy
 from flask_restful import Api
@@ -12,11 +12,11 @@ from geoalchemy2.elements import WKBElement
 from geoalchemy2.shape import to_shape
 from raven.contrib.flask import Sentry
 from werkzeug.contrib.fixers import ProxyFix
-
 import io
 import csv
 import os
 import resource
+
 # from werkzeug.contrib.profiler import ProfilerMiddleware
 # Create the Flask app
 app = Flask(__name__)
@@ -34,10 +34,15 @@ if app.config["SENTRY_DNS"]:
     sentry = Sentry(app, dsn=app.config["SENTRY_DNS"])
 app.wsgi_app = ProxyFix(app.wsgi_app)
 
-from meerkat_api.authentication import auth
+
+# Set the default values of the g object
+class FlaskG(app.app_ctx_globals_class):
+    allowed_location = 1
+
+app.app_ctx_globals_class = FlaskG
+
 
 # app.wsgi_app = ProfilerMiddleware(app.wsgi_app, restrictions=(30,))
-
 class CustomJSONEncoder(JSONEncoder):
     """
     Custom JSON encoder to encode all datetime objects as ISO fromat
@@ -135,21 +140,7 @@ def output_xls(data, code, headers=None):
     else:
         abort(404)
 
-        
-@app.before_request
-def before_request():
-    token = auth.get_token()
-    g.allowed_location = 1
-    if token:
-        try:
-            user = auth.get_user(token)['usr']
-            if user == "root":
-                g.allowed_location = 1
-        except:
-            pass
 
-
-    
 # Importing all the resources here to avoid circular imports
 from meerkat_api.resources.locations import Location, Locations, LocationTree, TotClinics
 from meerkat_api.resources.variables import Variables, Variable
@@ -231,7 +222,7 @@ api.add_resource(AggregateLatestCategory,
                  "/aggregate_latest_category/<category>/<identifier_id>/<location_id>",
                  "/aggregate_latest_category/<category>/<identifier_id>/<location_id>/<weeks>",
                  "/aggregate_latest_category/<category>/<identifier_id>/<location_id>/<weeks>/<year>"
-                 
+
                 )
 
 api.add_resource(AggregateCategory,
