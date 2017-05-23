@@ -153,17 +153,17 @@ class Prescriptions(Resource):
                         "max_date":item[4].strftime("%Y-%m-%d"),
                         "total_prescriptions":item[2],
                         "inventory":
-                            (0 
+                            (kit_contents[item[1]]["total"] 
                                 if kit_contents[item[1]]["tablets_in_kit"] == "" 
                                 else int(kit_contents[item[1]]["tablets_in_kit"]) - item[2]
                             ) ,
                         "depletion":                            
-                            (0 
+                            (item[2]/float(kit_contents[item[1]]["total"])
                                 if kit_contents[item[1]]["tablets_in_kit"] == "" 
                                 else item[2]/float(kit_contents[item[1]]["tablets_in_kit"])
                             ),
                         "stock":
-                            (0 
+                            (1 - item[2]/float(kit_contents[item[1]]["total"]) 
                                 if kit_contents[item[1]]["tablets_in_kit"] == "" 
                                 else 1-item[2]/float(kit_contents[item[1]]["tablets_in_kit"])
                             ),
@@ -180,17 +180,17 @@ class Prescriptions(Resource):
                             "max_date":item[4].strftime("%Y-%m-%d"),
                             "total_prescriptions":item[2],
                             "inventory":
-                                (0 
+                                (kit_contents[item[1]]["total"] 
                                     if kit_contents[item[1]]["tablets_in_kit"] == "" 
                                     else int(kit_contents[item[1]]["tablets_in_kit"]) - item[2]
                                 ) ,
                             "depletion":
-                                (0 
+                                (item[2]/float(kit_contents[item[1]]["total"])
                                     if kit_contents[item[1]]["tablets_in_kit"] == "" 
                                     else item[2]/float(kit_contents[item[1]]["tablets_in_kit"])
                                 ),
                             "stock":
-                                (0 
+                                (1 - item[2]/float(kit_contents[item[1]]["total"])  
                                     if kit_contents[item[1]]["tablets_in_kit"] == "" 
                                     else 1-item[2]/float(kit_contents[item[1]]["tablets_in_kit"])
                                 ),
@@ -221,20 +221,22 @@ class Prescriptions(Resource):
         #create medicine table info
         for clinic in prescriptions['clinic_data']:
             for medicine in prescriptions['clinic_data'][clinic]:
-                prescriptions['medicine_table'].append({
-                    "clinic_id": clinic,
-                    "clinic_name": locs[int(clinic)].name,
-                    "medicine_name": barcode_variables[medicine],
-                    "min_date":prescriptions['clinic_data'][clinic][medicine]['min_date'],
-                    "max_date":prescriptions['clinic_data'][clinic][medicine]['max_date'],
-                    "stock":prescriptions['clinic_data'][clinic][medicine]['stock'],
-                    "str_stock":(
-                        "-" 
-                        if kit_contents[medicine]["tablets_in_kit"] == "" 
-                        else str(round(prescriptions['clinic_data'][clinic][medicine]['stock'] * 100,1)) + '%'
-                    ),
-                    "total_prescriptions": prescriptions['clinic_data'][clinic][medicine]['total_prescriptions']
-                    })
+                if kit_contents[medicine]['tablets_in_kit'] != '':
+                    prescriptions['medicine_table'].append({
+                        "clinic_id": clinic,
+                        "clinic_name": locs[int(clinic)].name,
+                        "medicine_name": barcode_variables[medicine],
+                        "min_date":prescriptions['clinic_data'][clinic][medicine]['min_date'],
+                        "max_date":prescriptions['clinic_data'][clinic][medicine]['max_date'],
+                        "stock":prescriptions['clinic_data'][clinic][medicine]['stock'],
+                        "str_stock": str(round(prescriptions['clinic_data'][clinic][medicine]['stock'] * 100,1)) + '%',
+                        "old_str_stock":(
+                            "-" 
+                            if kit_contents[medicine]["tablets_in_kit"] == "" 
+                            else str(round(prescriptions['clinic_data'][clinic][medicine]['stock'] * 100,1)) + '%'
+                        ),
+                        "total_prescriptions": prescriptions['clinic_data'][clinic][medicine]['total_prescriptions']
+                        })
 
 
         return prescriptions
