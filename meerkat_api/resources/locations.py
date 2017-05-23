@@ -53,7 +53,6 @@ class LocationTree(Resource):
     def get(self, only_case_reports=True):
         locs = get_locations(db.session)
         loc = g.allowed_location
-        app.logger.debug("LOCTREE: " + str(g.allowed_location))
         ret = {loc: {"id": loc, "text": locs[loc].name, "nodes": []}}
         for l in sorted(locs.keys()):
             if l >= loc:

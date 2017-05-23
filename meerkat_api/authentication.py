@@ -60,7 +60,6 @@ class Authorise(libs_auth):
 
         # Set the allowed location root in the global request g object
         g.allowed_location = allowed_location
-        current_app.logger.debug('Allowed Loc: ' + str(g.allowed_location))
 
 
 # The extended authorise object used across this flask app to restrict access
