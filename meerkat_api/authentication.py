@@ -20,7 +20,7 @@ def is_allowed_location(location, allowed_location):
         is_allowed(bool): Is location allowed.
 
     """
-    if location == 1:
+    if allowed_location == 1:
         return True
     global allowed_locations_locs
     if allowed_locations_locs is None:

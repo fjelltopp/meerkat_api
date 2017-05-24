@@ -55,7 +55,7 @@ class LocationTree(Resource):
         loc = g.allowed_location
         ret = {loc: {"id": loc, "text": locs[loc].name, "nodes": []}}
         for l in sorted(locs.keys()):
-            if l >= loc:
+            if l >= loc and is_child(loc, l, locs):
                 if not only_case_reports or (locs[l].case_report == 1 or not locs[l].deviceid):
                     if is_child(l, loc, locs):
                         ret.setdefault(locs[l].parent_location, {"nodes": []})

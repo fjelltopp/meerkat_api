@@ -2,7 +2,8 @@
 Resources for creating maps
 """
 from flask_restful import Resource
-from flask import abort, g
+from flask import abort, g, request
+
 from geojson import Point, FeatureCollection, Feature
 from sqlalchemy import extract, func, Float, or_
 from datetime import datetime
@@ -28,21 +29,32 @@ class Clinics(Resource):
     Returns:\n
         points: A geojson FeatureCollection of points\n
     """
-    def get(self, location_id, clinic_type=None):
+    def get(self, location_id, clinic_type=None, require_case_report="yes"):
         locations = get_locations(db.session)
+        other_conditions = {}
+        for arg in request.args:
+            other_conditions[arg] = request.args.get(arg)
         points = []
         if not is_allowed_location(location_id, g.allowed_location):
             return FeatureCollection(points)
         
         for l in locations:
-            if (locations[l].case_report and is_child(
+            if ((locations[l].case_report or require_case_report == "no") and is_child(
                     location_id, l, locations) and locations[l].point_location is not None
                 and (not clinic_type or locations[l].clinic_type == clinic_type)):
+                other_cond = True
+                for cond in other_conditions:
+                    if locations[l].other.get(cond, None) != other_conditions[cond]:
+                        other_cond = False
+                        break
+                if not other_cond:
+                    continue
                 geo = to_shape(locations[l].point_location)
                 p = Point((float(geo.x), float(geo.y))) # Note that this is the specified order for geojson
                 points.append(Feature(geometry=p,
                                       properties={"name":
-                                                  locations[l].name}))
+                                                  locations[l].name,
+                                                  "other": locations[l].other}))
         return FeatureCollection(points)
 
 

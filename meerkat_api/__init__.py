@@ -144,7 +144,7 @@ def output_xls(data, code, headers=None):
 # Importing all the resources here to avoid circular imports
 from meerkat_api.resources.locations import Location, Locations, LocationTree, TotClinics
 from meerkat_api.resources.variables import Variables, Variable
-from meerkat_api.resources.data import Aggregate, AggregateYear, AggregateCategorySum
+from meerkat_api.resources.data import Aggregate, AggregateYear, AggregateCategorySum, AggregateLatest
 from meerkat_api.resources.data import AggregateLatestCategory, AggregateLatestYear, AggregateLatestLevel
 from meerkat_api.resources.data import AggregateCategory, Records
 from meerkat_api.resources.map import Clinics, MapVariable, IncidenceMap, Shapes
@@ -205,6 +205,7 @@ api.add_resource(Variable, "/variable/<variable_id>")
 
 # Aggregate Data
 api.add_resource(Aggregate, "/aggregate/<variable_id>/<location_id>")
+api.add_resource(AggregateLatest, "/aggregate_latest/<variable_id>/<identifier_id>/<location_id>")
 api.add_resource(AggregateAlerts, "/aggregate_alerts",
                  "/aggregate_alerts/<central_review>",
                  "/aggregate_alerts/<central_review>/<hard_date_limit>")
@@ -242,7 +243,8 @@ api.add_resource(Alerts, "/alerts")
 
 # Map
 api.add_resource(Clinics, "/clinics/<location_id>",
-                 "/clinics/<location_id>/<clinic_type>")
+                 "/clinics/<location_id>/<clinic_type>",
+                 "/clinics/<location_id>/<clinic_type>/<require_case_report>")
 api.add_resource(Shapes, "/geo_shapes/<level>")
 
 api.add_resource(MapVariable, "/map/<variable_id>",

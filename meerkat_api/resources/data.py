@@ -41,6 +41,33 @@ class Aggregate(Resource):
         return {"value": result["total"]}
 
 
+class AggregateLatest(Resource):
+    """
+    Get total and weekly aggregate for the current year for the given
+    variable and location. Can get data for other years by useing the
+    year keyword argument.
+
+    Args:\n
+        variable: variable_id\n
+        location: location_id\n
+        year: year (defaults to current year)\n
+
+    Reutrns:\n
+       result_dict: {"weeks":{1:0....}, "year":0}\n
+    """
+    decorators = [authenticate]
+
+    def get(self, variable_id, identifier_id, location_id):
+        variable_id = str(variable_id)
+        start_date = datetime(1900, 1, 1)
+        end_date = datetime(2100, 1, 1)
+        result = latest_query(
+            db, variable_id, identifier_id, start_date, end_date, location_id
+        )
+        return{"value":  result["total"]}
+
+
+    
 class AggregateYear(Resource):
     """
     Get total and weekly aggregate for the current year for the given
