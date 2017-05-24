@@ -319,10 +319,16 @@ class NonReporting(Resource):
         query = db.session.query(Data.clinic).filter(*conditions)
         clinics_with_variable = [r[0] for r in query.all()]
         non_reporting_clinics = []
+
+        if include:
+            if "," in include:
+                include = include.split(",")
+            else:
+                include = [include]
         for clinic in clinics:
             if clinic not in clinics_with_variable:
                 if include:
-                    if locations[clinic].clinic_type == include:
+                    if locations[clinic].clinic_type in include:
                         non_reporting_clinics.append(clinic)
                 elif exclude:
                     if locations[clinic].case_type != exclude:
