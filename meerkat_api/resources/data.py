@@ -5,12 +5,12 @@ Resource for aggregating and querying data
 from flask_restful import Resource
 from sqlalchemy import or_
 from datetime import datetime
-from flask import jsonify
+from flask import jsonify, g
 from meerkat_api.util import rows_to_dicts
 from meerkat_api import db
 from meerkat_abacus.model import Data
 from meerkat_api.resources.variables import Variables
-from meerkat_api.authentication import authenticate
+from meerkat_api.authentication import authenticate, is_allowed_location
 from meerkat_api.util.data_query import query_sum
 from meerkat_api.util.data_query import latest_query
 from meerkat_abacus.util import get_locations
@@ -41,6 +41,33 @@ class Aggregate(Resource):
         return {"value": result["total"]}
 
 
+class AggregateLatest(Resource):
+    """
+    Get total and weekly aggregate for the current year for the given
+    variable and location. Can get data for other years by useing the
+    year keyword argument.
+
+    Args:\n
+        variable: variable_id\n
+        location: location_id\n
+        year: year (defaults to current year)\n
+
+    Reutrns:\n
+       result_dict: {"weeks":{1:0....}, "year":0}\n
+    """
+    decorators = [authenticate]
+
+    def get(self, variable_id, identifier_id, location_id):
+        variable_id = str(variable_id)
+        start_date = datetime(1900, 1, 1)
+        end_date = datetime(2100, 1, 1)
+        result = latest_query(
+            db, variable_id, identifier_id, start_date, end_date, location_id
+        )
+        return{"value":  result["total"]}
+
+
+    
 class AggregateYear(Resource):
     """
     Get total and weekly aggregate for the current year for the given
@@ -243,10 +270,11 @@ class AggregateLatestLevel(Resource):
         )
         ret = {}
         locs = get_locations(db.session)
-        for r in result[level]:
-            ret[locs[r].name] = {"total": result[level][r]["total"],
-                                 "weeks": result[level][r]["weeks"],
-                                 "id": r}
+        if result: 
+            for r in result[level]:
+                ret[locs[r].name] = {"total": result[level][r]["total"],
+                                     "weeks": result[level][r]["weeks"],
+                                     "id": r}
             
         return ret
 
@@ -266,6 +294,9 @@ class Records(Resource):
     decorators = [authenticate]
 
     def get(self, variable, location_id):
+        if not is_allowed_location(location_id, g.allowed_location):
+            return {"records": []}
+            
         results = db.session.query(Data).filter(
             Data.variables.has_key(str(variable)), or_(
                 loc == location_id for loc in (Data.country,

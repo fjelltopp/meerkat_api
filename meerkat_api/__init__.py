@@ -16,6 +16,7 @@ import io
 import csv
 import os
 import resource
+
 # from werkzeug.contrib.profiler import ProfilerMiddleware
 # Create the Flask app
 app = Flask(__name__)
@@ -33,8 +34,15 @@ if app.config["SENTRY_DNS"]:
     sentry = Sentry(app, dsn=app.config["SENTRY_DNS"])
 app.wsgi_app = ProxyFix(app.wsgi_app)
 
-# app.wsgi_app = ProfilerMiddleware(app.wsgi_app, restrictions=(30,))
 
+# Set the default values of the g object
+class FlaskG(app.app_ctx_globals_class):
+    allowed_location = 1
+
+app.app_ctx_globals_class = FlaskG
+
+
+# app.wsgi_app = ProfilerMiddleware(app.wsgi_app, restrictions=(30,))
 class CustomJSONEncoder(JSONEncoder):
     """
     Custom JSON encoder to encode all datetime objects as ISO fromat
@@ -136,7 +144,7 @@ def output_xls(data, code, headers=None):
 # Importing all the resources here to avoid circular imports
 from meerkat_api.resources.locations import Location, Locations, LocationTree, TotClinics
 from meerkat_api.resources.variables import Variables, Variable
-from meerkat_api.resources.data import Aggregate, AggregateYear, AggregateCategorySum
+from meerkat_api.resources.data import Aggregate, AggregateYear, AggregateCategorySum, AggregateLatest
 from meerkat_api.resources.data import AggregateLatestCategory, AggregateLatestYear, AggregateLatestLevel
 from meerkat_api.resources.data import AggregateCategory, Records
 from meerkat_api.resources.map import Clinics, MapVariable, IncidenceMap, Shapes
@@ -144,6 +152,7 @@ from meerkat_api.resources.alerts import Alert, Alerts, AggregateAlerts
 from meerkat_api.resources.explore import QueryVariable, QueryCategory
 from meerkat_api.resources.epi_week import EpiWeek, EpiWeekStart
 from meerkat_api.resources.completeness import Completeness, NonReporting
+from meerkat_api.resources.prescriptions import Prescriptions
 from meerkat_api.resources.reports import PublicHealth, CdReport, \
     CdPublicHealth, CdPublicHealthMad, CdPublicHealthSom, NcdPublicHealth, \
     RefugeePublicHealth, RefugeeCd, RefugeeDetail, Pip, \
@@ -155,6 +164,7 @@ from meerkat_api.resources.frontpage import KeyIndicators, TotMap, NumAlerts, Co
 from meerkat_api.resources.export_data import ExportData, ExportForm, Forms, ExportCategory, GetCSVDownload, GetXLSDownload, GetStatus
 from meerkat_api.resources.incidence import IncidenceRate, WeeklyIncidenceRate
 from meerkat_api.resources.devices import Devices
+
 #from meerkat_api.resources.links import Link, Links
 
 # All urls
@@ -195,6 +205,7 @@ api.add_resource(Variable, "/variable/<variable_id>")
 
 # Aggregate Data
 api.add_resource(Aggregate, "/aggregate/<variable_id>/<location_id>")
+api.add_resource(AggregateLatest, "/aggregate_latest/<variable_id>/<identifier_id>/<location_id>")
 api.add_resource(AggregateAlerts, "/aggregate_alerts",
                  "/aggregate_alerts/<central_review>",
                  "/aggregate_alerts/<central_review>/<hard_date_limit>")
@@ -213,7 +224,7 @@ api.add_resource(AggregateLatestCategory,
                  "/aggregate_latest_category/<category>/<identifier_id>/<location_id>",
                  "/aggregate_latest_category/<category>/<identifier_id>/<location_id>/<weeks>",
                  "/aggregate_latest_category/<category>/<identifier_id>/<location_id>/<weeks>/<year>"
-                 
+
                 )
 
 api.add_resource(AggregateCategory,
@@ -232,7 +243,8 @@ api.add_resource(Alerts, "/alerts")
 
 # Map
 api.add_resource(Clinics, "/clinics/<location_id>",
-                 "/clinics/<location_id>/<clinic_type>")
+                 "/clinics/<location_id>/<clinic_type>",
+                 "/clinics/<location_id>/<clinic_type>/<require_case_report>")
 api.add_resource(Shapes, "/geo_shapes/<level>")
 
 api.add_resource(MapVariable, "/map/<variable_id>",
@@ -351,6 +363,9 @@ api.add_resource(Completeness,
                  "/completeness/<variable>/<location>/<number_per_week>/<start_week>/<exclude>/<weekend>/<non_reporting_variable>",
                  "/completeness/<variable>/<location>/<number_per_week>/<start_week>/<exclude>/<weekend>/<non_reporting_variable>/<end_date>")
 api.add_resource(Records, "/records/<variable>/<location_id>")
+api.add_resource(Prescriptions, "/prescriptions/<location>",
+                 "/prescriptions/<location>/<end_date>",
+                 "/prescriptions/<location>/<end_date>/<start_date>")
 
 @app.route('/')
 def hello_world():
