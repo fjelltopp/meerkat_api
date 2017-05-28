@@ -4233,7 +4233,7 @@ class CTCReport(Resource):
         children = get_children(location, locs, require_case_report=False)
 
         ctcs = db.session.query(Locations).filter(
-            Locations.clinic_type == "CTC").filter(
+            or_(Locations.clinic_type == "CTC", Locations.clinic_type == "CTU")).filter(
                 Locations.id.in_(children)
                 ).all()
         
@@ -4290,23 +4290,23 @@ class CTCReport(Resource):
         cholera_cases_map = {}
         cholera_cases_ret = latest_query(
             db,
-            cholera_cases_variable,
+            "ctc_cases_per_bed",
             cholera_var,
             start_date,
             end_date_limit,
             location,
             weeks=True
-        )["region"]
-        for region in cholera_cases_ret.keys():
-            cholera_cases_map[locs[region].name] = {
-                "value": cholera_cases_ret[region]["total"]
+        )["district"]
+        for district in cholera_cases_ret.keys():
+            cholera_cases_map[locs[district].name] = {
+                "value": cholera_cases_ret[district]["total"]
             }
         # fill the rest of the districts with zeroes
-        for region in regions:
-            if not locs[region].name in cholera_cases_map:
+        for district in districts:
+            if not locs[district].name in cholera_cases_map:
                 cholera_cases_map.update(
                     {
-                        locs[region].name: {
+                        locs[district].name: {
                             "value": 0
                         }
                     }
@@ -4352,12 +4352,7 @@ class CTCReport(Resource):
         else:
             max_cfr = np.max(clinic_cfr)
             min_cfr = np.min(clinic_cfr)
-        
-        overview_data["cfr"] = (average_cfr, min_cfr ,max_cfr )
-
-
-        
-        
+        overview_data["cfr"] = (average_cfr, min_cfr, max_cfr )
         ctc_lat_variables = var.get("ctc_lat_type")
         ret["variables"] = ctc_lat_variables
         ctc_rec_variables = var.get("ctc_recommendations")
@@ -4366,7 +4361,7 @@ class CTCReport(Resource):
 
         location_condtion = [
                 or_(loc == location for loc in (
-                    Data.country, Data.region, Data.district, Data.clinic))]
+                    Data.country, Data.zone, Data.region, Data.district, Data.clinic))]
         conditions = location_condtion  + [Data.variables.has_key(cholera_var)]
         query = db.session.query(Data.clinic, Data.date, Data.region,
                                  Data.district,
@@ -4451,8 +4446,6 @@ class CTCReport(Resource):
                 overview_data["ctc_beds_sufficient"]["N"] += 1
                 if "ctc_beds_sufficient" in ctc_data.variables:
                     overview_data["ctc_beds_sufficient"]["Y"] += 1
-
-                
             else:
                 clinic_data["status"] = "Not Surveyed"
                 non_surveyed_clinics_map.append(clinic_data["gps"]+[ctc.name])
