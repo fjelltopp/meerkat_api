@@ -103,7 +103,8 @@ def export_data(uuid, allowed_location, use_loc_ids=False):
 
 
 @task
-def export_category(uuid, form_name, category, download_name, variables,  data_type, allowed_location, language="en"):
+def export_category(uuid, form_name, category, download_name,
+                    variables,  data_type, allowed_location, language="en"):
     """
     We take a variable dictionary of form field name: display_name.
     There are some special commands that can be given in the form field name:
@@ -191,6 +192,8 @@ def export_category(uuid, form_name, category, download_name, variables,  data_t
     # Set up icd_code_to_name if needed and determine if
     # alert_links are included
     query_links = False
+
+    to_columns_translations = {}
     for v in variables:
 
         if "every$" in v[0]:
@@ -248,6 +251,26 @@ def export_category(uuid, form_name, category, download_name, variables,  data_t
                 min_translation[v[1]] = tr_dict
             v[0] = field
             translation_dict[v[1]] = v[0]
+        if "$to_columns" in v[0]:
+            # Create columns of every possible value
+            split = v[0].split("$")
+            field = "$".join(split[:-1])
+            trans = split[-1]
+            tr_dict = json.loads(trans.split(";")[1].replace("'", '"'))
+            # If the json specifies file details, load translation from file.
+
+            # Get all possible options from the DB
+
+            results = session2.query(func.distinct(func.regexp_split_to_table(form_tables[form_name].data[field].astext, ' '))).all()
+            if tr_dict.get('dict_file', False):
+                translations = add_translations_from_file(tr_dict)
+            else:
+                raise NotImplementedError
+            return_keys.pop()
+            for r in results:
+                return_keys.append(v[1] + " " + translations.get(r[0], r[0]))
+                translation_dict[v[1] + " " + translations.get(r[0], r[0])] = field + "$to_columns$" + r[0]
+
         if "gen_link$" in v[0]:
             link_ids.append(v[0].split("$")[1])
 
@@ -432,6 +455,10 @@ def export_category(uuid, form_name, category, download_name, variables,  data_t
                     list_row[index] = None
             elif "value" == form_var.split(":")[0]:
                 list_row[index] = form_var.split(":")[1]
+            elif "$to_columns$" in form_var:
+                field = form_var.split("$")[0]
+                code = form_var.split("$")[-1]
+                list_row[index] = int(code in raw_data.get(field, "").split(" "))
             else:
                 if form_var.split("$")[0] in raw_data:
                     list_row[index] = raw_data[form_var.split("$")[0]]
