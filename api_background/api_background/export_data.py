@@ -261,19 +261,32 @@ def export_category(uuid, form_name, category, download_name,
 
             # Get all possible options from the DB
 
-            results = session2.query(func.distinct(func.regexp_split_to_table(form_tables[form_name].data[field].astext, ' '))).all()
+            results = session2.query(
+                func.distinct(
+                    func.regexp_split_to_table(
+                        form_tables[form_name].data[field].astext, ' '))).join(
+                            Data,
+                            Data.uuid == form_tables[form_name].uuid).filter(
+                                *conditions).all()
             if tr_dict.get('dict_file', False):
                 translations = add_translations_from_file(tr_dict)
             else:
                 raise NotImplementedError
             return_keys.pop()
             for r in results:
-                return_keys.append(v[1] + " " + translations.get(r[0], r[0]))
-                translation_dict[v[1] + " " + translations.get(r[0], r[0])] = field + "$to_columns$" + r[0]
+                name = v[1] + " " + translations.get(r[0], r[0])
+                if name not in return_keys:
+                    return_keys.append(name)
+
+                if name in translation_dict:
+                    translation_dict[name] = translation_dict[name] + "," + r[0]
+                else:
+                    translation_dict[name] = field + "$to_columns$" + r[0]
 
         if "gen_link$" in v[0]:
             link_ids.append(v[0].split("$")[1])
-
+    return_keys.append("uuid")
+    translation_dict["uuid"] = "meta/instanceID"
     link_ids = set(link_ids)
     links_by_type, links_by_name = get_links(config_directory +
                                              country_config["links_file"])
@@ -457,8 +470,14 @@ def export_category(uuid, form_name, category, download_name,
                 list_row[index] = form_var.split(":")[1]
             elif "$to_columns$" in form_var:
                 field = form_var.split("$")[0]
-                code = form_var.split("$")[-1]
-                list_row[index] = int(code in raw_data.get(field, "").split(" "))
+                codes = form_var.split("$")[-1].split(",")
+                has_code = 0
+                data = raw_data.get(field, "").split(" ")
+                for c in codes:
+                    if c in data:
+                        has_code = 1
+                        break
+                list_row[index] = has_code
             else:
                 if form_var.split("$")[0] in raw_data:
                     list_row[index] = raw_data[form_var.split("$")[0]]
