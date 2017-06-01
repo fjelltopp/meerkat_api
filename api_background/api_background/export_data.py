@@ -285,8 +285,9 @@ def export_category(uuid, form_name, category, download_name,
 
         if "gen_link$" in v[0]:
             link_ids.append(v[0].split("$")[1])
-    return_keys.append("uuid")
-    translation_dict["uuid"] = "meta/instanceID"
+    if "uuid" not in return_keys: 
+        return_keys.append("uuid")
+        translation_dict["uuid"] = "meta/instanceID"
     link_ids = set(link_ids)
     links_by_type, links_by_name = get_links(config_directory +
                                              country_config["links_file"])
