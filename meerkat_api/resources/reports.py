@@ -4227,6 +4227,8 @@ class CTCReport(Resource):
                    if locs[loc].level == "region"]
         districts = [loc for loc in locs.keys()
                      if locs[loc].level == "district"]
+        zones = [loc for loc in locs.keys()
+                     if locs[loc].level == "zone"]
         ret["data"]["project_region"] = location_name.name
         ret["data"]["project_region_id"] = location
 
@@ -4378,81 +4380,91 @@ class CTCReport(Resource):
             latest_ctc[r.clinic] = r
         overview_data.setdefault("baseline", {"Y": 0, "N": 0})
         overview_data.setdefault("surveyed_last_week", {"Y": 0, "N": 0})
-        for ctc in ctcs:
-            clinic_data = {"name": ctc.name}
-            district = locs[ctc.id].parent_location
-            region = locs[district].parent_location
-            clinic_data["region"] = locs[region].name
-            clinic_data["district"] = locs[district].name
-            point = to_shape(locs[ctc.id].point_location)
-            clinic_data["gps"] = [point.y, point.x]
 
-         
-            overview_data["baseline"]["N"] += 1
-            overview_data["surveyed_last_week"]["N"] += 1
-            if ctc.id in latest_ctc:
-                overview_data["baseline"]["Y"] += 1
-                ctc_data = latest_ctc[ctc.id]
-                clinic_data["status"] = "Surveyed"
-                surveyed_clinics_map.append(clinic_data["gps"]+[ctc.name])
-                clinic_data["latest_data"] = ctc_data.variables
-                clinic_data["latest_categories"] = ctc_data.categories
-                clinic_data["latest_date"] = ctc_data.date.isoformat().split("T")[0]
+        ret["contents"] = []
+        pageNumber = 3
 
-                if ew.get(ctc_data.date.isoformat())["epi_week"] in [epi_week, epi_week - 1]:
-                    overview_data["surveyed_last_week"]["Y"] += 1
-                # clinic_data["cases_history"] = cholera_cases["clinic"].get(ctc.id, {})
-
-                # cholera_cases_o5_ctc = {"total": cholera_cases["clinic"][ctc.id]["total"] - cholera_cases_u5["clinic"][ctc.id]["total"]}
-                # cholera_cases_o5_ctc["weeks"] = {week: cholera_cases["clinic"][ctc.id]["weeks"][week] - cholera_cases_u5["clinic"][ctc.id]["weeks"].get(week, 0) for week in cholera_cases["clinic"][ctc.id]["weeks"].keys()}
-                
-            #    clinic_data["deaths_history"] = cholera_deaths["clinic"][ctc.id]
-             #   clinic_data["cases_u5_history"] = cholera_cases_u5["clinic"][ctc.id]
-              #  clinic_data["cases_o5_history"] =cholera_cases_o5_ctc
-                
-                # Deal with recomendations
-
-                recommendations = []
-                cases = ctc_data.variables.get("ctc_cases", 0)
-                if cases == 0:
-                    cases = 1
-                cfr = ctc_data.variables.get("ctc_deaths", 0) / cases * 100
-                cfr_threshold = 2
-                if cfr > cfr_threshold:
-                    recommendations.append("High CFR ratio of {} %".format(round(cfr, 1)))
-
-                if ctc_data.variables.get("ctc_beds", 0) < ctc_data.variables.get("ctc_patients", 0):
-                    recommendations.append("Not sufficent beds")
-                    
-                for code in ctc_rec_variables.keys():
-                    if ctc_data.variables.get(code, "missing") =="no":
-                        recommendations.append("No {}".format(ctc_rec_variables[code]["name"]))
-                        
-                clinic_data["recommendations"] = recommendations
+        for current_zone in zones:
+            for ctc in ctcs:
+                clinic_data = {"name": ctc.name}
+                district = locs[ctc.id].parent_location
+                region = locs[district].parent_location
+                zone = locs[region].parent_location
+                if zone != current_zone:
+                    continue
+                clinic_data["region"] = locs[region].name
+                clinic_data["district"] = locs[district].name
+                point = to_shape(locs[ctc.id].point_location)
+                clinic_data["gps"] = [point.y, point.x]
 
 
+                overview_data["baseline"]["N"] += 1
+                overview_data["surveyed_last_week"]["N"] += 1
+                if ctc.id in latest_ctc:
+                    overview_data["baseline"]["Y"] += 1
+                    ctc_data = latest_ctc[ctc.id]
+                    clinic_data["status"] = "Surveyed"
+                    ret["contents"].append((ctc.name,pageNumber))
+                    pageNumber = pageNumber + 1
+                    surveyed_clinics_map.append(clinic_data["gps"]+[ctc.name])
+                    clinic_data["latest_data"] = ctc_data.variables
+                    clinic_data["latest_categories"] = ctc_data.categories
+                    clinic_data["latest_date"] = ctc_data.date.isoformat().split("T")[0]
 
-                # Overview data
+                    if ew.get(ctc_data.date.isoformat())["epi_week"] in [epi_week, epi_week - 1]:
+                        overview_data["surveyed_last_week"]["Y"] += 1
+                    # clinic_data["cases_history"] = cholera_cases["clinic"].get(ctc.id, {})
 
-                for num_code in num_codes:
-                    overview_data.setdefault(num_code, 0)
-                    overview_data[num_code] += ctc_data.variables.get(num_code, 0)
-                for yes_code in yes_codes:
-                    overview_data.setdefault(yes_code, {"Y": 0, "N": 0})
-                    overview_data[yes_code]["N"] += 1
-                    if ctc_data.variables.get(yes_code, "missing") == "yes":
-                        overview_data[yes_code]["Y"] += 1
-                overview_data.setdefault("ctc_beds_sufficient", {"Y": 0, "N": 0})
-                overview_data["ctc_beds_sufficient"]["N"] += 1
-                if "ctc_beds_sufficient" in ctc_data.variables:
-                    overview_data["ctc_beds_sufficient"]["Y"] += 1
-            else:
-                clinic_data["status"] = "Not Surveyed"
-                non_surveyed_clinics_map.append(clinic_data["gps"]+[ctc.name])
-            # Initialize data structure for current clinic
+                    # cholera_cases_o5_ctc = {"total": cholera_cases["clinic"][ctc.id]["total"] - cholera_cases_u5["clinic"][ctc.id]["total"]}
+                    # cholera_cases_o5_ctc["weeks"] = {week: cholera_cases["clinic"][ctc.id]["weeks"][week] - cholera_cases_u5["clinic"][ctc.id]["weeks"].get(week, 0) for week in cholera_cases["clinic"][ctc.id]["weeks"].keys()}
 
-            # Append clinic data to clinic data list
-            clinic_data_list.append(clinic_data)
+                #    clinic_data["deaths_history"] = cholera_deaths["clinic"][ctc.id]
+                #   clinic_data["cases_u5_history"] = cholera_cases_u5["clinic"][ctc.id]
+                #  clinic_data["cases_o5_history"] =cholera_cases_o5_ctc
+
+                    # Deal with recomendations
+
+                    recommendations = []
+                    cases = ctc_data.variables.get("ctc_cases", 0)
+                    if cases == 0:
+                        cases = 1
+                    cfr = ctc_data.variables.get("ctc_deaths", 0) / cases * 100
+                    cfr_threshold = 2
+                    if cfr > cfr_threshold:
+                        recommendations.append("High CFR ratio of {} %".format(round(cfr, 1)))
+
+                    if ctc_data.variables.get("ctc_beds", 0) < ctc_data.variables.get("ctc_patients", 0):
+                        recommendations.append("Not sufficent beds")
+
+                    for code in ctc_rec_variables.keys():
+                        if ctc_data.variables.get(code, "missing") =="no":
+                            recommendations.append("No {}".format(ctc_rec_variables[code]["name"]))
+
+                    clinic_data["recommendations"] = recommendations
+
+
+
+                    # Overview data
+
+                    for num_code in num_codes:
+                        overview_data.setdefault(num_code, 0)
+                        overview_data[num_code] += ctc_data.variables.get(num_code, 0)
+                    for yes_code in yes_codes:
+                        overview_data.setdefault(yes_code, {"Y": 0, "N": 0})
+                        overview_data[yes_code]["N"] += 1
+                        if ctc_data.variables.get(yes_code, "missing") == "yes":
+                            overview_data[yes_code]["Y"] += 1
+                    overview_data.setdefault("ctc_beds_sufficient", {"Y": 0, "N": 0})
+                    overview_data["ctc_beds_sufficient"]["N"] += 1
+                    if "ctc_beds_sufficient" in ctc_data.variables:
+                        overview_data["ctc_beds_sufficient"]["Y"] += 1
+                else:
+                    clinic_data["status"] = "Not Surveyed"
+                    non_surveyed_clinics_map.append(clinic_data["gps"]+[ctc.name])
+                # Initialize data structure for current clinic
+
+                # Append clinic data to clinic data list
+                clinic_data_list.append(clinic_data)
         num_clin = overview_data["baseline"]["Y"]
         if num_clin == 0:
             num_clin = 1
