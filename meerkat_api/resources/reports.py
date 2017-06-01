@@ -4382,7 +4382,7 @@ class CTCReport(Resource):
         overview_data.setdefault("surveyed_last_week", {"Y": 0, "N": 0})
 
         ret["contents"] = []
-        pageNumber = 3
+        pageNumber = 4
 
         for current_zone in zones:
             for ctc in ctcs:
