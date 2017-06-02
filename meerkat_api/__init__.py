@@ -174,11 +174,16 @@ api.add_resource(EpiWeek, "/epi_week",
 api.add_resource(EpiWeekStart, "/epi_week_start/<year>/<epi_week>")
 
 # Frontpage
-api.add_resource(KeyIndicators, "/key_indicators")
-api.add_resource(TotMap, "/tot_map")
-api.add_resource(ConsultationMap, "/consultation_map")
-api.add_resource(NumAlerts, "/num_alerts")
-api.add_resource(NumClinics, "/num_clinics")
+api.add_resource(KeyIndicators, "/key_indicators",
+                 "/key_indicators/<int:location>")
+api.add_resource(TotMap, "/tot_map",
+                 "/tot_map/<int:location>")
+api.add_resource(ConsultationMap, "/consultation_map",
+                 "/consultation_map/<int:location>")
+api.add_resource(NumAlerts, "/num_alerts",
+                 "/num_alerts/<int:location>")
+api.add_resource(NumClinics, "/num_clinics",
+                 "/num_clinics/<int:location>")
 api.add_resource(RefugeePage, "/refugee_page")
 
 # Export data

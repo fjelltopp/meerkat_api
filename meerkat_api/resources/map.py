@@ -58,6 +58,7 @@ class Clinics(Resource):
         return FeatureCollection(points)
 
 
+    
 class MapVariable(Resource):
     """
     Want to map a variable id by clinic (only include case reporting clinics)
@@ -85,7 +86,6 @@ class MapVariable(Resource):
         if not is_allowed_location(location, allowed_location):
             return {}
         vi = str(variable_id)
-
         results = db.session.query(
             func.sum(Data.variables[vi].astext.cast(Float)).label('value'),
             Data.geolocation,
@@ -121,11 +121,12 @@ class MapVariable(Resource):
         if include_all_clinics:
             results = db.session.query(model.Locations)
             for row in results.all():
-                if row.case_report and row.point_location is not None and str(row.id) not in ret.keys():
-                    geo = to_shape(row.point_location)
-                    ret[str(row.id)] = {"value": 0,
-                                   "geolocation": [geo.y, geo.x],
-                                   "clinic": row.name}
+                if is_allowed_location(row.id, location):
+                    if row.case_report and row.point_location is not None and str(row.id) not in ret.keys():
+                        geo = to_shape(row.point_location)
+                        ret[str(row.id)] = {"value": 0,
+                                            "geolocation": [geo.y, geo.x],
+                                            "clinic": row.name}
         return ret
 
 

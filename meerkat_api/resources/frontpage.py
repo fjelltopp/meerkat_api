@@ -22,8 +22,8 @@ class KeyIndicators(Resource):
     Get the aggregation for this year of the variables with the key_indicators category.
     """
 
-    def get(self):
-        g.allowed_locations = 1
+    def get(self, location=1):
+        g.allowed_locations = location
         year = datetime.today().year
         variables_instance = Variables()
         variables = variables_instance.get("key_indicators")
@@ -32,7 +32,7 @@ class KeyIndicators(Resource):
         return_data = {}
         for variable in variables.keys():
             return_data[variable] = aggregate_year.get(variable,
-                                                       1,
+                                                       location,
                                                        year)
         return return_data
 
@@ -42,10 +42,10 @@ class TotMap(Resource):
     We map the total number of cases
     """
 
-    def get(self):
+    def get(self, location=1):
         mv = MapVariable()
-        g.allowed_locations = 1
-        return mv.get("tot_1", include_all_clinics=True)
+        g.allowed_locations = location
+        return mv.get("tot_1", location=location, include_all_clinics=True)
 
 
 class ConsultationMap(Resource):
@@ -53,10 +53,10 @@ class ConsultationMap(Resource):
     Map the total number of consultations
     """
 
-    def get(self):
-        g.allowed_locations = 1
+    def get(self, location=1):
+        g.allowed_locations = location
         mv = MapVariable()
-        return mv.get("reg_2", include_all_clinics=True)
+        return mv.get("reg_2", location=location, include_all_clinics=True)
 
 
 class NumAlerts(Resource):
@@ -64,10 +64,10 @@ class NumAlerts(Resource):
     Total Number of Alerts
     """
 
-    def get(self):
-        g.allowed_locations = 1
+    def get(self, location=1):
+        g.allowed_locations = location
         al = Alerts()
-        alerts = get_alerts({})
+        alerts = get_alerts({"location":location}, allowed_location=location)
         return {"num_alerts": len(alerts)}
 
 
@@ -77,10 +77,10 @@ class NumClinics(Resource):
 
     """
 
-    def get(self):
-        g.allowed_locations = 1
+    def get(self, location=1):
+        g.allowed_locations = location
         tc = TotClinics()
-        return {"total": tc.get(1)["total"]}
+        return {"total": tc.get(location)["total"]}
 
 
 class RefugeePage(Resource):
