@@ -24,6 +24,7 @@ from datetime import datetime, timedelta
 from dateutil import parser
 from sqlalchemy.sql import text
 import uuid
+import math
 import numpy as np
 import traceback
 from functools import wraps
@@ -4238,7 +4239,7 @@ class CTCReport(Resource):
             or_(Locations.clinic_type == "CTC", Locations.clinic_type == "CTU")).filter(
                 Locations.id.in_(children)
                 ).all()
-        
+
         ret["data"]["clinic_num"] = len(ctcs)
 
         cholera_cases_variable = 'ctc_cases'
@@ -4382,7 +4383,8 @@ class CTCReport(Resource):
         overview_data.setdefault("surveyed_last_week", {"Y": 0, "N": 0})
 
         ret["contents"] = []
-        pageNumber = 4
+        ret["contents_offset"] = 3 #Here we HACK how many pages before first clinic page
+        pageNumber = 0
 
         for current_zone in zones:
             for ctc in ctcs:
@@ -4404,7 +4406,7 @@ class CTCReport(Resource):
                     overview_data["baseline"]["Y"] += 1
                     ctc_data = latest_ctc[ctc.id]
                     clinic_data["status"] = "Surveyed"
-                    ret["contents"].append((ctc.name,pageNumber))
+                    ret["contents"].append((locs[zone].name + ": " + ctc.name,pageNumber))
                     pageNumber = pageNumber + 1
                     surveyed_clinics_map.append(clinic_data["gps"]+[ctc.name])
                     clinic_data["latest_data"] = ctc_data.variables
@@ -4476,6 +4478,10 @@ class CTCReport(Resource):
             "surveyed":surveyed_clinics_map,
             "non_surveyed":non_surveyed_clinics_map
         }})
+
+        #In page numbering take into account amount of pages of table of content. Depends on styling etc, so it is a MASSIVE HACK indeed.
+        noOfContentPages = overview_data["baseline"]["Y"] / 45 
+        ret["contents_offset"] = ret["contents_offset"] + math.ceil( noOfContentPages )
 
         return ret
     
