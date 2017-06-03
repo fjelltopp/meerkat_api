@@ -89,7 +89,6 @@ def export_data(uuid, allowed_location, use_loc_ids=False):
                 dict_row[l] = locs[dict_row[l]].name
 
         dict_row.update(dict_row.pop("variables"))
-        print("bjarne")
         dict_rows.append(dict_row)
         if i % 1000 == 0:
             writer.writerows(dict_rows)
