@@ -115,15 +115,21 @@ class AggregateCategory(Resource):
     """
     decorators = [authenticate]
 
-    def get(self, category, location_id, lim_variable="", year=None):
+    def get(self, category, location_id, lim_variable=None, year=None):
         if year is None:
             year = datetime.today().year
         year = int(year)
         start_date = datetime(year, 1, 1)
         end_date = datetime(year + 1, 1, 1)
 
+        if lim_variable is not None:
+            filter_variables = ["data_entry"] + [lim_variable]
+        else:
+            filter_variables = ["data_entry"]
+
+
         result = query_sum(
-            db, ["data_entry"], start_date, end_date, location_id,
+            db, filter_variables, start_date, end_date, location_id,
             group_by_category=category, weeks=True
         )
         return_data = {}

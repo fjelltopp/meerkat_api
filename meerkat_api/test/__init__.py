@@ -104,6 +104,8 @@ def valid_urls(app):
             for arg in url.arguments:
                 new_url = new_url.replace("<" + arg + ">",
                                           substitutions[arg])
+                new_url = new_url.replace("<int:" + arg + ">",
+                                          substitutions[arg])
             urls.append(new_url)
     return urls
 
