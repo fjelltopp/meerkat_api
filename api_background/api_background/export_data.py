@@ -273,14 +273,14 @@ def export_category(uuid, form_name, category, download_name,
                 raise NotImplementedError
             return_keys.pop()
             for r in results:
-                name = v[1] + " " + translations.get(r[0], r[0])
-                if name not in return_keys:
-                    return_keys.append(name)
-
-                if name in translation_dict:
-                    translation_dict[name] = translation_dict[name] + "," + r[0]
-                else:
-                    translation_dict[name] = field + "$to_columns$" + r[0]
+                if r[0]:
+                    name = v[1] + " " + translations.get(r[0], r[0])
+                    if name not in return_keys:
+                        return_keys.append(name)
+                        if name in translation_dict:
+                            translation_dict[name] = translation_dict[name] + "," + r[0]
+                        else:
+                            translation_dict[name] = field + "$to_columns$" + r[0]
 
         if "gen_link$" in v[0]:
             link_ids.append(v[0].split("$")[1])
