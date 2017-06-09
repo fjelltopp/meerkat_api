@@ -1061,7 +1061,7 @@ class Pip(Resource):
         ret["data"]["project_region"] = location_name
 
         # We first find the number of SARI sentinel sites
-        sari_clinics = get_children(location, locs, clinic_type="SARI")
+        sari_clinics = get_children(location, locs, case_type="SARI")
         ret["data"]["num_clinic"] = len(sari_clinics)
         query_variable = QueryVariable()
 
@@ -1179,7 +1179,7 @@ class Pip(Resource):
         #  Reportin sites
         ret["data"]["reporting_sites"] = []
         for l in locs.values():
-            if is_child(location, l.id, locs) and l.case_report and l.clinic_type == "SARI":
+            if is_child(location, l.id, locs) and l.case_report and l.case_type == "SARI":
                 num = query_sum(db, [sari_code],
                                       start_date,
                                       end_date_limit, l.id)["total"]
@@ -1551,7 +1551,7 @@ class CdPublicHealth(Resource):
 
         start_date, end_date = fix_dates(start_date, end_date)
         end_date_limit = end_date + timedelta(days=1)
-        ret={}
+        ret = {}
         # meta data
         ret["meta"] = {"uuid": str(uuid.uuid4()),
                        "project_id": 1,
@@ -1612,9 +1612,9 @@ class CdPublicHealth(Resource):
         ret["data"]["percent_cases_male"] = male / total_cases * 100
         ret["data"]["percent_cases_female"] = female / total_cases * 100
         less_5yo = query_variable.get("prc_1", "under_five",
-                                 end_date=end_date_limit.isoformat(),
-                                 start_date=start_date.isoformat(),
-                                 only_loc=location)
+                                      end_date=end_date_limit.isoformat(),
+                                      start_date=start_date.isoformat(),
+                                      only_loc=location)
         less_5yo = sum(less_5yo[k]["total"] for k in less_5yo.keys())
 
         ret["data"]["percent_cases_lt_5yo"] = less_5yo / total_cases * 100
@@ -1667,8 +1667,64 @@ class CdPublicHealth(Resource):
                       investigated_alerts / tot_alerts * 100)
         )
         # Reporting sites
+
+        ir = IncidenceRate()
+
+        all_cd_cases = "prc_1"
         locs = get_locations(db.session)
+        #level = "district"
+        #areas = [loc for loc in locs.keys()
+        #         if locs[loc].level == "district"]
+        #if location = "1":
+        level = "region"
+        areas = [loc for loc in locs.keys()
+                 if locs[loc].level == "region"]
+        incidence = ir.get(all_cd_cases, level, mult_factor=1000,
+                           start_date=start_date,
+                           end_date=end_date_limit)
+
+        max_number = max(incidence.values())
+        mult_factor = 1
+        if max_number < 1:
+            mult_factor = 10
+        in_map = {}
+        # Structure the data.
+        reporting_sites = []
+       
+        for area in areas:
+            if area not in incidence:
+                in_map[locs[area].name] = 0
+            else:
+                in_map[locs[area].name] = {
+                    'value': incidence[area] * mult_factor
+                }
+        ret["data"].update({
+            "incidence_map":  in_map
+        })
+
+        current_level = locs[int(location)].level
+        next_level = {"country": "region",
+                      "zone": "region",
+                      "region": "district",
+                      "district": "clinic",
+                      "clinic": None}[current_level]
+        if next_level in ["region", "district"]:
+            areas = [loc for loc in locs.keys()
+                     if locs[loc].level == next_level]
+            incidence = ir.get(all_cd_cases, next_level, mult_factor=1000,
+                               start_date=start_date,
+                               end_date=end_date_limit)
+            for area in areas:  
+                if is_child(location, area, locs):  
+                    reporting_sites.append(make_dict(locs[area].name,
+                                                     incidence[area] * mult_factor,
+                                                     0))
+        reporting_sites.sort(key=lambda x: x["quantity"], reverse=True)
+        ret["data"]["reporting_sites_incidence"] = reporting_sites
         ret["data"]["reporting_sites"] = []
+        ret["data"]["incidence_area"] = next_level
+        ret["data"]["incidence_denominator"] = 1000 * mult_factor
+
         for l in locs.values():
             if l.level == "clinic" and l.case_report == 0:
                 continue
@@ -1680,9 +1736,8 @@ class CdPublicHealth(Resource):
                     make_dict(l.name,
                               num,
                               num / total_cases * 100))
-
         ret["data"]["reporting_sites"].sort(key=lambda x: x["quantity"], reverse=True)
-
+        
 
 
         # Demographics
