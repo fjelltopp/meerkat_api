@@ -1683,7 +1683,9 @@ class CdPublicHealth(Resource):
                            start_date=start_date,
                            end_date=end_date_limit)
 
-        max_number = max(incidence.values())
+        max_number = 0
+        if len(incidence.values()) > 0:
+            max_number = max(incidence.values())
         mult_factor = 1
         if max_number < 1:
             mult_factor = 10
@@ -1714,8 +1716,8 @@ class CdPublicHealth(Resource):
             incidence = ir.get(all_cd_cases, next_level, mult_factor=1000,
                                start_date=start_date,
                                end_date=end_date_limit)
-            for area in areas:  
-                if is_child(location, area, locs):  
+            for area in areas:
+                if is_child(location, area, locs) and area in incidence:
                     reporting_sites.append(make_dict(locs[area].name,
                                                      incidence[area] * mult_factor,
                                                      0))
