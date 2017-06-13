@@ -4706,10 +4706,21 @@ class SCReport(Resource):
                     if cases == 0:
                         cases = 1
                     if sc_data.variables.get("sc_beds", 0) < sc_data.variables.get("sc_patients", 0):
-                        recommendations.append("Not sufficent beds")
+                        recommendations.append("Insufficient beds")
+
+                    for code in ["sc_deaths", "sc_cured", "sc_default"]:
+                        try:
+                            if sc_data.variables.get(code, 0) / sc_data.variables.get("sc_discharge", 0) > 1:
+                                recommendations.append("Data quality check needed")
+                                break
+                        except ZeroDivisionError:
+                            recommendations.append("Data quality check needed")
+                            break
                     for code in sc_rec_variables.keys():
                         if sc_data.variables.get(code, "missing") =="no":
                             recommendations.append("No {}".format(sc_rec_variables[code]["name"]))
+                        if sc_data.variables.get(code, "missing") == 1:
+                            recommendations.append("{}".format(sc_rec_variables[code]["name"]))
                     clinic_data["recommendations"] = recommendations
 
 
