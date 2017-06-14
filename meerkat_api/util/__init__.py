@@ -120,7 +120,7 @@ def find_level(location, sublevel, locations):
         
     return None
 
-def get_children(parent, locations, clinic_type=None, require_case_report=True):
+def get_children(parent, locations, clinic_type=None, require_case_report=True, case_type=None):
     """
     Return all clinics that are children of parent
 
@@ -135,6 +135,7 @@ def get_children(parent, locations, clinic_type=None, require_case_report=True):
     for location_id in locations.keys():
         if ( (not require_case_report or locations[location_id].case_report) and
             (not clinic_type or locations[location_id].clinic_type == clinic_type)):
-            if is_child(parent, location_id, locations):
-                ret.append(location_id)
+            if( case_type is None or locations[location_id].case_type == case_type):
+                if is_child(parent, location_id, locations):
+                    ret.append(location_id)
     return ret
