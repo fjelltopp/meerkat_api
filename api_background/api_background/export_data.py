@@ -255,7 +255,10 @@ def export_category(uuid, form_name, category, download_name,
             split = v[0].split("$")
             field = "$".join(split[:-1])
             trans = split[-1]
-            tr_dict = json.loads(trans.split(";")[1].replace("'", '"'))
+            tr_dict = {}
+            if ";" in trans:
+                tr_dict = json.loads(trans.split(";")[1].replace("'", '"'))
+        
             # If the json specifies file details, load translation from file.
 
             # Get all possible options from the DB
@@ -270,7 +273,7 @@ def export_category(uuid, form_name, category, download_name,
             if tr_dict.get('dict_file', False):
                 translations = add_translations_from_file(tr_dict)
             else:
-                raise NotImplementedError
+                translations = {}
             return_keys.pop()
             for r in results:
                 if r[0]:
