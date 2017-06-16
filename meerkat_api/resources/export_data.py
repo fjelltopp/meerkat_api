@@ -9,7 +9,8 @@ import uuid
 from meerkat_api import db, output_csv, output_xls
 from meerkat_abacus.model import form_tables, DownloadDataFiles
 from meerkat_api.authentication import authenticate
-from meerkat_abacus.task_queue import export_form, export_category, export_data
+from meerkat_abacus.task_queue import export_form
+from meerkat_abacus.task_queue import export_category, export_data, export_data_table
 
 # Uncomment to run export data during request
 # from meerkat_abacus.task_queue import app as celery_app
@@ -58,6 +59,43 @@ class ExportData(Resource):
         export_data.delay(uid, g.allowed_location, use_loc_ids)
         return uid
 
+
+class ExportDataTable(Resource):
+    """
+    Export data table with aggregated data from db
+
+    Starts generation of data file
+
+    Args:
+       use_loc_ids: If we use names are location ids
+    Returns:\n
+       uuid
+
+    """
+    decorators = [authenticate]
+
+    def get(self, download_name, restrict_by):
+        if "variables" in request.args.keys():
+            variables = json.loads(request.args["variables"])
+        else:
+            return "No variables"
+        if "group_by" in request.args.keys():
+            group_by = json.loads(request.args["group_by"])
+        else:
+            return "No variables"
+
+        location_conditions = []
+
+        if "location_conditions" in request.args.keys():
+            location_conditions = json.loads(request.args["location_conditions"])
+        
+        uid = str(uuid.uuid4())
+        export_data_table.delay(uid, download_name,
+                                restrict_by, variables, group_by,
+                                location_conditions=location_conditions)
+        return uid
+
+    
 
 class ExportCategory(Resource):
     """

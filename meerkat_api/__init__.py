@@ -161,7 +161,7 @@ from meerkat_api.resources.reports import PublicHealth, CdReport, \
     EBSReport, MhReport, CTCReport, SCReport
 
 from meerkat_api.resources.frontpage import KeyIndicators, TotMap, NumAlerts, ConsultationMap, RefugeePage, NumClinics
-from meerkat_api.resources.export_data import ExportData, ExportForm, Forms, ExportCategory, GetCSVDownload, GetXLSDownload, GetStatus
+from meerkat_api.resources.export_data import ExportForm, Forms, ExportCategory, GetCSVDownload, GetXLSDownload, GetStatus, ExportDataTable, ExportData
 from meerkat_api.resources.incidence import IncidenceRate, WeeklyIncidenceRate
 from meerkat_api.resources.devices import Devices
 
@@ -197,6 +197,8 @@ api.add_resource(Forms, "/export/forms")
 api.add_resource(ExportCategory,
                  "/export/category/<form_name>/<category>/<download_name>",
                  "/export/category/<form_name>/<category>/<download_name>/<data_type>")
+api.add_resource(ExportDataTable,
+                 "/export/data_table/<download_name>/<restrict_by>")
 
 # Location urls
 api.add_resource(Locations, "/locations")

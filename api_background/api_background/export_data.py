@@ -22,7 +22,7 @@ if translation_dir:
 import resource
 import shelve
 from sqlalchemy.orm import aliased
-from sqlalchemy import text, or_, func
+from sqlalchemy import text, or_, func, Float
 from dateutil.parser import parse
 from datetime import datetime
 from io import StringIO, BytesIO
@@ -564,6 +564,98 @@ def export_category(uuid, form_name, category, download_name,
 
 
 @task
+def export_data_table(uuid, download_name,
+                      restrict_by, variables, group_by,
+                      location_conditions=None):
+    """
+    Export an aggregated data table restricted by restrict by,
+    
+
+    """
+    return_keys = []
+    db, session = get_db_engine()
+    locs = get_locations(session)
+    list_rows = []
+    status = DownloadDataFiles(
+        uuid=uuid,
+        generation_time=datetime.now(),
+        type=download_name,
+        success=0,
+        status=0
+    )
+    session.add(status)
+    session.commit()
+    columns = []
+    groups = []
+    location_subs = []
+    for i, v in enumerate(group_by):
+        field = v[0]
+        if ":location" in field:
+            field = field.split(":")[0]
+            location_subs.append(i)
+        columns.append(getattr(Data, field))
+        groups.append(getattr(Data, field))
+        return_keys.append(v[1])
+        
+    for v in variables:
+        columns.append(func.sum(Data.variables[v[0]].astext.cast(Float)))
+        return_keys.append(v[1])
+        
+    result = session.query(*columns).filter(
+        Data.variables.has_key(restrict_by)).group_by(*groups)
+
+    filename = base_folder + "/exported_data/" + uuid + "/" + download_name
+    os.mkdir(base_folder + "/exported_data/" + uuid)
+    csv_content = open(filename + ".csv", "w")
+    csv_writer = csv.writer(csv_content)
+    csv_writer.writerows([return_keys])
+
+    # XlsxWriter with "constant_memory" set to true, flushes mem after each row
+    xls_content = open(filename + ".xlsx", "wb")
+    xls_book = xlsxwriter.Workbook(xls_content, {'constant_memory': True})
+    xls_sheet = xls_book.add_worksheet()
+    # xls_sheet = pyexcel.Sheet([keys])
+
+    # Little utility function write a row to file.
+    def write_xls_row(data, row, sheet):
+        for cell in range(len(data)):
+            xls_sheet.write(row, cell, data[cell])
+
+    write_xls_row(return_keys, 0, xls_sheet)
+    i = 0
+    print(location_conditions)
+    for row in result:
+        # Can write row immediately to xls file as memory is flushed after.
+
+        row_list = list(row)
+        location_condition = True
+        for l in location_subs:
+            if row_list[l]:
+                if location_conditions:
+                    if getattr(locs[row_list[l]],
+                               location_conditions[0][0]) != location_conditions[0][1]:
+                        location_condition = False
+                row_list[l] = locs[row_list[l]].name
+        if location_condition:
+            row_list = [x if x is not None else 0 for x in row_list]
+            write_xls_row(row_list, i+1, xls_sheet)
+            list_rows.append(row_list)
+            # Append the row to list of rows to be written to csv.
+            i += 1
+    csv_writer.writerows(list_rows)
+
+    csv_content.close()
+    xls_book.close()
+
+    xls_content.close()
+    status.status = 1
+    status.success = 1
+    session.commit()
+
+    return True
+
+
+@task
 def export_form(uuid, form, allowed_location, fields=None):
     """
     Export a form. If fields is in the request variable we only include
@@ -712,3 +804,8 @@ def export_form(uuid, form, allowed_location, fields=None):
         session.commit()
 
         return True
+    
+if __name__ == "__main__":
+    import uuid
+    export_data_table(str(uuid.uuid4()), "test", "reg_1", [["reg_2", "Consultations"]], [["epi_year", "year"],["clinic:location", "clinic"], ["epi_week", "week"]],
+                      location_conditions=[["case_type", "SARI"]])
