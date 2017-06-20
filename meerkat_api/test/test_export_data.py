@@ -109,6 +109,47 @@ class MeerkatAPITestCase(unittest.TestCase):
                     self.assertEqual(line["clinic"], "Clinic 1")
             self.assertTrue(has_found)
 
+    def test_export_data_table(self):
+        """ Test the export of the data table """
+        rv = self.app.get('/export/data_table/test/gen_2?variables=[["tot_1", "N"]]&group_by=[["clinic:location", "Clinic"]]', headers={**settings.header})
+
+        self.assertEqual(rv.status_code, 200)
+        uuid = rv.data.decode("utf-8")[1:-2]
+        test = meerkat_api.db.session.query(model.DownloadDataFiles).filter(
+            model.DownloadDataFiles.uuid == uuid).all()
+        self.assertEqual(len(test), 1)
+        self.assertEqual(test[0].uuid, uuid)
+
+        rv = self.app.get('/export/getcsv/' + uuid,
+                          headers={**{"Accept": "text/csv"},
+                                   **settings.header})
+        self.assertEqual(rv.status_code, 302)
+        self.assertIn("exported_data/" + uuid + "/test.csv",
+                      rv.data.decode("utf-8"))
+
+        filename = base_folder + "/exported_data/" + uuid + "/test.csv"
+
+        with open(filename) as csv_file:
+            self.assertEqual(len(csv_file.readlines()), 4)
+            csv_file.seek(0)
+            c = csv.DictReader(csv_file)
+            has_found_clinic_1 = False
+            has_found_clinic_2 = False
+            has_found_clinic_3 = False
+            for line in c:
+                if line["Clinic"] == "Clinic 1":
+                    self.assertEqual(float(line["N"]), 1.0)
+                    has_found_clinic_1 = True
+                if line["Clinic"] == "Clinic 2":
+                    self.assertEqual(float(line["N"]), 2.0)
+                    has_found_clinic_2 = True
+                if line["Clinic"] == "Clinic 5":
+                    self.assertEqual(float(line["N"]), 5.0)
+                    has_found_clinic_3 = True
+            self.assertTrue(has_found_clinic_1)
+            self.assertTrue(has_found_clinic_2)
+            self.assertTrue(has_found_clinic_3)
+
     def test_export_category(self):
         """ Test getting a from with category """
         rv = self.app.get('/export/category/demo_case/cd_tab/cd?variables=[["icd_code", "icd code"], ["icd_name$cd_tab", "Name"], ["code$ale_2,ale_3,ale_4$Confirmed,Disregarded,Ongoing","Alert Status"], ["clinic", "Clinic"], ["meta/instanceID", "uuid"], ["end$month", "Month"], ["end$year", "Year"], ["end$epi_week", "epi_week"]]',

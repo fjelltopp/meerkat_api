@@ -94,6 +94,7 @@ def valid_urls(app):
         "include": "CTC",
         "num_weeks": "2",
         "require_case_report": "0",
+        "restrict_by": "tot_1",
         "weeks": "1",
         "hard_date_limit": "2017-01-01"
     }
