@@ -56,6 +56,7 @@ def valid_urls(app):
     substitutions = {
         "location": "1",
         "location_id": "1",
+        "device_id": "4"
         "start_date": datetime(2015, 1, 1).isoformat(),
         "end_date": datetime.now().isoformat(),
         "variable_id": "tot_1",
