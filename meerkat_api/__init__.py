@@ -142,7 +142,7 @@ def output_xls(data, code, headers=None):
 
 
 # Importing all the resources here to avoid circular imports
-from meerkat_api.resources.locations import Location, Locations, LocationTree, TotClinics
+from meerkat_api.resources.locations import Location, Locations, LocationTree, TotClinics, DeviceID
 from meerkat_api.resources.variables import Variables, Variable
 from meerkat_api.resources.data import Aggregate, AggregateYear, AggregateCategorySum, AggregateLatest
 from meerkat_api.resources.data import AggregateLatestCategory, AggregateLatestYear, AggregateLatestLevel
@@ -161,7 +161,7 @@ from meerkat_api.resources.reports import PublicHealth, CdReport, \
     EBSReport, MhReport, CTCReport, SCReport
 
 from meerkat_api.resources.frontpage import KeyIndicators, TotMap, NumAlerts, ConsultationMap, RefugeePage, NumClinics
-from meerkat_api.resources.export_data import ExportForm, Forms, ExportCategory, GetCSVDownload, GetXLSDownload, GetStatus, ExportDataTable, ExportData
+from meerkat_api.resources.export_data import Forms, ExportCategory, GetCSVDownload, GetXLSDownload, GetStatus, ExportDataTable, ExportData, ExportForm
 from meerkat_api.resources.incidence import IncidenceRate, WeeklyIncidenceRate
 from meerkat_api.resources.devices import Devices
 
@@ -204,6 +204,7 @@ api.add_resource(ExportDataTable,
 api.add_resource(Locations, "/locations")
 api.add_resource(LocationTree, "/locationtree")
 api.add_resource(Location, "/location/<location_id>")
+api.add_resource(DeviceID, "/device/<device_id>")
 api.add_resource(TotClinics, "/tot_clinics/<location_id>")
 
 # Variables
