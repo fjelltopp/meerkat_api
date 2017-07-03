@@ -203,7 +203,8 @@ class MeerkatAPITestCase(unittest.TestCase):
                              "epi_week",
                              "geo_shapes",
                              "variables",
-                             "variable/tot_1"]
+                             "variable/tot_1",
+                             "device/"]
         for url in urls:
             needs_auth = True
             for na in no_authentication:
