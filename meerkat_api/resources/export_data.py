@@ -88,14 +88,13 @@ class ExportDataTable(Resource):
 
         if "location_conditions" in request.args.keys():
             location_conditions = json.loads(request.args["location_conditions"])
-        
+
         uid = str(uuid.uuid4())
         export_data_table.delay(uid, download_name,
                                 restrict_by, variables, group_by,
                                 location_conditions=location_conditions)
         return uid
 
-    
 
 class ExportCategory(Resource):
     """
@@ -120,6 +119,8 @@ class ExportCategory(Resource):
         export_category.delay(uid, form_name, category,
                               download_name, variables, data_type,
                               g.allowed_location,
+                              start_date=request.args.get("start_date", None),
+                              end_date=request.args.get("end_date", None),
                               language=language)
         return uid
 

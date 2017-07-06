@@ -56,6 +56,7 @@ def valid_urls(app):
     substitutions = {
         "location": "1",
         "location_id": "1",
+        "device_id": "4",
         "start_date": datetime(2015, 1, 1).isoformat(),
         "end_date": datetime.now().isoformat(),
         "variable_id": "tot_1",
@@ -202,7 +203,8 @@ class MeerkatAPITestCase(unittest.TestCase):
                              "epi_week",
                              "geo_shapes",
                              "variables",
-                             "variable/tot_1"]
+                             "variable/tot_1",
+                             "device/"]
         for url in urls:
             needs_auth = True
             for na in no_authentication:

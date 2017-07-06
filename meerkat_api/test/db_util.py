@@ -32,6 +32,8 @@ def insert_cases(session, variable, date=None, delete=True):
     session.commit()
     if date:
         freezer.stop()
+
+
 def insert_links(session, variable):
     """ Add a variable with links from the links.py file in test_data
 

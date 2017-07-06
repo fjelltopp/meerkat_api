@@ -11,14 +11,14 @@ public_health_report = [
     Data(**{'uuid': 'uuid:2d14ec68-c5b3-47d5-90db-eee510ee9371', 'clinic_type': 'Hospital', 'district': 6, 'variables': {"data_entry":1, "tot_1":1, "gen_1": 1, "age_1": 1, "age_13": 1, "nat_1": 1, "sta_1": 1, "prc_1": 1, "cmd_1": 1, "icb_1": 1 }, 'categories': {'gender': 'gen_1', 'pc': 'prc_1'}, 'clinic': 7, 'geolocation': 'POINT(0.1 0.4)',  'region': 2, 'country': 1, 'date': datetime.datetime(2015, 4, 30, 23, 54, 16, 49059)}),
     Data(**{'uuid': 'uuid:2d14ec68-c5b3-47d5-90db-eee510ee9373', 'clinic_type': 'Hospital', 'district': 6, 'variables': {"data_entry":1, "tot_1":1, "gen_1": 1, "age_1": 1, "age_13": 1, "nat_1": 1, "sta_1": 1, "prc_1": 1, "cmd_1": 1, "icb_1": 1, "mod_1":1, "mod_2": 1, "mod_3": 1, "mod_4": 1, "mod_5": 1, "alert": 1, "alert_reason": "cmd_5" }, 'categories': {'gender': 'gen_1', 'pc': 'prc_1'},'clinic': 7, 'geolocation': 'POINT(0.1 0.4)',  'region': 2, 'country': 1, 'date': datetime.datetime(2015, 4, 30, 23, 54, 16, 49059)}),
     Data(**{'uuid': 'uuid:2d14ec68-c5b3-47d5-90db-eee510ee9372', 'clinic_type': 'Hospital', 'district': 6, 'variables': {"data_entry":1, "tot_1":1, "gen_2": 1, "age_2": 1, "age_8": 1, "nat_1": 1, "sta_1": 1, "prc_1": 1, "cmd_1": 1, "icb_1": 1 }, 'categories': {'gender': 'gen_2', 'pc': 'prc_1'}, 'clinic': 8, 'geolocation': 'POINT(0.1 0.4)',  'region': 2, 'country': 1, 'date': datetime.datetime(2015, 4, 30, 23, 54, 16, 49059)}),
-    Data(**{'uuid': 'uuid:2d14ec68-c5b3-47d5-90db-eee510ee9374', 'clinic_type': 'Hospital', 'district': 6, 'variables': {"data_entry":1, "tot_1":1, "gen_2": 1, "age_2": 1, "age_8": 1, "nat_1": 1, "sta_1": 1, "prc_1": 1, "cmd_1": 1, "icb_1": 1, "alert": 1, "alert_reason": "cmd_5" }, 'categories': {'gender': 'gen_2', 'pc': 'prc_1'}, 'clinic': 8, 'geolocation': 'POINT(0.1 0.4)',  'region': 2, 'country': 1, 'date': datetime.datetime(2015, 4, 30, 23, 54, 16, 49059)}),
+    Data(**{'uuid': 'uuid:2d14ec68-c5b3-47d5-90db-eee510ee9374', 'clinic_type': 'Hospital', 'district': 6, 'variables': {"data_entry":1, "tot_1":1, "gen_2": 1, "age_2": 1, "age_8": 1, "nat_1": 1, "sta_1": 1, "prc_1": 1, "cmd_1": 1, "icb_1": 1, "alert": 1, "alert_reason": "cmd_5" }, 'categories': {'gender': 'gen_2', 'pc': 'prc_1'}, 'clinic': 8, 'geolocation': 'POINT(0.1 0.4)',  'region': 2, 'country': 1, 'date': datetime.datetime(2015, 4, 29, 23, 54, 16, 49059)}),
     Data(**{'uuid': 'uuid:2d14ec68-c5b3-47d5-90db-eee510ee9375', 'clinic_type': 'Hospital', 'district': 6, 'variables': {"data_entry":1, "tot_1":1, "gen_2": 1, "age_3": 1, "age_9": 1, "nat_1": 1, "sta_1": 1, "prc_1": 1, "cmd_1": 1, "icb_1": 1, "alert": 1 , "alert_reason": "cmd_5"}, 'categories': {'gender': 'gen_2', 'pc': 'prc_1'}, 'clinic': 7, 'geolocation': 'POINT(0.1 0.4)',  'region': 2, 'country': 1, 'date': datetime.datetime(2015, 4, 30, 23, 54, 16, 49059)}),
     Data(**{'uuid': 'uuid:2d14ec68-c5b3-47d5-90db-eee510ee9376', 'clinic_type': 'Hospital', 'district': 6, 'variables': {"data_entry":1, "tot_1":1, "gen_1": 1, "age_3": 1, "age_15": 1, "nat_1": 1, "sta_1": 1, "prc_1": 1, "cmd_1": 1, "icb_1": 1, "smo_2": 1, "smo_1": 1 }, 'categories': {'gender': 'gen_1', 'pc': 'prc_1'}, 'clinic': 7, 'geolocation': 'POINT(0.1 0.4)',  'region': 2, 'country': 1, 'date': datetime.datetime(2015, 4, 30, 23, 54, 16, 49059)}),
     Data(**{'uuid': 'uuid:2d14ec68-c5b3-47d5-90db-eee510ee9377', 'clinic_type': 'Hospital', 'district': 6, 'variables': {"data_entry":1, "tot_1":1, "gen_2": 1, "age_4": 1 , "age_10": 1, "nat_2": 1, "sta_1": 1, "prc_1": 1, "cmd_1": 1, "icb_1": 1}, 'categories': {'gender': 'gen_2', 'pc': 'prc_1'}, 'clinic': 11, 'geolocation': 'POINT(0.1 0.4)',  'region': 3, 'country': 1, 'date': datetime.datetime(2015, 4, 30, 23, 54, 16, 49059)}),
     Data(**{'uuid': 'uuid:2d14ec68-c5b3-47d5-90db-eee510ee9378', 'clinic_type': 'Hospital', 'district': 5, 'variables': {"data_entry":1, "tot_1":1, "gen_2": 1, "age_4": 1 , "age_10": 1, "nat_2": 1, "sta_1": 1, "prc_2": 1, "ncd_2": 1}, 'categories': {'gender': 'gen_2', 'pc': 'prc_2'}, 'clinic': 11, 'geolocation': 'POINT(0.1 0.4)',  'region': 3, 'country': 1, 'date': datetime.datetime(2015, 5, 30, 23, 54, 16, 49059)}),
     Data(**{'uuid': 'uuid:2d14ec68-c5b3-47d5-90db-eee510ee9379', 'clinic_type': 'Hospital', 'district': 6, 'variables': {"data_entry":1, "tot_1":1, "gen_2": 1, "age_5": 1, "age_11": 1, "nat_2": 1, "sta_1": 1, "prc_2": 1 , "ncd_1": 1, "icb_47": 1}, 'categories': {'gender': 'gen_2', 'pc': 'prc_2'}, 'clinic': 11, 'geolocation': 'POINT(0.1 0.4)', 'region': 3, 'country': 1, 'date': datetime.datetime(2015, 4, 30, 23, 54, 16, 49059)}),
     Data(**{'uuid': 'uuid:2d14ec68-c5b3-47d5-90db-eee510ee9380', 'clinic_type': 'Hospital', 'district': 6, 'variables': {"data_entry":1, "tot_1":1, "gen_2": 1, "age_5": 1, "age_11": 1, "nat_1": 1, "sta_2": 1, "prc_3": 1, "icb_54": 1}, 'categories': {'gender': 'gen_2', 'pc': 'prc_3'}, 'clinic': 11, 'geolocation': 'POINT(0.1 0.4)', 'region': 3, 'country': 1, 'date': datetime.datetime(2015, 4, 30, 23, 54, 16, 49059)}),
-    Data(**{'uuid': 'uuid:2d14ec68-c5b3-47d5-90db-eee510ee9312', 'clinic_type': 'Hospital', 'district': 6, 'variables': {"data_entry":1, "tot_1": 1, "gen_2": 1}, 'categories': {'gender': 'gen_2'}, 'clinic': 11, 'geolocation': 'POINT(0.1 0.4)', 'region': 3, 'country': 1, 'date': datetime.datetime(2016, 4, 30, 23, 54, 16, 49059)})
+    Data(**{'uuid': 'uuid:2d14ec68-c5b3-47d5-90db-eee510ee9312', 'clinic_type': 'Hospital', 'district': 6, 'variables': {"data_entry":1, "tot_1": 1, "gen_2": 1}, 'categories': {'gender': 'gen_2'}, 'clinic': 11, 'geolocation': 'POINT(0.1 0.4)', 'region': 3, 'country': 1, 'date': datetime.datetime(2016, 4, 29, 23, 54, 16, 49059)})
 ]
 
 
@@ -64,7 +64,7 @@ ncd_report = [
     Data(**{'uuid': 'uuid:2d14ec68-c5b3-47d5-90db-eee510ee9324', 'clinic_type': 'Hospital', 'district': 6, 'variables': {"data_entry":1, "tot_1":1, "visit_gen_1": 1, "visit_age_22": 1, "visit_age_14": 1, "prc_2": 1, "visit_ncd_2": 1, "visit_lab_1": 1, "vis_5":1}, 'clinic': 7, 'geolocation': 'POINT(0.1 0.4)',  'region': 3, 'country': 1, 'date': datetime.datetime(2015, 4, 30, 23, 54, 16, 49059)}),
     Data(**{'uuid': 'uuid:2d14ec68-c5b3-47d5-90db-eee510ee9375', 'clinic_type': 'Hospital', 'district': 6, 'variables': {"data_entry":1, "tot_1":1, "visit_gen_1": 1, "visit_age_22": 1, "visit_age_14": 1, "prc_2": 1, "visit_ncd_2": 1, "visit_lab_1": 1, "visit_lab_2": 1,"visit_smo_4": 1, "visit_smo_2": 1, "visit_lab_10": 1, "visit_lab_11": 1, "vis_5":1}, 'clinic': 7, 'geolocation': 'POINT(0.1 0.4)',  'region': 3, 'country': 1, 'date': datetime.datetime(2015, 4, 30, 23, 54, 16, 49059)}),
     Data(**{'uuid': 'uuid:2d14ec68-c5b3-47d5-90db-eee510ee9376', 'clinic_type': 'Hospital', 'district': 6, 'variables': {"data_entry":1, "tot_1":1, "visit_gen_2": 1, "visit_age_23": 1, "visit_age_8": 1, "prc_2": 1, "visit_ncd_2": 1, "visit_lab_3": 1, "visit_lab_4": 1, "vis_5":1}, 'clinic': 8, 'geolocation': 'POINT(0.1 0.4)',  'region': 2, 'country': 1, 'date': datetime.datetime(2015, 4, 30, 23, 54, 16, 49059)}),
-    Data(**{'uuid': 'uuid:2d14ec68-c5b3-47d5-90db-eee510ee9377', 'clinic_type': 'Hospital', 'district': 6, 'variables': {"data_entry":1, "tot_1":1, "visit_gen_2": 1, "visit_age_24": 1, "visit_age_9": 1, "prc_2": 1, "visit_ncd_2": 1, "visit_com_1": 1, "vis_5":1}, 'clinic': 8, 'geolocation': 'POINT(0.1 0.4)',  'region': 2, 'country': 1, 'date': datetime.datetime(2015, 4, 30, 23, 54, 16, 49059)})    
+    Data(**{'uuid': 'uuid:2d14ec68-c5b3-47d5-90db-eee510ee9377', 'clinic_type': 'Hospital', 'district': 6, 'variables': {"data_entry":1, "tot_1":1, "visit_gen_2": 1, "visit_age_24": 1, "visit_age_9": 1, "prc_2": 1, "visit_ncd_2": 1, "visit_com_1": 1, "vis_5":1}, 'clinic': 8, 'geolocation': 'POINT(0.1 0.4)',  'region': 2, 'country': 1, 'date': datetime.datetime(2015, 4, 30, 23, 54, 16, 49059)})
 ]
 
 
@@ -78,7 +78,7 @@ pip_report = [
     Data(**{'uuid': 'uuid:2d14ec68-c5b3-47d5-90db-eee510ee9377', 'clinic_type': 'Hospital', 'district': 6, 'variables': {"data_entry":1, "tot_1":1, "gen_2": 1, "age_3": 1, "nat_1": 1, "sta_1": 1,"age_9": 1, "pip_1": 1, "pip_2": 1}, 'clinic': 10, 'geolocation': 'POINT(0.1 0.4)',  'region': 2, 'country': 1, 'date': datetime.datetime(2015, 7, 30, 23, 54, 16, 49059)}),
     Data(**{'uuid': 'uuid:2d14ec68-c5b3-47d5-90db-eee510ee9378', 'clinic_type': 'Hospital', 'district': 6, 'variables': {"data_entry":1, "tot_1":1, "gen_2": 1, "age_4": 1,"nat_2": 1, "sta_2": 1, "age_10": 1, "pip_1": 1, "pip_2": 1}, 'clinic': 10, 'geolocation': 'POINT(0.1 0.4)',  'region': 2, 'country': 1, 'date': datetime.datetime(2015, 7, 30, 23, 54, 16, 49059)}),
         Data(**{'uuid': 'uuid:2d14ec68-c5b3-47d5-90db-eee510ee9379', 'clinic_type': 'Hospital', 'district': 6, 'variables': {"data_entry":1, "tot_1":1, "gen_2": 1, "age_4": 1,"nat_2": 1, "sta_2": 1, "age_9": 1, "pip_1": 1, "pip_3": 1}, 'clinic': 8, 'geolocation': 'POINT(0.1 0.4)',  'region': 2, 'country': 1, 'date': datetime.datetime(2016, 4, 30, 23, 54, 16, 49059)})
-    
+
 ]
 
 refugee_data = [
@@ -324,20 +324,20 @@ Data(**{'date': datetime.datetime(2015, 1, 1, 0, 0), 'clinic_type': 'Hospital', 
 alerts = [
 
     Data(**{'uuid': 'uuid:b013c24a-4790-43d6-8b43-4d28a4ce9341', 'clinic_type': 'Hospital', 'district': 6, 'variables': {"data_entry":1, "alert": 1, "alert_id": "ce9341", "alert_reason": "cmd_11", "alert_gender": "female", "alert_age": '33', "ale_1": 1,"ale_2":1, "ale_6": 1, "ale_7": 1}, 'clinic': 7, 'geolocation': 'POINT(0.1 0.4)',  'region': 2, 'country': 1, 'date': datetime.datetime(2015, 4, 30, 23, 54, 16, 49059)}),
-    
+
     Data(**{'uuid': 'uuid:b013c24a-4790-43d6-8b43-4d28a4ce9342', 'clinic_type': 'Hospital', 'district': 6, 'variables': {"data_entry":1, "alert": 1, "alert_id": "ce93s1", "alert_reason": "cmd_1", "alert_gender": "female", "alert_age": '33'}, 'clinic': 7, 'geolocation': 'POINT(0.1 0.4)',  'region': 2, 'country': 1, 'date': datetime.datetime(2015, 4, 30, 23, 54, 16, 49059)}),
-    
+
     Data(**{'uuid': 'uuid:b013c24a-4790-43d6-8b43-4d28a4ce9343', 'clinic_type': 'Hospital', 'district': 6, 'variables': {"data_entry":1, "alert": 1, "alert_id": "ce93s1", "alert_reason": "cmd_2", "alert_gender": "female", "alert_age": '33'}, 'clinic': 7, 'geolocation': 'POINT(0.1 0.4)',  'region': 2, 'country': 1, 'date': datetime.datetime(2015, 4, 30, 23, 54, 16, 49059)}),
-    
+
     Data(**{'uuid': 'uuid:b013c24a-4790-43d6-8b43-4d28a4ce9344', 'clinic_type': 'Hospital', 'district': 6, 'variables': {"data_entry":1, "alert": 1, "alert_id": "ce93s1", "alert_reason": "cmd_2", "alert_gender": "female", "alert_age": '33', "ale_1": 1, "ale_4": 1}, 'clinic': 7, 'geolocation': 'POINT(0.1 0.4)',  'region': 2, 'country': 1, 'date': datetime.datetime(2015, 4, 30, 23, 54, 16, 49059)}) ,
-    
+
     DisregardedData(**{'uuid': 'uuid:b013c24a-4790-43d6-8b43-4d28a4ce9345', 'clinic_type': 'Hospital', 'district': 6, 'variables': {"data_entry":1, "alert": 1, "alert_id": "ce93s1", "alert_reason": "cmd_11", "alert_gender": "female", "alert_age": '33', "ale_1": 1213, "ale_3": 1}, 'clinic': 7, 'geolocation': 'POINT(0.1 0.4)',  'region': 2, 'country': 1, 'date': datetime.datetime(2015, 4, 30, 23, 54, 16, 49059)}) ,
-    
+
     Data(**{'uuid': 'uuid:b013c24a-4790-43d6-8b43-4d28a4ce9346', 'clinic_type': 'Hospital', 'district': 6, 'variables': {"data_entry":1, "alert": 1, "alert_id": "ce93s1", "alert_reason": "cmd_11", "alert_gender": "female", "alert_age": '33', }, 'clinic': 7, 'geolocation': 'POINT(0.1 0.4)',  'region': 2, 'country': 1, 'date': datetime.datetime(2015, 3, 4, 23, 54, 16, 49059)}) ,
-    
+
     Data(**{'uuid': 'uuid:b013c24a-4790-43d6-8b43-4d28a4ce9347', 'clinic_type': 'Hospital', 'district': 6, 'variables': {"data_entry":1, "alert": 1, "alert_id": "ce93s1", "alert_reason": "cmd_11", "alert_gender": "female", "alert_age": '33',}, 'clinic': 7, 'geolocation': 'POINT(0.1 0.4)',  'region': 2, 'country': 1, 'date': datetime.datetime(2015, 4, 30, 23, 54, 16, 49059)}) ,
-    
-    Data(**{'uuid': 'uuid:b013c24a-4790-43d6-8b43-4d28a4ce9348', 'clinic_type': 'Hospital', 'district': 6, 'variables': {"data_entry":1, "alert": 1, "alert_id": "ce93s1", "alert_reason": "cmd_19", "alert_gender": "female", "alert_age": '33'}, 'clinic': 11, 'geolocation': 'POINT(0.1 0.4)',  'region': 3, 'country': 1, 'date': datetime.datetime(2015, 4, 20, 23, 54, 16, 49059)}) 
+
+    Data(**{'uuid': 'uuid:b013c24a-4790-43d6-8b43-4d28a4ce9348', 'clinic_type': 'Hospital', 'district': 6, 'variables': {"data_entry":1, "alert": 1, "alert_id": "ce93s1", "alert_reason": "cmd_19", "alert_gender": "female", "alert_age": '33'}, 'clinic': 11, 'geolocation': 'POINT(0.1 0.4)',  'region': 3, 'country': 1, 'date': datetime.datetime(2015, 4, 20, 23, 54, 16, 49059)})
 ]
 
 
@@ -380,32 +380,32 @@ vaccination_report = [
 afro_report = [
     #completeness, Districts Blue, Red and Green
     Data(**{"uuid":"10","type":"case","date":"2016-12-20T00:00:00","country":1,"region":2,"district":4,"clinic":7,"clinic_type":"test","links":{},"tags":[],
-            "variables": {"data_entry":1, 
+            "variables": {"data_entry":1,
                 "reg_1":1,
                 "reg_5":1
             },"geolocation": "POINT(0 0)"}),
     Data(**{"uuid":"100","type":"case","date":"2016-12-20T00:00:00","country":1,"region":2,"district":4,"clinic":8,"clinic_type":"test","links":{},"tags":[],
-            "variables": {"data_entry":1, 
+            "variables": {"data_entry":1,
                 "reg_1":1,
                 "reg_5":1
             },"geolocation": "POINT(0 0)"}),
     Data(**{"uuid":"101","type":"case","date":"2016-12-19T00:00:00","country":1,"region":2,"district":5,"clinic":9,"clinic_type":"test","links":{},"tags":[],
-            "variables": {"data_entry":1, 
+            "variables": {"data_entry":1,
                 "reg_1":2,
                 "reg_5":2
             },"geolocation": "POINT(0 0)"}),
     # Data(**{"uuid":"102","type":"case","date":"2016-12-21T00:00:00","country":1,"region":2,"district":5,"clinic":9,"clinic_type":"test","links":{},"tags":[],
-    #         "variables": {"data_entry":1, 
+    #         "variables": {"data_entry":1,
     #             "reg_1":5,
     #             "reg_5":5
     #         },"geolocation": "POINT(0 0)"}),
     Data(**{"uuid":"11","type":"case","date":"2016-11-20T00:00:00","country":1,"region":2,"district":5,"clinic":9,"clinic_type":"test","links":{},"tags":[],
-            "variables": {"data_entry":1, 
+            "variables": {"data_entry":1,
                 "reg_1":1,
                 "reg_5":1
             },"geolocation": "POINT(0 0)"}),
     Data(**{"uuid":"12","type":"case","date":"2016-12-20T00:00:00","country":1,"region":3,"district":6,"clinic":10,"clinic_type":"test","links":{},"tags":[],
-            "variables": {"data_entry":1, 
+            "variables": {"data_entry":1,
                 "reg_1":4,
                 "reg_5":4
             },"geolocation": "POINT(0 0)"}),
@@ -413,14 +413,14 @@ afro_report = [
     #Completeness in the week after date of the report. Shouldn't change the weekly completeness
     #4 daily registers means that completeness in this week is 100
     Data(**{"uuid":"112","type":"case","date":"2016-12-29T00:00:00","country":1,"region":3,"district":6,"clinic":10,"clinic_type":"test","links":{},"tags":[],
-            "variables": {"data_entry":1, 
+            "variables": {"data_entry":1,
                 "reg_1":4,
                 "reg_5":4
             },"geolocation": "POINT(0 0)"}),
 
     #50 deaths and 50 cases of sever malnutrition `dea_0` and `cmd_24` in a week after the report. Shouldn't appear in weekly highlights
     Data(**{"uuid":"113","type":"case","date":"2016-12-29T00:00:00","country":1,"region":2,"district":4,"clinic":7,"clinic_type":"test","links":{},"tags":[],
-            "variables": {"data_entry":1, 
+            "variables": {"data_entry":1,
                 "dea_0":50,
                 "cmd_24":50,
             },"geolocation": "POINT(0 0)"}),
@@ -433,9 +433,9 @@ afro_report = [
     #MALARIA data
     #10 deaths from malaria (mls_36)
     #30 positively tested cases of malaria (cmd_17), it is 30/40 of tested (mls_3)
-    #10 simple (mls_12) and 20 sever (mls_24), 15 (mls_48) treated with ACT 
+    #10 simple (mls_12) and 20 sever (mls_24), 15 (mls_48) treated with ACT
     Data(**{"uuid":"1","type":"case","date":"2016-12-20T00:00:00","country":1,"region":2,"district":4,"clinic":7,"clinic_type":"test","links":{},"tags":[],
-            "variables": {"data_entry":1, 
+            "variables": {"data_entry":1,
                 "mls_2":120,
                 "mls_3":40,
                 "mls_12":10,
@@ -446,12 +446,12 @@ afro_report = [
                 "cmd_17":30
             },"geolocation": "POINT(0 0)"}),
     Data(**{"uuid":"2","type":"case","date":"2016-12-20T00:00:00","country":1,"region":2,"district":4,"clinic":7,"clinic_type":"test","links":{},"tags":[],
-            "variables": {"data_entry":1, 
+            "variables": {"data_entry":1,
                 "dea_0":7,
                 "ale_1":1
             },"geolocation": "POINT(0 0)"}),
     Data(**{"uuid":"3","type":"case","date":"2016-10-24T00:00:00","country":1,"region":2,"district":4,"clinic":7,"clinic_type":"test","links":{},"tags":[],
-            "variables": {"data_entry":1, 
+            "variables": {"data_entry":1,
 
             },"geolocation": "POINT(0 0)"}),
     #Measles for WEEKLY HIGHLIGHTS
@@ -461,34 +461,34 @@ afro_report = [
     #ale_2 confirmed (25)
     #age_1 10 among children <5
     Data(**{"uuid":"13","type":"case","date":"2016-12-21T00:00:00","country":1,"region":3,"district":6,"clinic":10,"clinic_type":"test","links":{},"tags":[],
-            "variables": {"data_entry":1, 
+            "variables": {"data_entry":1,
                 "cmd_15":40
             },"geolocation": "POINT(0 0)"}),
     Data(**{"uuid":"14","type":"case","date":"2016-12-21T00:00:00","country":1,"region":3,"district":6,"clinic":10,"clinic_type":"test","links":{},"tags":[],
-            "variables": {"data_entry":1, 
+            "variables": {"data_entry":1,
                 "cmd_15":10,
                 "age_1":1
             },"geolocation": "POINT(0 0)"}),
     Data(**{"uuid":"15","type":"case","date":"2016-12-21T00:00:00","country":1,"region":3,"district":6,"clinic":10,"clinic_type":"test","links":{},"tags":[],
-            "variables": {"data_entry":1, 
+            "variables": {"data_entry":1,
                 "cmd_15":50,
                 "ale_1":1
             },"geolocation": "POINT(0 0)"}),
     Data(**{"uuid":"16","type":"case","date":"2016-12-21T00:00:00","country":1,"region":3,"district":6,"clinic":10,"clinic_type":"test","links":{},"tags":[],
-            "variables": {"data_entry":1, 
+            "variables": {"data_entry":1,
                 "cmd_15":25,
                 "ale_2":1
             },"geolocation": "POINT(0 0)"}),
     #Acute flaccid paralysis for WEEKLY HIGHLIGHTS
     #99 cases suspected (cmd_10)
-    #ale_1 investigated (33) 
+    #ale_1 investigated (33)
     Data(**{"uuid":"17","type":"case","date":"2016-12-21T00:00:00","country":1,"region":3,"district":6,"clinic":10,"clinic_type":"test","links":{},"tags":[],
-            "variables": {"data_entry":1, 
+            "variables": {"data_entry":1,
                 "cmd_10":66,
                 "mor_11":33
             },"geolocation": "POINT(0 0)"}),
     Data(**{"uuid":"18","type":"case","date":"2016-12-21T00:00:00","country":1,"region":3,"district":6,"clinic":10,"clinic_type":"test","links":{},"tags":[],
-            "variables": {"data_entry":1, 
+            "variables": {"data_entry":1,
                 "cmd_10":33,
                 "ale_1":1
             },"geolocation": "POINT(0 0)"}),
@@ -496,13 +496,13 @@ afro_report = [
     #severe malnutrition `cmd_24` : 40, moderate `cmd_23`, 20, 40 from Major and 20 from minor
     #major
     Data(**{"uuid":"20","type":"case","date":"2016-12-21T00:00:00","country":1,"region":2,"district":4,"clinic":7,"clinic_type":"test","links":{},"tags":[],
-            "variables": {"data_entry":1, 
+            "variables": {"data_entry":1,
                 "cmd_24":21,
                 "cmd_23":19,
             },"geolocation": "POINT(0 0)"}),
     #minor
     Data(**{"uuid":"21","type":"case","date":"2016-12-21T00:00:00","country":1,"region":3,"district":6,"clinic":10,"clinic_type":"test","links":{},"tags":[],
-            "variables": {"data_entry":1, 
+            "variables": {"data_entry":1,
                 "cmd_24":19,
                 "cmd_23":1,
             },"geolocation": "POINT(0 0)"}),
@@ -518,7 +518,7 @@ afro_report = [
     #20 UNCOMFIRMED cases of Rabies `cmd_11`
     #99 UNCOMFIRMED cases of Plague `cmd_7`
     Data(**{"uuid":"22","type":"case","date":"2016-12-22T00:00:00","country":1,"region":2,"district":5,"clinic":9,"clinic_type":"test","links":{},"tags":[],
-            "variables": {"data_entry":1, 
+            "variables": {"data_entry":1,
                 "cmd_1":15,
                 "mor_18":10,
                 "cmd_4":22,
@@ -532,7 +532,7 @@ afro_report = [
     #clinic C cases INVESTIGATED `ale_1`
     #76 investigated cases of Plague `cmd_7` with `ale_1`
     Data(**{"uuid":"23","type":"case","date":"2016-12-23T00:00:00","country":1,"region":2,"district":5,"clinic":9,"clinic_type":"test","links":{},"tags":[],
-            "variables": {"data_entry":1, 
+            "variables": {"data_entry":1,
                 "cmd_7":76,
                 "ale_1":1,
             },"geolocation": "POINT(0 0)"}),
@@ -542,7 +542,7 @@ afro_report = [
     #15 confirmed cases of Rabies `cmd_11` with `ale_2`
     #16 confirmed cases of Plague `cmd_7` with `ale_2`
     Data(**{"uuid":"24","type":"case","date":"2016-12-21T00:00:00","country":1,"region":2,"district":5,"clinic":9,"clinic_type":"test","links":{},"tags":[],
-            "variables": {"data_entry":1, 
+            "variables": {"data_entry":1,
                 "cmd_11":15,
                 "cmd_7":16,
                 "ale_2":1,
@@ -551,20 +551,20 @@ afro_report = [
     #Clinic B, District Blue, Region Major.
     #14 Maternal deaths and 10 neonatal NOT investigated
     Data(**{"uuid":"6","type":"case","date":"2016-12-24T00:00:00","country":1,"region":2,"district":4,"clinic":8,"clinic_type":"test","links":{},"tags":[],
-            "variables": {"data_entry":1, 
+            "variables": {"data_entry":1,
                 "cmd_21":14,
                 "cmd_22":10,
             },"geolocation": "POINT(0 0)"}),
     #5 Maternal deaths and 2 neonatal *investigated*
     Data(**{"uuid":"7","type":"case","date":"2016-12-24T00:00:00","country":1,"region":2,"district":5,"clinic":9,"clinic_type":"test","links":{},"tags":[],
-            "variables": {"data_entry":1, 
+            "variables": {"data_entry":1,
                 "cmd_21":5,
                 "cmd_22":2,
                 "ale_1":1
             },"geolocation": "POINT(0 0)"}),
     # # 1 maternal death and 1 neonatal investiaged in District Green
     Data(**{"uuid":"70","type":"case","date":"2016-12-24T00:00:00","country":1,"region":3,"district":6,"clinic":10,"clinic_type":"test","links":{},"tags":[],
-            "variables": {"data_entry":1, 
+            "variables": {"data_entry":1,
                 "cmd_21":1,
                 "cmd_22":1,
                 "ale_1":1
@@ -583,7 +583,7 @@ afro_report = [
     #Clinic B, District Blue, Region Major.
     #17 Maternal deaths and 17 neonatal NOT investigated
     Data(**{"uuid":"31","type":"case","date":"2016-10-24T00:00:00","country":1,"region":2,"district":4,"clinic":8,"clinic_type":"test","links":{},"tags":[],
-            "variables": {"data_entry":1, 
+            "variables": {"data_entry":1,
                 "cmd_21":17,
                 "cmd_22":17,
             },"geolocation": "POINT(0 0)"}),
@@ -592,7 +592,7 @@ afro_report = [
     #malaria map by type `mls_12`, `mls_24`, `mls_3`
     #clinic C in region major of population 750
     Data(**{"uuid":"32","type":"case","date":"2016-11-20T00:00:00","country":1,"region":2,"district":5,"clinic":9,"clinic_type":"test","links":{},"tags":[],
-            "variables": {"data_entry":1, 
+            "variables": {"data_entry":1,
                 "epi_1":7,
                 "epi_2":25,
                 "mls_12":14,
@@ -601,7 +601,7 @@ afro_report = [
             },"geolocation": "POINT(0 0)"}),
     #clinic D in region minor of population 250
     Data(**{"uuid":"33","type":"case","date":"2016-11-24T00:00:00","country":1,"region":3,"district":6,"clinic":10,"clinic_type":"test","links":{},"tags":[],
-            "variables": {"data_entry":1, 
+            "variables": {"data_entry":1,
                 "epi_1":25,
                 "epi_2":75,
                 "mls_12":4,
@@ -612,13 +612,13 @@ afro_report = [
     #Measles over 5 yo
     # 13 cases
     Data(**{"uuid":"34","type":"case","date":"2016-11-24T00:00:00","country":1,"region":3,"district":6,"clinic":10,"clinic_type":"test","links":{},"tags":[],
-            "variables": {"data_entry":1, 
+            "variables": {"data_entry":1,
                 "cmd_15":13,
                 "mor_13":5,
                 "age_3":1
             },"geolocation": "POINT(0 0)"}),
     Data(**{"uuid":"35","type":"case","date":"2016-11-11T00:00:00","country":1,"region":3,"district":6,"clinic":10,"clinic_type":"test","links":{},"tags":[],
-            "variables": {"data_entry":1, 
+            "variables": {"data_entry":1,
                 "cmd_15":7,
                 "age_5":5
             },"geolocation": "POINT(0 0)"}),
@@ -627,14 +627,14 @@ afro_report = [
     #It is from epi code 8
     # 5 cases in week in September of malnutrition in clinicD
     Data(**{"uuid":"36","type":"case","date":"2016-09-11T00:00:00","country":1,"region":3,"district":6,"clinic":10,"clinic_type":"test","links":{},"tags":[],
-            "variables": {"data_entry":1, 
+            "variables": {"data_entry":1,
                 "epi_8":5
             },"geolocation": "POINT(0 0)"}),
 
     #Table priority diseases cumulative information
     #Acute diarrhoea case from previous week (july) to alter cumulative
     Data(**{"uuid":"37","type":"case","date":"2016-07-22T00:00:00","country":1,"region":2,"district":5,"clinic":9,"clinic_type":"test","links":{},"tags":[],
-            "variables": {"data_entry":1, 
+            "variables": {"data_entry":1,
                 "cmd_1":80,
                 "mor_18":70,
             },"geolocation": "POINT(0 0)"}),

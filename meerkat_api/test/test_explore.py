@@ -24,7 +24,7 @@ class MeerkatAPITestCase(unittest.TestCase):
         db_util.insert_codes(meerkat_api.db.session)
         db_util.insert_locations(meerkat_api.db.session)
         db_util.insert_cases(meerkat_api.db.session, "public_health_report")
-        
+
     def tearDown(self):
         pass
 
@@ -68,12 +68,12 @@ class MeerkatAPITestCase(unittest.TestCase):
         self.assertEqual(sorted(list(locs.keys())), [7, 8, 10, 11])
         locs = explore.get_locations_by_level("clinic", 3)
         self.assertEqual(sorted(list(locs.keys())), [11])
-    
+
     def test_query_variable(self):
         date_start = datetime(2015, 1, 1)
         date_end = datetime(2015, 12, 31)
         rv = self.app.get(
-            '/query_variable/tot_1/gender/{}/{}'.format(date_start.isoformat(),date_end.isoformat()),           
+            '/query_variable/tot_1/gender/{}/{}'.format(date_start.isoformat(),date_end.isoformat()),
             headers=settings.header
         )
         self.assertEqual(rv.status_code, 200)
@@ -81,7 +81,7 @@ class MeerkatAPITestCase(unittest.TestCase):
         self.assertEqual(sorted(data.keys()),
                          sorted(["Female", "Male"]))
         self.assertEqual(data["Female"]["total"], 7)
-        self.assertEqual(data["Female"]["weeks"]["18"], 6)
+        self.assertEqual(data["Female"]["weeks"]["18"], 5)
         self.assertEqual(data["Female"]["weeks"]["22"], 1)
         self.assertEqual(data["Male"]["total"], 3)
         self.assertEqual(data["Male"]["weeks"]["18"], 3)
@@ -94,7 +94,7 @@ class MeerkatAPITestCase(unittest.TestCase):
         self.assertEqual(sorted(data.keys()),
                          sorted(["gen_2", "gen_1"]))
         self.assertEqual(data["gen_2"]["total"], 7)
-        self.assertEqual(data["gen_2"]["weeks"]["18"], 6)
+        self.assertEqual(data["gen_2"]["weeks"]["18"], 5)
         self.assertEqual(data["gen_2"]["weeks"]["22"], 1)
         self.assertEqual(data["gen_1"]["total"], 3)
         self.assertEqual(data["gen_1"]["weeks"]["18"], 3)
@@ -121,7 +121,7 @@ class MeerkatAPITestCase(unittest.TestCase):
 
         new_date_start = datetime(2014, 1, 1)
         rv = self.app.get(
-            '/query_variable/tot_1/gender/{}/{}?only_loc=3'.format(new_date_start.isoformat(),date_end.isoformat()), 
+            '/query_variable/tot_1/gender/{}/{}?only_loc=3'.format(new_date_start.isoformat(),date_end.isoformat()),
             headers=settings.header
         )
         self.assertEqual(rv.status_code, 200)
@@ -129,7 +129,7 @@ class MeerkatAPITestCase(unittest.TestCase):
         self.assertEqual(sorted(data["Female"]["weeks"].keys()),
                          sorted([str(i) for i in range(1, 107)]))
 
-        
+
     def test_query_variable_location(self):
         """Test with variable = location"""
         date_start = datetime(2015, 1, 1)
@@ -162,7 +162,7 @@ class MeerkatAPITestCase(unittest.TestCase):
         self.assertEqual(sorted(data.keys()),
                          sorted(["Region 1", "Region 2"]))
         self.assertEqual(data["Region 1"]["total"], 3)
-        self.assertEqual(data["Region 1"]["weeks"]["18"], 3)
+        self.assertEqual(data["Region 1"]["weeks"]["18"], 2)
         self.assertEqual(data["Region 2"]["total"], 4)
         self.assertEqual(data["Region 2"]["weeks"]["18"], 3)
         self.assertEqual(data["Region 2"]["weeks"]["22"], 1)
@@ -171,15 +171,15 @@ class MeerkatAPITestCase(unittest.TestCase):
             '/query_variable/gen_2/locations:clinic/{}/{}?only_loc=2'.format(
                 date_start.isoformat(),
                 date_end.isoformat()
-            ), 
+            ),
             headers=settings.header
         )
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))
- 
+
         self.assertEqual(sorted(data.keys()),
                          sorted(["Clinic 1", "Clinic 2", "Clinic 4"]))
-        
+
 
     def test_query_category(self):
         """test query category """
@@ -187,7 +187,7 @@ class MeerkatAPITestCase(unittest.TestCase):
         date_start = datetime(2015, 1, 1)
         date_end = datetime(2015, 12, 31)
         rv = self.app.get(
-            '/query_category/gender/pc/{}/{}'.format(date_start.isoformat(),date_end.isoformat()), 
+            '/query_category/gender/pc/{}/{}'.format(date_start.isoformat(),date_end.isoformat()),
             headers=settings.header
         )
         self.assertEqual(rv.status_code, 200)
@@ -223,7 +223,7 @@ class MeerkatAPITestCase(unittest.TestCase):
 
         # With use ids
         rv = self.app.get(
-            '/query_category/gender/pc/{}/{}?use_ids=1'.format(date_start.isoformat(),date_end.isoformat()),            
+            '/query_category/gender/pc/{}/{}?use_ids=1'.format(date_start.isoformat(),date_end.isoformat()),
             headers=settings.header
         )
         self.assertEqual(rv.status_code, 200)
@@ -274,7 +274,7 @@ class MeerkatAPITestCase(unittest.TestCase):
             '/query_category/locations:clinic/gender/{}/{}?use_ids=1&only_loc=3'.format(
                 date_start.isoformat(),
                 date_end.isoformat()
-            ), 
+            ),
             headers=settings.header
         )
         self.assertEqual(rv.status_code, 200)
