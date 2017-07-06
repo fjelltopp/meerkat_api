@@ -34,7 +34,7 @@ class MeerkatAPILocationTestCase(unittest.TestCase):
                          sorted(["1", "2", "3","4" ,"5" ,"6" ,"7" ,"8" ,"9" ,"10", "11"]))
 
         self.assertEqual(data["11"]["name"], "Clinic 5")
-        self.assertEqual(data["11"]["parent_location"], 6)
+        self.assertEqual(data["11"]["parent_location"], [6])
         self.assertEqual(data["5"]["name"], "District 2")
 
 
@@ -44,12 +44,12 @@ class MeerkatAPILocationTestCase(unittest.TestCase):
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(data["name"], "Clinic 5")
-        self.assertEqual(data["parent_location"], 6)
+        self.assertEqual(data["parent_location"], [6])
         rv = self.app.get('/location/7', headers=settings.header)
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(data["name"], "Clinic 1")
-        self.assertEqual(data["parent_location"], 4)
+        self.assertEqual(data["parent_location"], [4])
 
         
     def test_tot_clinics(self):

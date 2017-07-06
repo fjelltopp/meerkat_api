@@ -24,6 +24,7 @@ class MeerkatAPITestCase(unittest.TestCase):
         meerkat_api.app.config['TESTING'] = True
         meerkat_api.app.config['API_KEY'] = ""
         celery_app.conf.CELERY_ALWAYS_EAGER = True
+        celery_app.conf.CELERY_EAGER_PROPAGATES_EXCEPTIONS = True
         self.app = meerkat_api.app.test_client()
         for table in model.form_tables:
             meerkat_api.db.session.query(model.form_tables[table]).delete()
@@ -76,7 +77,7 @@ class MeerkatAPITestCase(unittest.TestCase):
         self.assertEqual(sorted(data["demo_case"]), sorted(keys))
 
     def test_export_data(self):
-        """ Test the export of the data table """
+        """ Test the export of the data """
         rv = self.app.get('/export/data', headers={**settings.header})
 
         self.assertEqual(rv.status_code, 200)

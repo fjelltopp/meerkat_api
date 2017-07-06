@@ -30,7 +30,7 @@ import traceback
 from functools import wraps
 from gettext import gettext
 import logging, json, operator
-from meerkat_api.util import get_children, is_child, fix_dates, rows_to_dicts, find_level
+from meerkat_api.util import get_children, is_child, fix_dates, rows_to_dicts, find_level, trim_locations
 from meerkat_api import db, app
 from meerkat_abacus.model import Data, Locations, AggregationVariables
 from meerkat_api.resources.completeness import Completeness, NonReporting
@@ -228,7 +228,7 @@ def get_latest_category(category, clinic, start_date, end_date):
 
     result = db.session.query(Data.variables).filter(
         or_(Data.variables.has_key(key) for key in keys),
-        Data.clinic == clinic,
+        Data.clinic.contains([clinic]),
         Data.date >= start_date,
         Data.date < end_date
             ).order_by(Data.date.desc()).first()
@@ -620,7 +620,7 @@ def create_ncd_report(location, start_date=None, end_date=None, params=['case'])
     locations, ldid, regions, districts, devices = all_location_data(db.session)
     v = Variables()
 
-
+    children = locations[1].children
     ages = v.get(age_category)
 
     #  Loop through diabetes and hypertension
@@ -640,10 +640,10 @@ def create_ncd_report(location, start_date=None, end_date=None, params=['case'])
             ret[disease]["complications"]["titles"].append(i[0])
         ret[disease]["complications"]["data"] = []
 
+        regions = [r for r in regions if r in children]
 
         #  Loop through each region, we add [1] to include the whole country
         for i, region in enumerate(sorted(regions) + [1]):
-
             d_id = diseases[disease]
             query_variable = QueryVariable()
 
@@ -1381,7 +1381,7 @@ class PublicHealth(Resource):
         for l in locs.values():
             if l.level == "clinic" and l.case_report == 0:
                 continue
-            if l.parent_location and int(l.parent_location) == int(location):
+            if l.parent_location and int(location) in l.parent_location:
                 num = query_sum(db, ["tot_1"],
                                 start_date,
                                 end_date_limit, l.id)["total"]
@@ -1730,7 +1730,7 @@ class CdPublicHealth(Resource):
         for l in locs.values():
             if l.level == "clinic" and l.case_report == 0:
                 continue
-            if l.parent_location and int(l.parent_location) == int(location):
+            if l.parent_location and int(location) in l.parent_location:
                 num = query_sum(db, ["prc_1"],
                                       start_date,
                                       end_date_limit, l.id)["total"]
@@ -2230,7 +2230,7 @@ class NcdPublicHealth(Resource):
         locs = get_locations(db.session)
         ret["data"]["reporting_sites"] = []
         for l in locs.values():
-            if l.parent_location and int(l.parent_location) == int(location):
+            if l.parent_location and int(location) in l.parent_location:
                 if l.level == "clinic" and l.case_report == 0:
                     continue
                 num = query_sum(db , ["prc_2"],
@@ -2426,7 +2426,7 @@ class RefugeePublicHealth(Resource):
                         male += clinic_data[age][gender]
             result = db.session.query(Data.variables).filter(
                 Data.variables.has_key("ref_14"),
-                Data.clinic == clinic,
+                Data.clinic.contains([clinic]),
                 Data.date >= start_date,
                 Data.date < end_date_limit
             ).order_by(Data.date.desc()).first()
@@ -2641,7 +2641,7 @@ class RefugeeDetail(Resource):
                         male += clinic_data[age][gender]
             result = db.session.query(Data.variables).filter(
                 Data.variables.has_key("ref_14"),
-                Data.clinic == clinic,
+                Data.clinic.contains([clinic]),
                 Data.date >= start_date,
                 Data.date < end_date_limit
             ).order_by(Data.date.desc()).first()
@@ -4197,7 +4197,7 @@ class EBSReport(Resource):
             Data.date >= start_date,
             Data.date < end_date_limit,
             or_(
-                loc == location for loc in (Data.country,
+                loc.contains([int(location)]) for loc in (Data.country,
                                                Data.region,
                                                Data.district,
                                                Data.clinic))).all()
@@ -4280,7 +4280,7 @@ class CTCReport(Resource):
         if int(location) not in locs:
             return None
         location_name = locs[int(location)]
-
+        fix_children = locs[int(location)].children
         regions = [loc for loc in locs.keys()
                    if locs[loc].level == "region"]
         districts = [loc for loc in locs.keys()
@@ -4420,17 +4420,18 @@ class CTCReport(Resource):
         clinic_data_list = []
 
         location_condtion = [
-                or_(loc == location for loc in (
+                or_(loc.contains([int(location)]) for loc in (
                     Data.country, Data.zone, Data.region, Data.district, Data.clinic))]
         conditions = location_condtion  + [Data.variables.has_key(cholera_var)]
-        query = db.session.query(Data.clinic, Data.date, Data.region,
-                                 Data.district,
+        query = db.session.query(Data.clinic.op("&")(fix_children)[1].label("clinic"),
+                                 Data.date,
+                                 Data.region.op("&")(fix_children)[1].label("region"),
+                                 Data.district.op("&")(fix_children)[1].label("district"),
                                  Data.variables,
                                  Data.categories).distinct(
                                     Data.clinic).filter(*conditions).order_by(
                                              Data.clinic).order_by(Data.date.desc())
 
-        
         latest_ctc = {}
         surveyed_clinics_map = []
         non_surveyed_clinics_map = []
@@ -4446,9 +4447,9 @@ class CTCReport(Resource):
         for current_zone in zones:
             for ctc in ctcs:
                 clinic_data = {"name": ctc.name}
-                district = locs[ctc.id].parent_location
-                region = locs[district].parent_location
-                zone = locs[region].parent_location
+                district = trim_locations(locs[ctc.id].parent_location, fix_children)
+                region = trim_locations(locs[district].parent_location, fix_children)
+                zone = trim_locations(locs[region].parent_location, fix_children)
                 if zone != current_zone:
                     continue
                 clinic_data["region"] = locs[region].name
@@ -4590,7 +4591,7 @@ class SCReport(Resource):
         if int(location) not in locs:
             return None
         location_name = locs[int(location)]
-
+        fix_children = locs[int(location)].children
         regions = [loc for loc in locs.keys()
                    if locs[loc].level == "region"]
         districts = [loc for loc in locs.keys()
@@ -4704,14 +4705,16 @@ class SCReport(Resource):
         clinic_data_list = []
 
         location_condtion = [
-                or_(loc == location for loc in (
+                or_(loc.contains([int(location)]) for loc in (
                     Data.country, Data.zone, Data.region, Data.district, Data.clinic))]
         conditions = location_condtion  + [Data.variables.has_key(nutrition_var)]
-        query = db.session.query(Data.clinic, Data.date, Data.region,
-                                 Data.district,
+        query = db.session.query(Data.clinic.op("&")(fix_children)[1].label("clinic"),
+                                 Data.date,
+                                 Data.region.op("&")(fix_children)[1].label("region"),
+                                 Data.district.op("&")(fix_children)[1].label("district"),
                                  Data.variables,
                                  Data.categories).distinct(
-                                    Data.clinic).filter(*conditions).order_by(
+                                     Data.clinic).filter(*conditions).order_by(
                                              Data.clinic).order_by(Data.date.desc())
 
         
@@ -4730,9 +4733,9 @@ class SCReport(Resource):
         for current_zone in zones:
             for sc in scs:
                 clinic_data = {"name": sc.name}
-                district = locs[sc.id].parent_location
-                region = locs[district].parent_location
-                zone = locs[region].parent_location
+                district = trim_locations(locs[sc.id].parent_location, fix_children)
+                region = trim_locations(locs[district].parent_location, fix_children)
+                zone = trim_locations(locs[region].parent_location, fix_children)
                 if zone != current_zone:
                     continue
                 clinic_data["region"] = locs[region].name

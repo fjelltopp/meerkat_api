@@ -35,6 +35,12 @@ import xlsxwriter
 import os
 base_folder = os.path.dirname(os.path.realpath(__file__))
 
+def trim_locations(locs, children):
+    inter = set(locs).intersection(set(children))
+    if inter:
+        return next(iter(inter))
+    return None
+
 @task
 def export_data(uuid, allowed_location, use_loc_ids=False):
     """
@@ -68,6 +74,7 @@ def export_data(uuid, allowed_location, use_loc_ids=False):
                   "district", "clinic", "clinic_type",
                   "geolocation", "date", "uuid"] + list(variables)
     dict_rows = []
+    children = locs[allowed_location].children + [allowed_location]
 
     filename = base_folder + "/exported_data/" + uuid + "/data"
     os.mkdir(base_folder + "/exported_data/" + uuid)
@@ -76,18 +83,21 @@ def export_data(uuid, allowed_location, use_loc_ids=False):
     writer.writeheader()
     results = session.query(Data).yield_per(500)
     i = 0
+
     for row in results:
         dict_row = dict(
             (col, getattr(row, col)) for col in row.__table__.columns.keys()
         )
-        if not is_child(allowed_location, dict_row["clinic"], locs):
+        if not is_child(allowed_location,
+                        trim_locations(dict_row["clinic"], children),
+                        locs):
             continue
 
         for l in ["country", "zone", "region", "district", "clinic"]:
             if dict_row[l]:
-                dict_row[l + "_id"] = dict_row[l]
-                dict_row[l] = locs[dict_row[l]].name
-
+                single_loc = trim_locations(dict_row[l], children)
+                dict_row[l + "_id"] = single_loc
+                dict_row[l] = locs[single_loc].name
         dict_row.update(dict_row.pop("variables"))
         dict_rows.append(dict_row)
         if i % 1000 == 0:
@@ -148,6 +158,7 @@ def export_category(uuid, form_name, category, download_name,
         
     locs = get_locations(session)
     print(uuid)
+    children = locs[allowed_location].children
     data_keys = []
     cat_variables = {}
     for r in res:
@@ -351,7 +362,8 @@ def export_category(uuid, form_name, category, download_name,
     # Prepare each row
     for r in results:
         list_row = ['']*len(return_keys)
-        if not is_child(allowed_location, r[0].clinic,  locs):
+        if not is_child(allowed_location, trim_locations(r[0].clinic, children),
+                        locs):
             continue
 
         dates = {}
@@ -388,14 +400,14 @@ def export_category(uuid, form_name, category, download_name,
                 else:
                     list_row[index] = None
             elif form_var == "clinic":
-                list_row[index] = locs[r[0].clinic].name
+                list_row[index] = locs[trim_locations(r[0].clinic, children)].name
             elif form_var == "region":
-                list_row[index] = locs[r[0].region].name
+                list_row[index] = locs[trim_locations(r[0].region, children)].name
             elif form_var == "zone":
-                list_row[index] = locs[r[0].zone].name
+                list_row[index] = locs[trim_locations(r[0].zone, children)].name
             elif form_var == "district":
                 if r[0].district:
-                    list_row[index] = locs[r[0].district].name
+                    list_row[index] = locs[trim_locations(r[0].district, children)].name
                 else:
                     list_row[index] = None
             elif "$year" in form_var:
@@ -583,6 +595,7 @@ def export_data_table(uuid, download_name,
         success=0,
         status=0
     )
+    children = locs[1].children + [1]
     session.add(status)
     session.commit()
     columns = []
@@ -623,7 +636,6 @@ def export_data_table(uuid, download_name,
 
     write_xls_row(return_keys, 0, xls_sheet)
     i = 0
-    print(location_conditions)
     for row in result:
         # Can write row immediately to xls file as memory is flushed after.
 
@@ -631,11 +643,12 @@ def export_data_table(uuid, download_name,
         location_condition = True
         for l in location_subs:
             if row_list[l]:
+                single_loc = trim_locations(row_list[l], children)
                 if location_conditions:
-                    if getattr(locs[row_list[l]],
+                    if getattr(locs[single_loc],
                                location_conditions[0][0]) != location_conditions[0][1]:
                         location_condition = False
-                row_list[l] = locs[row_list[l]].name
+                row_list[l] = locs[single_loc].name
         if location_condition:
             row_list = [x if x is not None else 0 for x in row_list]
             write_xls_row(row_list, i+1, xls_sheet)

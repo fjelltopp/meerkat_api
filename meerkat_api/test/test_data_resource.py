@@ -58,7 +58,7 @@ class MeerkatAPIDataTestCase(unittest.TestCase):
         rv = self.app.get('/aggregate/gen_2/5', headers=settings.header)
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(rv.status_code, 200)
-        self.assertEqual(data["value"], 1)
+        self.assertEqual(data["value"], 0)
 
         rv = self.app.get('/aggregate/gen_2/8', headers=settings.header)
         data = json.loads(rv.data.decode("utf-8"))

@@ -94,10 +94,10 @@ class QueryVariable(Resource):
             if "only_loc" in request.args:
                 only_loc = request.args["only_loc"]
             else:
-                only_loc = g.allowed_location
+                only_loc =g.allowed_location
         if not is_allowed_location(only_loc, g.allowed_location):
             return {}
-
+        only_loc = int(only_loc)
         start_date, end_date = fix_dates(start_date, end_date)
         year = start_date.year
         if "use_ids" in request.args.keys() or use_ids:
@@ -114,8 +114,8 @@ class QueryVariable(Resource):
             date_conditions = [Data.date >= start_date, Data.date < end_date]
 
         if "location" in variable:
-            location_id = variable.split(":")[1]
-            conditions = date_conditions + [or_(loc == location_id for loc in (
+            location_id = int(variable.split(":")[1])
+            conditions = date_conditions + [or_(loc.contains([location_id]) for loc in (
                 Data.country, Data.zone, Data.region, Data.district, Data.clinic))]
         else:
             conditions = [Data.variables.has_key(variable)] + date_conditions
@@ -125,7 +125,7 @@ class QueryVariable(Resource):
                     conditions.append(Data.variables.has_key(i))
 
             if only_loc:
-                conditions += [or_(loc == only_loc for loc in (
+                conditions += [or_(loc.contains([only_loc]) for loc in (
                     Data.country, Data.zone, Data.region, Data.district, Data.clinic))]
         epi_week_start = epi_year_start(year)
         # Determine which columns we want to extract from the Data table
@@ -144,7 +144,8 @@ class QueryVariable(Resource):
             )
         # We want to add the columns to extract based on the group_by value
         # in addition we create a names dict that translates ids to names
-
+        locations = get_locations(db.session)   
+        children = locations[only_loc].children
         if "locations" in group_by:
             # If we have locations in group_by we also specify the level at
             #  which we want to group the locations, clinic, district or region
@@ -157,7 +158,7 @@ class QueryVariable(Resource):
             ids = locations.keys()
             names = get_locations_by_level(level, only_loc)
 
-            columns_to_extract += [getattr(Data, level, None)]
+            columns_to_extract += [getattr(Data, level, None).op("&")(children)[1]]
             group_by_query = level
         else:
             if not group_by_variables:
@@ -235,7 +236,7 @@ class QueryCategory(Resource):
     
     def get(self, group_by1, group_by2, start_date=None,
             end_date=None, only_loc=None):
-
+        
         if not only_loc:
             if "only_loc" in request.args:
                 only_loc = request.args["only_loc"]
@@ -247,11 +248,13 @@ class QueryCategory(Resource):
         use_ids = False
         if "use_ids" in request.args.keys():
             use_ids = True
-
+        only_loc = int(only_loc)
+        locations = get_locations(db.session)   
+        children = locations[only_loc].children
         # Assemble conditions and columns to query
         conditions = []
         if only_loc:
-            conditions += [or_(loc == only_loc for loc in (
+            conditions += [or_(loc.contains([only_loc]) for loc in (
                 Data.country, Data.zone, Data.region, Data.district, Data.clinic))]
 
         columns_to_query = [Data.categories[group_by1].astext, Data.categories[group_by2].astext]
@@ -262,7 +265,7 @@ class QueryCategory(Resource):
                 level = "clinic"
             names1 = get_locations_by_level(level, only_loc)
             ids1 = list(names1.keys())
-            columns_to_query += [getattr(Data, level)]
+            columns_to_query += [getattr(Data, level).op("&")(children)[1]]
             names2 = get_variables(group_by2)
             ids2 = names2.keys()
             conditions += [or_(Data.variables.has_key(str(i)) for i in ids2)]            
@@ -274,7 +277,7 @@ class QueryCategory(Resource):
                 level = "clinic"
             names2 = get_locations_by_level(level, only_loc)
             ids2 = list(names2.keys())
-            columns_to_query += [getattr(Data, level)]
+            columns_to_query += [getattr(Data, level).op("&")(children)[1]]
             names1 = get_variables(group_by1)
             ids1 = names1.keys()
             conditions += [or_(Data.variables.has_key(str(i)) for i in ids1)]

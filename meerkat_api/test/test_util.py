@@ -13,14 +13,19 @@ class UtilTests(unittest.TestCase):
     def test_is_child(self):
         """Testing is_child"""
         locations = {
-            1: model.Locations(name="Demo"),
+            1: model.Locations(name="Demo",
+                               children=[2, 3, 4, 5, 6, 7]),
             2: model.Locations(name="Region 1",
-                               parent_location=1),
+                               parent_location=1,
+                               children=[4, 6]),
             3: model.Locations(name="Region 2",
+                               children=[5, 7],
                                parent_location=1),
             4: model.Locations(name="District 1",
+                               children=[6],
                                parent_location=2),
             5: model.Locations(name="District 2",
+                               children=[7],
                                parent_location=3),
             6: model.Locations(name="Clinic 1",
                                parent_location=4),
@@ -38,14 +43,20 @@ class UtilTests(unittest.TestCase):
     def test_get_children(self):
         """Test get_children"""
         locations = {
-            1: model.Locations(name="Demo"),
+            1: model.Locations(
+                name="Demo",
+                children=[2, 3, 4, 5, 6, 7]),
             2: model.Locations(name="Region 1",
+                               children=[4, 6],
                                parent_location=1),
             3: model.Locations(name="Region 2",
+                               children=[5, 7],
                                parent_location=1),
             4: model.Locations(name="District 1",
+                               children=[6],
                                parent_location=2),
             5: model.Locations(name="District 2",
+                               children=[7],
                                parent_location=3),
             6: model.Locations(name="Clinic 1",
                                parent_location=4,
@@ -54,6 +65,7 @@ class UtilTests(unittest.TestCase):
                                parent_location=5,
                                case_report=1),
             8: model.Locations(name="Region With No Clinics",
+                               children=[],
                                parent_location=1)
         }
         children = util.get_children(1, locations)

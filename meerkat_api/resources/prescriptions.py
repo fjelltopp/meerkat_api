@@ -102,13 +102,13 @@ class Prescriptions(Resource):
     """
     decorators = [authenticate]
 
-    def get(self, location, start_date = None, end_date = None):
+    def get(self, location, start_date=None, end_date=None):
 
         start_date, end_date = fix_dates(start_date, end_date)
 
         locs = get_locations(db.session)
 
-        clinics = get_children(parent = location, locations = locs, require_case_report = True)
+        clinics = get_children(parent=location, locations=locs, require_case_report=True)
 
         barcode_category = 'barcode_prescription'
 
@@ -116,7 +116,8 @@ class Prescriptions(Resource):
 
         date_conditions = [Data.date >= start_date, Data.date < end_date]
 
-        conditions = [Data.categories.has_key(barcode_category), Data.clinic.in_(clinics)]
+        conditions = [Data.categories.has_key(barcode_category),
+                      or_(Data.clinic.contains([clinic]) for clinic in clinics)]
         
         # Get first and last prescription for a clinic and medicine without time constraints
         first_last_prescr_query = db.session.query(Data.clinic,

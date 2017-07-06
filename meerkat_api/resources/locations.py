@@ -53,15 +53,21 @@ class LocationTree(Resource):
     def get(self, only_case_reports=True):
         locs = get_locations(db.session)
         loc = g.allowed_location
+        print(loc)
         ret = {loc: {"id": loc, "text": locs[loc].name, "nodes": []}}
         for l in sorted(locs.keys()):
-            if l >= loc and is_child(loc, l, locs):
+            if is_child(loc, l, locs):
                 if not only_case_reports or (locs[l].case_report == 1 or not locs[l].deviceid):
                     if is_child(l, loc, locs):
-                        ret.setdefault(locs[l].parent_location, {"nodes": []})
+                        for parent_loc in locs[l].parent_location or []:
+                            if is_child(loc, parent_loc, locs):
+                                ret.setdefault(parent_loc, {"nodes": []})
                     ret.setdefault(l, {"nodes": []})
                     ret[l].update({"id": l, "text": locs[l].name})
-                    ret[locs[l].parent_location]["nodes"].append(ret[l])
+                    for parent_loc in locs[l].parent_location or []:
+                        if is_child(loc, parent_loc, locs):
+                            ret.setdefault(parent_loc, {"nodes": []})
+                            ret[parent_loc]["nodes"].append(ret[l])
         return jsonify(ret[loc])
 
 

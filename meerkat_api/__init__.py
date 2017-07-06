@@ -27,8 +27,8 @@ if os.environ.get("MEERKAT_API_DB_SETTINGS"):
         "MEERKAT_API_DB_URL"
     )
 
-
 db = SQLAlchemy(app)
+
 api = Api(app)
 if app.config["SENTRY_DNS"]:
     sentry = Sentry(app, dsn=app.config["SENTRY_DNS"])

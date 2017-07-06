@@ -7,7 +7,7 @@ from dateutil.parser import parse
 from sqlalchemy import extract, func, Integer, or_
 from datetime import datetime, timedelta
 import pandas as pd
-
+from sqlalchemy.dialects import postgresql
 from meerkat_api import db, app
 from meerkat_api.resources.epi_week import EpiWeek, epi_week_start, epi_year_start
 from meerkat_abacus.model import Data, Locations
@@ -17,6 +17,7 @@ from meerkat_api.authentication import authenticate, is_allowed_location
 from meerkat_abacus.util import get_locations
 from pandas.tseries.offsets import CustomBusinessDay
 
+import time
 
 def series_to_json_dict(series):
     """
@@ -58,6 +59,7 @@ class Completeness(Resource):
 
     def get(self, variable, location, number_per_week, exclude=None,
             weekend=None, start_week=1, end_date=None, non_reporting_variable=None, sublevel=None):
+
         if sublevel == None:
             sublevel = request.args.get('sublevel')
 
@@ -90,9 +92,13 @@ class Completeness(Resource):
                 sublevels["country"] = "zone"
                 sublevels["zone"] = "region"
             sublevel = sublevels[location_type]
+        root_children = locs[location].children
+        if not root_children:
+            root_children = []
+        root_children = [location] + root_children
         conditions = [Data.variables.has_key(variable), or_(
-            loc == location
-            for loc in (Data.country, Data.zone, Data.region, Data.district, Data.clinic)),
+            loc.contains([location])
+            for loc in (Data.country , Data.zone, Data.region, Data.district, Data.clinic)),
                       ]
         if exclude and exclude != "None":
             conditions.append(or_(Data.case_type is not None,
@@ -100,9 +106,11 @@ class Completeness(Resource):
         if "tag" in request.args.keys():
             conditions.append(Data.tags.has_key(request.args["tag"]))
         # get the data
-
         data = pd.read_sql(
-            db.session.query(Data.region, Data.zone, Data.district, Data.clinic,
+            db.session.query(Data.region.op("&")(root_children)[1].label("region"),
+                             Data.zone.op("&")(root_children)[1].label("zone"),
+                             Data.district.op("&")(root_children)[1].label("district"),
+                             Data.clinic.op("&")(root_children)[1].label("clinic"),
                              Data.date,
                              Data.variables[variable].label(variable)).filter(
                                  *conditions).statement, db.session.bind)
@@ -131,7 +139,6 @@ class Completeness(Resource):
         # We drop duplicates so each clinic can only have one record per day
         data = data.drop_duplicates(
             subset=["region", "district", "clinic", "date", variable])
-
         if sublevel:
             # We first create an index with sublevel, clinic, dates
             # Where dates are the dates after the clinic started reporting
@@ -158,14 +165,12 @@ class Completeness(Resource):
             ]).sum().reindex(new_index)[variable].fillna(0).sort_index()
 
             # Drop clinics with no submissions
-
             clinic_sums = completeness.groupby(level=1).sum()
             zero_clinics = clinic_sums[clinic_sums == 0].index
             nr = NonReporting()
             non_reporting_clinics = nr.get(non_reporting_variable, location)["clinics"]
             completeness = completeness.drop(non_reporting_clinics, level=1)
             completeness.reindex()
-
             # We only want to count a maximum of number per week per week
             completeness[completeness > number_per_week] = number_per_week
 
@@ -304,7 +309,9 @@ class NonReporting(Resource):
             num_weeks = 0
         locations = get_locations(db.session)
         location = int(location)
-        clinics = get_children(location, locations, require_case_report=require_case_report)
+        children = locations[location].children
+        if not children:
+            children = []
         conditions = [Data.variables.has_key(variable)]
         if num_weeks:
             ew = EpiWeek()
@@ -316,7 +323,7 @@ class NonReporting(Resource):
             conditions.append(Data.date >= start_date)
             conditions.append(Data.date < end_date)
         
-        query = db.session.query(Data.clinic).filter(*conditions)
+        query = db.session.query(Data.clinic.op("&")(children)[1]).filter(*conditions)
         clinics_with_variable = [r[0] for r in query.all()]
         non_reporting_clinics = []
 
@@ -325,16 +332,17 @@ class NonReporting(Resource):
                 include = include.split(",")
             else:
                 include = [include]
-        for clinic in clinics:
-            if clinic not in clinics_with_variable:
-                if include:
-                    if locations[clinic].clinic_type in include:
+        for clinic in children:
+            if locations[clinic].level == "clinic":
+                if clinic not in clinics_with_variable:
+                    if include:
+                        if locations[clinic].clinic_type in include:
+                            non_reporting_clinics.append(clinic)
+                    elif exclude:
+                        if locations[clinic].case_type != exclude:
+                            non_reporting_clinics.append(clinic)
+                    else:
                         non_reporting_clinics.append(clinic)
-                elif exclude:
-                    if locations[clinic].case_type != exclude:
-                        non_reporting_clinics.append(clinic)
-                else:
-                    non_reporting_clinics.append(clinic)
         return {"clinics": non_reporting_clinics}
 
 

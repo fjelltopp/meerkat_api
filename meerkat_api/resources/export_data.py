@@ -13,8 +13,8 @@ from meerkat_abacus.task_queue import export_form
 from meerkat_abacus.task_queue import export_category, export_data, export_data_table
 
 # Uncomment to run export data during request
-# from meerkat_abacus.task_queue import app as celery_app
-# celery_app.conf.CELERY_ALWAYS_EAGER = True
+from meerkat_abacus.task_queue import app as celery_app
+celery_app.conf.CELERY_ALWAYS_EAGER = True
 
 
 class Forms(Resource):

@@ -5,10 +5,12 @@ from meerkat_api.resources.variables import Variables
 from sqlalchemy.sql import text, distinct
 from datetime import datetime
 from meerkat_abacus.model import Data
+from meerkat_api.util import is_child
+from meerkat_abacus.util import get_locations
 from sqlalchemy import or_, func, extract
 from meerkat_api.resources.epi_week import epi_year_start
 
-qu = "SELECT sum(CAST(data.variables ->> :variables_1 AS FLOAT)) AS sum_1 extra_columns FROM data WHERE where_clause AND data.date >= :date_1 AND data.date < :date_2 AND (data.country = :country_1 OR data.zone = :zone_1 OR data.region = :region_1 OR data.district = :district_1 OR data.clinic = :clinic_1) group_by_clause"
+qu = "SELECT sum(CAST(data.variables ->> :variables_1 AS FLOAT)) AS sum_1 extra_columns FROM data WHERE where_clause AND data.date >= :date_1 AND data.date < :date_2 AND (data.country @> ARRAY[:country_1] OR   data.zone @> ARRAY[:zone_1]  OR data.region @> ARRAY[:region_1] OR data.district @> ARRAY[:district_1]  OR data.clinic @> ARRAY[:clinic_1] ) group_by_clause"
 
 
 def query_sum(db, var_ids, start_date, end_date, location,
@@ -40,6 +42,7 @@ def query_sum(db, var_ids, start_date, end_date, location,
     if allowed_location == 1:
         if g:
             allowed_location = g.allowed_location
+    location = int(location)
     if not is_allowed_location(location, allowed_location):
         return {"weeks": [], "total": 0}
     if not isinstance(var_ids, list):
@@ -59,13 +62,14 @@ def query_sum(db, var_ids, start_date, end_date, location,
     group_by = []
     where_clauses = []
     ret = {"total": 0}
+    locs = get_locations(db.session)
 
     for i, var_id in enumerate(var_ids):
         where_clauses.append("(data.variables ? :variables_{})".format(i + 2))
         variables["variables_" + str(i + 2)] = var_id
 
     if weeks:
-        extra_columns = ", floor(EXTRACT(days FROM data.date - :date_3) / 7 + 1) AS week"
+        extra_columns = ", epi_week AS week"
         year = start_date.year
         epi_week_start = epi_year_start(year)
         variables["date_3"] = epi_week_start
@@ -98,22 +102,27 @@ def query_sum(db, var_ids, start_date, end_date, location,
 
     conn = db.engine.connect()
     result = conn.execute(query, **variables).fetchall()
+    print(result)
     if result:
         if level:
             if weeks:
                 for r in result:
                     week = int(r[1])
-                    ret[level].setdefault(r[2], {"total": 0, "weeks": {}})
-                    ret[level][r[2]]["weeks"][week] = r[0]
-                    ret[level][r[2]]["total"] += r[0]
-                    ret["weeks"].setdefault(week, 0)
-                    ret["weeks"][week] += r[0]
-                    ret["total"] += r[0]
+                    for loc in r[2]:
+                        if is_child(location, loc, locs):
+                            ret[level].setdefault(loc, {"total": 0, "weeks": {}})
+                            ret[level][loc]["weeks"][week] = r[0]
+                            ret[level][loc]["total"] += r[0]
+                            ret["weeks"].setdefault(week, 0)
+                            ret["weeks"][week] += r[0]
+                            ret["total"] += r[0]
             else:
                 for r in result:
                     if r[1]:
-                        ret[level][r[1]] = r[0]
-                        ret["total"] += r[0]
+                        for loc in r[1]:
+                            if is_child(location, loc, locs):
+                                ret[level][loc] = r[0]
+                                ret["total"] += r[0]
         elif group_by_category:
             if weeks:
                 for r in result:
@@ -177,8 +186,14 @@ def latest_query(db, var_id, identifier_id, start_date, end_date,
             allowed_location = g.allowed_location
     if not is_allowed_location(location, allowed_location):
         return {}
+
+    locs = get_locations(db.session)
+    location = int(location)
+    children = locs[location].children
+    if not children:
+        children = []
     location_condtion = [
-                or_(loc == location for loc in (
+                or_(loc.contains([int(location)]) for loc in (
                     Data.country, Data.zone, Data.region, Data.district, Data.clinic))]
     if date_variable:
         date_conditions = [func.to_date(
@@ -194,7 +209,9 @@ def latest_query(db, var_id, identifier_id, start_date, end_date,
         epi_week_start = epi_year_start(year)
         if date_variable:
             c = func.floor(
-                extract('days', func.to_date(Data.variables[date_variable].astext, "YYYY-MM-DDTHH-MI-SS") -
+                extract('days',
+                        func.to_date(Data.variables[date_variable].astext,
+                                     "YYYY-MM-DDTHH-MI-SS") -
                         epi_week_start) / 7 + 1
             ).label("week")
         else:
@@ -203,17 +220,21 @@ def latest_query(db, var_id, identifier_id, start_date, end_date,
                             epi_week_start) / 7 + 1
                 ).label("week")
         # This query selects that latest record for each clinic for each week
-        # that has the variable identifier_id   
-        query = db.session.query(Data.clinic, c, Data.date, Data.region,
-                                 Data.district, Data.variables).distinct(
-                                     Data.clinic, c).filter(*conditions).order_by(
-                                             Data.clinic).order_by(c).order_by(Data.date.desc())
+        # that has the variable identifier_id
+        query = db.session.query(
+            Data.clinic.op("&")(children)[1].label("clinic"),
+            c, Data.date, Data.region.op("&")(children)[1].label("region"),
+            Data.zone.op("&")(children)[1].label("zone"),
+            Data.district.op("&")(children)[1].label("district"),
+            Data.variables).distinct(
+                Data.clinic, c).filter(*conditions).order_by(
+                    Data.clinic).order_by(c).order_by(Data.date.desc())
         ret = {"total": 0,
                "weeks": {},
                "district": {},
                "clinic": {},
+               "zone": {},
                "region": {}}
-
         for r in query:
             val = r.variables.get(var_id, 0)
             ret["total"] += val
@@ -240,15 +261,20 @@ def latest_query(db, var_id, identifier_id, start_date, end_date,
     else:
         # This query selects that latest record for each clinic
         # that has the variable identifier_id
-        query = db.session.query(Data.clinic, Data.date, Data.region,
-                                 Data.district,
-                                 Data.variables).distinct(
-                                    Data.clinic).filter(*conditions).order_by(
-                                        Data.clinic).order_by(Data.date.desc())
+        query = db.session.query(
+            Data.clinic.op("&")(children)[1].label("clinic"),
+            Data.region.op("&")(children)[1].label("region"),
+            Data.zone.op("&")(children)[1].label("zone"),
+            Data.district.op("&")(children)[1].label("district"),
+            Data.date,
+            Data.variables).distinct(
+                Data.clinic).filter(*conditions).order_by(
+                    Data.clinic).order_by(Data.date.desc())
 
         ret = {"total": 0,
                "clinic": {},
                "district": {},
+               "zone": {},
                "region": {}}
         for r in query:
             val = r.variables.get(var_id, 0)

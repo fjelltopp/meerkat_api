@@ -276,8 +276,10 @@ class AggregateLatestLevel(Resource):
         )
         ret = {}
         locs = get_locations(db.session)
-        if result: 
+        if result:
             for r in result[level]:
+                print("r", r, level)
+                print(result)
                 ret[locs[r].name] = {"total": result[level][r]["total"],
                                      "weeks": result[level][r]["weeks"],
                                      "id": r}
@@ -305,9 +307,11 @@ class Records(Resource):
             
         results = db.session.query(Data).filter(
             Data.variables.has_key(str(variable)), or_(
-                loc == location_id for loc in (Data.country,
-                                               Data.region,
-                                               Data.district,
-                                               Data.clinic))).all()
+                loc.contains([int(location_id)]) for loc in (
+                    Data.country,
+                    Data.region,
+                    Data.district,
+                    Data.zone,
+                    Data.clinic))).all()
 
         return jsonify({"records": rows_to_dicts(results)})

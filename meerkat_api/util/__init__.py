@@ -25,6 +25,30 @@ def series_to_json_dict(series):
         return {}
 
 
+def trim_data(data, root):
+    """ Trims the locations for a data element so that only the locations
+    that are under the current root will remain. 
+    """
+    for loc_type in ["country", "zone", "region", "district", "clinic"]:
+        loc = getattr(data, loc_type)
+        to_trim = []
+        children = root.children
+        if not children:
+            children = []
+        if not loc:
+            return data
+        for l in loc:
+            if l not in children:
+                to_trim.append(l)
+        loc = [l for l in loc if l not in to_trim]
+    return data
+
+def trim_locations(locs, children):
+    inter = set(locs).intersection(set(children))
+    if inter:
+        return next(iter(inter))
+    return None
+
 def fix_dates(start_date, end_date):
     """
     We parse the start and end date and remove any timezone information

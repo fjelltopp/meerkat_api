@@ -73,8 +73,7 @@ class DataQueryTests(unittest.TestCase):
                                         end_date, 3, level="district")
         self.assertEqual(result["total"], 4)
         self.assertIn("district", result.keys())
-        self.assertEqual(result["district"][6], 3)
-        self.assertEqual(result["district"][5], 1)
+        self.assertEqual(result["district"][6], 4)
 
     def test_query_sum_category(self):
         start_date = datetime(2015, 1, 1)

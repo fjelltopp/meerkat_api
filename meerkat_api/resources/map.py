@@ -10,6 +10,7 @@ from datetime import datetime
 from geoalchemy2.shape import to_shape
 import shapely.geometry
 from meerkat_api.util import is_child, fix_dates
+from meerkat_abacus.util import get_locations
 from meerkat_api import db, app
 from meerkat_abacus import model
 from meerkat_abacus.model import Data, Locations
@@ -85,17 +86,21 @@ class MapVariable(Resource):
             allowed_location = g.allowed_location
         if not is_allowed_location(location, allowed_location):
             return {}
+
+        locations = get_locations(db.session)
+        
+        children = locations[location].children
         vi = str(variable_id)
         results = db.session.query(
             func.sum(Data.variables[vi].astext.cast(Float)).label('value'),
             Data.geolocation,
-            Data.clinic
+            Data.clinic.op("&")(children)[1]
         ).filter(
             Data.variables.has_key(variable_id),
             Data.date >= start_date,
             Data.date < end_date,
             or_(
-                loc == location for loc in (Data.country,
+                loc.contains([location]) for loc in (Data.country,
                                             Data.region,
                                             Data.district,
                                             Data.clinic)

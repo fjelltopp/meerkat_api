@@ -136,7 +136,6 @@ class MeerkatAPITestCase(unittest.TestCase):
         meerkat_api.app.config['TESTING'] = True
         meerkat_api.app.config['API_KEY'] = ""
         celery_app.conf.CELERY_ALWAYS_EAGER = True
-
         # manage.set_up_everything(False, False, 500)
         db_util.insert_codes(meerkat_api.db.session)
         db_util.insert_locations(meerkat_api.db.session)
@@ -166,8 +165,8 @@ class MeerkatAPITestCase(unittest.TestCase):
         db_util.insert_cases(meerkat_api.db.session, "mental_health",
                              delete=False)
         self.app = meerkat_api.app.test_client()
-        self.locations = {1: {"name": "Demo"}}
-        self.variables = {1: {"name": "Total"}}
+        #self.locations = {1: {"name": "Demo"}}
+        #self.variables = {1: {"name": "Total"}}
 
     def tearDown(self):
         pass

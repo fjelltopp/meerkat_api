@@ -4,7 +4,7 @@ Data resource for getting Alert data
 from flask_restful import Resource
 from flask import jsonify, request, current_app, g
 from sqlalchemy import or_
-from meerkat_api.util import row_to_dict, rows_to_dicts, get_children
+from meerkat_api.util import row_to_dict, rows_to_dicts, get_children, trim_data
 from meerkat_api import db
 from meerkat_abacus import model
 from meerkat_abacus.util import get_locations
@@ -93,13 +93,13 @@ def get_alerts(args, allowed_location=1):
     if "location" in args.keys():
         if not is_allowed_location(args["location"], allowed_location):
             return {}
-        cond = or_(loc == args["location"] for loc in (
+        cond = or_(loc.contains([int(args["location"])]) for loc in (
             model.Data.country,
             model.Data.zone,
             model.Data.region,
             model.Data.district,
             model.Data.clinic))
-        disregarded_cond = or_(loc == args["location"] for loc in (
+        disregarded_cond = or_(loc.contains([int(args["location"])]) for loc in (
             model.DisregardedData.country,
             model.DisregardedData.zone,
             model.DisregardedData.region,
@@ -109,13 +109,13 @@ def get_alerts(args, allowed_location=1):
         conditions.append(cond)
         disregarded_conditions.append(disregarded_cond)
     else:
-        cond = or_(loc == allowed_location for loc in (
+        cond = or_(loc.contains([allowed_location]) for loc in (
             model.Data.country,
             model.Data.zone,
             model.Data.region,
             model.Data.district,
             model.Data.clinic))
-        disregarded_cond = or_(loc == allowed_location for loc in (
+        disregarded_cond = or_(loc.contains([allowed_location]) for loc in (
             model.DisregardedData.country,
             model.DisregardedData.zone,
             model.DisregardedData.region,
@@ -137,6 +137,11 @@ def get_alerts(args, allowed_location=1):
     results += db.session.query(model.DisregardedData).filter(
         *disregarded_conditions).all()
 
+    root = db.session.query(model.Locations).filter(model.Locations.id == allowed_location).first()
+    
+    for r in results:
+        r = trim_data(r, root)
+    
     return rows_to_dicts(results)
 
 
