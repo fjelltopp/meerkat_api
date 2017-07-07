@@ -16,6 +16,7 @@ import io
 import csv
 import os
 import resource
+
 # from werkzeug.contrib.profiler import ProfilerMiddleware
 # Create the Flask app
 app = Flask(__name__)
@@ -33,8 +34,15 @@ if app.config["SENTRY_DNS"]:
     sentry = Sentry(app, dsn=app.config["SENTRY_DNS"])
 app.wsgi_app = ProxyFix(app.wsgi_app)
 
-# app.wsgi_app = ProfilerMiddleware(app.wsgi_app, restrictions=(30,))
 
+# Set the default values of the g object
+class FlaskG(app.app_ctx_globals_class):
+    allowed_location = 1
+
+app.app_ctx_globals_class = FlaskG
+
+
+# app.wsgi_app = ProfilerMiddleware(app.wsgi_app, restrictions=(30,))
 class CustomJSONEncoder(JSONEncoder):
     """
     Custom JSON encoder to encode all datetime objects as ISO fromat
@@ -134,9 +142,9 @@ def output_xls(data, code, headers=None):
 
 
 # Importing all the resources here to avoid circular imports
-from meerkat_api.resources.locations import Location, Locations, LocationTree, TotClinics
+from meerkat_api.resources.locations import Location, Locations, LocationTree, TotClinics, DeviceID
 from meerkat_api.resources.variables import Variables, Variable
-from meerkat_api.resources.data import Aggregate, AggregateYear, AggregateCategorySum
+from meerkat_api.resources.data import Aggregate, AggregateYear, AggregateCategorySum, AggregateLatest
 from meerkat_api.resources.data import AggregateLatestCategory, AggregateLatestYear, AggregateLatestLevel
 from meerkat_api.resources.data import AggregateCategory, Records
 from meerkat_api.resources.map import Clinics, MapVariable, IncidenceMap, Shapes
@@ -144,18 +152,20 @@ from meerkat_api.resources.alerts import Alert, Alerts, AggregateAlerts
 from meerkat_api.resources.explore import QueryVariable, QueryCategory
 from meerkat_api.resources.epi_week import EpiWeek, EpiWeekStart
 from meerkat_api.resources.completeness import Completeness, NonReporting
+from meerkat_api.resources.prescriptions import Prescriptions
 from meerkat_api.resources.reports import PublicHealth, CdReport, \
     CdPublicHealth, CdPublicHealthMad, CdPublicHealthSom, NcdPublicHealth, \
     RefugeePublicHealth, RefugeeCd, RefugeeDetail, Pip, \
     WeeklyEpiMonitoring, Malaria, VaccinationReport, AFROBulletin,\
     NcdReport, NcdReportNewVisits, NcdReportReturnVisits, PlagueReport, \
-    EBSReport, MhReport, CTCReport
+    EBSReport, MhReport, CTCReport, SCReport
 
 from meerkat_api.resources.frontpage import KeyIndicators, TotMap, NumAlerts, ConsultationMap, RefugeePage, NumClinics
-from meerkat_api.resources.export_data import ExportData, ExportForm, Forms, ExportCategory, GetCSVDownload, GetXLSDownload, GetStatus
+from meerkat_api.resources.export_data import Forms, ExportCategory, GetCSVDownload, GetXLSDownload, GetStatus, ExportDataTable, ExportData, ExportForm
 from meerkat_api.resources.incidence import IncidenceRate, WeeklyIncidenceRate
 from meerkat_api.resources.indicators import Indicators
 from meerkat_api.resources.devices import Devices
+
 #from meerkat_api.resources.links import Link, Links
 
 # All urls
@@ -165,11 +175,16 @@ api.add_resource(EpiWeek, "/epi_week",
 api.add_resource(EpiWeekStart, "/epi_week_start/<year>/<epi_week>")
 
 # Frontpage
-api.add_resource(KeyIndicators, "/key_indicators")
-api.add_resource(TotMap, "/tot_map")
-api.add_resource(ConsultationMap, "/consultation_map")
-api.add_resource(NumAlerts, "/num_alerts")
-api.add_resource(NumClinics, "/num_clinics")
+api.add_resource(KeyIndicators, "/key_indicators",
+                 "/key_indicators/<int:location>")
+api.add_resource(TotMap, "/tot_map",
+                 "/tot_map/<int:location>")
+api.add_resource(ConsultationMap, "/consultation_map",
+                 "/consultation_map/<int:location>")
+api.add_resource(NumAlerts, "/num_alerts",
+                 "/num_alerts/<int:location>")
+api.add_resource(NumClinics, "/num_clinics",
+                 "/num_clinics/<int:location>")
 api.add_resource(RefugeePage, "/refugee_page")
 
 # Export data
@@ -183,11 +198,14 @@ api.add_resource(Forms, "/export/forms")
 api.add_resource(ExportCategory,
                  "/export/category/<form_name>/<category>/<download_name>",
                  "/export/category/<form_name>/<category>/<download_name>/<data_type>")
+api.add_resource(ExportDataTable,
+                 "/export/data_table/<download_name>/<restrict_by>")
 
 # Location urls
 api.add_resource(Locations, "/locations")
 api.add_resource(LocationTree, "/locationtree")
 api.add_resource(Location, "/location/<location_id>")
+api.add_resource(DeviceID, "/device/<device_id>")
 api.add_resource(TotClinics, "/tot_clinics/<location_id>")
 
 # Variables
@@ -196,6 +214,7 @@ api.add_resource(Variable, "/variable/<variable_id>")
 
 # Aggregate Data
 api.add_resource(Aggregate, "/aggregate/<variable_id>/<location_id>")
+api.add_resource(AggregateLatest, "/aggregate_latest/<variable_id>/<identifier_id>/<location_id>")
 api.add_resource(AggregateAlerts, "/aggregate_alerts",
                  "/aggregate_alerts/<central_review>",
                  "/aggregate_alerts/<central_review>/<hard_date_limit>")
@@ -214,7 +233,7 @@ api.add_resource(AggregateLatestCategory,
                  "/aggregate_latest_category/<category>/<identifier_id>/<location_id>",
                  "/aggregate_latest_category/<category>/<identifier_id>/<location_id>/<weeks>",
                  "/aggregate_latest_category/<category>/<identifier_id>/<location_id>/<weeks>/<year>"
-                 
+
                 )
 
 api.add_resource(AggregateCategory,
@@ -233,7 +252,8 @@ api.add_resource(Alerts, "/alerts")
 
 # Map
 api.add_resource(Clinics, "/clinics/<location_id>",
-                 "/clinics/<location_id>/<clinic_type>")
+                 "/clinics/<location_id>/<clinic_type>",
+                 "/clinics/<location_id>/<clinic_type>/<require_case_report>")
 api.add_resource(Shapes, "/geo_shapes/<level>")
 
 api.add_resource(MapVariable, "/map/<variable_id>",
@@ -246,7 +266,9 @@ api.add_resource(IncidenceMap, "/incidence_map/<variable_id>")
 api.add_resource(
     IncidenceRate,
     "/incidence_rate/<variable_id>/<level>",
-    "/incidence_rate/<variable_id>/<level>/<mult_factor>"
+    "/incidence_rate/<variable_id>/<level>/<mult_factor>",
+    "/incidence_rate/<variable_id>/<level>/<mult_factor>/<year>",
+    "/incidence_rate/<variable_id>/<level>/<mult_factor>/<year>/<monthly>"
 )
 api.add_resource(
     WeeklyIncidenceRate,
@@ -336,6 +358,9 @@ api.add_resource(EBSReport, "/reports/ebs/<location>",
 api.add_resource(CTCReport, "/reports/ctc/<location>",
                  "/reports/ctc/<location>/<end_date>",
                  "/reports/ctc/<location>/<end_date>/<start_date>")
+api.add_resource(SCReport, "/reports/sc/<location>",
+                 "/reports/sc/<location>/<end_date>",
+                 "/reports/sc/<location>/<end_date>/<start_date>")
 
 # Misc
 api.add_resource(NonReporting, "/non_reporting/<variable>/<location>",
@@ -352,6 +377,9 @@ api.add_resource(Completeness,
                  "/completeness/<variable>/<location>/<number_per_week>/<start_week>/<exclude>/<weekend>/<non_reporting_variable>",
                  "/completeness/<variable>/<location>/<number_per_week>/<start_week>/<exclude>/<weekend>/<non_reporting_variable>/<end_date>")
 api.add_resource(Records, "/records/<variable>/<location_id>")
+api.add_resource(Prescriptions, "/prescriptions/<location>",
+                 "/prescriptions/<location>/<end_date>",
+                 "/prescriptions/<location>/<end_date>/<start_date>")
 
 api.add_resource(Indicators, "/indicators/<flags>/<variables>/<location>")
 

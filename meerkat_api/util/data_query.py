@@ -1,4 +1,6 @@
 from meerkat_api.resources.epi_week import epi_year_start
+from flask import g, current_app
+from meerkat_api.authentication import is_allowed_location
 from meerkat_api.resources.variables import Variables
 from sqlalchemy.sql import text, distinct
 from datetime import datetime
@@ -10,7 +12,7 @@ qu = "SELECT sum(CAST(data.variables ->> :variables_1 AS FLOAT)) AS sum_1 extra_
 
 
 def query_sum(db, var_ids, start_date, end_date, location,
-              group_by_category=None,
+              group_by_category=None, allowed_location=1,
               level=None, weeks=False, date_variable=None):
     """
     Calculates the total number of records with every variable in var_ids.
@@ -35,6 +37,11 @@ def query_sum(db, var_ids, start_date, end_date, location,
     
 
     """
+    if allowed_location == 1:
+        if g:
+            allowed_location = g.allowed_location
+    if not is_allowed_location(location, allowed_location):
+        return {"weeks": [], "total": 0}
     if not isinstance(var_ids, list):
         var_ids = [var_ids]
     variables = {
@@ -143,7 +150,8 @@ def query_sum(db, var_ids, start_date, end_date, location,
 
 
 def latest_query(db, var_id, identifier_id, start_date, end_date,
-                 location, level=None, weeks=False, date_variable=None, week_offset=0
+                 location, allowed_location=1, level=None,
+                 weeks=False, date_variable=None, week_offset=0
                  ):
     """
     To query register like data where we want to get the latest value.
@@ -164,6 +172,11 @@ def latest_query(db, var_id, identifier_id, start_date, end_date,
                      level was given there is a level key with the data
                      breakdown
     """
+    if allowed_location == 1:
+        if g:
+            allowed_location = g.allowed_location
+    if not is_allowed_location(location, allowed_location):
+        return {}
     location_condtion = [
                 or_(loc == location for loc in (
                     Data.country, Data.zone, Data.region, Data.district, Data.clinic))]

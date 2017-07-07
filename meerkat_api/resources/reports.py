@@ -18,14 +18,16 @@ Vaccination Report
 """
 
 from flask_restful import Resource
-from flask import request, jsonify
+from flask import request, jsonify, g
 from sqlalchemy import or_, func, desc, Integer
 from datetime import datetime, timedelta
 from dateutil import parser
 from sqlalchemy.sql import text
 import uuid
+import math
 import numpy as np
 import traceback
+from functools import wraps
 from gettext import gettext
 import logging, json, operator
 from meerkat_api.util import get_children, is_child, fix_dates, rows_to_dicts, find_level
@@ -43,8 +45,21 @@ from meerkat_api.util.data_query import query_sum, latest_query
 from meerkat_api.resources.incidence import IncidenceRate
 from meerkat_abacus.util import get_locations, all_location_data, get_regions_districts
 from meerkat_abacus import model
-from meerkat_api.authentication import authenticate
+from meerkat_api.authentication import authenticate, is_allowed_location
 from geoalchemy2.shape import to_shape
+
+
+def report_allowed_location(f):
+    """
+    Decorator to check allowed locations for reports
+    """
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        location = kwargs["location"]
+        if not is_allowed_location(location, g.allowed_location):
+            return {}
+        return f(*args, **kwargs)
+    return decorated
 
 def mean(input_list):
 
@@ -485,7 +500,7 @@ Returns:\n
 """
 class NcdReportNewVisits(Resource):
 
-    decorators = [authenticate]
+    decorators = [authenticate, report_allowed_location]
 
     def get(self, location, start_date=None, end_date=None):
         retval = create_ncd_report(location=location, start_date=start_date,\
@@ -494,7 +509,7 @@ class NcdReportNewVisits(Resource):
 
 class NcdReportReturnVisits(Resource):
 
-    decorators = [authenticate]
+    decorators = [authenticate, report_allowed_location]
 
     def get(self, location, start_date=None, end_date=None):
         retval = create_ncd_report(location=location, start_date=start_date,\
@@ -503,7 +518,7 @@ class NcdReportReturnVisits(Resource):
 
 class NcdReport(Resource):
 
-    decorators = [authenticate]
+    decorators = [authenticate, report_allowed_location]
 
     def get(self, location, start_date=None, end_date=None):
         retval = create_ncd_report(location=location, start_date=start_date,\
@@ -721,7 +736,7 @@ class MhReport(Resource):
     Returns:\n
        report_data\n
     """
-    decorators = [authenticate]
+    decorators = [authenticate, report_allowed_location]
     def get(self, location, start_date=None, end_date=None):
         start_date, end_date = fix_dates(start_date, end_date)
         end_date_limit = end_date + timedelta(days=1)
@@ -890,7 +905,7 @@ class CdReport(Resource):
     Returns:\n
        report_data\n
     """
-    decorators = [authenticate]
+    decorators = [authenticate, report_allowed_location]
 
     def get(self, location, start_date = None,end_date=None):
         start_date, end_date = fix_dates(start_date, end_date)
@@ -1012,7 +1027,7 @@ class Pip(Resource):
     Returns:\n
        report_data\n
     """
-    decorators = [authenticate]
+    decorators = [authenticate, report_allowed_location]
 
     def get(self, location, start_date=None, end_date=None):
 
@@ -1046,7 +1061,7 @@ class Pip(Resource):
         ret["data"]["project_region"] = location_name
 
         # We first find the number of SARI sentinel sites
-        sari_clinics = get_children(location, locs, clinic_type="SARI")
+        sari_clinics = get_children(location, locs, case_type="SARI")
         ret["data"]["num_clinic"] = len(sari_clinics)
         query_variable = QueryVariable()
 
@@ -1164,7 +1179,7 @@ class Pip(Resource):
         #  Reportin sites
         ret["data"]["reporting_sites"] = []
         for l in locs.values():
-            if is_child(location, l.id, locs) and l.case_report and l.clinic_type == "SARI":
+            if is_child(location, l.id, locs) and l.case_report and l.case_type == "SARI":
                 num = query_sum(db, [sari_code],
                                       start_date,
                                       end_date_limit, l.id)["total"]
@@ -1271,7 +1286,7 @@ class PublicHealth(Resource):
     Returns:\n
        report_data\n
     """
-    decorators = [authenticate]
+    decorators = [authenticate, report_allowed_location]
 
     def get(self, location, start_date=None, end_date=None):
         start_date, end_date = fix_dates(start_date, end_date)
@@ -1530,13 +1545,13 @@ class CdPublicHealth(Resource):
     Returns:\n
        report_data\n
     """
-    decorators = [authenticate]
+    decorators = [authenticate, report_allowed_location]
 
     def get(self, location, start_date=None, end_date=None):
 
         start_date, end_date = fix_dates(start_date, end_date)
         end_date_limit = end_date + timedelta(days=1)
-        ret={}
+        ret = {}
         # meta data
         ret["meta"] = {"uuid": str(uuid.uuid4()),
                        "project_id": 1,
@@ -1597,9 +1612,9 @@ class CdPublicHealth(Resource):
         ret["data"]["percent_cases_male"] = male / total_cases * 100
         ret["data"]["percent_cases_female"] = female / total_cases * 100
         less_5yo = query_variable.get("prc_1", "under_five",
-                                 end_date=end_date_limit.isoformat(),
-                                 start_date=start_date.isoformat(),
-                                 only_loc=location)
+                                      end_date=end_date_limit.isoformat(),
+                                      start_date=start_date.isoformat(),
+                                      only_loc=location)
         less_5yo = sum(less_5yo[k]["total"] for k in less_5yo.keys())
 
         ret["data"]["percent_cases_lt_5yo"] = less_5yo / total_cases * 100
@@ -1652,8 +1667,66 @@ class CdPublicHealth(Resource):
                       investigated_alerts / tot_alerts * 100)
         )
         # Reporting sites
+
+        ir = IncidenceRate()
+
+        all_cd_cases = "prc_1"
         locs = get_locations(db.session)
+        #level = "district"
+        #areas = [loc for loc in locs.keys()
+        #         if locs[loc].level == "district"]
+        #if location = "1":
+        level = "region"
+        areas = [loc for loc in locs.keys()
+                 if locs[loc].level == "region"]
+        incidence = ir.get(all_cd_cases, level, mult_factor=1000,
+                           start_date=start_date,
+                           end_date=end_date_limit)
+
+        max_number = 0
+        if len(incidence.values()) > 0:
+            max_number = max(incidence.values())
+        mult_factor = 1
+        if max_number < 1:
+            mult_factor = 10
+        in_map = {}
+        # Structure the data.
+        reporting_sites = []
+       
+        for area in areas:
+            if area not in incidence:
+                in_map[locs[area].name] = 0
+            else:
+                in_map[locs[area].name] = {
+                    'value': incidence[area] * mult_factor
+                }
+        ret["data"].update({
+            "incidence_map":  in_map
+        })
+
+        current_level = locs[int(location)].level
+        next_level = {"country": "region",
+                      "zone": "region",
+                      "region": "district",
+                      "district": "clinic",
+                      "clinic": None}[current_level]
+        if next_level in ["region", "district"]:
+            areas = [loc for loc in locs.keys()
+                     if locs[loc].level == next_level]
+            incidence = ir.get(all_cd_cases, next_level, mult_factor=1000,
+                               start_date=start_date,
+                               end_date=end_date_limit)
+            for area in areas:
+                if is_child(location, area, locs) and area in incidence:
+                    reporting_sites.append(make_dict(locs[area].name,
+                                                     incidence[area] * mult_factor,
+                                                     0))
+        reporting_sites.sort(key=lambda x: x["quantity"], reverse=True)
+        ret["data"]["reporting_sites_incidence"] = reporting_sites
         ret["data"]["reporting_sites"] = []
+        ret["data"]["incidence_area"] = next_level
+        ret["data"]["incidence_denominator"] = 1000 * mult_factor
+
         for l in locs.values():
             if l.level == "clinic" and l.case_report == 0:
                 continue
@@ -1665,9 +1738,8 @@ class CdPublicHealth(Resource):
                     make_dict(l.name,
                               num,
                               num / total_cases * 100))
-
         ret["data"]["reporting_sites"].sort(key=lambda x: x["quantity"], reverse=True)
-
+        
 
 
         # Demographics
@@ -1767,7 +1839,7 @@ class CdPublicHealthMad(Resource):
     Returns:\n
        report_data\n
     """
-    decorators = [authenticate]
+    decorators = [authenticate, report_allowed_location]
 
     def get(self, location, start_date=None, end_date=None):
 
@@ -1817,7 +1889,7 @@ class CdPublicHealthSom(Resource):
     Returns:\n
        report_data\n
     """
-    decorators = [authenticate]
+    decorators = [authenticate, report_allowed_location]
 
     def get(self, location, start_date=None, end_date=None):
 
@@ -1933,7 +2005,6 @@ class CdPublicHealthSom(Resource):
         time_reg = json.loads(Completeness().get('reg_5',
                                                     location, 4, end_date=end_date + timedelta(days=2)).data.decode('UTF-8'))
 
-        print(comp_reg)
         ret["data"]["public_health_indicators"].append(
             make_dict(gettext("Completeness"),
                       "-",
@@ -2031,7 +2102,7 @@ class NcdPublicHealth(Resource):
     Returns:\n
        report_data\n
     """
-    decorators = [authenticate]
+    decorators = [authenticate, report_allowed_location]
 
     def get(self, location, start_date=None, end_date=None):
 
@@ -2301,7 +2372,7 @@ class RefugeePublicHealth(Resource):
        report_data\n
     """
 
-    decorators = [authenticate]
+    decorators = [authenticate, report_allowed_location]
 
     def get(self, location, start_date=None, end_date=None):
         if not app.config["TESTING"] and "jor_refugee" not in model.form_tables:
@@ -2517,7 +2588,7 @@ class RefugeeDetail(Resource):
     Returns:\n
        report_data\n
     """
-    decorators = [authenticate]
+    decorators = [authenticate, report_allowed_location]
 
     def get(self, location, start_date=None, end_date=None):
         if not app.config["TESTING"] and "jor_refugee" not in model.form_tables:
@@ -2681,7 +2752,7 @@ class RefugeeCd(Resource):
        report_data\n
     """
 
-    decorators = [authenticate]
+    decorators = [authenticate, report_allowed_location]
 
     def get(self, location, start_date=None, end_date=None):
         if not app.config["TESTING"] and "jor_refugee" not in model.form_tables:
@@ -2804,7 +2875,7 @@ class WeeklyEpiMonitoring(Resource):
     Returns:\n
        report_data\n
     """
-    decorators = [authenticate]
+    decorators = [authenticate, report_allowed_location]
 
     def get(self, location, start_date=None, end_date=None):
         start_date, end_date = fix_dates(start_date, end_date)
@@ -2937,7 +3008,7 @@ class Malaria(Resource):
     Returns:\n
        report_data\n
     """
-    decorators = [authenticate]
+    decorators = [authenticate, report_allowed_location]
 
     def get(self, location, start_date=None, end_date=None):
 
@@ -3044,7 +3115,7 @@ class VaccinationReport(Resource):
     Returns:\n
        report_data\n
     """
-    decorators = [authenticate]
+    decorators = [authenticate, report_allowed_location]
 
     def get(self, location, start_date=None, end_date=None):
         start_date, end_date = fix_dates(start_date, end_date)
@@ -3256,7 +3327,7 @@ class AFROBulletin(Resource):
     Returns:\n
        report_data\n
     """
-    decorators = [authenticate]
+    decorators = [authenticate, report_allowed_location]
 
     def get(self, location, start_date=None, end_date=None):
         # Set default date values to last epi week.
@@ -3869,7 +3940,7 @@ class PlagueReport(Resource):
     Returns:\n
        report_data\n
     """
-    decorators = [authenticate]
+    decorators = [authenticate, report_allowed_location]
 
     def get(self, location, start_date=None, end_date=None):
 
@@ -4030,7 +4101,7 @@ class EBSReport(Resource):
     Returns:\n
        report_data\n
     """
-    decorators = [authenticate]
+    decorators = [authenticate, report_allowed_location]
 
     def get(self, location, start_date=None, end_date=None):
 
@@ -4176,7 +4247,7 @@ class CTCReport(Resource):
     Returns:\n
        report_data\n
     """
-    decorators = [authenticate]
+    decorators = [authenticate, report_allowed_location]
 
     def get(self, location, start_date=None, end_date=None):
 
@@ -4214,16 +4285,18 @@ class CTCReport(Resource):
                    if locs[loc].level == "region"]
         districts = [loc for loc in locs.keys()
                      if locs[loc].level == "district"]
+        zones = [loc for loc in locs.keys()
+                     if locs[loc].level == "zone"]
         ret["data"]["project_region"] = location_name.name
         ret["data"]["project_region_id"] = location
 
         children = get_children(location, locs, require_case_report=False)
 
         ctcs = db.session.query(Locations).filter(
-            Locations.clinic_type == "CTC").filter(
+            or_(Locations.clinic_type == "CTC", Locations.clinic_type == "CTU")).filter(
                 Locations.id.in_(children)
                 ).all()
-        
+
         ret["data"]["clinic_num"] = len(ctcs)
 
         cholera_cases_variable = 'ctc_cases'
@@ -4277,23 +4350,23 @@ class CTCReport(Resource):
         cholera_cases_map = {}
         cholera_cases_ret = latest_query(
             db,
-            cholera_cases_variable,
+            "ctc_cases_per_bed",
             cholera_var,
             start_date,
             end_date_limit,
             location,
             weeks=True
-        )["region"]
-        for region in cholera_cases_ret.keys():
-            cholera_cases_map[locs[region].name] = {
-                "value": cholera_cases_ret[region]["total"]
+        )["district"]
+        for district in cholera_cases_ret.keys():
+            cholera_cases_map[locs[district].name] = {
+                "value": cholera_cases_ret[district]["total"]
             }
         # fill the rest of the districts with zeroes
-        for region in regions:
-            if not locs[region].name in cholera_cases_map:
+        for district in districts:
+            if not locs[district].name in cholera_cases_map:
                 cholera_cases_map.update(
                     {
-                        locs[region].name: {
+                        locs[district].name: {
                             "value": 0
                         }
                     }
@@ -4339,12 +4412,7 @@ class CTCReport(Resource):
         else:
             max_cfr = np.max(clinic_cfr)
             min_cfr = np.min(clinic_cfr)
-        
-        overview_data["cfr"] = (average_cfr, min_cfr ,max_cfr )
-
-
-        
-        
+        overview_data["cfr"] = (average_cfr, min_cfr, max_cfr )
         ctc_lat_variables = var.get("ctc_lat_type")
         ret["variables"] = ctc_lat_variables
         ctc_rec_variables = var.get("ctc_recommendations")
@@ -4353,7 +4421,7 @@ class CTCReport(Resource):
 
         location_condtion = [
                 or_(loc == location for loc in (
-                    Data.country, Data.region, Data.district, Data.clinic))]
+                    Data.country, Data.zone, Data.region, Data.district, Data.clinic))]
         conditions = location_condtion  + [Data.variables.has_key(cholera_var)]
         query = db.session.query(Data.clinic, Data.date, Data.region,
                                  Data.district,
@@ -4370,83 +4438,92 @@ class CTCReport(Resource):
             latest_ctc[r.clinic] = r
         overview_data.setdefault("baseline", {"Y": 0, "N": 0})
         overview_data.setdefault("surveyed_last_week", {"Y": 0, "N": 0})
-        for ctc in ctcs:
-            clinic_data = {"name": ctc.name}
-            district = locs[ctc.id].parent_location
-            region = locs[district].parent_location
-            clinic_data["region"] = locs[region].name
-            clinic_data["district"] = locs[district].name
-            point = to_shape(locs[ctc.id].point_location)
-            clinic_data["gps"] = [point.y, point.x]
 
-         
-            overview_data["baseline"]["N"] += 1
-            overview_data["surveyed_last_week"]["N"] += 1
-            if ctc.id in latest_ctc:
-                overview_data["baseline"]["Y"] += 1
-                ctc_data = latest_ctc[ctc.id]
-                clinic_data["status"] = "Surveyed"
-                surveyed_clinics_map.append(clinic_data["gps"]+[ctc.name])
-                clinic_data["latest_data"] = ctc_data.variables
-                clinic_data["latest_categories"] = ctc_data.categories
-                clinic_data["latest_date"] = ctc_data.date.isoformat().split("T")[0]
+        ret["contents"] = []
+        ret["contents_offset"] = 3 #Here we HACK how many pages before first clinic page
+        pageNumber = 0
 
-                if ew.get(ctc_data.date.isoformat())["epi_week"] in [epi_week, epi_week - 1]:
-                    overview_data["surveyed_last_week"]["Y"] += 1
-                # clinic_data["cases_history"] = cholera_cases["clinic"].get(ctc.id, {})
-
-                # cholera_cases_o5_ctc = {"total": cholera_cases["clinic"][ctc.id]["total"] - cholera_cases_u5["clinic"][ctc.id]["total"]}
-                # cholera_cases_o5_ctc["weeks"] = {week: cholera_cases["clinic"][ctc.id]["weeks"][week] - cholera_cases_u5["clinic"][ctc.id]["weeks"].get(week, 0) for week in cholera_cases["clinic"][ctc.id]["weeks"].keys()}
-                
-            #    clinic_data["deaths_history"] = cholera_deaths["clinic"][ctc.id]
-             #   clinic_data["cases_u5_history"] = cholera_cases_u5["clinic"][ctc.id]
-              #  clinic_data["cases_o5_history"] =cholera_cases_o5_ctc
-                
-                # Deal with recomendations
-
-                recommendations = []
-                cases = ctc_data.variables.get("ctc_cases", 0)
-                if cases == 0:
-                    cases = 1
-                cfr = ctc_data.variables.get("ctc_deaths", 0) / cases * 100
-                cfr_threshold = 2
-                if cfr > cfr_threshold:
-                    recommendations.append("High CFR ratio of {} %".format(round(cfr, 1)))
-
-                if ctc_data.variables.get("ctc_beds", 0) < ctc_data.variables.get("ctc_patients", 0):
-                    recommendations.append("Not sufficent beds")
-                    
-                for code in ctc_rec_variables.keys():
-                    if ctc_data.variables.get(code, "missing") =="no":
-                        recommendations.append("No {}".format(ctc_rec_variables[code]["name"]))
-                        
-                clinic_data["recommendations"] = recommendations
+        for current_zone in zones:
+            for ctc in ctcs:
+                clinic_data = {"name": ctc.name}
+                district = locs[ctc.id].parent_location
+                region = locs[district].parent_location
+                zone = locs[region].parent_location
+                if zone != current_zone:
+                    continue
+                clinic_data["region"] = locs[region].name
+                clinic_data["district"] = locs[district].name
+                point = to_shape(locs[ctc.id].point_location)
+                clinic_data["gps"] = [point.y, point.x]
 
 
+                overview_data["baseline"]["N"] += 1
+                overview_data["surveyed_last_week"]["N"] += 1
+                if ctc.id in latest_ctc:
+                    overview_data["baseline"]["Y"] += 1
+                    ctc_data = latest_ctc[ctc.id]
+                    clinic_data["status"] = "Surveyed"
+                    ret["contents"].append((locs[zone].name + ": " + ctc.name,pageNumber))
+                    pageNumber = pageNumber + 1
+                    surveyed_clinics_map.append(clinic_data["gps"]+[ctc.name])
+                    clinic_data["latest_data"] = ctc_data.variables
+                    clinic_data["latest_categories"] = ctc_data.categories
+                    clinic_data["latest_date"] = ctc_data.date.isoformat().split("T")[0]
 
-                # Overview data
+                    if ew.get(ctc_data.date.isoformat())["epi_week"] in [epi_week, epi_week - 1]:
+                        overview_data["surveyed_last_week"]["Y"] += 1
+                    # clinic_data["cases_history"] = cholera_cases["clinic"].get(ctc.id, {})
 
-                for num_code in num_codes:
-                    overview_data.setdefault(num_code, 0)
-                    overview_data[num_code] += ctc_data.variables.get(num_code, 0)
-                for yes_code in yes_codes:
-                    overview_data.setdefault(yes_code, {"Y": 0, "N": 0})
-                    overview_data[yes_code]["N"] += 1
-                    if ctc_data.variables.get(yes_code, "missing") == "yes":
-                        overview_data[yes_code]["Y"] += 1
-                overview_data.setdefault("ctc_beds_sufficient", {"Y": 0, "N": 0})
-                overview_data["ctc_beds_sufficient"]["N"] += 1
-                if "ctc_beds_sufficient" in ctc_data.variables:
-                    overview_data["ctc_beds_sufficient"]["Y"] += 1
+                    # cholera_cases_o5_ctc = {"total": cholera_cases["clinic"][ctc.id]["total"] - cholera_cases_u5["clinic"][ctc.id]["total"]}
+                    # cholera_cases_o5_ctc["weeks"] = {week: cholera_cases["clinic"][ctc.id]["weeks"][week] - cholera_cases_u5["clinic"][ctc.id]["weeks"].get(week, 0) for week in cholera_cases["clinic"][ctc.id]["weeks"].keys()}
 
-                
-            else:
-                clinic_data["status"] = "Not Surveyed"
-                non_surveyed_clinics_map.append(clinic_data["gps"]+[ctc.name])
-            # Initialize data structure for current clinic
+                #    clinic_data["deaths_history"] = cholera_deaths["clinic"][ctc.id]
+                #   clinic_data["cases_u5_history"] = cholera_cases_u5["clinic"][ctc.id]
+                #  clinic_data["cases_o5_history"] =cholera_cases_o5_ctc
 
-            # Append clinic data to clinic data list
-            clinic_data_list.append(clinic_data)
+                    # Deal with recomendations
+
+                    recommendations = []
+                    cases = ctc_data.variables.get("ctc_cases", 0)
+                    if cases == 0:
+                        cases = 1
+                    cfr = ctc_data.variables.get("ctc_deaths", 0) / cases * 100
+                    cfr_threshold = 2
+                    if cfr > cfr_threshold:
+                        recommendations.append("High CFR ratio of {} %".format(round(cfr, 1)))
+
+                    if ctc_data.variables.get("ctc_beds", 0) < ctc_data.variables.get("ctc_patients", 0):
+                        recommendations.append("Not sufficent beds")
+
+                    for code in ctc_rec_variables.keys():
+                        if ctc_data.variables.get(code, "missing") =="no":
+                            recommendations.append("No {}".format(ctc_rec_variables[code]["name"]))
+
+                    clinic_data["recommendations"] = recommendations
+
+
+
+                    # Overview data
+
+                    for num_code in num_codes:
+                        overview_data.setdefault(num_code, 0)
+                        overview_data[num_code] += ctc_data.variables.get(num_code, 0)
+                    for yes_code in yes_codes:
+                        overview_data.setdefault(yes_code, {"Y": 0, "N": 0})
+                        overview_data[yes_code]["N"] += 1
+                        if ctc_data.variables.get(yes_code, "missing") == "yes":
+                            overview_data[yes_code]["Y"] += 1
+                    overview_data.setdefault("ctc_beds_sufficient", {"Y": 0, "N": 0})
+                    overview_data["ctc_beds_sufficient"]["N"] += 1
+                    if "ctc_beds_sufficient" in ctc_data.variables:
+                        overview_data["ctc_beds_sufficient"]["Y"] += 1
+                else:
+                    clinic_data["status"] = "Not Surveyed"
+                    non_surveyed_clinics_map.append(clinic_data["gps"]+[ctc.name])
+                # Initialize data structure for current clinic
+
+                # Append clinic data to clinic data list
+                clinic_data_list.append(clinic_data)
         num_clin = overview_data["baseline"]["Y"]
         if num_clin == 0:
             num_clin = 1
@@ -4459,5 +4536,289 @@ class CTCReport(Resource):
             "non_surveyed":non_surveyed_clinics_map
         }})
 
+        #In page numbering take into account amount of pages of table of content. Depends on styling etc, so it is a MASSIVE HACK indeed.
+        noOfContentPages = overview_data["baseline"]["Y"] / 45 
+        ret["contents_offset"] = ret["contents_offset"] + math.ceil( noOfContentPages )
+
         return ret
-    
+
+
+class SCReport(Resource):
+
+    """
+    SCReport
+
+    This reports gives a summary of the Stabilisation Centre surveillance
+
+    Args:\n
+       location: Location to generate report for\n
+       start_date: Start date of report\n
+       end_date: End date of report\n
+    Returns:\n
+       report_data\n
+    """
+    decorators = [authenticate, report_allowed_location]
+
+    def get(self, location, start_date=None, end_date=None):
+
+        # Set default date values to last epi week.
+        today = datetime.now()
+        epi_week = EpiWeek().get()
+        # Initialise some stuff.
+        start_date, end_date = fix_dates(start_date, end_date)
+        end_date_limit = end_date + timedelta(days=1)
+        first_day_of_year = datetime(year=end_date.year,
+                                     month=1, day=1)
+        ret = {}
+
+        #  Meta data.
+        ret["meta"] = {"uuid": str(uuid.uuid4()),
+                       "project_id": 1,
+                       "generation_timestamp": datetime.now().isoformat(),
+                       "schema_version": 0.1
+        }
+
+        #  Dates and Location Information
+        ew = EpiWeek()
+        epi_week = ew.get(end_date.isoformat())["epi_week"]
+        ret["data"] = {"epi_week_num": epi_week,
+                       "end_date": end_date.isoformat(),
+                       "project_epoch": datetime(2015, 5, 20).isoformat(),
+                       "start_date": start_date.isoformat()
+        }
+        locs = get_locations(db.session)
+        if int(location) not in locs:
+            return None
+        location_name = locs[int(location)]
+
+        regions = [loc for loc in locs.keys()
+                   if locs[loc].level == "region"]
+        districts = [loc for loc in locs.keys()
+                     if locs[loc].level == "district"]
+        zones = [loc for loc in locs.keys()
+                     if locs[loc].level == "zone"]
+        ret["data"]["project_region"] = location_name.name
+        ret["data"]["project_region_id"] = location
+
+        children = get_children(location, locs, require_case_report=False)
+
+        scs = db.session.query(Locations).filter(
+            Locations.clinic_type == "SU").filter(
+                Locations.id.in_(children)
+            ).all()
+
+        ret["data"]["clinic_num"] = len(scs)
+
+        nutrition_cases_variable = 'sc_cases'
+        nutrition_cases_u5_variable = 'sc_cases_u5'
+        nutrition_deaths_variable = 'sc_deaths'
+
+
+        nutrition_var = "sc_1"
+        # Summary data
+        ret['summary']={}
+
+        # Aggregate numbers of nutrition cases and deaths as an epi curve and a map.
+
+        nutrition_cases = latest_query(db, nutrition_cases_variable, nutrition_var, start_date, end_date_limit, location, weeks=True, week_offset=1)
+        nutrition_cases_u5 = latest_query(db, nutrition_cases_u5_variable, nutrition_var, start_date, end_date_limit, location, weeks=True, week_offset=1)
+
+        nutrition_deaths = latest_query(db, nutrition_deaths_variable, nutrition_var, start_date, end_date_limit, location, weeks=True, week_offset=1)
+        nutrition_cases_o5 = {"total": nutrition_cases["total"] - nutrition_cases_u5["total"]}
+        nutrition_cases_o5["weeks"] = {week: nutrition_cases["weeks"][week] - nutrition_cases_u5["weeks"].get(week, 0) for week in nutrition_cases["weeks"].keys()}
+        ret['summary'].update({
+            'nutrition_cases': nutrition_cases
+            })
+        ret['summary'].update({
+            'nutrition_cases_u5': nutrition_cases_u5
+            })
+        ret['summary'].update({
+            'nutrition_cases_o5': nutrition_cases_o5
+            })
+        
+        ret['summary'].update({
+            'nutrition_deaths': nutrition_deaths
+            })
+
+
+        total = latest_query(db, nutrition_var, nutrition_var,
+                             start_date, end_date_limit, location,
+                             weeks=True)["weeks"].get(epi_week -1, 0)
+        ret["summary"]["surveyed"] = total
+        
+        # FIGURE 2: MAP of nutrition cases
+        nutrition_cases_map = {}
+        nutrition_cases_ret = latest_query(
+            db,
+            "sc_cases_per_bed",
+            nutrition_var,
+            start_date,
+            end_date_limit,
+            location,
+            weeks=True
+        )["district"]
+        for district in nutrition_cases_ret.keys():
+            nutrition_cases_map[locs[district].name] = {
+                "value": nutrition_cases_ret[district]["total"]
+            }
+        # fill the rest of the districts with zeroes
+        for district in districts:
+            if not locs[district].name in nutrition_cases_map:
+                nutrition_cases_map.update(
+                    {
+                        locs[district].name: {
+                            "value": 0
+                        }
+                    }
+                )
+        ret["data"].update({"nutrition_map": nutrition_cases_map})
+
+        
+
+
+
+        # Displaying indicators like the percentage of SC with case management protocols etc.
+
+        # A list of clinics with no report in the last week ( A form of completeness).
+
+        # List of clinics that do not have case management or wash etc.
+
+        # We also build up an overview dictionary
+        var = Variables()
+        num_codes = var.get("sc_overview_num").keys()
+        yes_codes = var.get("sc_overview_yes_no")
+
+        overview_data = {}
+
+
+        overview_data["cases_total"] = nutrition_cases.get("total", 0)
+        overview_data["cases_u5_total"] = nutrition_cases_u5.get("total", 0)
+        overview_data["deaths_total"] = nutrition_deaths.get("total", 0)
+
+        weekly_cases = np.array([nutrition_cases["clinic"][c]["total"] for c in sorted(nutrition_cases["clinic"].keys())])
+        weekly_deaths = np.array([nutrition_deaths["clinic"][c]["total"] for c in sorted(nutrition_cases["clinic"].keys())])
+
+
+        sc_rec_variables = var.get("sc_recommendations")
+
+        clinic_data_list = []
+
+        location_condtion = [
+                or_(loc == location for loc in (
+                    Data.country, Data.zone, Data.region, Data.district, Data.clinic))]
+        conditions = location_condtion  + [Data.variables.has_key(nutrition_var)]
+        query = db.session.query(Data.clinic, Data.date, Data.region,
+                                 Data.district,
+                                 Data.variables,
+                                 Data.categories).distinct(
+                                    Data.clinic).filter(*conditions).order_by(
+                                             Data.clinic).order_by(Data.date.desc())
+
+        
+        latest_sc = {}
+        surveyed_clinics_map = []
+        non_surveyed_clinics_map = []
+        for r in query:
+            latest_sc[r.clinic] = r
+        overview_data.setdefault("baseline", {"Y": 0, "N": 0})
+        overview_data.setdefault("surveyed_last_week", {"Y": 0, "N": 0})
+
+        ret["contents"] = []
+        ret["contents_offset"] = 3 #Here we HACK how many pages before first clinic page
+        pageNumber = 0
+
+        for current_zone in zones:
+            for sc in scs:
+                clinic_data = {"name": sc.name}
+                district = locs[sc.id].parent_location
+                region = locs[district].parent_location
+                zone = locs[region].parent_location
+                if zone != current_zone:
+                    continue
+                clinic_data["region"] = locs[region].name
+                clinic_data["district"] = locs[district].name
+                if locs[sc.id].point_location is not None:
+                    point = to_shape(locs[sc.id].point_location)
+                    clinic_data["gps"] = [point.y, point.x]
+
+
+                overview_data["baseline"]["N"] += 1
+                overview_data["surveyed_last_week"]["N"] += 1
+                if sc.id in latest_sc:
+                    overview_data["baseline"]["Y"] += 1
+                    sc_data = latest_sc[sc.id]
+                    clinic_data["status"] = "Surveyed"
+                    ret["contents"].append((locs[zone].name + ": " + sc.name,pageNumber))
+                    pageNumber = pageNumber + 1
+                    surveyed_clinics_map.append(clinic_data["gps"]+[sc.name])
+                    clinic_data["latest_data"] = sc_data.variables
+                    clinic_data["latest_categories"] = sc_data.categories
+                    clinic_data["latest_date"] = sc_data.date.isoformat().split("T")[0]
+
+                    if ew.get(sc_data.date.isoformat())["epi_week"] in [epi_week, epi_week - 1]:
+                        overview_data["surveyed_last_week"]["Y"] += 1
+                    # Deal with recomendations
+                    recommendations = []
+                    cases = sc_data.variables.get("sc_cases", 0)
+                    if cases == 0:
+                        cases = 1
+                    if sc_data.variables.get("sc_beds", 0) < sc_data.variables.get("sc_patients", 0):
+                        recommendations.append("Insufficient beds")
+
+                    for code in ["sc_deaths", "sc_cured", "sc_default"]:
+                        try:
+                            if sc_data.variables.get(code, 0) / sc_data.variables.get("sc_discharge", 0) > 1:
+                                recommendations.append("Data quality check needed")
+                                break
+                        except ZeroDivisionError:
+                            recommendations.append("Data quality check needed")
+                            break
+                    for code in sc_rec_variables.keys():
+                        if sc_data.variables.get(code, "missing") =="no":
+                            recommendations.append("No {}".format(sc_rec_variables[code]["name"]))
+                        if sc_data.variables.get(code, "missing") == 1:
+                            recommendations.append("{}".format(sc_rec_variables[code]["name"]))
+                    clinic_data["recommendations"] = recommendations
+
+
+
+                    # Overview data
+
+                    for num_code in num_codes:
+                        overview_data.setdefault(num_code, 0)
+                        overview_data[num_code] += int(sc_data.variables.get(num_code, 0))
+                    for yes_code in yes_codes:
+                        overview_data.setdefault(yes_code, {"Y": 0, "N": 0})
+                        overview_data[yes_code]["N"] += 1
+                        if sc_data.variables.get(yes_code, "missing") == "yes":
+                            overview_data[yes_code]["Y"] += 1
+                    overview_data.setdefault("sc_beds_sufficient", {"Y": 0, "N": 0})
+                    overview_data["sc_beds_sufficient"]["N"] += 1
+                    if "sc_beds_sufficient" in sc_data.variables:
+                        overview_data["sc_beds_sufficient"]["Y"] += 1
+                else:
+                    clinic_data["status"] = "Not Surveyed"
+                    if "gps" in clinic_data:
+                        non_surveyed_clinics_map.append(clinic_data["gps"]+[sc.name])
+                # Initialize data structure for current clinic
+
+                # Append clinic data to clinic data list
+                clinic_data_list.append(clinic_data)
+        num_clin = overview_data["baseline"]["Y"]
+        if num_clin == 0:
+            num_clin = 1
+        overview_data["sc_doctors_per_facility"] = overview_data.get("sc_doctors", 0) / num_clin
+        overview_data["sc_nurses_per_facility"] = overview_data.get("sc_nurses", 0) / num_clin
+        ret["overview"] = overview_data
+        ret.update({'clinic_data' : clinic_data_list})
+        ret["data"].update({"surveyed_clinics_map":{
+            "surveyed":surveyed_clinics_map,
+            "non_surveyed":non_surveyed_clinics_map
+        }})
+
+        #In page numbering take into account amount of pages of table of content. Depends on styling etc, so it is a MASSIVE HACK indeed.
+        noOfContentPages = overview_data["baseline"]["Y"] / 45 
+        ret["contents_offset"] = ret["contents_offset"] + math.ceil( noOfContentPages )
+
+        return ret
+

@@ -4,31 +4,31 @@ Meerkat API Tests
 
 Unit tests for the Meerkat API
 """
-import json, os
+import os
 import unittest
 from datetime import datetime
 import meerkat_api
-import meerkat_abacus.data_management as manage
 from meerkat_abacus.task_queue import app as celery_app
 from meerkat_api.test import db_util
 
-#Check if auth requirements have been installed
+# Check if auth requirements have been installed
 try:
-    #Test by importing package that will only ever be required in auth (touch wood). 
+    # HACK: Test by importing package that will only ever be required in auth
     __import__('passlib')
-    print( "Authentication requirements installed." )
+    print("Authentication requirements installed.")
 except ImportError:
-    print( "Authentication requirements not installed.  Installing them now." )
-    os.system('pip install -r /var/www/meerkat_auth/requirements.txt') 
+    print("Authentication requirements not installed.  Installing them now.")
+    os.system('pip install -r /var/www/meerkat_auth/requirements.txt')
 
 from . import settings
 
+
 def need_csv_representation(url):
-    """ 
+    """
     Checks if the url has a csv_representation.
-    
+
     All urls that need a csv representation needs to be added to
-    csv_representations. 
+    csv_representations.
 
     Args:
        url: the url to check
@@ -41,13 +41,14 @@ def need_csv_representation(url):
             return True
     return False
 
+
 def valid_urls(app):
-    """ 
+    """
     Return all urls with a semi "sensible" subsitutions for arguments.
-    
+
     All arguments need to have a subsitituion in the list in this function.
-    
-    Args: 
+
+    Args:
        app: meekrat_app
     Returns:
        urls: list of all urls
@@ -55,6 +56,7 @@ def valid_urls(app):
     substitutions = {
         "location": "1",
         "location_id": "1",
+        "device_id": "4",
         "start_date": datetime(2015, 1, 1).isoformat(),
         "end_date": datetime.now().isoformat(),
         "variable_id": "tot_1",
@@ -93,8 +95,10 @@ def valid_urls(app):
         "include": "CTC",
         "num_weeks": "2",
         "require_case_report": "0",
+        "restrict_by": "tot_1",
         "weeks": "1",
-        "hard_date_limit": "2017-01-01"
+        "hard_date_limit": "2017-01-01",
+        "monthly": "1"
     }
     urls = []
     for url in meerkat_api.app.url_map.iter_rules():
@@ -103,26 +107,29 @@ def valid_urls(app):
             for arg in url.arguments:
                 new_url = new_url.replace("<" + arg + ">",
                                           substitutions[arg])
+                new_url = new_url.replace("<int:" + arg + ">",
+                                          substitutions[arg])
             urls.append(new_url)
     return urls
 
 
-def get_url(app, url):
+def get_url(app, url, header):
     """ get a url from the app
 
-    Args: 
+    Args:
         app: flask app
         url: url to get
 
-    Returns: 
+    Returns:
        rv: return variable
     """
     if need_csv_representation(url):
-        h = {**settings.header,**{"Accept": "text/csv"}}
+        h = {**header, **{"Accept": "text/csv"}}
         rv = app.get(url, headers=h)
     else:
-        rv = app.get(url, headers=settings.header)
+        rv = app.get(url, headers=header)
     return rv
+
 
 class MeerkatAPITestCase(unittest.TestCase):
 
@@ -132,7 +139,6 @@ class MeerkatAPITestCase(unittest.TestCase):
         meerkat_api.app.config['API_KEY'] = ""
         celery_app.conf.CELERY_ALWAYS_EAGER = True
 
-        BROKER_BACKEND = 'memory'
         # manage.set_up_everything(False, False, 500)
         db_util.insert_codes(meerkat_api.db.session)
         db_util.insert_locations(meerkat_api.db.session)
@@ -178,16 +184,46 @@ class MeerkatAPITestCase(unittest.TestCase):
         urls = valid_urls(meerkat_api.app)
         for url in urls:
             print(url)
-            rv = get_url(self.app, url)
+            rv = get_url(self.app, url, settings.header)
             isOK = rv.status_code == 200
             if not isOK:
-                print( "URL NOT OK: " + str(url) )                
-            self.assertEqual(rv.status_code, 200)   
-    
-        
+                print("URL NOT OK: " + str(url))
+            self.assertEqual(rv.status_code, 200)
+
     def test_authentication(self):
-        #TODO: Test new authentication.
-        self.assertTrue(True)
+        urls = valid_urls(meerkat_api.app)
+        no_authentication = ["key_indicators",
+                             "tot_map",
+                             "consultation_map",
+                             "num_alerts",
+                             "num_clinics",
+                             "refugee_page",
+                             "locations",
+                             "location/",
+                             "clinics",
+                             "epi_week",
+                             "geo_shapes",
+                             "variables",
+                             "variable/tot_1",
+                             "device/"]
+        for url in urls:
+            needs_auth = True
+            for na in no_authentication:
+                if na in url:
+                    needs_auth = False
+            if url == "/" or url == "":
+                needs_auth = False
+            print(url + " needs auth? " + str(needs_auth))
+            if needs_auth:
+                rv = get_url(self.app, url, settings.header_non_authorised)
+                self.assertEqual(rv.status_code, 401)
+                rv = get_url(self.app, url, settings.header)
+                self.assertEqual(rv.status_code, 200)
+            else:
+                rv = get_url(self.app, url, settings.header_non_authorised)
+                self.assertEqual(rv.status_code, 200)
+                rv = get_url(self.app, url, settings.header)
+                self.assertEqual(rv.status_code, 200)
 
 
 if __name__ == '__main__':

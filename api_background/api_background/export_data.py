@@ -1,26 +1,28 @@
 """
 Functions to export data
 """
-from meerkat_abacus.util import epi_week, get_locations
+from meerkat_abacus.util import epi_week, get_locations, is_child
 from meerkat_abacus.util import all_location_data, get_db_engine, get_links
 from meerkat_abacus.model import form_tables, Data, Links
 from meerkat_abacus.model import DownloadDataFiles, AggregationVariables
 from meerkat_abacus.config import country_config, config_directory
+
 import gettext
+
 
 translation_dir = country_config.get("translation_dir", None)
 
 if translation_dir:
-    try: 
+    try:
         t = gettext.translation('messages',  translation_dir, languages=["en", "fr"])
     except FileNotFoundError:
         print("Translations not found")
-    
+
 
 import resource
 import shelve
 from sqlalchemy.orm import aliased
-from sqlalchemy import text, or_, func
+from sqlalchemy import text, or_, func, Float
 from dateutil.parser import parse
 from datetime import datetime
 from io import StringIO, BytesIO
@@ -34,7 +36,7 @@ import os
 base_folder = os.path.dirname(os.path.realpath(__file__))
 
 @task
-def export_data(uuid, use_loc_ids=False):
+def export_data(uuid, allowed_location, use_loc_ids=False):
     """
     Exports the data table from db
 
@@ -59,10 +61,9 @@ def export_data(uuid, use_loc_ids=False):
         func.distinct(
             func.jsonb_object_keys(Data.variables)))
     variables = []
-    locs = get_locations(session)
     for row in results:
         variables.append(row[0])
-
+    locs = get_locations(session)
     fieldnames = ["id", "zone", "country", "region",
                   "district", "clinic", "clinic_type",
                   "geolocation", "date", "uuid"] + list(variables)
@@ -79,10 +80,14 @@ def export_data(uuid, use_loc_ids=False):
         dict_row = dict(
             (col, getattr(row, col)) for col in row.__table__.columns.keys()
         )
-        if not use_loc_ids:
-            for l in ["country", "zone", "region", "district", "clinic"]:
-                if dict_row[l]:
-                    dict_row[l] = locs[dict_row[l]].name
+        if not is_child(allowed_location, dict_row["clinic"], locs):
+            continue
+
+        for l in ["country", "zone", "region", "district", "clinic"]:
+            if dict_row[l]:
+                dict_row[l + "_id"] = dict_row[l]
+                dict_row[l] = locs[dict_row[l]].name
+
         dict_row.update(dict_row.pop("variables"))
         dict_rows.append(dict_row)
         if i % 1000 == 0:
@@ -97,7 +102,9 @@ def export_data(uuid, use_loc_ids=False):
 
 
 @task
-def export_category(uuid, form_name, category, download_name, variables, data_type, language="en"):
+def export_category(uuid, form_name, category, download_name,
+                    variables,  data_type, allowed_location,
+                    start_date=None, end_date=None, language="en"):
     """
     We take a variable dictionary of form field name: display_name.
     There are some special commands that can be given in the form field name:
@@ -139,7 +146,8 @@ def export_category(uuid, form_name, category, download_name, variables, data_ty
     print(language)
     if language != "en":
         os.environ["LANGUAGE"] = language
-    
+
+    locs = get_locations(session)
     print(uuid)
     data_keys = []
     cat_variables = {}
@@ -174,16 +182,22 @@ def export_category(uuid, form_name, category, download_name, variables, data_ty
 #        logging.warning(trans_dict)
         return trans_dict
 
-
     # DB conditions
-    conditions = [or_(Data.variables.has_key(key)
-                      for key in data_keys)]
+    conditions = [
+        or_(Data.variables.has_key(key) for key in data_keys)
+    ]
     if data_type:
         conditions.append(Data.type == data_type)
+    if start_date:
+        conditions.append(Data.date >= parse(start_date))
+    if end_date:
+        conditions.append(Data.date <= parse(end_date))
 
     # Set up icd_code_to_name if needed and determine if
     # alert_links are included
     query_links = False
+
+    to_columns_translations = {}
     for v in variables:
 
         if "every$" in v[0]:
@@ -241,9 +255,46 @@ def export_category(uuid, form_name, category, download_name, variables, data_ty
                 min_translation[v[1]] = tr_dict
             v[0] = field
             translation_dict[v[1]] = v[0]
+        if "$to_columns" in v[0]:
+            # Create columns of every possible value
+            split = v[0].split("$")
+            field = "$".join(split[:-1])
+            trans = split[-1]
+            tr_dict = {}
+            if ";" in trans:
+                tr_dict = json.loads(trans.split(";")[1].replace("'", '"'))
+
+            # If the json specifies file details, load translation from file.
+
+            # Get all possible options from the DB
+
+            results = session2.query(
+                func.distinct(
+                    func.regexp_split_to_table(
+                        form_tables[form_name].data[field].astext, ' '))).join(
+                            Data,
+                            Data.uuid == form_tables[form_name].uuid).filter(
+                                *conditions).all()
+            if tr_dict.get('dict_file', False):
+                translations = add_translations_from_file(tr_dict)
+            else:
+                translations = {}
+            return_keys.pop()
+            for r in results:
+                if r[0]:
+                    name = v[1] + " " + translations.get(r[0], r[0])
+                    if name not in return_keys:
+                        return_keys.append(name)
+                        if name in translation_dict:
+                            translation_dict[name] = translation_dict[name] + "," + r[0]
+                        else:
+                            translation_dict[name] = field + "$to_columns$" + r[0]
+
         if "gen_link$" in v[0]:
             link_ids.append(v[0].split("$")[1])
-
+    if "uuid" not in return_keys:
+        return_keys.append("uuid")
+        translation_dict["uuid"] = "meta/instanceID"
     link_ids = set(link_ids)
     links_by_type, links_by_name = get_links(config_directory +
                                              country_config["links_file"])
@@ -268,7 +319,7 @@ def export_category(uuid, form_name, category, download_name, variables, data_ty
 
     number_query = session2.query(func.count(Data.id)).join(
         form_tables[form_name], Data.uuid == form_tables[form_name].uuid)
-    
+
     results = session2.query(*columns).join(
         form_tables[form_name], Data.uuid == form_tables[form_name].uuid)
     for join in joins:
@@ -278,7 +329,7 @@ def export_category(uuid, form_name, category, download_name, variables, data_ty
     total_number = number_query.filter(*conditions).first()[0]
     results = results.filter(*conditions).yield_per(200)
 
-    
+
     locs = get_locations(session)
     list_rows = []
 
@@ -305,6 +356,9 @@ def export_category(uuid, form_name, category, download_name, variables, data_ty
     # Prepare each row
     for r in results:
         list_row = ['']*len(return_keys)
+        if not is_child(allowed_location, r[0].clinic,  locs):
+            continue
+
         dates = {}
         for k in return_keys:
             form_var = translation_dict[k]
@@ -422,6 +476,16 @@ def export_category(uuid, form_name, category, download_name, variables, data_ty
                     list_row[index] = None
             elif "value" == form_var.split(":")[0]:
                 list_row[index] = form_var.split(":")[1]
+            elif "$to_columns$" in form_var:
+                field = form_var.split("$")[0]
+                codes = form_var.split("$")[-1].split(",")
+                has_code = 0
+                data = raw_data.get(field, "").split(" ")
+                for c in codes:
+                    if c in data:
+                        has_code = 1
+                        break
+                list_row[index] = has_code
             else:
                 if form_var.split("$")[0] in raw_data:
                     list_row[index] = raw_data[form_var.split("$")[0]]
@@ -458,7 +522,7 @@ def export_category(uuid, form_name, category, download_name, variables, data_ty
                 tr_dict = min_translation[k]
                 if list_row[index] in tr_dict:
                     list_row[index] = tr_dict[list_row[index]]
-                else:                              
+                else:
                     parts = [x.strip() for x in str(list_row[index]).split(' ')]
                     for x in range(len(parts)):
                         # Get the translation using the appropriate key.
@@ -468,7 +532,7 @@ def export_category(uuid, form_name, category, download_name, variables, data_ty
                             tr_dict.get(parts[x], tr_dict.get('*', parts[x]))
                         )
                     list_row[index] = ' '.join(list(filter(bool, parts)))
-                
+
             if translation_dir and language != "en" and list_row[index]:
                 list_row[index] = t.gettext(list_row[index])
         list_rows.append(list_row)
@@ -505,7 +569,99 @@ def export_category(uuid, form_name, category, download_name, variables, data_ty
 
 
 @task
-def export_form(uuid, form, fields=None):
+def export_data_table(uuid, download_name,
+                      restrict_by, variables, group_by,
+                      location_conditions=None):
+    """
+    Export an aggregated data table restricted by restrict by,
+
+
+    """
+    return_keys = []
+    db, session = get_db_engine()
+    locs = get_locations(session)
+    list_rows = []
+    status = DownloadDataFiles(
+        uuid=uuid,
+        generation_time=datetime.now(),
+        type=download_name,
+        success=0,
+        status=0
+    )
+    session.add(status)
+    session.commit()
+    columns = []
+    groups = []
+    location_subs = []
+    for i, v in enumerate(group_by):
+        field = v[0]
+        if ":location" in field:
+            field = field.split(":")[0]
+            location_subs.append(i)
+        columns.append(getattr(Data, field))
+        groups.append(getattr(Data, field))
+        return_keys.append(v[1])
+
+    for v in variables:
+        columns.append(func.sum(Data.variables[v[0]].astext.cast(Float)))
+        return_keys.append(v[1])
+
+    result = session.query(*columns).filter(
+        Data.variables.has_key(restrict_by)).group_by(*groups)
+
+    filename = base_folder + "/exported_data/" + uuid + "/" + download_name
+    os.mkdir(base_folder + "/exported_data/" + uuid)
+    csv_content = open(filename + ".csv", "w")
+    csv_writer = csv.writer(csv_content)
+    csv_writer.writerows([return_keys])
+
+    # XlsxWriter with "constant_memory" set to true, flushes mem after each row
+    xls_content = open(filename + ".xlsx", "wb")
+    xls_book = xlsxwriter.Workbook(xls_content, {'constant_memory': True})
+    xls_sheet = xls_book.add_worksheet()
+    # xls_sheet = pyexcel.Sheet([keys])
+
+    # Little utility function write a row to file.
+    def write_xls_row(data, row, sheet):
+        for cell in range(len(data)):
+            xls_sheet.write(row, cell, data[cell])
+
+    write_xls_row(return_keys, 0, xls_sheet)
+    i = 0
+    print(location_conditions)
+    for row in result:
+        # Can write row immediately to xls file as memory is flushed after.
+
+        row_list = list(row)
+        location_condition = True
+        for l in location_subs:
+            if row_list[l]:
+                if location_conditions:
+                    if getattr(locs[row_list[l]],
+                               location_conditions[0][0]) != location_conditions[0][1]:
+                        location_condition = False
+                row_list[l] = locs[row_list[l]].name
+        if location_condition:
+            row_list = [x if x is not None else 0 for x in row_list]
+            write_xls_row(row_list, i+1, xls_sheet)
+            list_rows.append(row_list)
+            # Append the row to list of rows to be written to csv.
+            i += 1
+    csv_writer.writerows(list_rows)
+
+    csv_content.close()
+    xls_book.close()
+
+    xls_content.close()
+    status.status = 1
+    status.success = 1
+    session.commit()
+
+    return True
+
+
+@task
+def export_form(uuid, form, allowed_location, fields=None):
     """
     Export a form. If fields is in the request variable we only include
     those fields.
@@ -523,6 +679,7 @@ def export_form(uuid, form, fields=None):
     (locations, locs_by_deviceid, regions,
      districts, devices) = all_location_data(session)
 
+    locs = get_locations(session)
     if fields:
         keys = fields
     else:
@@ -542,7 +699,7 @@ def export_form(uuid, form, fields=None):
     csv_writer.writerows([keys])
 
     # XlsxWriter with "constant_memory" set to true, flushes mem after each row
-    xls_content = open(filename + ".xls", "wb")
+    xls_content = open(filename + ".xlsx", "wb")
     xls_book = xlsxwriter.Workbook(xls_content, {'constant_memory': True})
     xls_sheet = xls_book.add_worksheet()
     # xls_sheet = pyexcel.Sheet([keys])
@@ -590,6 +747,9 @@ def export_form(uuid, form, fields=None):
                     None
                 )
             if clinic_id:
+                if not is_child(allowed_location,clinic_id, locs):
+                    continue
+
                 if 'clinic' in keys:
                     list_row[keys.index("clinic")] = locations[clinic_id].name
                 # Sort out district and region
@@ -610,6 +770,8 @@ def export_form(uuid, form, fields=None):
                             locations[clinic_id].parent_location
                         ].name
             else:
+                if allowed_location != 1:
+                    continue
                 if 'clinic' in keys:
                     list_row[keys.index("clinic")] = ""
                 if 'district' in keys:
@@ -647,3 +809,8 @@ def export_form(uuid, form, fields=None):
         session.commit()
 
         return True
+
+if __name__ == "__main__":
+    import uuid
+    export_data_table(str(uuid.uuid4()), "test", "reg_1", [["reg_2", "Consultations"]], [["epi_year", "year"],["clinic:location", "clinic"], ["epi_week", "week"]],
+                      location_conditions=[["case_type", "SARI"]])

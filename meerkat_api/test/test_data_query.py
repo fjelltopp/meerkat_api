@@ -10,19 +10,19 @@ from meerkat_api.test import db_util
 
 
 class DataQueryTests(unittest.TestCase):
-    
+
     def setUp(self):
         """Setup for testing"""
         db_util.insert_codes(db.session)
         db_util.insert_locations(db.session)
         db_util.insert_cases(db.session, "public_health_report")
 
-        
+
     def test_query_sum(self):
         """ Test basic query_sum functionality"""
         start_date = datetime(2015, 1, 1)
         end_date = datetime(2016, 1, 1)
-        
+
         result = data_query.query_sum(db, ["tot_1"], start_date, end_date, 1)
         self.assertEqual(result["total"], 10)
         result = data_query.query_sum(db, ["tot_1"], start_date, end_date, 1)
@@ -38,7 +38,7 @@ class DataQueryTests(unittest.TestCase):
         """ Test query_data by level"""
         start_date = datetime(2015, 1, 1)
         end_date = datetime(2016, 1, 1)
-        
+
         result = data_query.query_sum(db, ["tot_1"], start_date,
                                         end_date, 1, level="region")
         self.assertEqual(result["total"], 10)
@@ -62,7 +62,7 @@ class DataQueryTests(unittest.TestCase):
         """ Test that the location restriction works"""
         start_date = datetime(2015, 1, 1)
         end_date = datetime(2016, 1, 1)
-        
+
         result = data_query.query_sum(db, ["tot_1"], start_date,
                                         end_date, 2)
         self.assertEqual(result["total"], 6)
@@ -79,7 +79,7 @@ class DataQueryTests(unittest.TestCase):
     def test_query_sum_category(self):
         start_date = datetime(2015, 1, 1)
         end_date = datetime(2016, 1, 1)
-        
+
         result = data_query.query_sum(db, "tot_1", start_date,
                                       end_date, 1,
                                       group_by_category="gender")
@@ -94,33 +94,36 @@ class DataQueryTests(unittest.TestCase):
         self.assertEqual(result["gender"]["gen_1"]["total"], 3)
         self.assertEqual(result["gender"]["gen_1"]["weeks"], {18: 3})
         self.assertEqual(result["gender"]["gen_2"]["total"], 7)
-        
-        
+
+
     def test_query_sum_weeks(self):
         """ Test that the week breakdown works"""
         start_date = datetime(2015, 1, 1)
         end_date = datetime(2016, 1, 1)
-        
+
         result = data_query.query_sum(db, ["tot_1"], start_date,
                                         end_date, 1, weeks=True)
 
+        print(result)
         self.assertEqual(result["total"], 10)
         self.assertIn("weeks", result)
-        self.assertEqual(result["weeks"], {18: 9, 22: 1})
+        self.assertEqual(result["weeks"], {17: 1, 18: 8, 22: 1})
 
         result = data_query.query_sum(db, ["gen_1", "age_1"], start_date,
                                         end_date, 1, weeks=True)
 
+        print(result)
         self.assertEqual(result["total"], 2)
         self.assertIn("weeks", result)
         self.assertEqual(result["weeks"], {18: 2})
         result = data_query.query_sum(db, ["tot_1"], start_date,
                                         end_date, 1, weeks=True, level="region")
-
+        print(result)
         self.assertEqual(result["total"], 10)
         self.assertIn("weeks", result)
-        self.assertEqual(result["weeks"], {18: 9, 22: 1})
-        self.assertEqual(result["region"][2]["weeks"][18], 6)
+        self.assertEqual(result["weeks"], {17: 1, 18: 8, 22: 1})
+
+        self.assertEqual(result["region"][2]["weeks"][18], 5)
         self.assertEqual(result["region"][2]["total"], 6)
         self.assertEqual(result["region"][3]["weeks"][18], 3)
         self.assertEqual(result["region"][3]["weeks"][22], 1)
@@ -152,7 +155,7 @@ class DataQueryTests(unittest.TestCase):
         end_date = datetime(2017, 1, 12)
         result = data_query.latest_query(db, "test_2", "test_1", start_date,
                                          end_date, 1, weeks=True)
-        
+
         self.assertEqual(result["total"], 12)
         self.assertEqual(result["weeks"][1], 12)
         self.assertEqual(result["weeks"][2], 0)

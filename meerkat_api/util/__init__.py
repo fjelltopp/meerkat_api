@@ -7,6 +7,7 @@ from flask import jsonify
 from datetime import datetime, timedelta
 from dateutil import parser
 from meerkat_api.resources.epi_week import epi_year_start
+from meerkat_abacus.util import is_child
 
 def series_to_json_dict(series):
     """
@@ -22,6 +23,7 @@ def series_to_json_dict(series):
         return dict((str(key), value) for key, value in series.to_dict().items())
     else:
         return {}
+
 
 def fix_dates(start_date, end_date):
     """
@@ -98,29 +100,6 @@ def rows_to_dicts(rows, dict_id=None):
     return data_dicts
 
 
-def is_child(parent, child, locations):
-    """
-    Determines if child is child of parent
-
-    Args:
-        parent: parent_id
-        child: child_id
-        locations: all locations in dict
-
-    Returns:
-       is_child(Boolean): True if child is child of parent
-    """
-    parent = int(parent)
-    child = int(child)
-    if child == parent or parent == 1:
-        return True
-    loc_id = child
-    while loc_id != 1:
-        loc_id = locations[loc_id].parent_location
-        if loc_id == parent:
-            return True
-    return False
-
 def find_level(location, sublevel, locations):
     """
     Returns the isntance of level that location is a child of
@@ -141,7 +120,7 @@ def find_level(location, sublevel, locations):
         
     return None
 
-def get_children(parent, locations, clinic_type=None, require_case_report=True):
+def get_children(parent, locations, clinic_type=None, require_case_report=True, case_type=None):
     """
     Return all clinics that are children of parent
 
@@ -156,6 +135,7 @@ def get_children(parent, locations, clinic_type=None, require_case_report=True):
     for location_id in locations.keys():
         if ( (not require_case_report or locations[location_id].case_report) and
             (not clinic_type or locations[location_id].clinic_type == clinic_type)):
-            if is_child(parent, location_id, locations):
-                ret.append(location_id)
+            if( case_type is None or locations[location_id].case_type == case_type):
+                if is_child(parent, location_id, locations):
+                    ret.append(location_id)
     return ret

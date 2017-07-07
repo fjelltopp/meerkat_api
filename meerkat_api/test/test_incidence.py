@@ -53,21 +53,21 @@ class MeerkatAPIIncidenceTestCase(unittest.TestCase):
         self.assertEqual(data['7'], 4 / 3000 * 1000)
         self.assertEqual(data['8'], 2 / 1000 * 1000)
         self.assertEqual(data['11'], 5 / 3000 * 1000)
-        
+
     def test_incidence_weeks(self):
         rv = self.app.get('/weekly_incidence/tot_1/1/2015',
                           headers=settings.header)
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(data['year'], 10 / 10000 * 1000)
-        self.assertEqual(data['weeks']['18'], 9 / 10000 * 1000)
+        self.assertEqual(data['weeks']['18'], 8 / 10000 * 1000)
         self.assertEqual(data['weeks']['22'], 1 / 10000 * 1000)
         rv = self.app.get('/weekly_incidence/tot_1/1/2015/5000',
                           headers=settings.header)
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(data['year'], 10 / 10000 * 5000)
-        self.assertEqual(data['weeks']['18'], 9 / 10000 * 5000)
+        self.assertEqual(data['weeks']['18'], 8 / 10000 * 5000)
         self.assertEqual(data['weeks']['22'], 1 / 10000 * 5000)
         rv = self.app.get('/weekly_incidence/gen_1/1/2015',
                           headers=settings.header)
