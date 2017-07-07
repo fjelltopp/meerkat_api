@@ -265,7 +265,9 @@ api.add_resource(IncidenceMap, "/incidence_map/<variable_id>")
 api.add_resource(
     IncidenceRate,
     "/incidence_rate/<variable_id>/<level>",
-    "/incidence_rate/<variable_id>/<level>/<mult_factor>"
+    "/incidence_rate/<variable_id>/<level>/<mult_factor>",
+    "/incidence_rate/<variable_id>/<level>/<mult_factor>/<year>",
+    "/incidence_rate/<variable_id>/<level>/<mult_factor>/<year>/<monthly>"
 )
 api.add_resource(
     WeeklyIncidenceRate,

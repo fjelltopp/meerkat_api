@@ -26,12 +26,19 @@ class IncidenceRate(Resource):
     decorators = [authenticate]
 
     def get(self, variable_id, level, mult_factor=1000,
-            location_names=False, start_date=datetime(2010, 1, 1),
+            location_names=False, year=None, monthly=False,
+            start_date=datetime(2010, 1, 1),
             end_date=datetime(2100, 1, 1)):
         mult_factor = int(mult_factor)
         if level not in ["zone", "region", "district", "clinic"]:
             return {}
-
+        if year:
+            year = datetime.now().year
+            start_date = datetime(year, 1, 1)
+            end_date = datetime(year + 1, 1, 1)
+        if monthly:
+            months = (datetime.now() - datetime(datetime.now().year, 1, 1)).days / 30.5
+            mult_factor = mult_factor / months
         results = query_sum(
             db, [variable_id],
             start_date,
@@ -46,7 +53,6 @@ class IncidenceRate(Resource):
             pops[l.id] = l.population
             names[l.id] = l.name
         ret = {}
-        print(results)
         for loc in results[level].keys():
             if is_allowed_location(loc, g.allowed_location):
                 if pops[loc]:
