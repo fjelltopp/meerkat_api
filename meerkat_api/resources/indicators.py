@@ -103,7 +103,7 @@ class Indicators(Resource):
         indicator_data = dict()
         indicator_data["cummulative"] = np.asscalar(analysis_output[0])
         # indicator_data["timeline"] = {"w1":-99,"w2":99}
-        indicator_data["timeline"] = series_to_jsondict(analysis_output[1])
+        indicator_data["timeline"] = series_to_json_dict(analysis_output[1])
         #TODO: we assume that indicator data is integer!!!!
         # for key, val in indicator_data["timeline"].items():
         #     indicator_data["timeline"][key] = int(val)
