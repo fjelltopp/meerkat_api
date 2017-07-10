@@ -381,7 +381,8 @@ api.add_resource(Prescriptions, "/prescriptions/<location>",
                  "/prescriptions/<location>/<end_date>",
                  "/prescriptions/<location>/<end_date>/<start_date>")
 
-api.add_resource(Indicators, "/indicators/<flags>/<variables>/<location>")
+api.add_resource(Indicators, "/indicators/<flags>/<variables>/<location>",
+                 "/indicators/<flags>/<variables>/<location>/<start_date>/<end_date>")
 
 @app.route('/')
 def hello_world():

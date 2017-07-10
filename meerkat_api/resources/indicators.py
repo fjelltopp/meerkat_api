@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 import copy
 from flask_restful import Resource
 from sqlalchemy import or_
@@ -21,7 +22,7 @@ class Indicators(Resource):
         indicator_data: {cummulative: cummulative, timeline: timeline, current: current}\n
     """
     decorators = [authenticate]
-    def get(self, flags, variables, location):
+    def get(self, flags, variables, location, start_date=None, end_date=None):
         bRestrict = False
         count_over = False
         restricted_var = []
@@ -91,18 +92,18 @@ class Indicators(Resource):
 
         #Call meerkat_analysis
         if count_over:
-            analysis_output = count_over_count(data, nominator, denominator, restrict=bRestrict)
+            analysis_output = count_over_count(data, nominator, denominator, start_date, end_date, restrict=bRestrict)
         else:
-            analysis_output = count(data, nominator)
+            analysis_output = count(data, nominator, start_date, end_date)
 
         #Prepare output.
         # numpy.int64 needs to be cast to int (https://bugs.python.org/issue24313)
         # to cast properly both ints and floats we use method .item()
 
         indicator_data = dict()
-        indicator_data["cummulative"] = analysis_output[0].item()
+        indicator_data["cummulative"] = np.asscalar(analysis_output[0])
         # indicator_data["timeline"] = {"w1":-99,"w2":99}
-        indicator_data["timeline"] = series_to_json_dict(analysis_output[1])
+        indicator_data["timeline"] = series_to_jsondict(analysis_output[1])
         #TODO: we assume that indicator data is integer!!!!
         # for key, val in indicator_data["timeline"].items():
         #     indicator_data["timeline"][key] = int(val)
