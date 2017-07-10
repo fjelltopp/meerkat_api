@@ -3,11 +3,9 @@ import copy
 from flask_restful import Resource
 from sqlalchemy import or_
 from meerkat_api import db
-from meerkat_api.util import get_children
+from meerkat_api.util import get_children, get_locations, series_to_json_dict
 from meerkat_analysis.indicators import count_over_count, count
 from meerkat_abacus.model import Data, Locations
-from meerkat_abacus.util import get_locations
-from meerkat_api.resources.completeness import series_to_json_dict
 from meerkat_api.authentication import authenticate
 
 
@@ -80,8 +78,8 @@ class Indicators(Resource):
 
         # Prepare dummy data:
         indicator_data = dict()
-        indicator_data["cummulative"] = -99
-        indicator_data["timeline"] = {"w1" : -99, "w2" : 99}
+        indicator_data["cummulative"] = -99.4
+        indicator_data["timeline"] = {"w1" : -99.8, "w2" : 99.1}
         #current value is the latest week:
         indicator_data["current"] = 999
         indicator_data["name"] = "Dummy Data"
@@ -99,9 +97,10 @@ class Indicators(Resource):
 
         #Prepare output.
         # numpy.int64 needs to be cast to int (https://bugs.python.org/issue24313)
+        # to cast properly both ints and floats we use method .item()
 
         indicator_data = dict()
-        indicator_data["cummulative"] = int(analysis_output[0])
+        indicator_data["cummulative"] = analysis_output[0].item()
         # indicator_data["timeline"] = {"w1":-99,"w2":99}
         indicator_data["timeline"] = series_to_json_dict(analysis_output[1])
         #TODO: we assume that indicator data is integer!!!!
