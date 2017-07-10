@@ -35,7 +35,9 @@ class Prescriptions(Resource):
 
         clinics = get_children(parent = location, locations = locs, require_case_report = True)
 
-        kit_contents = db.session.query(CalculationParameters.parameters)
+        kit_contents = db.session.query(CalculationParameters.parameters)\
+            .filter(CalculationParameters.name == 'medicine_kits')\
+            .one()[0]
 
         barcode_category = 'barcode_prescription'
 
