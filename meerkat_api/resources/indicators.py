@@ -71,22 +71,22 @@ class Indicators(Resource):
                                  Data.variables[nominator].label(nominator),
                                 ).filter(
                                     *conditions).statement, db.session.bind)
-        print("debug data")
-        print(data.describe())
-        print(data.values)
-        print("data.count")
-        print("end debug data")
+        # print("debug data")
+        # print(data.describe())
+        # print(data.values)
+        # print("data.count")
+        # print("end debug data")
 
         # Prepare dummy data:
         indicator_data = dict()
-        indicator_data["cummulative"] = -99.4
-        indicator_data["timeline"] = {"w1" : -99.8, "w2" : 99.1}
-        #current value is the latest week:
-        indicator_data["current"] = 999
-        indicator_data["name"] = "Dummy Data"
+        # indicator_data["cummulative"] = -99.4
+        # indicator_data["timeline"] = {"w1" : -99.8, "w2" : 99.1}
+        # #current value is the latest week:
+        # indicator_data["current"] = 999
+        # indicator_data["name"] = "Dummy Data"
 
         if data.empty:
-            print("No records")
+            print("Indicators: No records!!!")
             return indicator_data
 
 
