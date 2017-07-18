@@ -140,6 +140,7 @@ class MeerkatAPITestCase(unittest.TestCase):
         celery_app.conf.CELERY_ALWAYS_EAGER = True
 
         # manage.set_up_everything(False, False, 500)
+        db_util.insert_calculation_parameters(meerkat_api.db.session)
         db_util.insert_codes(meerkat_api.db.session)
         db_util.insert_locations(meerkat_api.db.session)
         db_util.insert_cases(meerkat_api.db.session, "public_health_report",

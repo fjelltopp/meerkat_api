@@ -10,87 +10,13 @@ import pandas as pd
 
 from meerkat_api import db, app
 from meerkat_api.resources.epi_week import EpiWeek, epi_week_start, epi_year_start
-from meerkat_abacus.model import Data, Locations
+from meerkat_abacus.model import Data, Locations, CalculationParameters
 from meerkat_api.util import get_children, is_child, fix_dates
 from meerkat_abacus.util import get_locations
 from meerkat_api.authentication import authenticate
 
 from meerkat_api.resources.explore import QueryVariable, get_variables
-
-
-kit_contents= {
-    "barcode_albe": {
-        "total":2,
-        "dose":1,
-        "tablets_in_kit":200
-    },
-    "barcode_magn": {
-        "total":1,
-        "dose":2,
-        "tablets_in_kit":1000
-    },
-    "barcode_amox": {
-        "total":30,
-        "dose":2,
-        "tablets_in_kit":3000
-    },
-    "barcode_benz": {
-        "total":1,
-        "dose":10,
-        "tablets_in_kit":1
-    },
-    "barcode_chlo": {
-        "total":1,
-        "dose":"",
-        "tablets_in_kit":""
-    },
-    "barcode_fefu": {
-        "total":2,
-        "dose":2,
-        "tablets_in_kit":2000
-    },
-    "barcode_ibup": {
-        "total":20,
-        "dose":2,
-        "tablets_in_kit":200
-    },
-    "barcode_mico": {
-        "total":20,
-        "dose":"",
-        "tablets_in_kit":""
-    },
-    "barcode_orsl": {
-        "total":2,
-        "dose":"",
-        "tablets_in_kit":""
-    },
-    "barcode_par1": {
-        "total":10,
-        "dose":20,
-        "tablets_in_kit":1000
-    },
-    "barcode_par5": {
-        "total":20,
-        "dose":1,
-        "tablets_in_kit":2000
-    },
-    "barcode_povi": {
-        "total":12,
-        "dose":"",
-        "tablets_in_kit":""
-    },
-    "barcode_tetr": {
-        "total":50,
-        "dose":"",
-        "tablets_in_kit":""
-    },
-    "barcode_zinc": {
-        "total":10,
-        "dose":2,
-        "tablets_in_kit":1000
-    }
-}
-
+import json
 
 class Prescriptions(Resource):
     """
@@ -109,6 +35,10 @@ class Prescriptions(Resource):
         locs = get_locations(db.session)
 
         clinics = get_children(parent = location, locations = locs, require_case_report = True)
+
+        kit_contents = db.session.query(CalculationParameters.parameters)\
+            .filter(CalculationParameters.name == 'medicine_kits')\
+            .one()[0]
 
         barcode_category = 'barcode_prescription'
 
@@ -141,31 +71,45 @@ class Prescriptions(Resource):
 
 
 
+
         prescriptions = {'clinic_table':[], 'medicine_table':[], 'clinic_table_title':'Prescribing clinics','clinic_data':{}}
 
         # Restructure the DB return sets into a JSON
         for item in first_last_prescr_query.all():
+
+            #if the medicine type is not configured to be reported, skip
+            if item[1] not in kit_contents.keys():
+                continue
+
+            #get number of kits in the clinic
+            kits_in_clinic = locs[item[0]].other.get('IEHK kits','')
+            try:
+                kits_in_clinic = int(kits_in_clinic)
+            except ValueError:
+                kits_in_clinic = 1
+
             # If clinic is already in JSON 
             if str(item[0]) in prescriptions['clinic_data'].keys():
+
                 prescriptions['clinic_data'][str(item[0])].update({
                     str(item[1]):{
                         "min_date":item[3].strftime("%Y-%m-%d"),
                         "max_date":item[4].strftime("%Y-%m-%d"),
                         "total_prescriptions":item[2],
                         "inventory":
-                            (kit_contents[item[1]]["total"] 
+                            (kit_contents[item[1]]["total"] * kits_in_clinic
                                 if kit_contents[item[1]]["tablets_in_kit"] == "" 
-                                else int(kit_contents[item[1]]["tablets_in_kit"]) - item[2]
+                                else int(kit_contents[item[1]]["tablets_in_kit"]) * kits_in_clinic - item[2]
                             ) ,
                         "depletion":                            
-                            (item[2]/float(kit_contents[item[1]]["total"])
+                            (item[2]/(float(kit_contents[item[1]]["total"]) * kits_in_clinic)
                                 if kit_contents[item[1]]["tablets_in_kit"] == "" 
-                                else item[2]/float(kit_contents[item[1]]["tablets_in_kit"])
+                                else item[2]/(float(kit_contents[item[1]]["tablets_in_kit"]) * kits_in_clinic)
                             ),
                         "stock":
-                            (1 - item[2]/float(kit_contents[item[1]]["total"]) 
+                            (1 - item[2]/(float(kit_contents[item[1]]["total"]) * kits_in_clinic)
                                 if kit_contents[item[1]]["tablets_in_kit"] == "" 
-                                else 1-item[2]/float(kit_contents[item[1]]["tablets_in_kit"])
+                                else 1-item[2]/(float(kit_contents[item[1]]["tablets_in_kit"]) * kits_in_clinic)
                             ),
                         "total_prescriptions": item[2]
                         }
@@ -180,19 +124,19 @@ class Prescriptions(Resource):
                             "max_date":item[4].strftime("%Y-%m-%d"),
                             "total_prescriptions":item[2],
                             "inventory":
-                                (kit_contents[item[1]]["total"] 
+                                (kit_contents[item[1]]["total"] * kits_in_clinic
                                     if kit_contents[item[1]]["tablets_in_kit"] == "" 
-                                    else int(kit_contents[item[1]]["tablets_in_kit"]) - item[2]
+                                    else int(kit_contents[item[1]]["tablets_in_kit"]) * kits_in_clinic - item[2]
                                 ) ,
                             "depletion":
-                                (item[2]/float(kit_contents[item[1]]["total"])
+                                (item[2]/(float(kit_contents[item[1]]["total"]) * kits_in_clinic)
                                     if kit_contents[item[1]]["tablets_in_kit"] == "" 
-                                    else item[2]/float(kit_contents[item[1]]["tablets_in_kit"])
+                                    else item[2]/(float(kit_contents[item[1]]["tablets_in_kit"]) * kits_in_clinic)
                                 ),
                             "stock":
-                                (1 - item[2]/float(kit_contents[item[1]]["total"])  
+                                (1 - item[2]/(float(kit_contents[item[1]]["total"]) * kits_in_clinic)
                                     if kit_contents[item[1]]["tablets_in_kit"] == "" 
-                                    else 1-item[2]/float(kit_contents[item[1]]["tablets_in_kit"])
+                                    else 1-item[2]/(float(kit_contents[item[1]]["tablets_in_kit"]) * kits_in_clinic)
                                 ),
                             "total_prescriptions": item[2]
                             }
