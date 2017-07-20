@@ -2,7 +2,7 @@ language: python
 dist: 
    - trusty
 python:
-- '3.5'
+- '3.6'
 env:
 - MEERKAT_ABACUS_DB_URL='postgresql+psycopg2://postgres:postgres@localhost/meerkat_db'
   MEERKAT_BRANCH='development' MEERKAT_API_SETTINGS='../.travis_config'
@@ -32,6 +32,9 @@ install:
 - git clone https://github.com/meerkat-code/meerkat_libs.git
 - pip install -r meerkat_libs/requirements.txt
 - export PYTHONPATH=$PYTHONPATH:$HOME/build/meerkat-code/meerkat_api/meerkat_libs
+- git clone https://github.com/meerkat-code/meerkat_analysis.git
+- pip install -r meerkat_analysis/requirements.txt
+- export PYTHONPATH=$PYTHONPATH:$HOME/build/meerkat-code/meerkat_api/meerkat_analysis
 - git clone https://github.com/meerkat-code/meerkat_abacus.git
 - pip install -r meerkat_abacus/requirements.txt
 - cd meerkat_abacus
