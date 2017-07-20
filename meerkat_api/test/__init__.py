@@ -98,7 +98,9 @@ def valid_urls(app):
         "restrict_by": "tot_1",
         "weeks": "1",
         "hard_date_limit": "2017-01-01",
-        "monthly": "1"
+        "monthly": "1",
+        "flags": "n",
+        "variables": "gen_1"
     }
     urls = []
     for url in meerkat_api.app.url_map.iter_rules():
