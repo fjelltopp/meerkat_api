@@ -8,6 +8,7 @@ import json
 import unittest
 from datetime import datetime
 import csv
+import os
 from . import settings
 import meerkat_api
 from meerkat_api.test import db_util
@@ -18,6 +19,7 @@ from api_background.export_data import base_folder
 
 
 class MeerkatAPITestCase(unittest.TestCase):
+
 
     def setUp(self):
         """Setup for testing"""
@@ -32,9 +34,10 @@ class MeerkatAPITestCase(unittest.TestCase):
         db_util.insert_locations(meerkat_api.db.session)
         db_util.insert_cases(meerkat_api.db.session, "public_health_report")
         case_form_name = config.country_config["tables"][0]
+        current_directory = os.path.dirname(__file__)
         data_management.table_data_from_csv("demo_case",
                                             model.form_tables[case_form_name],
-                                            "meerkat_api/test/test_data/",
+                                            current_directory + "/test_data/",
                                             meerkat_api.db.session,
                                             meerkat_api.db.engine,
                                             deviceids=["1", "2", "3",
@@ -44,7 +47,7 @@ class MeerkatAPITestCase(unittest.TestCase):
         dr_name = config.country_config["tables"][1]
         data_management.table_data_from_csv("demo_alert",
                                             model.form_tables[dr_name],
-                                            "meerkat_api/test/test_data/",
+                                            current_directory + "/test_data/",
                                             meerkat_api.db.session,
                                             meerkat_api.db.engine,
                                             deviceids=["1", "2", "3",
