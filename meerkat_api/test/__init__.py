@@ -6,7 +6,9 @@ Unit tests for the Meerkat API
 """
 import os
 import unittest
+
 from datetime import datetime
+
 import meerkat_api
 from meerkat_abacus.task_queue import app as celery_app
 from meerkat_api.test import db_util
@@ -134,7 +136,6 @@ def get_url(app, url, header):
 
 
 class MeerkatAPITestCase(unittest.TestCase):
-
     def setUp(self):
         """Setup for testing"""
         meerkat_api.app.config['TESTING'] = True
@@ -142,33 +143,34 @@ class MeerkatAPITestCase(unittest.TestCase):
         celery_app.conf.CELERY_ALWAYS_EAGER = True
 
         # manage.set_up_everything(False, False, 500)
-        db_util.insert_calculation_parameters(meerkat_api.db.session)
-        db_util.insert_codes(meerkat_api.db.session)
-        db_util.insert_locations(meerkat_api.db.session)
-        db_util.insert_cases(meerkat_api.db.session, "public_health_report",
+        self.db_session = meerkat_api.db.session
+        db_util.insert_calculation_parameters(self.db_session)
+        db_util.insert_codes(self.db_session)
+        db_util.insert_locations(self.db_session)
+        db_util.insert_cases(self.db_session, "public_health_report",
                              delete=True)
-        db_util.insert_cases(meerkat_api.db.session,
+        db_util.insert_cases(self.db_session,
                              "ncd_public_health_report", delete=False)
-        db_util.insert_cases(meerkat_api.db.session, "ncd_report",
+        db_util.insert_cases(self.db_session, "ncd_report",
                              delete=False)
-        db_util.insert_cases(meerkat_api.db.session, "pip_report",
+        db_util.insert_cases(self.db_session, "pip_report",
                              delete=False)
-        db_util.insert_cases(meerkat_api.db.session, "refugee_data",
+        db_util.insert_cases(self.db_session, "refugee_data",
                              delete=False)
-        db_util.insert_cases(meerkat_api.db.session, "frontpage", delete=False)
-        db_util.insert_cases(meerkat_api.db.session, "map_test", delete=False)
-        db_util.insert_cases(meerkat_api.db.session, "epi_monitoring",
+        db_util.insert_cases(self.db_session, "frontpage", delete=False)
+        db_util.insert_cases(self.db_session, "map_test", delete=False)
+        db_util.insert_cases(self.db_session, "epi_monitoring",
                              delete=False)
-        db_util.insert_cases(meerkat_api.db.session, "malaria", delete=False)
-        db_util.insert_cases(meerkat_api.db.session, "alerts", delete=False)
-        db_util.insert_cases(meerkat_api.db.session, "cd_report", delete=False)
-        db_util.insert_cases(meerkat_api.db.session, "vaccination_report",
+        db_util.insert_cases(self.db_session, "malaria", delete=False)
+        db_util.insert_cases(self.db_session, "alerts", delete=False)
+        db_util.insert_cases(self.db_session, "cd_report", delete=False)
+        db_util.insert_cases(self.db_session, "vaccination_report",
                              delete=False)
-        db_util.insert_cases(meerkat_api.db.session, "completeness",
+        db_util.insert_cases(self.db_session, "completeness",
                              delete=False)
-        db_util.insert_cases(meerkat_api.db.session, "afro_report",
+        db_util.insert_cases(self.db_session, "afro_report",
                              delete=False)
-        db_util.insert_cases(meerkat_api.db.session, "mental_health",
+        db_util.insert_cases(self.db_session, "mental_health",
                              delete=False)
         self.app = meerkat_api.app.test_client()
         self.locations = {1: {"name": "Demo"}}
@@ -184,16 +186,18 @@ class MeerkatAPITestCase(unittest.TestCase):
         self.assertIn(b'WHO', rv.data)
 
     def test_all_urls(self):
+        db_util.insert_statuses(self.db_session)
         urls = valid_urls(meerkat_api.app)
         for url in urls:
             print(url)
             rv = get_url(self.app, url, settings.header)
-            isOK = rv.status_code == 200
+            isOK = rv.status_code in [200, 302]
             if not isOK:
                 print("URL NOT OK: " + str(url))
-            self.assertEqual(rv.status_code, 200)
+            self.assertIn(rv.status_code, [200, 302])
 
     def test_authentication(self):
+        db_util.insert_statuses(self.db_session)
         urls = valid_urls(meerkat_api.app)
         no_authentication = ["key_indicators",
                              "tot_map",
@@ -221,7 +225,7 @@ class MeerkatAPITestCase(unittest.TestCase):
                 rv = get_url(self.app, url, settings.header_non_authorised)
                 self.assertEqual(rv.status_code, 401)
                 rv = get_url(self.app, url, settings.header)
-                self.assertEqual(rv.status_code, 200)
+                self.assertIn(rv.status_code, [200, 302])
             else:
                 rv = get_url(self.app, url, settings.header_non_authorised)
                 self.assertEqual(rv.status_code, 200)
