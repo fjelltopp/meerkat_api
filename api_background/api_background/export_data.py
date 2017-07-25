@@ -671,7 +671,10 @@ def export_form(uuid, form, allowed_location, fields=None):
     Args:\n
        uuid: uuid of download\n
        form: the form to export\n
-       fields: Fileds from form to export\n
+       fields: Fields from form to export\n
+
+    Returns:\n
+        bool: The return value. True for success, False otherwise.\n
 
     """
 
@@ -685,7 +688,17 @@ def export_form(uuid, form, allowed_location, fields=None):
     else:
         keys = ["clinic", "region", "district"]
         if form not in form_tables:
-            return {"filename": form, "file": StringIO()}
+            session.add(
+                DownloadDataFiles(
+                    uuid=uuid,
+                    generation_time=datetime.now(),
+                    type=form,
+                    success=0,
+                    status=1
+                )
+            )
+            session.commit()
+            return False
         sql = text("SELECT DISTINCT(jsonb_object_keys(data)) from {}".
                    format(form_tables[form].__tablename__))
         result = db.execute(sql)
