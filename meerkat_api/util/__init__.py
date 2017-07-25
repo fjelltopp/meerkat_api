@@ -7,7 +7,8 @@ from flask import jsonify
 from datetime import datetime, timedelta
 from dateutil import parser
 from meerkat_api.resources.epi_week import epi_year_start
-from meerkat_abacus.util import is_child
+from meerkat_abacus.util import is_child, get_locations
+import numpy as np
 
 def series_to_json_dict(series):
     """
@@ -19,8 +20,9 @@ def series_to_json_dict(series):
     Returns: 
        dict: dict
     """
+    #np.asscalar is necessary to cast numpy types to python native
     if series is not None:
-        return dict((str(key), value) for key, value in series.to_dict().items())
+        return dict((str(key), np.asscalar(value)) for key, value in series.to_dict().items())
     else:
         return {}
 

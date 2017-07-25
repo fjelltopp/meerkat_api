@@ -23,7 +23,7 @@ app = Flask(__name__)
 app.config.from_object('meerkat_api.config.Config')
 app.config.from_envvar('MEERKAT_API_SETTINGS', silent=True)
 if os.environ.get("MEERKAT_API_DB_SETTINGS"):
-    app.config["SQLALCHEMY_DATABASE_URL"] = os.environ.get(
+    app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get(
         "MEERKAT_API_DB_URL"
     )
 
@@ -163,6 +163,7 @@ from meerkat_api.resources.reports import PublicHealth, CdReport, \
 from meerkat_api.resources.frontpage import KeyIndicators, TotMap, NumAlerts, ConsultationMap, RefugeePage, NumClinics
 from meerkat_api.resources.export_data import Forms, ExportCategory, GetCSVDownload, GetXLSDownload, GetStatus, ExportDataTable, ExportData, ExportForm
 from meerkat_api.resources.incidence import IncidenceRate, WeeklyIncidenceRate
+from meerkat_api.resources.indicators import Indicators
 from meerkat_api.resources.devices import Devices
 
 #from meerkat_api.resources.links import Link, Links
@@ -379,6 +380,9 @@ api.add_resource(Records, "/records/<variable>/<location_id>")
 api.add_resource(Prescriptions, "/prescriptions/<location>",
                  "/prescriptions/<location>/<end_date>",
                  "/prescriptions/<location>/<end_date>/<start_date>")
+
+api.add_resource(Indicators, "/indicators/<flags>/<variables>/<location>",
+                 "/indicators/<flags>/<variables>/<location>/<start_date>/<end_date>")
 
 @app.route('/')
 def hello_world():

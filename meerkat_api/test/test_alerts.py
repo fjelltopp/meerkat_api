@@ -5,7 +5,7 @@ Meerkat API Tests
 Unit tests for the alerts resource in Meerkat API
 """
 import json, unittest, meerkat_api
-from . import settings
+from meerkat_api.test import settings
 from datetime import datetime
 from meerkat_api.test import db_util
 
