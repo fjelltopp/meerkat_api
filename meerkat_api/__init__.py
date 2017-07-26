@@ -20,6 +20,7 @@ import resource
 # from werkzeug.contrib.profiler import ProfilerMiddleware
 # Create the Flask app
 app = Flask(__name__)
+# app.wsgi_app = ProfilerMiddleware(app.wsgi_app, restrictions = [30])
 app.config.from_object('meerkat_api.config.Config')
 app.config.from_envvar('MEERKAT_API_SETTINGS', silent=True)
 if os.environ.get("MEERKAT_API_DB_SETTINGS"):
@@ -151,7 +152,7 @@ from meerkat_api.resources.map import Clinics, MapVariable, IncidenceMap, Shapes
 from meerkat_api.resources.alerts import Alert, Alerts, AggregateAlerts
 from meerkat_api.resources.explore import QueryVariable, QueryCategory
 from meerkat_api.resources.epi_week import EpiWeek, EpiWeekStart
-from meerkat_api.resources.completeness import Completeness, NonReporting
+from meerkat_api.resources.completeness import Completeness, NonReporting, CompletenessIndicator
 from meerkat_api.resources.prescriptions import Prescriptions
 from meerkat_api.resources.reports import PublicHealth, CdReport, \
     CdPublicHealth, CdPublicHealthMad, CdPublicHealthSom, NcdPublicHealth, \
@@ -368,6 +369,9 @@ api.add_resource(NonReporting, "/non_reporting/<variable>/<location>",
                  "/non_reporting/<variable>/<location>/<exclude>/<num_weeks>/<include>",
                  "/non_reporting/<variable>/<location>/<exclude>/<num_weeks>/<include>/<require_case_report>"
 )
+api.add_resource(CompletenessIndicator,
+                 "/completeness_indicator/<variable>/<location>/<number_per_week>",
+                 "/completeness_indicator/<variable>/<location>/<number_per_week>/<exclude>")
 
 api.add_resource(Completeness,
                  "/completeness/<variable>/<location>/<number_per_week>",

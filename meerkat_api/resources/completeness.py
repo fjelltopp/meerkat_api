@@ -7,6 +7,7 @@ from dateutil.parser import parse
 from sqlalchemy import extract, func, Integer, or_
 from datetime import datetime, timedelta
 import pandas as pd
+import json
 
 from meerkat_api import db, app
 from meerkat_api.resources.epi_week import EpiWeek, epi_week_start, epi_year_start
@@ -14,6 +15,42 @@ from meerkat_abacus.model import Data, Locations
 from meerkat_api.util import get_children, is_child, series_to_json_dict, get_locations
 from meerkat_api.authentication import authenticate, is_allowed_location
 from pandas.tseries.offsets import CustomBusinessDay
+
+
+
+class CompletenessIndicator(Resource):
+    """ 
+    Return completeness data in indicator format 
+    {"timeline": timeline,
+     "cumulative": yearly_score,
+    "current: "last_week_score", 
+    "previous": "next_to_last_score"
+    }
+    """
+    def get(self, variable, location, number_per_week, start_week=1, exclude=None):
+        c = Completeness()
+
+        completeness_data = json.loads(c.get(variable, location,
+                                  number_per_week,
+                                  start_week=start_week,
+                                  exclude=exclude).data)
+        cumulative = completeness_data["yearly_score"][location]
+        current = completeness_data["score"][location]
+        timeline = completeness_data["timeline"][location]
+
+        factor = current / timeline["values"][-1]
+        previous = timeline["values"][-2] * factor
+        new_timeline = {}
+
+        for i in range(len(timeline["values"])):
+            new_timeline[timeline["weeks"][i]] = timeline["values"][i] * factor
+        return {
+            "cumulative": cumulative,
+            "current": current,
+            "previous": previous,
+            "timeline": new_timeline
+        }
+            
 
 
 class Completeness(Resource):
