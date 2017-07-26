@@ -1,13 +1,26 @@
 """
 Functions to export data
 """
-from meerkat_abacus.util import epi_week, get_locations, is_child
-from meerkat_abacus.util import all_location_data, get_db_engine, get_links
-from meerkat_abacus.model import form_tables, Data, Links
-from meerkat_abacus.model import DownloadDataFiles, AggregationVariables
-from meerkat_abacus.config import country_config, config_directory
-
 import gettext
+import shelve
+import csv
+import json
+import logging
+import xlsxwriter
+import os
+from sqlalchemy.orm import aliased
+from sqlalchemy import text, or_, func, Float
+from dateutil.parser import parse
+from datetime import datetime
+from celery import task
+
+from api_background._populate_locations import set_empty_locations, populate_row_locations
+from api_background.xls_csv_writer import XlsCsvFileWriter
+from meerkat_abacus.config import country_config, config_directory
+from meerkat_abacus.model import DownloadDataFiles, AggregationVariables
+from meerkat_abacus.model import form_tables, Data, Links
+from meerkat_abacus.util import all_location_data, get_db_engine, get_links
+from meerkat_abacus.util import epi_week, get_locations, is_child
 
 translation_dir = country_config.get("translation_dir", None)
 
@@ -16,21 +29,6 @@ if translation_dir:
         t = gettext.translation('messages', translation_dir, languages=["en", "fr"])
     except FileNotFoundError:
         print("Translations not found")
-
-import resource
-import shelve
-from sqlalchemy.orm import aliased
-from sqlalchemy import text, or_, func, Float
-from dateutil.parser import parse
-from datetime import datetime
-from io import StringIO, BytesIO
-from celery import task
-import pandas as pd
-import csv
-import json
-import logging
-import xlsxwriter
-import os
 
 base_folder = os.path.dirname(os.path.realpath(__file__))
 
@@ -671,6 +669,7 @@ def export_form(uuid, form, allowed_location, fields=None):
     Args:\n
        uuid: uuid of download\n
        form: the form to export\n
+       allowed_location: will extract result only for this location
        fields: Fields from form to export\n
 
     Returns:\n
@@ -679,135 +678,44 @@ def export_form(uuid, form, allowed_location, fields=None):
     """
 
     db, session = get_db_engine()
-    (locations, locs_by_deviceid, regions,
-     districts, devices) = all_location_data(session)
+    if form not in form_tables.keys():
+        __submit_operation_failure(form, session, uuid)
+        return False
 
-    locs = get_locations(session)
+    location_data = all_location_data(session)
+    locs_by_deviceid = location_data[1]
+    if locs_by_deviceid is None:
+        __submit_operation_failure(form, session, uuid)
+        return False
+
     if fields:
         keys = fields
     else:
-        keys = ["clinic", "region", "district"]
-        if form not in form_tables:
-            session.add(
-                DownloadDataFiles(
-                    uuid=uuid,
-                    generation_time=datetime.now(),
-                    type=form,
-                    success=0,
-                    status=1
-                )
-            )
-            session.commit()
-            return False
-        sql = text("SELECT DISTINCT(jsonb_object_keys(data)) from {}".
-                   format(form_tables[form].__tablename__))
-        result = db.execute(sql)
-        for r in result:
-            keys.append(r[0])
+        keys = __get_keys_from_db(db, form)
 
-    filename = base_folder + "/exported_data/" + uuid + "/" + form
-    os.mkdir(base_folder + "/exported_data/" + uuid)
-    csv_content = open(filename + ".csv", "w")
+    xls_csv_writer = XlsCsvFileWriter(base_folder, form, uuid)
+    xls_csv_writer.write_xls_row(keys)
+    xls_csv_writer.write_csv_row(keys)
 
-    xls_book, xls_content, xls_sheet = create_xls_file(filename)
-
-    # xls_sheet = pyexcel.Sheet([keys])
+    session_query = session.query(form_tables[form].data)
+    __save_form_data(xls_csv_writer, session_query, keys, allowed_location, location_data)
+    __submit_operation_success(form, session, uuid)
+    xls_csv_writer.flush_csv_buffer()
+    xls_csv_writer.close_cvs_xls_buffers()
+    return True
 
 
-
-    write_xls_row(keys, 0, xls_sheet)
-
-    i = 0
-    if locs_by_deviceid is None:
-        no_locs_by_deviceid(form, session, uuid)
-        return False
-
-    csv_writer = csv.writer(csv_content)
-    csv_writer.writerows([keys])
-
-    if form in form_tables.keys():
-        export_single_form(allowed_location, csv_content, csv_writer, districts, form, i, keys, locations, locs,
-                           locs_by_deviceid, regions, session, uuid, xls_book, xls_content, xls_sheet)
-        return True
+def __get_keys_from_db(db, form):
+    keys = ["clinic", "region", "district"]
+    sql = text("SELECT DISTINCT(jsonb_object_keys(data)) from {}".
+               format(form_tables[form].__tablename__))
+    results = db.execute(sql)
+    for r in results:
+        keys.append(r[0])
+    return keys
 
 
-def create_xls_file(filename):
-    # XlsxWriter with "constant_memory" set to true, flushes mem after each row
-    xls_content = open(filename + ".xlsx", "wb")
-    xls_book = xlsxwriter.Workbook(xls_content, {'constant_memory': True})
-    xls_sheet = xls_book.add_worksheet()
-    return xls_book, xls_content, xls_sheet
-
-
-def no_locs_by_deviceid(form, session, uuid):
-    session.add(
-        DownloadDataFiles(
-            uuid=uuid,
-            generation_time=datetime.now(),
-            type=form,
-            success=0,
-            status=1
-        )
-    )
-    session.commit()
-
-
-def write_xls_row(data, row, sheet):
-    # Little utility function write a row to file.
-    for cell in range(len(data)):
-        sheet.write(row, cell, data[cell])
-
-
-def export_single_form(allowed_location, csv_content, csv_writer, districts, form, i, keys, locations, locs,
-                       locs_by_deviceid, regions, session, uuid, xls_book, xls_content, xls_sheet):
-    results = session.query(form_tables[form].data).yield_per(1000)
-    list_rows = []
-    for row in results:
-        # Initialise empty row
-        list_row = []
-        # list_row = [''] * len(keys)
-        # For each key requested, add the value to the row.
-        for key in keys:
-            try:
-                list_row.append(row.data.get(key, ''))
-            except AttributeError as e:
-                logging.exception("Error while parsing row %s with data:\n%s", row, row.data, exc_info=True)
-
-        # Add the location data if it has been requested and exists.
-        if 'deviceid' in row.data:
-            clinic_id = locs_by_deviceid.get(
-                row.data["deviceid"],
-                None
-            )
-            if not is_child(allowed_location, clinic_id, locs):
-                continue
-
-            if 'clinic' in keys:
-                handle_clinic(clinic_id, keys, list_row, locations)
-            # Sort out district and region
-            parent_location = locations[clinic_id].parent_location
-            if parent_location in districts:
-                handle_district(clinic_id, keys, list_row, locations)
-            elif parent_location in regions:
-                handle_region(clinic_id, keys, list_row, locations)
-
-        else:
-            if allowed_location != 1:
-                continue
-            for type in ['clinic', 'district', 'region']:
-                if type in keys:
-                    index = keys.index(type)
-                    list_row[index] = ""
-
-        # Can write row immediately to xls file as memory is flushed after.
-        write_xls_row(list_row, i + 1, xls_sheet)
-        i, list_rows = append_to_buffer_and_flush(csv_writer, i, list_row, list_rows)
-
-    # Write any remaining unwritten data down.
-    csv_writer.writerows(list_rows)
-    xls_book.close()
-    csv_content.close()
-    xls_content.close()
+def __submit_operation_success(form, session, uuid):
     session.add(
         DownloadDataFiles(
             uuid=uuid,
@@ -820,37 +728,45 @@ def export_single_form(allowed_location, csv_content, csv_writer, districts, for
     session.commit()
 
 
-def append_to_buffer_and_flush(csv_writer, i, list_row, list_rows):
-    # Append the row to list of rows to be written to csv.
-    list_rows.append(list_row)
-    # Store for every 1000 rows.
-    if i % 5 == 0:
-        csv_writer.writerows(list_rows)
-        list_rows = []
-    i += 1
-    return i, list_rows
+def __submit_operation_failure(form, session, uuid):
+    session.add(
+        DownloadDataFiles(
+            uuid=uuid,
+            generation_time=datetime.now(),
+            type=form,
+            success=0,
+            status=1
+        )
+    )
+    session.commit()
 
 
-def handle_clinic(clinic_id, keys, list_row, locations):
-    list_row[keys.index("clinic")] = locations[clinic_id].name
+def __save_form_data(xls_csv_writer, query_form_data, keys, allowed_location, location_data):
+    (locations, locs_by_deviceid, regions, districts, devices) = location_data
+    results = query_form_data.yield_per(1000)
+    for result in results:
+        # Initialise empty result for header line
+        row = []
+        for key in keys:
+            try:
+                row.append(result.data.get(key, ''))
+            except AttributeError:
+                logging.exception("Error while parsing row %s with data:\n%s", result, result.data, exc_info=True)
 
+        # Add the location data if it has been requested and exists.
+        if 'deviceid' in result.data:
+            clinic_id = locs_by_deviceid.get(result.data["deviceid"], None)
+            if not is_child(allowed_location, clinic_id, locations):
+                continue
+            populate_row_locations(row, keys, clinic_id, location_data)
 
-def handle_region(clinic_id, keys, list_row, locations):
-    if 'district' in keys:
-        list_row[keys.index("district")] = ""
-    if 'region' in keys:
-        list_row[keys.index("region")] = locations[
-            locations[clinic_id].parent_location
-        ].name
+        else:
+            if allowed_location != 1:
+                continue
+            set_empty_locations(keys, row)
 
-
-def handle_district(clinic_id, keys, list_row, locations):
-    parent_location = locations[clinic_id].parent_location
-    if 'district' in keys:
-        list_row[keys.index("district")] = locations[parent_location].name
-    if 'region' in keys:
-        grandparent_location = locations[parent_location].parent_location
-        list_row[keys.index("region")] = locations[grandparent_location].name
+        xls_csv_writer.write_xls_row(row)
+        xls_csv_writer.write_csv_row(row)
 
 
 if __name__ == "__main__":
