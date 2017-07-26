@@ -27,6 +27,7 @@ class CompletenessIndicator(Resource):
     "previous": "next_to_last_score"
     }
     """
+    decorators = [authenticate]
     def get(self, variable, location, number_per_week, start_week=1, exclude=None):
         c = Completeness()
 
@@ -34,12 +35,16 @@ class CompletenessIndicator(Resource):
                                   number_per_week,
                                   start_week=start_week,
                                   exclude=exclude).data)
-        cumulative = completeness_data["yearly_score"][location]
-        current = completeness_data["score"][location]
-        timeline = completeness_data["timeline"][location]
+        cumulative = completeness_data["yearly_score"].get(location, 0)
+        current = completeness_data["score"].get(location, 0)
+        timeline = completeness_data["timeline"].get(location, {"values": [], "weeks": []})
 
-        factor = current / timeline["values"][-1]
-        previous = timeline["values"][-2] * factor
+        if timeline["values"]:
+            factor = current / timeline["values"][-1]
+            previous = timeline["values"][-2] * factor
+        else:
+            factor = 1
+            previous = 0
         new_timeline = {}
 
         for i in range(len(timeline["values"])):
