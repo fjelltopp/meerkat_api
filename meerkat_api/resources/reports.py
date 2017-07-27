@@ -4626,6 +4626,7 @@ class SCReport(Resource):
         num_codes = var.get("sc_overview_num").keys()
         yes_codes = var.get("sc_overview_yes_no")
 
+        sc_type_codes = var.get("sc_facility_type")
         overview_data = {}
 
 
@@ -4718,7 +4719,11 @@ class SCReport(Resource):
                             recommendations.append("{}".format(sc_rec_variables[code]["name"]))
                     clinic_data["recommendations"] = recommendations
 
+                    clinic_data["services"] = []
 
+                    for code in sc_type_codes.keys():
+                        if code in sc_data.variables:
+                            clinic_data["services"].append(sc_type_codes[code]["name"])
 
                     # Overview data
 
