@@ -40,6 +40,22 @@ class Location(Resource):
             model.Locations.id == location_id).first()))
 
 
+class DeviceID(Resource):
+    """
+    Location by device_id
+
+    Args:\n
+        location_id: id of location\n
+    Returns:\n
+       location: location
+    """
+    def get(self, device_id):
+
+        return jsonify(row_to_dict(db.session.query(model.Locations).filter(
+            model.Locations.deviceid == device_id).first()
+        ))
+
+
 class LocationTree(Resource):
     """
     Location Tree
@@ -50,6 +66,7 @@ class LocationTree(Resource):
        Returns a location Tree
     """
     decorators = [authenticate]
+
     def get(self, only_case_reports=True):
         locs = get_locations(db.session)
         loc = g.allowed_location

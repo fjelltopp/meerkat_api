@@ -15,7 +15,7 @@ import meerkat_abacus.config as config
 import meerkat_abacus.model as model
 
 class MeerkatAPIDataTestCase(unittest.TestCase):
-    
+
     def setUp(self):
         """Setup for testing"""
         meerkat_api.app.config['TESTING'] = True
@@ -27,7 +27,7 @@ class MeerkatAPIDataTestCase(unittest.TestCase):
 
     def tearDown(self):
         pass
-    
+
     def test_aggregate(self):
         """Check aggregate"""
         rv = self.app.get('/aggregate/tot_1/1', headers=settings.header)
@@ -71,7 +71,7 @@ class MeerkatAPIDataTestCase(unittest.TestCase):
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(data["year"], 10)
-        self.assertEqual(data["weeks"]["18"], 9)
+        self.assertEqual(data["weeks"]["18"], 8)
         self.assertEqual(data["weeks"]["22"], 1)
 
         rv = self.app.get('/aggregate_year/gen_1/1/2015', headers=settings.header)
@@ -86,7 +86,7 @@ class MeerkatAPIDataTestCase(unittest.TestCase):
         self.assertEqual(data["year"], 4)
         self.assertEqual(data["weeks"]["18"], 3)
         self.assertEqual(data["weeks"]["22"], 1)
-        
+
     def test_aggregate_category(self):
         """Test for aggregate Category """
         rv = self.app.get('/aggregate_category/gender/1/2015', headers=settings.header)
@@ -97,7 +97,7 @@ class MeerkatAPIDataTestCase(unittest.TestCase):
         self.assertEqual(data["gen_1"]["year"], 3)
         self.assertEqual(data["gen_2"]["year"], 7)
         self.assertEqual(data["gen_1"]["weeks"]["18"], 3)
-        self.assertEqual(data["gen_2"]["weeks"]["18"], 6)
+        self.assertEqual(data["gen_2"]["weeks"]["18"], 5)
         self.assertEqual(data["gen_2"]["weeks"]["22"], 1)
 
         rv = self.app.get('/aggregate_category/gender/3/2015', headers=settings.header)
@@ -123,7 +123,7 @@ class MeerkatAPIDataTestCase(unittest.TestCase):
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(sorted(list(data.keys())), [])
-        
+
     def test_records(self):
         """Test records function """
         rv = self.app.get('/records/prc_1/1', headers=settings.header)
@@ -137,9 +137,8 @@ class MeerkatAPIDataTestCase(unittest.TestCase):
         self.assertEqual(len(data["records"]), 1)
         self.assertEqual(
             data["records"][0]["variables"],
-            { "data_entry":1, "tot_1":1, "gen_2": 1, "age_4": 1, "age_10": 1, 
+            { "data_entry":1, "tot_1":1, "gen_2": 1, "age_4": 1, "age_10": 1,
               "nat_2": 1, "sta_1": 1, "prc_1": 1, "cmd_1": 1, "icb_1": 1 }
         )
         self.assertEqual(data["records"][0]["clinic_type"], "Hospital")
         self.assertEqual(data["records"][0]["uuid"], "uuid:2d14ec68-c5b3-47d5-90db-eee510ee9377")
-        

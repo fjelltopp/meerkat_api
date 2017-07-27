@@ -56,6 +56,7 @@ def valid_urls(app):
     substitutions = {
         "location": "1",
         "location_id": "1",
+        "device_id": "4",
         "start_date": datetime(2015, 1, 1).isoformat(),
         "end_date": datetime.now().isoformat(),
         "variable_id": "tot_1",
@@ -96,7 +97,10 @@ def valid_urls(app):
         "require_case_report": "0",
         "restrict_by": "tot_1",
         "weeks": "1",
-        "hard_date_limit": "2017-01-01"
+        "hard_date_limit": "2017-01-01",
+        "monthly": "1",
+        "flags": "n",
+        "variables": "gen_1"
     }
     urls = []
     for url in meerkat_api.app.url_map.iter_rules():
@@ -137,6 +141,7 @@ class MeerkatAPITestCase(unittest.TestCase):
         meerkat_api.app.config['API_KEY'] = ""
         celery_app.conf.CELERY_ALWAYS_EAGER = True
         # manage.set_up_everything(False, False, 500)
+        db_util.insert_calculation_parameters(meerkat_api.db.session)
         db_util.insert_codes(meerkat_api.db.session)
         db_util.insert_locations(meerkat_api.db.session)
         db_util.insert_cases(meerkat_api.db.session, "public_health_report",
@@ -201,7 +206,8 @@ class MeerkatAPITestCase(unittest.TestCase):
                              "epi_week",
                              "geo_shapes",
                              "variables",
-                             "variable/tot_1"]
+                             "variable/tot_1",
+                             "device/"]
         for url in urls:
             needs_auth = True
             for na in no_authentication:

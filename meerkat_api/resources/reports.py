@@ -32,7 +32,7 @@ from gettext import gettext
 import logging, json, operator
 from meerkat_api.util import get_children, is_child, fix_dates, rows_to_dicts, find_level, trim_locations
 from meerkat_api import db, app
-from meerkat_abacus.model import Data, Locations, AggregationVariables
+from meerkat_abacus.model import Data, Locations, AggregationVariables, CalculationParameters
 from meerkat_api.resources.completeness import Completeness, NonReporting
 from meerkat_api.resources.variables import Variables, Variable
 from meerkat_api.resources.epi_week import EpiWeek, epi_week_start, epi_year_start
@@ -3218,78 +3218,17 @@ class VaccinationReport(Resource):
             ret['data']['infants'].sort(key=lambda tup: tup['name'])
             ret['data']['females'].sort(key=lambda tup: tup['name'])
         except KeyError as e:
-            print("Error")
-            print(e)
+            logging.error("Error: " + str(e))
             ret['data'] = {'message': 'invalid data'}
 
-        # vials used
-        vials = {
-          "BCG": 20,
-          "DTCHepHib": 10,
-          "PCV10": 2,
-          "ROTARIX": 1,
-          "VPO": 20,
-          "VPI": 5,
-          "VAR": 10,
-          "VAT": 20,
-        }
+        # get vaccination data from database
+        vaccination_parameters = db.session.query(CalculationParameters.parameters)\
+            .filter(CalculationParameters.name == 'vaccination_vials')\
+            .one()[0]
 
-        vials_total_doses = {
-          "BCG": 0,
-          "DTCHepHib": 0,
-          "PCV10": 0,
-          "ROTARIX": 0,
-          "VPO": 0,
-          "VPI": 0,
-          "VAR": 0,
-          "VAT": 0
-        }
-
-        #Types of vaccinations:
-        vials_types = {
-            "vac_pw_vat4": "VAT",
-            "vac_pw_vat5": "VAT",
-            "vac_pw_vat3": "VAT",
-            "vac_pw_vat1": "VAT",
-            "vac_pw_vat2": "VAT",
-            "vac_i0_dtc2": "DTCHepHib",
-            "vac_i0_vpo0": "VPO",
-            "vac_i0_dtc1": "DTCHepHib",
-            "vac_i0_vpo1": "VPO",
-            "vac_i0_bcg": "BCG",
-            "vac_i0_var": "VAR",
-            "vac_i0_dtc3": "DTCHepHib",
-            "vac_i0_pcv3": "PCV10",
-            "vac_i0_rota1": "ROTARIX",
-            "vac_i0_rota3": "ROTARIX",
-            "vac_i0_rota2": "ROTARIX",
-            "vac_i0_vpo2": "VPO",
-            "vac_i0_vpi": "VPI",
-            "vac_i0_vpo3": "VPO",
-            "vac_i0_pcv1": "PCV10",
-            "vac_i0_pcv2": "PCV10",
-            "vac_i12_vpi": "VPI",
-            "vac_i12_dtc1": "DTCHepHib",
-            "vac_i12_vpo1": "VPO",
-            "vac_i12_dtc3": "DTCHepHib",
-            "vac_i12_vpo3": "VPO",
-            "vac_i12_dtc2": "DTCHepHib",
-            "vac_i12_rota1": "ROTARIX",
-            "vac_i12_rota3": "ROTARIX",
-            "vac_i12_pcv3": "PCV10",
-            "vac_i12_vpo0": "VPO",
-            "vac_i12_pcv2": "PCV10",
-            "vac_i12_pcv1": "PCV10",
-            "vac_i12_vpo2": "VPO",
-            "vac_i12_bcg": "BCG",
-            "vac_i12_var": "VAR",
-            "vac_i12_rota2": "ROTARIX",
-            "vac_notpw_vat3": "VAT",
-            "vac_notpw_vat4": "VAT",
-            "vac_notpw_vat5": "VAT",
-            "vac_notpw_vat1": "VAT",
-            "vac_notpw_vat2": "VAT"}
-
+        vials = vaccination_parameters["vials"]
+        vials_total_doses = vaccination_parameters["vials_total_doses"]
+        vials_types = vaccination_parameters["vials_types"]
 
         for category in counts:
             for vacc in counts[category].keys():
@@ -3301,7 +3240,6 @@ class VaccinationReport(Resource):
         ret['data']['vials'] = []
 
         for vial_key in vials_total_doses.keys():
-            print("Key is " + vial_key)
             doses_per_vial = vials[vial_key]
             total_doses = vials_total_doses[vial_key]
             no_vials = total_doses / doses_per_vial
@@ -4689,6 +4627,7 @@ class SCReport(Resource):
         num_codes = var.get("sc_overview_num").keys()
         yes_codes = var.get("sc_overview_yes_no")
 
+        sc_type_codes = var.get("sc_facility_type")
         overview_data = {}
 
 
@@ -4783,7 +4722,11 @@ class SCReport(Resource):
                             recommendations.append("{}".format(sc_rec_variables[code]["name"]))
                     clinic_data["recommendations"] = recommendations
 
+                    clinic_data["services"] = []
 
+                    for code in sc_type_codes.keys():
+                        if code in sc_data.variables:
+                            clinic_data["services"].append(sc_type_codes[code]["name"])
 
                     # Overview data
 

@@ -153,14 +153,15 @@ class MeerkatAPITestCase(unittest.TestCase):
 
     def test_export_category(self):
         """ Test getting a from with category """
-        rv = self.app.get('/export/category/demo_case/cd_tab/cd?variables=[["icd_code", "icd code"], ["icd_name$cd_tab", "Name"], ["code$ale_2,ale_3,ale_4$Confirmed,Disregarded,Ongoing","Alert Status"], ["clinic", "Clinic"], ["meta/instanceID", "uuid"], ["end$month", "Month"], ["end$year", "Year"], ["end$epi_week", "epi_week"]]',
+        rv = self.app.get('/export/category/demo_case/cd_tab/cd?start_date=2015-04-30T00:00:00&variables=[["icd_code", "icd code"], ["icd_name$cd_tab", "Name"], ["code$ale_2,ale_3,ale_4$Confirmed,Disregarded,Ongoing","Alert Status"], ["clinic", "Clinic"], ["meta/instanceID", "uuid"], ["end$month", "Month"], ["end$year", "Year"], ["end$epi_week", "epi_week"]]',
                           headers={**settings.header})
 
         self.assertEqual(rv.status_code, 200)
 
         uuid = rv.data.decode("utf-8")[1:-2]
         test = meerkat_api.db.session.query(model.DownloadDataFiles).filter(
-            model.DownloadDataFiles.uuid == uuid).all()
+            model.DownloadDataFiles.uuid == uuid
+        ).all()
         self.assertEqual(len(test), 1)
         self.assertEqual(test[0].uuid, uuid)
 
@@ -174,7 +175,8 @@ class MeerkatAPITestCase(unittest.TestCase):
         filename = base_folder + "/exported_data/" + uuid + "/cd.csv"
 
         with open(filename) as csv_file:
-            self.assertEqual(len(csv_file.readlines()), 8)
+            # 8 cd_tab records but one is dated before the secified start_date
+            self.assertEqual(len(csv_file.readlines()), 7)
             csv_file.seek(0)
             c = csv.DictReader(csv_file)
             found_cholera = False
@@ -235,7 +237,7 @@ class MeerkatAPITestCase(unittest.TestCase):
         filename = base_folder + "/exported_data/" + uuid + "/demo_case.csv"
         print(uuid)
         with open(filename, errors="replace") as csv_file:
-            
+
             self.assertEqual(len(csv_file.readlines()), 11)
             csv_file.seek(0)
             c = csv.DictReader(csv_file)

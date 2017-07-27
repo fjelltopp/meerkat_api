@@ -13,11 +13,11 @@ import gettext
 translation_dir = country_config.get("translation_dir", None)
 
 if translation_dir:
-    try: 
+    try:
         t = gettext.translation('messages',  translation_dir, languages=["en", "fr"])
     except FileNotFoundError:
         print("Translations not found")
-    
+
 
 import resource
 import shelve
@@ -113,7 +113,8 @@ def export_data(uuid, allowed_location, use_loc_ids=False):
 
 @task
 def export_category(uuid, form_name, category, download_name,
-                    variables,  data_type, allowed_location, language="en"):
+                    variables,  data_type, allowed_location,
+                    start_date=None, end_date=None, language="en"):
     """
     We take a variable dictionary of form field name: display_name.
     There are some special commands that can be given in the form field name:
@@ -155,7 +156,7 @@ def export_category(uuid, form_name, category, download_name,
     print(language)
     if language != "en":
         os.environ["LANGUAGE"] = language
-        
+
     locs = get_locations(session)
     print(uuid)
     children = locs[allowed_location].children
@@ -192,12 +193,16 @@ def export_category(uuid, form_name, category, download_name,
 #        logging.warning(trans_dict)
         return trans_dict
 
-
     # DB conditions
-    conditions = [or_(Data.variables.has_key(key)
-                      for key in data_keys)]
+    conditions = [
+        or_(Data.variables.has_key(key) for key in data_keys)
+    ]
     if data_type:
         conditions.append(Data.type == data_type)
+    if start_date:
+        conditions.append(Data.date >= parse(start_date))
+    if end_date:
+        conditions.append(Data.date <= parse(end_date))
 
     # Set up icd_code_to_name if needed and determine if
     # alert_links are included
@@ -269,7 +274,7 @@ def export_category(uuid, form_name, category, download_name,
             tr_dict = {}
             if ";" in trans:
                 tr_dict = json.loads(trans.split(";")[1].replace("'", '"'))
-        
+
             # If the json specifies file details, load translation from file.
 
             # Get all possible options from the DB
@@ -298,7 +303,7 @@ def export_category(uuid, form_name, category, download_name,
 
         if "gen_link$" in v[0]:
             link_ids.append(v[0].split("$")[1])
-    if "uuid" not in return_keys: 
+    if "uuid" not in return_keys:
         return_keys.append("uuid")
         translation_dict["uuid"] = "meta/instanceID"
     link_ids = set(link_ids)
@@ -325,7 +330,7 @@ def export_category(uuid, form_name, category, download_name,
 
     number_query = session2.query(func.count(Data.id)).join(
         form_tables[form_name], Data.uuid == form_tables[form_name].uuid)
-    
+
     results = session2.query(*columns).join(
         form_tables[form_name], Data.uuid == form_tables[form_name].uuid)
     for join in joins:
@@ -335,7 +340,7 @@ def export_category(uuid, form_name, category, download_name,
     total_number = number_query.filter(*conditions).first()[0]
     results = results.filter(*conditions).yield_per(200)
 
-    
+
     locs = get_locations(session)
     list_rows = []
 
@@ -529,7 +534,7 @@ def export_category(uuid, form_name, category, download_name,
                 tr_dict = min_translation[k]
                 if list_row[index] in tr_dict:
                     list_row[index] = tr_dict[list_row[index]]
-                else:                              
+                else:
                     parts = [x.strip() for x in str(list_row[index]).split(' ')]
                     for x in range(len(parts)):
                         # Get the translation using the appropriate key.
@@ -539,7 +544,7 @@ def export_category(uuid, form_name, category, download_name,
                             tr_dict.get(parts[x], tr_dict.get('*', parts[x]))
                         )
                     list_row[index] = ' '.join(list(filter(bool, parts)))
-                
+
             if translation_dir and language != "en" and list_row[index]:
                 list_row[index] = t.gettext(list_row[index])
         list_rows.append(list_row)
@@ -581,7 +586,7 @@ def export_data_table(uuid, download_name,
                       location_conditions=None):
     """
     Export an aggregated data table restricted by restrict by,
-    
+
 
     """
     return_keys = []
@@ -609,11 +614,11 @@ def export_data_table(uuid, download_name,
         columns.append(getattr(Data, field))
         groups.append(getattr(Data, field))
         return_keys.append(v[1])
-        
+
     for v in variables:
         columns.append(func.sum(Data.variables[v[0]].astext.cast(Float)))
         return_keys.append(v[1])
-        
+
     result = session.query(*columns).filter(
         Data.variables.has_key(restrict_by)).group_by(*groups)
 
@@ -686,7 +691,7 @@ def export_form(uuid, form, allowed_location, fields=None):
     db, session = get_db_engine()
     (locations, locs_by_deviceid, regions,
      districts, devices) = all_location_data(session)
-    
+
     locs = get_locations(session)
     if fields:
         keys = fields
@@ -757,7 +762,7 @@ def export_form(uuid, form, allowed_location, fields=None):
             if clinic_id:
                 if not is_child(allowed_location,clinic_id, locs):
                     continue
-                
+
                 if 'clinic' in keys:
                     list_row[keys.index("clinic")] = locations[clinic_id].name
                 # Sort out district and region
@@ -817,7 +822,7 @@ def export_form(uuid, form, allowed_location, fields=None):
         session.commit()
 
         return True
-    
+
 if __name__ == "__main__":
     import uuid
     export_data_table(str(uuid.uuid4()), "test", "reg_1", [["reg_2", "Consultations"]], [["epi_year", "year"],["clinic:location", "clinic"], ["epi_week", "week"]],

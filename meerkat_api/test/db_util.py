@@ -8,6 +8,7 @@ from importlib import reload
 import uuid
 from freezegun import freeze_time
 import random, csv, os, logging
+import json
 
 from meerkat_api.test.test_data import locations, cases
 
@@ -32,6 +33,8 @@ def insert_cases(session, variable, date=None, delete=True):
     session.commit()
     if date:
         freezer.stop()
+
+
 def insert_links(session, variable):
     """ Add a variable with links from the links.py file in test_data
 
@@ -64,6 +67,35 @@ def insert_codes(session):
     """
     insert_codes_from_file(session, "demo_codes.csv")
 
+def insert_calculation_parameters(session):
+    """ Add the codes from the calculation_parameters.json file
+
+    Args:
+       session: db session
+    """
+    session.query(model.CalculationParameters).delete()
+    session.commit()
+
+    parameter_files = ["medicine_kits.json","vaccination_vials.json"]
+
+    for file in parameter_files:
+        file_name = os.path.splitext(file)[0]
+        file_extension = os.path.splitext(file)[-1]
+        if file_extension == '.json':
+            with open(os.path.dirname(os.path.realpath(__file__))+"/test_data/"+"demo_calculation_parameters/" +
+                    file) as json_data:
+                parameter_data = json.load(json_data)
+                session.add(
+                    model.CalculationParameters(
+                        name=file_name,
+                        type=file_extension,
+                        parameters = parameter_data
+                    ))
+        elif file_extension == '.csv':
+            # TODO: CSV implementation
+            pass
+
+    session.commit()
 
 def insert_codes_from_file(session, filename):
     """

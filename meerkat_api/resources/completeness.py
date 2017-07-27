@@ -11,29 +11,11 @@ from sqlalchemy.dialects import postgresql
 from meerkat_api import db, app
 from meerkat_api.resources.epi_week import EpiWeek, epi_week_start, epi_year_start
 from meerkat_abacus.model import Data, Locations
-from meerkat_api.util import get_children, is_child
-from meerkat_abacus.util import get_locations
+from meerkat_api.util import get_children, is_child, series_to_json_dict, get_locations
 from meerkat_api.authentication import authenticate, is_allowed_location
-from meerkat_abacus.util import get_locations
 from pandas.tseries.offsets import CustomBusinessDay
 
 import time
-
-def series_to_json_dict(series):
-    """
-    Takes pandas series and turns into a dict with string keys
-
-    Args: 
-        series: pandas series
-    
-    Returns: 
-       dict: dict
-    """
-    if series is not None:
-        return dict((str(key), value)
-                    for key, value in series.to_dict().items())
-    else:
-        return {}
 
 class Completeness(Resource):
     """
