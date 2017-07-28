@@ -78,7 +78,7 @@ class LocationTree(Resource):
                         ret.setdefault(locs[l].parent_location, {"nodes": []})
                     # Filter by case type, if case type is specified.
                     if (not case_type or not locs[l].level == 'clinic' or
-                       locs[l].case_type.strip() == case_type):
+                       str(locs[l].case_type).strip() == case_type):
                         ret.setdefault(l, {"nodes": []})
                         ret[l].update({"id": l, "text": locs[l].name})
                         ret[locs[l].parent_location]["nodes"].append(ret[l])
