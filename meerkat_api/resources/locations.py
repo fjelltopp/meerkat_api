@@ -88,10 +88,9 @@ class LocationTree(Resource):
         # Recursively clean any branches without clinics in them.
         def clean(tree):
             for child in reversed(tree['nodes']):
-                if not child['nodes'] and locs[child['id']].level != 'clinic':
+                clean(child)
+                if not (child['nodes'] or locs[child['id']].level == 'clinic'):
                     tree['nodes'].remove(child)
-                else:
-                    clean(child)
         clean(ret[loc])
 
         return jsonify(ret[loc])
