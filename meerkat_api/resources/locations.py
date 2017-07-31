@@ -70,6 +70,8 @@ class LocationTree(Resource):
         case_type = request.args.get('case_type')
         locs = get_locations(db.session)
         loc = g.allowed_location
+
+
         ret = {loc: {"id": loc, "text": locs[loc].name, "nodes": []}}
         for l in sorted(locs.keys()):
             if l >= loc and is_child(loc, l, locs):
@@ -82,6 +84,16 @@ class LocationTree(Resource):
                         ret.setdefault(l, {"nodes": []})
                         ret[l].update({"id": l, "text": locs[l].name})
                         ret[locs[l].parent_location]["nodes"].append(ret[l])
+
+        # Recursively clean any branches without clinics in them.
+        def clean(tree):
+            for child in reversed(tree['nodes']):
+                if not child['nodes'] and locs[child['id']].level != 'clinic':
+                    tree['nodes'].remove(child)
+                else:
+                    clean(child)
+        clean(ret[loc])
+
         return jsonify(ret[loc])
 
 
