@@ -10,30 +10,22 @@ from meerkat_abacus.model import form_tables
 
 def clear_old_events(program_id, org_unit_id):
     events_id_list = []
-    res = requests.get("{}events?program={}&orgUnit={}&skipPaging=true".format(api_url, program_id, org_unit_id), auth=credentials)
-    # res = requests.get("{}events?program={}&orgUnit={}&pageSize={}&page={}".format(api_url, program_id, org_unit_id, 100, index), auth=credentials)
+    res = requests.get("{}events?program={}&orgUnit={}&skipPaging=true".format(api_url, program_id, org_unit_id),
+                       auth=credentials)
     results = res.json()
     for result in results["events"]:
         event_id = result['event']
-        events_id_list.append({'event' : event_id})
-    delete_json = json.dumps({"events" : events_id_list})
+        events_id_list.append({'event': event_id})
+    delete_json = json.dumps({"events": events_id_list})
     a_delete = requests.post("{}events?strategy=DELETE".format(api_url), data=delete_json, headers=headers)
     print("Deleted old events with status {}".format(a_delete.status_code))
 
 
 def update_data_elements(key, headers):
-    payload = {}
-    payload['name'] = key
-    payload['shortName'] = key
-    payload['domainType'] = 'TRACKER'
-    payload['valueType'] = 'TEXT'
-    payload['aggregationType'] = 'NONE'
+    payload = {'name': key, 'shortName': key, 'domainType': 'TRACKER', 'valueType': 'TEXT', 'aggregationType': 'NONE'}
     json_payload = json.dumps(payload)
-
     post_res = requests.post("{}dataElements".format(api_url), data=json_payload, headers=headers)
     json_res = post_res.json()
-    # print(post_res.status_code)
-    # print(post_res.text)
     uid = json_res['response']['uid']
     print("Created data element \"{}\" with uid: {}".format(key, uid))
     return uid
@@ -42,9 +34,6 @@ def update_data_elements(key, headers):
 def prepare_data_values(keys, dhis_keys, data):
     data_values = []
     for key in keys:
-        # if key in ["vaccination_type", "national"]:
-        #     TODO: vaccination & vaccination_type give the same first result!!!
-            # continue
         if key in data.keys():
             data_values.append({'dataElement': dhis_keys[key], 'value': data[key]})
     return data_values
@@ -92,11 +81,9 @@ if __name__ == "__main__":
     dhis_keys = get_dhis2_keys(api_url, credentials, headers, keys)
 
     # TODO: for now only hardocded will be done in a more elegant way
-    program_id = 'ZU7Z7ouwbba'
-    # program_id = 'T6VaKGprnc5'
-    # program_id_req = requests.get("{}programs?query={}".format(api_url, form), auth=credentials)
-    # program_id = list(program_id_req.json()['programs'][0].values())[0]
-    org_unit_id = 'wZxJHG0MUNz' # TODO: What is orgUnit in DHIS2 in WHO context?
+    program_id = 'ZU7Z7ouwbba'  # new_demo_case
+    # program_id = 'T6VaKGprnc5' # demo_case
+    org_unit_id = 'wZxJHG0MUNz'  # TODO: shoulde be the location of form data record
     str_today = date.today().strftime("%Y-%m-%d")
     status = 'COMPLETED'
     stored_by = 'admin'
@@ -108,22 +95,17 @@ if __name__ == "__main__":
 
     event_payload_list = []
     for counter, result in enumerate(results):
-        event_payload = {}
         data_values = prepare_data_values(keys, dhis_keys, result.data)
-
-        event_payload['dataValues'] = data_values
-        event_payload['program'] = program_id
-        event_payload['orgUnit'] = org_unit_id
-        event_payload['eventDate'] = str_today
-        event_payload['completedDate'] = str_today
-        event_payload['dataValues'] = data_values
-        event_payload['status'] = status
-
+        event_payload = {
+            'program': program_id,
+            'orgUnit': org_unit_id,
+            'eventDate': str_today,
+            'completedDate': str_today,
+            'dataValues': data_values,
+            'status': status
+        }
         event_payload_list.append(event_payload)
         if counter % 100 == 0:
             send_events_batch(event_payload_list)
             event_payload_list = []
     send_events_batch(event_payload_list)
-
-
-
