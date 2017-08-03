@@ -6,6 +6,7 @@ from datetime import date
 from export_data import __get_keys_from_db
 from util import get_db_engine
 from meerkat_abacus.model import form_tables
+from meerkat_abacus.config import dhis2_config
 
 
 def clear_old_events(program_id, org_unit_id):
@@ -84,6 +85,8 @@ if __name__ == "__main__":
     program_id = 'ZU7Z7ouwbba'  # new_demo_case
     # program_id = 'T6VaKGprnc5' # demo_case
     org_unit_id = 'wZxJHG0MUNz'  # TODO: shoulde be the location of form data record
+    org_unit_code = dhis2_config['form_dates']
+    print(org_unit_code)
     str_today = date.today().strftime("%Y-%m-%d")
     status = 'COMPLETED'
     stored_by = 'admin'
