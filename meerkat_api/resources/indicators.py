@@ -79,19 +79,8 @@ class Indicators(Resource):
                 Data.variables[nominator].label(nominator),
             ).filter(*conditions).statement, db.session.bind)
 
-        # print("debug data")
-        # print(data.describe())
-        # print(data.values)
-        # print("data.count")
-        # print("end debug data")
-
-        # Prepare dummy data:
+        #if there is no indicator data it will send empty dict.
         indicator_data = dict()
-        # indicator_data["cummulative"] = -99.4
-        # indicator_data["timeline"] = {"w1" : -99.8, "w2" : 99.1}
-        # #current value is the latest week:
-        # indicator_data["current"] = 999
-        # indicator_data["name"] = "Dummy Data"
 
         if data.empty:
             print("Indicators: No records!!!")
@@ -110,16 +99,13 @@ class Indicators(Resource):
             analysis_output = count(data, nominator, start_date, end_date)
 
         # Prepare output.
-        # need to cast numpy.int64 to int (https://bugs.python.org/issue24313)
+        # need to cast numpy.int64 to int and numpy.floats etc. (https://bugs.python.org/issue24313)
         # to cast properly both ints and floats we use method .item()
 
         indicator_data = dict()
         indicator_data["cummulative"] = np.asscalar(analysis_output[0])
-        # indicator_data["timeline"] = {"w1":-99,"w2":99}
+        # series_to_json handles casting numpy objects
         indicator_data["timeline"] = series_to_json_dict(analysis_output[1])
-        # TODO: we assume that indicator data is integer!!!!
-        # for key, val in indicator_data["timeline"].items():
-        #     indicator_data["timeline"][key] = int(val)
         # current value is the latest week:
         last_week_date = max(indicator_data["timeline"].keys())
         # Find secon-to-last week
