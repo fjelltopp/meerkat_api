@@ -2,7 +2,8 @@
 Resources for creating maps
 """
 from flask_restful import Resource
-from flask import abort
+from flask import abort, g, request
+
 from geojson import Point, FeatureCollection, Feature
 from sqlalchemy import extract, func, Float, or_
 from datetime import datetime
@@ -14,7 +15,7 @@ from meerkat_abacus import model
 from meerkat_abacus.model import Data, Locations
 from meerkat_api.resources.incidence import IncidenceRate
 from meerkat_abacus.util import get_locations
-from meerkat_api.authentication import authenticate
+from meerkat_api.authentication import authenticate, is_allowed_location
 
 
 class Clinics(Resource):
@@ -28,21 +29,36 @@ class Clinics(Resource):
     Returns:\n
         points: A geojson FeatureCollection of points\n
     """
-    def get(self, location_id, clinic_type=None):
+    def get(self, location_id, clinic_type=None, require_case_report="yes"):
         locations = get_locations(db.session)
+        other_conditions = {}
+        for arg in request.args:
+            other_conditions[arg] = request.args.get(arg)
         points = []
+        if not is_allowed_location(location_id, g.allowed_location):
+            return FeatureCollection(points)
+        
         for l in locations:
-            if (locations[l].case_report and is_child(
+            if ((locations[l].case_report or require_case_report == "no") and is_child(
                     location_id, l, locations) and locations[l].point_location is not None
                 and (not clinic_type or locations[l].clinic_type == clinic_type)):
+                other_cond = True
+                for cond in other_conditions:
+                    if locations[l].other.get(cond, None) != other_conditions[cond]:
+                        other_cond = False
+                        break
+                if not other_cond:
+                    continue
                 geo = to_shape(locations[l].point_location)
                 p = Point((float(geo.x), float(geo.y))) # Note that this is the specified order for geojson
                 points.append(Feature(geometry=p,
                                       properties={"name":
-                                                  locations[l].name}))
+                                                  locations[l].name,
+                                                  "other": locations[l].other}))
         return FeatureCollection(points)
 
 
+    
 class MapVariable(Resource):
     """
     Want to map a variable id by clinic (only include case reporting clinics)
@@ -63,8 +79,13 @@ class MapVariable(Resource):
 
         start_date, end_date = fix_dates(start_date, end_date)
         location = int(location)
-        vi = str(variable_id)
 
+        allowed_location = 1
+        if g:
+            allowed_location = g.allowed_location
+        if not is_allowed_location(location, allowed_location):
+            return {}
+        vi = str(variable_id)
         results = db.session.query(
             func.sum(Data.variables[vi].astext.cast(Float)).label('value'),
             Data.geolocation,
@@ -100,11 +121,12 @@ class MapVariable(Resource):
         if include_all_clinics:
             results = db.session.query(model.Locations)
             for row in results.all():
-                if row.case_report and row.point_location is not None and str(row.id) not in ret.keys():
-                    geo = to_shape(row.point_location)
-                    ret[str(row.id)] = {"value": 0,
-                                   "geolocation": [geo.y, geo.x],
-                                   "clinic": row.name}
+                if is_allowed_location(row.id, location):
+                    if row.case_report and row.point_location is not None and str(row.id) not in ret.keys():
+                        geo = to_shape(row.point_location)
+                        ret[str(row.id)] = {"value": 0,
+                                            "geolocation": [geo.y, geo.x],
+                                            "clinic": row.name}
         return ret
 
 

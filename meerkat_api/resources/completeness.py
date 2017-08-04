@@ -2,7 +2,7 @@
 Data resource for completeness data
 """
 from flask_restful import Resource
-from flask import jsonify, request
+from flask import jsonify, request, g
 from dateutil.parser import parse
 from sqlalchemy import extract, func, Integer, or_
 from datetime import datetime, timedelta
@@ -11,28 +11,9 @@ import pandas as pd
 from meerkat_api import db, app
 from meerkat_api.resources.epi_week import EpiWeek, epi_week_start, epi_year_start
 from meerkat_abacus.model import Data, Locations
-from meerkat_api.util import get_children
-from meerkat_abacus.util import get_locations
-from meerkat_api.authentication import authenticate
-from meerkat_abacus.util import get_locations
+from meerkat_api.util import get_children, is_child, series_to_json_dict, get_locations
+from meerkat_api.authentication import authenticate, is_allowed_location
 from pandas.tseries.offsets import CustomBusinessDay
-
-
-def series_to_json_dict(series):
-    """
-    Takes pandas series and turns into a dict with string keys
-
-    Args: 
-        series: pandas series
-    
-    Returns: 
-       dict: dict
-    """
-    if series is not None:
-        return dict((str(key), value)
-                    for key, value in series.to_dict().items())
-    else:
-        return {}
 
 
 class Completeness(Resource):
@@ -58,7 +39,13 @@ class Completeness(Resource):
     decorators = [authenticate]
 
     def get(self, variable, location, number_per_week, exclude=None,
-            weekend=None, start_week=1, end_date=None, non_reporting_variable=None):
+            weekend=None, start_week=1, end_date=None, non_reporting_variable=None, sublevel=None):
+        if sublevel == None:
+            sublevel = request.args.get('sublevel')
+
+        if not is_allowed_location(location, g.allowed_location):
+            return {}
+            
         if not end_date:
             end_date = datetime.now()
         else:
@@ -74,15 +61,20 @@ class Completeness(Resource):
         locs = get_locations(db.session)
         location = int(location)
         location_type = locs[location].level
-        sublevels = {"country": "region",
-                     "region": "district",
-                     "district": "clinic",
-                     "clinic": None}
-        sublevel = sublevels[location_type]
+        if not sublevel:
+            zones = db.session.query(func.count(Locations.id)).filter(Locations.level == 'zone').first()
+            sublevels = {"country": "region",
+                         "region": "district",
+                         "district": "clinic",
+                         "clinic": None}
 
+            if zones[0] > 0:
+                sublevels["country"] = "zone"
+                sublevels["zone"] = "region"
+            sublevel = sublevels[location_type]
         conditions = [Data.variables.has_key(variable), or_(
             loc == location
-            for loc in (Data.country, Data.region, Data.district, Data.clinic))
+            for loc in (Data.country, Data.zone, Data.region, Data.district, Data.clinic)),
                       ]
         if exclude and exclude != "None":
             conditions.append(or_(Data.case_type is not None,
@@ -92,7 +84,7 @@ class Completeness(Resource):
         # get the data
 
         data = pd.read_sql(
-            db.session.query(Data.region, Data.district, Data.clinic,
+            db.session.query(Data.region, Data.zone, Data.district, Data.clinic,
                              Data.date,
                              Data.variables[variable].label(variable)).filter(
                                  *conditions).statement, db.session.bind)
@@ -103,7 +95,6 @@ class Completeness(Resource):
                             "clinic_yearly_score": {},
                             "dates_not_reported": [],
                             "yearly_score": {}})
-
         # If end_date is the start of an epi week we do not want to include the current epi week
         # We only calculate completeness for whole epi-weeks so we want to set end_d to the
         # the end of the previous epi_week.
@@ -128,7 +119,7 @@ class Completeness(Resource):
             # Where dates are the dates after the clinic started reporting
             sublocations = []
             for l in locs.values():
-                if l.parent_location == location and l.level == sublevel:
+                if is_child(location, l.id, locs) and l.level == sublevel:
                     sublocations.append(l.id)
             tuples = []
             for name in sublocations:
@@ -140,10 +131,9 @@ class Completeness(Resource):
                         for d in pd.date_range(start_date, end_d, freq=freq):
                             tuples.append((name, clinic, d))
             if len(tuples) == 0:
-                return {}
+                return jsonify({})
             new_index = pd.MultiIndex.from_tuples(
                 tuples, names=[sublevel, "clinic", "date"])
-
             completeness = data.groupby([
                 sublevel, "clinic", pd.TimeGrouper(
                     key="date", freq=freq, label="left")
@@ -153,7 +143,6 @@ class Completeness(Resource):
 
             clinic_sums = completeness.groupby(level=1).sum()
             zero_clinics = clinic_sums[clinic_sums == 0].index
-
             nr = NonReporting()
             non_reporting_clinics = nr.get(non_reporting_variable, location)["clinics"]
             completeness = completeness.drop(non_reporting_clinics, level=1)
@@ -187,7 +176,6 @@ class Completeness(Resource):
                 last_two_weeks].mean() / number_per_week * 100
             yearly_score[location] = location_completeness_per_week.mean(
             ) / number_per_week * 100
-
             # Sort the timeline data
             timeline = {}
             for sl in sublocations_completeness_per_week.index.get_level_values(
@@ -213,7 +201,6 @@ class Completeness(Resource):
             clinic_yearly_scores = clinic_completeness_last_year.groupby(
                 level=1).mean() / number_per_week * 100
             dates_not_reported = []  # Not needed for this level
-
         else:
             # Take into account clinic start_date
             if locs[location].start_date > begining:
@@ -271,7 +258,6 @@ class Completeness(Resource):
                         "dates_not_reported": dates_not_reported,
                         "yearly_score": series_to_json_dict(yearly_score)})
 
-
 class NonReporting(Resource):
     """
     Returns all non-reporting clinics for the last num_weeks complete epi weeks.
@@ -288,24 +274,62 @@ class NonReporting(Resource):
     """
     decorators = [authenticate]
 
-    def get(self, variable, location, exclude=None):
+    def get(self, variable, location, exclude=None, num_weeks=0,
+            include=None, require_case_report=True):
+
+        if not is_allowed_location(location, g.allowed_location):
+            return {}
+            
+        if require_case_report in [0, "0"]:
+            require_case_report = False
+        if num_weeks == "0":
+            num_weeks = 0
+
+
+            
         locations = get_locations(db.session)
         location = int(location)
-        clinics = get_children(location, locations)
-        #        ew = EpiWeek()
-        #       epi_week = ew.get()
-        # start_date = epi_week_start(epi_week["year"],
-        #   epi_week["epi_week"]) - timedelta(days=7 * num_weeks)
-        clinics_with_variable = [r[0]
-                                 for r in db.session.query(Data.clinic).filter(
-                                     Data.variables.has_key(variable)).all()]
+        clinics = get_children(location, locations, require_case_report=require_case_report)
+        conditions = [Data.variables.has_key(variable)]
+        if num_weeks:
+            ew = EpiWeek()
+            epi_week = ew.get()
+            start_date = epi_week_start(epi_week["year"],
+                                        int(epi_week["epi_week"]) - int(num_weeks))
+            end_date = epi_week_start(epi_week["year"],
+                                        epi_week["epi_week"])
+            conditions.append(Data.date >= start_date)
+            conditions.append(Data.date < end_date)
+        exclude_list = []
+        if exclude and "code:" in exclude:
+            query = db.session.query(Data.clinic).filter(Data.variables.has_key(exclude.split(":")[1]))
+            exclude_list = [r[0] for r in query.all()]
+        print(exclude, [(c, locations[c].name) for c in exclude_list])
+                                                         
+        query = db.session.query(Data.clinic).filter(*conditions)
+        clinics_with_variable = [r[0] for r in query.all()]
         non_reporting_clinics = []
+
+        if include:
+            if "," in include:
+                include = include.split(",")
+            else:
+                include = [include]
         for clinic in clinics:
             if clinic not in clinics_with_variable:
-                if exclude:
+                if len(exclude_list) > 0:
+                    if clinic in exclude_list:
+                        continue
+                if include:
+                    if locations[clinic].clinic_type in include:
+                        non_reporting_clinics.append(clinic)
+                elif exclude:
                     if locations[clinic].case_type != exclude:
                         non_reporting_clinics.append(clinic)
+
                 else:
                     non_reporting_clinics.append(clinic)
-
         return {"clinics": non_reporting_clinics}
+
+
+    

@@ -3,15 +3,11 @@ common.py
 
 Shared functions for meerkat_api.
 """
-from datetime import datetime, timedelta
-from dateutil.parser import parse
 from flask import abort
 from meerkat_api import app
-import authorise as auth
+from meerkat_api.authentication import auth
 import requests
-import logging
 import json
-import os
 
 
 def device_api(url, data, api_key=False, params=None):

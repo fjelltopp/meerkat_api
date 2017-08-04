@@ -4,10 +4,10 @@ Resource for aggregating and querying data
 """
 from flask_restful import Resource
 from datetime import datetime
-
+from flask import g
 from meerkat_api import db
 from meerkat_abacus.model import Locations
-from meerkat_api.authentication import authenticate
+from meerkat_api.authentication import authenticate, is_allowed_location
 from meerkat_api.util.data_query import query_sum
 
 
@@ -26,17 +26,24 @@ class IncidenceRate(Resource):
     decorators = [authenticate]
 
     def get(self, variable_id, level, mult_factor=1000,
-            location_names=False, start_date=datetime(2010, 1, 1),
+            location_names=False, year=None, monthly=False,
+            start_date=datetime(2010, 1, 1),
             end_date=datetime(2100, 1, 1)):
         mult_factor = int(mult_factor)
-        if level not in ["region", "district", "clinic"]:
+        if level not in ["zone", "region", "district", "clinic"]:
             return {}
-
+        if year:
+            year = datetime.now().year
+            start_date = datetime(year, 1, 1)
+            end_date = datetime(year + 1, 1, 1)
+        if monthly:
+            months = (datetime.now() - datetime(datetime.now().year, 1, 1)).days / 30.5
+            mult_factor = mult_factor / months
         results = query_sum(
             db, [variable_id],
             start_date,
             end_date,
-            1,
+            g.allowed_location,
             level=level)
         locations = db.session.query(Locations).filter(
             Locations.level == level)
@@ -47,11 +54,12 @@ class IncidenceRate(Resource):
             names[l.id] = l.name
         ret = {}
         for loc in results[level].keys():
-            if pops[loc]:
-                key = loc
-                if location_names:
-                    key = names[key]
-                ret[key] = results[level][loc] / pops[loc] * mult_factor
+            if is_allowed_location(loc, g.allowed_location):
+                if pops[loc]:
+                    key = loc
+                    if location_names:
+                        key = names[key]
+                    ret[key] = results[level][loc] / pops[loc] * mult_factor
         return ret
 
 

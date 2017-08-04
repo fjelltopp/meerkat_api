@@ -5,7 +5,7 @@ from flask_restful import Resource
 from sqlalchemy import or_, extract, func
 from datetime import datetime
 from dateutil.parser import parse
-from flask import request
+from flask import request, g
 
 from meerkat_api.util import is_child, fix_dates
 from meerkat_api.resources.epi_week import epi_year_start
@@ -14,7 +14,7 @@ from meerkat_abacus.model import Data
 from meerkat_abacus.util import get_locations
 from meerkat_api.resources.variables import Variables
 from meerkat_api.resources.epi_week import EpiWeek
-from meerkat_api.authentication import authenticate
+from meerkat_api.authentication import authenticate, is_allowed_location
 
 def get_variables(category):
     """
@@ -90,6 +90,13 @@ class QueryVariable(Resource):
             group_by_variables=None):
 
         variable = str(variable)
+        if not only_loc:
+            if "only_loc" in request.args:
+                only_loc = request.args["only_loc"]
+            else:
+                only_loc = g.allowed_location
+        if not is_allowed_location(only_loc, g.allowed_location):
+            return {}
 
         start_date, end_date = fix_dates(start_date, end_date)
         year = start_date.year
@@ -109,7 +116,7 @@ class QueryVariable(Resource):
         if "location" in variable:
             location_id = variable.split(":")[1]
             conditions = date_conditions + [or_(loc == location_id for loc in (
-                Data.country, Data.region, Data.district, Data.clinic))]
+                Data.country, Data.zone, Data.region, Data.district, Data.clinic))]
         else:
             conditions = [Data.variables.has_key(variable)] + date_conditions
             if additional_variables:
@@ -117,12 +124,9 @@ class QueryVariable(Resource):
                 for i in additional_variables:
                     conditions.append(Data.variables.has_key(i))
 
-            if only_loc or "only_loc" in request.args:
-                if not only_loc:
-                    # only loc is in request variables
-                    only_loc = request.args["only_loc"]
+            if only_loc:
                 conditions += [or_(loc == only_loc for loc in (
-                    Data.country, Data.region, Data.district, Data.clinic))]
+                    Data.country, Data.zone, Data.region, Data.district, Data.clinic))]
         epi_week_start = epi_year_start(year)
         # Determine which columns we want to extract from the Data table
         columns_to_extract = [func.count(Data.id).label('value')]
@@ -195,8 +199,9 @@ class QueryVariable(Resource):
             # r = (number, week, other_columns_to_extract
             if "locations" in group_by:
                 # r[2] = location
-                ret[names[r[2]]]["total"] += r[0]
-                ret[names[r[2]]]["weeks"][int(r[1])] = int(r[0])
+                if r[2]:
+                    ret[names[r[2]]]["total"] += r[0]
+                    ret[names[r[2]]]["weeks"][int(r[1])] = int(r[0])
             else:
                 # r[2:] are the ids that the record has
                 for i, i_d in enumerate(ids):
@@ -231,19 +236,23 @@ class QueryCategory(Resource):
     def get(self, group_by1, group_by2, start_date=None,
             end_date=None, only_loc=None):
 
+        if not only_loc:
+            if "only_loc" in request.args:
+                only_loc = request.args["only_loc"]
+            else:
+                only_loc = g.allowed_location
+        if not is_allowed_location(only_loc, g.allowed_location):
+            return {}
         start_date, end_date = fix_dates(start_date, end_date)
-        print(start_date, end_date)
         use_ids = False
         if "use_ids" in request.args.keys():
             use_ids = True
 
         # Assemble conditions and columns to query
         conditions = []
-        if only_loc or "only_loc" in request.args:
-            if not only_loc:
-                only_loc = request.args["only_loc"]
-                conditions += [or_(loc == only_loc for loc in (
-                    Data.country, Data.region, Data.district, Data.clinic))]
+        if only_loc:
+            conditions += [or_(loc == only_loc for loc in (
+                Data.country, Data.zone, Data.region, Data.district, Data.clinic))]
 
         columns_to_query = [Data.categories[group_by1].astext, Data.categories[group_by2].astext]
         if "locations" in group_by1:
