@@ -10,8 +10,8 @@ from freezegun import freeze_time
     
 import meerkat_api
 from meerkat_api.test import db_util
+from meerkat_api.test import settings
 from meerkat_api.resources.map import MapVariable
-from . import settings
 
 
 
