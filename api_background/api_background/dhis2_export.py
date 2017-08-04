@@ -1,7 +1,9 @@
 import requests
 import json
+import logging
 
 from datetime import date
+
 
 from export_data import __get_keys_from_db
 from util import get_db_engine
@@ -70,23 +72,25 @@ def send_events_batch(payload_list):
 
 
 if __name__ == "__main__":
-    form = "demo_case"
-    url = "http://54.76.53.0:8080"
-    api_resource = "/api/26/"
+    logging.getLogger().setLevel(logging.INFO)
+    logging.info("Using config:\n {}".format(json.dumps(dhis2_config, indent=4)))
+    form_config = dhis2_config['forms'][0]
+    form = form_config['name']
+    url = dhis2_config['url']
+    api_resource = dhis2_config['api_resource']
     api_url = url + api_resource
-    credentials = ('admin', 'district')
-    headers = {"Content-Type": "application/json", "Authorization": "Basic YWRtaW46ZGlzdHJpY3Q="}
+    credentials = dhis2_config['credentials']
+    headers = dhis2_config['headers']
 
     db, session = get_db_engine()
     keys = __get_keys_from_db(db, form)
     dhis_keys = get_dhis2_keys(api_url, credentials, headers, keys)
 
     # TODO: for now only hardocded will be done in a more elegant way
-    program_id = 'ZU7Z7ouwbba'  # new_demo_case
+    program_id = form_config['program_id']
     # program_id = 'T6VaKGprnc5' # demo_case
-    org_unit_id = 'wZxJHG0MUNz'  # TODO: shoulde be the location of form data record
-    org_unit_code = dhis2_config['form_dates']
-    print(org_unit_code)
+    org_unit_id = form_config['organisation_unit_id']  # TODO: shoulde be the location of form data record
+
     str_today = date.today().strftime("%Y-%m-%d")
     status = 'COMPLETED'
     stored_by = 'admin'
