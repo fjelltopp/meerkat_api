@@ -34,12 +34,15 @@ def update_data_elements(key, headers):
     return uid
 
 
-def prepare_data_values(keys, dhis_keys, data):
+def prepare_data_values(keys, dhis_keys, data, form_config):
     data_values = []
     for key in keys:
         if key in data.keys():
             data_values.append({'dataElement': dhis_keys[key], 'value': data[key]})
-    return data_values
+    str_today = date.today().strftime("%Y-%m-%d")
+    eventDate = data.get(form_config['event_date'], str_today)
+    completedDate = data.get(form_config['completed_date'], str_today)
+    return data_values, eventDate, completedDate
 
 
 def get_dhis2_keys(url, credentials, headers, keys):
@@ -91,9 +94,8 @@ if __name__ == "__main__":
     # program_id = 'T6VaKGprnc5' # demo_case
     org_unit_id = form_config['organisation_unit_id']  # TODO: shoulde be the location of form data record
 
-    str_today = date.today().strftime("%Y-%m-%d")
-    status = 'COMPLETED'
-    stored_by = 'admin'
+    status = form_config['status']
+    stored_by = form_config['stored_by']
 
     clear_old_events(program_id, org_unit_id)
 
@@ -102,12 +104,12 @@ if __name__ == "__main__":
 
     event_payload_list = []
     for counter, result in enumerate(results):
-        data_values = prepare_data_values(keys, dhis_keys, result.data)
+        data_values, event_date, completed_date = prepare_data_values(keys, dhis_keys, result.data, form_config)
         event_payload = {
             'program': program_id,
             'orgUnit': org_unit_id,
-            'eventDate': str_today,
-            'completedDate': str_today,
+            'eventDate': event_date,
+            'completedDate': completed_date,
             'dataValues': data_values,
             'status': status
         }
