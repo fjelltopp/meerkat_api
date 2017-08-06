@@ -145,11 +145,20 @@ class ExportDataResource(Resource):
         return result
 
     @staticmethod
+    def abort_if_resource_generation_failed(download_data_file, uid):
+        if download_data_file.status == 1.0 and download_data_file.success != 1:
+            abort(500, message="Generation of resource with uid: {} failed. Please try again.".format(uid))
+
+    @staticmethod
+    def abort_if_resource_generation_still_in_progress(download_data_file, uid):
+        if download_data_file.status != 1.0:
+            message_template = "Generation of resource with uid: {} still in progress. Please try again later."
+            abort(206, message=(message_template).format(uid))
+
+    @staticmethod
     def __abort_if_resource_not_exists(download_data_file, uid):
         if not download_data_file:
             abort(404, message="Resource with uid:{} doesn't exist".format(uid))
-        if download_data_file.success != 1:
-            abort(500, message="Generation of resource with uid: {} failed. Please try again.".format(uid))
 
 
 class GetCSVDownload(ExportDataResource):
@@ -164,6 +173,8 @@ class GetCSVDownload(ExportDataResource):
 
     def get(self, uid):
         result = self.get_download_data_file(uid)
+        self.abort_if_resource_generation_still_in_progress(result, uid)
+        self.abort_if_resource_generation_failed(result, uid)
         return redirect("/exported_data/" + uid + "/" + result.type + ".csv")
 
 
@@ -180,6 +191,8 @@ class GetXLSDownload(ExportDataResource):
 
     def get(self, uid):
         result = self.get_download_data_file(uid)
+        self.abort_if_resource_generation_still_in_progress(result, uid)
+        self.abort_if_resource_generation_failed(result, uid)
         return redirect("/exported_data/" + uid + "/" + result.type + ".xlsx")
 
 

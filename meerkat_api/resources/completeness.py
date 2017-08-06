@@ -284,6 +284,9 @@ class NonReporting(Resource):
             require_case_report = False
         if num_weeks == "0":
             num_weeks = 0
+
+
+            
         locations = get_locations(db.session)
         location = int(location)
         clinics = get_children(location, locations, require_case_report=require_case_report)
@@ -297,7 +300,12 @@ class NonReporting(Resource):
                                         epi_week["epi_week"])
             conditions.append(Data.date >= start_date)
             conditions.append(Data.date < end_date)
-        
+        exclude_list = []
+        if exclude and "code:" in exclude:
+            query = db.session.query(Data.clinic).filter(Data.variables.has_key(exclude.split(":")[1]))
+            exclude_list = [r[0] for r in query.all()]
+        print(exclude, [(c, locations[c].name) for c in exclude_list])
+                                                         
         query = db.session.query(Data.clinic).filter(*conditions)
         clinics_with_variable = [r[0] for r in query.all()]
         non_reporting_clinics = []
@@ -309,12 +317,16 @@ class NonReporting(Resource):
                 include = [include]
         for clinic in clinics:
             if clinic not in clinics_with_variable:
+                if len(exclude_list) > 0:
+                    if clinic in exclude_list:
+                        continue
                 if include:
                     if locations[clinic].clinic_type in include:
                         non_reporting_clinics.append(clinic)
                 elif exclude:
                     if locations[clinic].case_type != exclude:
                         non_reporting_clinics.append(clinic)
+
                 else:
                     non_reporting_clinics.append(clinic)
         return {"clinics": non_reporting_clinics}

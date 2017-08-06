@@ -4,21 +4,8 @@ config.py
 Configuration and settings
 """
 
-import os
+from os import getenv
 
-
-def from_env(env_var, default):
-    """ Gets value from envrionment variable or uses default
-
-    Args:
-        env_var: name of envrionment variable
-        default: the default value
-    """
-    new = os.environ.get(env_var)
-    if new:
-        return new
-    else:
-        return default
 
 class Config(object):
     DEBUG = True
@@ -28,7 +15,7 @@ class Config(object):
         'postgresql+psycopg2://postgres:postgres@db/meerkat_db')
     API_KEY = "test-api"
     AUTH = {
-        'default': [['registered'],['demo']]
+        'default': [['registered'], ['demo']]
     }
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     APPLICATION_ROOT = "/api"
@@ -38,14 +25,15 @@ class Config(object):
     CELERY_TASK_SERIALIZER = 'json'
     CELERY_RESULT_SERIALIZER = 'json'
     CELERY_ACCEPT_CONTENT = ['json']
-    SENTRY_DNS = from_env('SENTRY_DNS', '')
-    INTERNAL_DEVICE_API_ROOT = from_env("MOB_API_ROOT", 'http://dev_nginx_1/mob')
+    SENTRY_DNS = getenv('SENTRY_DNS', '')
+    INTERNAL_DEVICE_API_ROOT = getenv("MOB_API_ROOT", 'http://dev_nginx_1/mob')
     EXTERNAL_DEVICE_API_ROOT = '/mob'
 
-    
+
 class Production(Config):
     DEBUG = False
     TESTING = False
+
 
 class Development(Config):
     DEBUG = True
