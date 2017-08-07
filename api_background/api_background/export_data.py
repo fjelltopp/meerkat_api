@@ -678,14 +678,15 @@ def export_form(uuid, form, allowed_location, fields=None):
     """
 
     db, session = get_db_engine()
+    download_data_file = __create_download_data_file(None, form, uuid)
     if form not in form_tables.keys():
-        __submit_operation_failure(form, session, uuid)
+        __submit_operation_failure(session, download_data_file)
         return False
 
     location_data = all_location_data(session)
     locs_by_deviceid = location_data[1]
     if locs_by_deviceid is None:
-        __submit_operation_failure(form, session, uuid)
+        __submit_operation_failure(session, download_data_file)
         return False
 
     if fields:
@@ -699,7 +700,7 @@ def export_form(uuid, form, allowed_location, fields=None):
 
     session_query = session.query(form_tables[form].data)
     __save_form_data(xls_csv_writer, session_query, keys, allowed_location, location_data)
-    __submit_operation_success(form, session, uuid)
+    __submit_operation_success(session, download_data_file)
     xls_csv_writer.flush_csv_buffer()
     xls_csv_writer.close_cvs_xls_buffers()
     return True
@@ -715,28 +716,36 @@ def __get_keys_from_db(db, form):
     return keys
 
 
-def __submit_operation_success(form, session, uuid):
+def __create_download_data_file(session, form, uuid):
+    download_data_file = DownloadDataFiles(uuid=uuid, generation_time=datetime.now(), type=form, success=0, status=0.0)
+    session.add(download_data_file)
+    session.commit()
+    return download_data_file
+
+
+def __update_operation_status(session, download_data_file, status):
+    download_data_file.status = status
+    download_data_file.success = 0
     session.add(
-        DownloadDataFiles(
-            uuid=uuid,
-            generation_time=datetime.now(),
-            type=form,
-            success=1,
-            status=1
-        )
+        download_data_file
     )
     session.commit()
 
 
-def __submit_operation_failure(form, session, uuid):
+def __submit_operation_success(session, download_data_file):
+    download_data_file.status = 1.0
+    download_data_file.success = 1
     session.add(
-        DownloadDataFiles(
-            uuid=uuid,
-            generation_time=datetime.now(),
-            type=form,
-            success=0,
-            status=1
-        )
+        download_data_file
+    )
+    session.commit()
+
+
+def __submit_operation_failure(session, download_data_file):
+    download_data_file.status = 1.0
+    download_data_file.success = 0
+    session.add(
+        download_data_file
     )
     session.commit()
 
