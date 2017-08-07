@@ -220,7 +220,7 @@ class MeerkatAPITestCase(unittest.TestCase):
 
         self.assertEqual(rv.status_code, 200)
 
-        uuid = rv.data.decode("utf-8")[1:-2]
+        uuid = rv.data.decode("utf-8").strip('\n,\"')
         test = meerkat_api.db.session.query(model.DownloadDataFiles).filter(
             model.DownloadDataFiles.uuid == uuid).all()
         self.assertEqual(len(test), 1)
