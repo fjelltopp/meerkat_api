@@ -4,9 +4,9 @@ import logging
 
 from datetime import date
 
-
+from _populate_locations import populate_row_locations, set_empty_locations
 from export_data import __get_keys_from_db
-from util import get_db_engine
+from util import get_db_engine, all_location_data, is_child
 from meerkat_abacus.model import form_tables
 from meerkat_abacus.config import dhis2_config
 
@@ -36,7 +36,16 @@ def update_data_elements(key, headers):
 
 def prepare_data_values(keys, dhis_keys, data, form_config):
     data_values = []
+    # Add the location data if it has been requested and exists.
     for key in keys:
+        if 'deviceid' in data:
+            clinic_id = locs_by_deviceid.get(data["deviceid"], None)
+            # if not is_child(0, clinic_id, locations):
+            #     continue
+            populate_row_locations(data, keys, clinic_id, location_data, use_integer_keys=False)
+
+        else:
+            set_empty_locations(keys, data_values)
         if key in data.keys():
             data_values.append({'dataElement': dhis_keys[key], 'value': data[key]})
     str_today = date.today().strftime("%Y-%m-%d")
@@ -59,7 +68,7 @@ def get_dhis2_keys(url, credentials, headers, keys):
         if key in data_element_lookup:
             dhis_key_id = data_element_lookup[key]
         else:
-            update_data_elements([key], headers)
+            dhis_key_id = update_data_elements([key], headers)
         result[key] = dhis_key_id
     return result
 
@@ -86,6 +95,10 @@ if __name__ == "__main__":
     headers = dhis2_config['headers']
 
     db, session = get_db_engine()
+
+    location_data = all_location_data(session)
+    (locations, locs_by_deviceid, regions, districts, devices) = location_data
+
     keys = __get_keys_from_db(db, form)
     dhis_keys = get_dhis2_keys(api_url, credentials, headers, keys)
 
@@ -104,6 +117,7 @@ if __name__ == "__main__":
 
     event_payload_list = []
     for counter, result in enumerate(results):
+
         data_values, event_date, completed_date = prepare_data_values(keys, dhis_keys, result.data, form_config)
         event_payload = {
             'program': program_id,
