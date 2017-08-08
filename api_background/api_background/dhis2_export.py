@@ -94,6 +94,32 @@ def get_dhis2_organisations():
     return result
 
 
+def populate_dhis2_locations(locations):
+    dhis2_organisations_res = requests.get("{}organisationUnits".format(api_url), auth=credentials)
+    organisation_units = dhis2_organisations_res.json()['organisationUnits']
+    organisation_ids = []
+    organisation_names = []
+    organisation_codes = []
+    for d in organisation_units:
+        organisation_ids.append(d['id'])
+        organisation_names.append(d['displayName'])
+
+        res = requests.get("{}organisationUnits/{}".format(api_url, d['id']), auth=credentials)
+        organisation_code = res.json().get('code', None)
+        organisation_codes.append(organisation_code)
+
+    for location in locations:
+        if location.level == 'clinic':
+            if location.country_location_id not in organisation_codes:
+                #TODO: add this clinic
+                pass
+        else:
+            if location.name not in organisation_names:
+                #TODO: add country/zone/district/
+                pass
+
+
+
 if __name__ == "__main__":
     logging.getLogger().setLevel(logging.INFO)
     logging.info("Using config:\n {}".format(json.dumps(dhis2_config, indent=4)))
@@ -116,6 +142,8 @@ if __name__ == "__main__":
     # TODO: for now only hardocded will be done in a more elegant way
     program_id = form_config['program_id']
     # program_id = 'T6VaKGprnc5' # demo_case
+
+    populate_dhis2_locations(locations)
     dhis2_organisations = get_dhis2_organisations()
 
     status = form_config['status']
