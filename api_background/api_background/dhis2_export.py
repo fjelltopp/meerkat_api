@@ -36,13 +36,13 @@ def update_data_elements(key, headers):
 
 def prepare_data_values(keys, dhis_keys, data, form_config):
     data_values = []
+    organisation_code = None
     # Add the location data if it has been requested and exists.
     for key in keys:
         if 'deviceid' in data:
             clinic_id = locs_by_deviceid.get(data["deviceid"], None)
-            # if not is_child(0, clinic_id, locations):
-            #     continue
             populate_row_locations(data, keys, clinic_id, location_data, use_integer_keys=False)
+            organisation_code = locations[clinic_id].country_location_id
 
         else:
             set_empty_locations(keys, data_values)
@@ -51,7 +51,7 @@ def prepare_data_values(keys, dhis_keys, data, form_config):
     str_today = date.today().strftime("%Y-%m-%d")
     eventDate = data.get(form_config['event_date'], str_today)
     completedDate = data.get(form_config['completed_date'], str_today)
-    return data_values, eventDate, completedDate
+    return data_values, eventDate, completedDate, organisation_code
 
 
 def get_dhis2_keys(url, credentials, headers, keys):
@@ -79,8 +79,19 @@ def send_events_batch(payload_list):
     json_event_payload = json.dumps(payload)
     s = requests.session()
     event_res = s.post("{}events".format(api_url), headers=headers, data=json_event_payload)
-    print(event_res.status_code)
-    print(event_res.text)
+    logging.info("Send batch of events with status: %d", event_res.status_code)
+    logging.info(event_res.text)
+
+
+def get_dhis2_organisations():
+    result = {}
+    dhis2_organisations_res = requests.get("{}organisationUnits".format(api_url), auth=credentials)
+    dhis2_organisations = dhis2_organisations_res.json()['organisationUnits']
+    for d in dhis2_organisations:
+        res = requests.get("{}organisationUnits/{}".format(api_url, d['id']), auth=credentials)
+        organisation_code = res.json().get('code', None)
+        result[organisation_code] = d['id']
+    return result
 
 
 if __name__ == "__main__":
@@ -105,12 +116,13 @@ if __name__ == "__main__":
     # TODO: for now only hardocded will be done in a more elegant way
     program_id = form_config['program_id']
     # program_id = 'T6VaKGprnc5' # demo_case
-    org_unit_id = form_config['organisation_unit_id']  # TODO: shoulde be the location of form data record
+    dhis2_organisations = get_dhis2_organisations()
 
     status = form_config['status']
     stored_by = form_config['stored_by']
 
-    clear_old_events(program_id, org_unit_id)
+    for organisation_id in dhis2_organisations.values():
+        clear_old_events(program_id, organisation_id)
 
     data_values = []
     results = session.query(form_tables[form].data).all()
@@ -118,10 +130,10 @@ if __name__ == "__main__":
     event_payload_list = []
     for counter, result in enumerate(results):
 
-        data_values, event_date, completed_date = prepare_data_values(keys, dhis_keys, result.data, form_config)
+        data_values, event_date, completed_date, organisation_code = prepare_data_values(keys, dhis_keys, result.data, form_config)
         event_payload = {
             'program': program_id,
-            'orgUnit': org_unit_id,
+            'orgUnit': dhis2_organisations[organisation_code],
             'eventDate': event_date,
             'completedDate': completed_date,
             'dataValues': data_values,
