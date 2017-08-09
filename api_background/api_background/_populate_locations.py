@@ -6,7 +6,7 @@ def set_empty_locations(keys, row):
 
 
 def populate_row_locations(row, keys, clinic_id, location_data):
-    (locations, locs_by_deviceid, regions, districts, devices) = location_data
+    (locations, locs_by_deviceid, zones, regions, districts, devices) = location_data
     if 'clinic' in keys:
         clinic_name = locations[clinic_id].name
         row[keys.index("clinic")] = clinic_name
