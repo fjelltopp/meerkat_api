@@ -108,6 +108,7 @@ def populate_dhis2_locations(locations):
         organisation_code = res.json().get('code', None)
         organisation_codes.append(organisation_code)
 
+    # http://54.76.53.0:8080/api/26/organisationUnits?filter=code:eq:unique_code
     for location in locations:
         if location.level == 'clinic':
             if location.country_location_id not in organisation_codes:
