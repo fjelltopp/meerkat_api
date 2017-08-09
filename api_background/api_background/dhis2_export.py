@@ -10,6 +10,14 @@ from util import get_db_engine, all_location_data, is_child
 from meerkat_abacus.model import form_tables
 from meerkat_abacus.config import dhis2_config
 
+codes_to_ids = {}
+#TODO: id_list = "http://54.76.53.0:8080/api/26/system/id.json?limit=100"
+
+def get_dhis2_ids(n=100):
+    result = requests.get("{}system/id.json?limit={}".format(api_url, n)).json().get('codes', [])
+    if not result:
+        logging.error("Could not get ids from DHIS2.")
+    return result
 
 def clear_old_events(program_id, org_unit_id):
     events_id_list = []
@@ -56,7 +64,7 @@ def prepare_data_values(keys, dhis_keys, data, form_config):
 
 def get_dhis2_keys(url, credentials, headers, keys):
     result = {}
-    dhis2_data_elements_res = requests.get("{}dataElements".format(url), auth=credentials)
+    dhis2_data_elements_res = requests.get("{}dataElements?skipPaging=True".format(url), auth=credentials)
     dhis2_data_elements = dhis2_data_elements_res.json()['dataElements']
     data_elements_ids = []
     data_elements_names = []
@@ -85,7 +93,7 @@ def send_events_batch(payload_list):
 
 def get_dhis2_organisations():
     result = {}
-    dhis2_organisations_res = requests.get("{}organisationUnits".format(api_url), auth=credentials)
+    dhis2_organisations_res = requests.get("{}organisationUnits?skipPaging=True".format(api_url), auth=credentials)
     dhis2_organisations = dhis2_organisations_res.json()['organisationUnits']
     for d in dhis2_organisations:
         res = requests.get("{}organisationUnits/{}".format(api_url, d['id']), auth=credentials)
@@ -94,7 +102,7 @@ def get_dhis2_organisations():
     return result
 
 
-def populate_dhis2_locations(locations):
+def populate_dhis2_locations(locations, zones, regions, districts):
     dhis2_organisations_res = requests.get("{}organisationUnits".format(api_url), auth=credentials)
     organisation_units = dhis2_organisations_res.json()['organisationUnits']
     organisation_ids = []
@@ -109,16 +117,43 @@ def populate_dhis2_locations(locations):
         organisation_codes.append(organisation_code)
 
     # http://54.76.53.0:8080/api/26/organisationUnits?filter=code:eq:unique_code
-    for location in locations:
-        if location.level == 'clinic':
-            if location.country_location_id not in organisation_codes:
-                #TODO: add this clinic
-                pass
-        else:
-            if location.name not in organisation_names:
-                #TODO: add country/zone/district/
-                pass
+    for zone_index in zones:
+        create_dhis2_organisation(locations[zone_index])
 
+    for district_index in districts:
+        create_dhis2_organisation(locations[district_index])
+
+    for region_index in regions:
+        create_dhis2_organisation(locations[region_index])
+
+    for location in locations.values():
+        if location.level == 'clinic':
+            create_dhis2_organisation(location)
+
+
+def create_dhis2_organisation(_location):
+    if _location.start_date:
+        opening_date = _location.start_date.strftime("%Y-%m-%d")
+    else:
+        opening_date = "1970-01-01"
+    name = _location.name
+    organisation_code = _location.country_location_id
+    json_res = requests.get("{}organisationUnits?filter=code:eq:{}".format(api_url, organisation_code), auth=credentials).json()
+    if not json_res['organisationUnits']:
+        json_string = {
+            "name": name,
+            "shortName": name,
+            "code": organisation_code,
+            "openingDate": opening_date,
+            # "parent": {"id": "parent_uid"}
+        }
+        payload = json.dumps(json_string)
+        response = requests.post("{}organisationUnits".format(api_url), headers=headers, data=payload)
+        logging.info("Created location %s with response %d", name, response.status_code)
+        logging.info(response.text)
+    else:
+        logging.info("Organisation %s with code %s already exists", name, organisation_code)
+        codes_to_ids[organisation_code] = uid
 
 
 if __name__ == "__main__":
@@ -135,8 +170,12 @@ if __name__ == "__main__":
     db, session = get_db_engine()
 
     location_data = all_location_data(session)
-    (locations, locs_by_deviceid, regions, districts, devices) = location_data
+    (locations, locs_by_deviceid, zones, regions, districts, devices) = location_data
 
+    populate_dhis2_locations(locations, zones, regions, districts)
+    dhis2_organisations = get_dhis2_organisations()
+
+    exit(0)
     keys = __get_keys_from_db(db, form)
     dhis_keys = get_dhis2_keys(api_url, credentials, headers, keys)
 
@@ -144,8 +183,6 @@ if __name__ == "__main__":
     program_id = form_config['program_id']
     # program_id = 'T6VaKGprnc5' # demo_case
 
-    populate_dhis2_locations(locations)
-    dhis2_organisations = get_dhis2_organisations()
 
     status = form_config['status']
     stored_by = form_config['stored_by']
