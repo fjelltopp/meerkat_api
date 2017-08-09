@@ -745,7 +745,7 @@ class OperationStatus:
 
 
 def __save_form_data(xls_csv_writer, query_form_data, operation_status, keys, allowed_location, location_data):
-    (locations, locs_by_deviceid, regions, districts, devices) = location_data
+    (locations, locs_by_deviceid, zones, regions, districts, devices) = location_data
     results = query_form_data.yield_per(1000)
     results_count = query_form_data.count()
     for i, result in enumerate(results):
