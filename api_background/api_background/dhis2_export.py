@@ -1,23 +1,35 @@
-import requests
 import json
 import logging
-
 from datetime import date
 
-from _populate_locations import populate_row_locations, set_empty_locations
-from export_data import __get_keys_from_db
-from util import get_db_engine, all_location_data, is_child
-from meerkat_abacus.model import form_tables
+import requests
+
+from api_background._populate_locations import populate_row_locations, set_empty_locations
+from api_background.export_data import __get_keys_from_db
 from meerkat_abacus.config import dhis2_config
+from meerkat_abacus.model import form_tables
+from meerkat_abacus.util import get_db_engine, all_location_data
 
 codes_to_ids = {}
-#TODO: id_list = "http://54.76.53.0:8080/api/26/system/id.json?limit=100"
 
-def get_dhis2_ids(n=100):
-    result = requests.get("{}system/id.json?limit={}".format(api_url, n)).json().get('codes', [])
-    if not result:
-        logging.error("Could not get ids from DHIS2.")
-    return result
+class NewIdsProvider:
+    def __init__(self, dhis2_api_url, credentials):
+        self.dhis2_api_url = dhis2_api_url
+        self.credentials = credentials
+        self.ids = []
+
+    def pop(self):
+        if not self.ids:
+            self.ids = self.__get_dhis2_ids()
+        return self.ids.pop()
+
+    def __get_dhis2_ids(self, n=100):
+        response = requests.get("{}system/id.json?limit={}".format(self.dhis2_api_url, n), auth=self.credentials).json()
+        result = response.get('codes', [])
+        if not result:
+            logging.error("Could not get ids from DHIS2.")
+        return result
+
 
 def clear_old_events(program_id, org_unit_id):
     events_id_list = []
@@ -116,7 +128,6 @@ def populate_dhis2_locations(locations, zones, regions, districts):
         organisation_code = res.json().get('code', None)
         organisation_codes.append(organisation_code)
 
-    # http://54.76.53.0:8080/api/26/organisationUnits?filter=code:eq:unique_code
     for zone_index in zones:
         create_dhis2_organisation(locations[zone_index])
 
@@ -138,9 +149,12 @@ def create_dhis2_organisation(_location):
         opening_date = "1970-01-01"
     name = _location.name
     organisation_code = _location.country_location_id
-    json_res = requests.get("{}organisationUnits?filter=code:eq:{}".format(api_url, organisation_code), auth=credentials).json()
+    json_res = requests.get("{}organisationUnits?filter=code:eq:{}".format(api_url, organisation_code),
+                            auth=credentials).json()
     if not json_res['organisationUnits']:
+        uid = ids.pop()
         json_string = {
+            "id": uid,
             "name": name,
             "shortName": name,
             "code": organisation_code,
@@ -168,6 +182,7 @@ if __name__ == "__main__":
     headers = dhis2_config['headers']
 
     db, session = get_db_engine()
+    ids = NewIdsProvider(api_url, credentials)
 
     location_data = all_location_data(session)
     (locations, locs_by_deviceid, zones, regions, districts, devices) = location_data
@@ -196,7 +211,8 @@ if __name__ == "__main__":
     event_payload_list = []
     for counter, result in enumerate(results):
 
-        data_values, event_date, completed_date, organisation_code = prepare_data_values(keys, dhis_keys, result.data, form_config)
+        data_values, event_date, completed_date, organisation_code = prepare_data_values(keys, dhis_keys, result.data,
+                                                                                         form_config)
         event_payload = {
             'program': program_id,
             'orgUnit': dhis2_organisations[organisation_code],
