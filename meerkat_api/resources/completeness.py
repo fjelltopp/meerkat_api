@@ -113,7 +113,6 @@ class Completeness(Resource):
         # We drop duplicates so each clinic can only have one record per day
         data = data.drop_duplicates(
             subset=["region", "district", "clinic", "date", variable])
-
         if sublevel:
             # We first create an index with sublevel, clinic, dates
             # Where dates are the dates after the clinic started reporting
@@ -128,6 +127,8 @@ class Completeness(Resource):
                         start_date = locs[clinic].start_date
                         if start_date < begining:
                             start_date = begining
+                        if end_d - start_date < timedelta(days=7):
+                            start_date = (end_d - timedelta(days=6)).date()
                         for d in pd.date_range(start_date, end_d, freq=freq):
                             tuples.append((name, clinic, d))
             if len(tuples) == 0:
@@ -205,6 +206,10 @@ class Completeness(Resource):
             # Take into account clinic start_date
             if locs[location].start_date > begining:
                 begining = locs[location].start_date
+            not_reported_dates_begining = begining
+            if end_d - begining < timedelta(days=7):
+                begining = (end_d - timedelta(days=6)).date()
+
             dates = pd.date_range(begining, end_d, freq=freq)
             completeness = data.groupby(
                 pd.TimeGrouper(
@@ -241,7 +246,7 @@ class Completeness(Resource):
                         weekday_mask = weekday_mask + weekdays[i] + " "
 
             bdays = CustomBusinessDay(weekmask=weekday_mask)
-            expected_days = pd.date_range(begining, end_d, freq=bdays)
+            expected_days = pd.date_range(not_reported_dates_begining, end_d, freq=bdays)
 
             found_dates = data["date"]
             dates_not_reported = expected_days.drop(

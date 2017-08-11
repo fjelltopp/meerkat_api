@@ -4541,7 +4541,7 @@ class SCReport(Resource):
         children = get_children(location, locs, require_case_report=False)
 
         scs = db.session.query(Locations).filter(
-            Locations.clinic_type == "SU").filter(
+            or_(Locations.clinic_type == "SU", Locations.clinic_type == "OTP")).filter(
                 Locations.id.in_(children)
             ).all()
 
