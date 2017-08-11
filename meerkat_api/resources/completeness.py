@@ -113,7 +113,6 @@ class Completeness(Resource):
         # We drop duplicates so each clinic can only have one record per day
         data = data.drop_duplicates(
             subset=["region", "district", "clinic", "date", variable])
-        print(data)
         if sublevel:
             # We first create an index with sublevel, clinic, dates
             # Where dates are the dates after the clinic started reporting
@@ -204,7 +203,6 @@ class Completeness(Resource):
                 level=1).mean() / number_per_week * 100
             dates_not_reported = []  # Not needed for this level
         else:
-            print("hei")
             # Take into account clinic start_date
             if locs[location].start_date > begining:
                 begining = locs[location].start_date
