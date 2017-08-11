@@ -749,6 +749,15 @@ def __save_form_data(xls_csv_writer, query_form_data, operation_status, keys, al
     results = query_form_data.yield_per(1000)
     results_count = query_form_data.count()
     for i, result in enumerate(results):
+        if not result:
+            logging.error("Skipping result %d which is None", i)
+            continue
+        if not result.data:
+            logging.error("Skipping result %d. Data is None", i)
+            continue
+        if not isinstance(result.data, dict):
+            logging.error("Skipping result %d which data is not of a dictionary type", i)
+            continue
         # Initialise empty result for header line
         row = []
         for key in keys:
