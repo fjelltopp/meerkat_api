@@ -33,7 +33,6 @@ class Config(object):
     LOGGING_SOUCRE_TYPE = "api"
     LOGGING_IMPLEMENTAION = getenv("LOGGING_IMPLEMENTAION", "demo")
 
-
 class Production(Config):
     DEBUG = False
     TESTING = False
