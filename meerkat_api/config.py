@@ -29,7 +29,7 @@ class Config(object):
     INTERNAL_DEVICE_API_ROOT = getenv("MOB_API_ROOT", 'http://dev_nginx_1/mob')
     EXTERNAL_DEVICE_API_ROOT = '/mob'
     LOGGING_URL = getenv("LOGGING_URL", None)
-    LOGGING_SOURCE = getenv("LOGGING_SOURCE", "frontend")
+    LOGGING_SOURCE = getenv("LOGGING_SOURCE", "dev")
     LOGGING_SOUCRE_TYPE = "api"
     LOGGING_IMPLEMENTAION = getenv("LOGGING_IMPLEMENTAION", "demo")
 
