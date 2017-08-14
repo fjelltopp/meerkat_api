@@ -43,7 +43,7 @@ from meerkat_api.resources import alerts
 from meerkat_api.resources.explore import QueryVariable, QueryCategory, get_variables
 from meerkat_api.util.data_query import query_sum, latest_query
 from meerkat_api.resources.incidence import IncidenceRate
-from meerkat_abacus.util import get_locations, all_location_data, get_regions_districts
+from meerkat_abacus.util import get_locations, all_location_data, get_zones_regions_districts
 from meerkat_abacus import model
 from meerkat_api.authentication import authenticate, is_allowed_location
 from geoalchemy2.shape import to_shape
@@ -617,7 +617,7 @@ def create_ncd_report(location, start_date=None, end_date=None, params=['case'])
         }
         additional_variables = []
 
-    locations, ldid, regions, districts, devices = all_location_data(db.session)
+    locations, ldid, zones, regions, districts, devices = all_location_data(db.session)
     v = Variables()
 
 
@@ -775,7 +775,7 @@ class MhReport(Resource):
         nationality_visit_variables = get_variables('mh_visit_nationality')
         age_visit_variables = get_variables('visit_ncd_age')
         #Case based tables:
-        [regions,districts] = get_regions_districts(db.session)
+        [zones, regions, districts] = get_zones_regions_districts(db.session)
         mhgap_variables = get_variables('mhgap')
         gender_case_variables = get_variables('gender')
         nationality_case_variables = get_variables('mh_case_nationality')
@@ -4541,7 +4541,7 @@ class SCReport(Resource):
         children = get_children(location, locs, require_case_report=False)
 
         scs = db.session.query(Locations).filter(
-            Locations.clinic_type == "SU").filter(
+            or_(Locations.clinic_type == "SU", Locations.clinic_type == "OTP")).filter(
                 Locations.id.in_(children)
             ).all()
 

@@ -678,14 +678,15 @@ def export_form(uuid, form, allowed_location, fields=None):
     """
 
     db, session = get_db_engine()
+    operation_status = OperationStatus(form, uuid)
     if form not in form_tables.keys():
-        __submit_operation_failure(form, session, uuid)
+        operation_status.submit_operation_failure()
         return False
 
     location_data = all_location_data(session)
     locs_by_deviceid = location_data[1]
     if locs_by_deviceid is None:
-        __submit_operation_failure(form, session, uuid)
+        operation_status.submit_operation_failure()
         return False
 
     if fields:
@@ -697,9 +698,9 @@ def export_form(uuid, form, allowed_location, fields=None):
     xls_csv_writer.write_xls_row(keys)
     xls_csv_writer.write_csv_row(keys)
 
-    session_query = session.query(form_tables[form].data)
-    __save_form_data(xls_csv_writer, session_query, keys, allowed_location, location_data)
-    __submit_operation_success(form, session, uuid)
+    query_form_data = session.query(form_tables[form].data)
+    __save_form_data(xls_csv_writer, query_form_data, operation_status, keys, allowed_location, location_data)
+    operation_status.submit_operation_success()
     xls_csv_writer.flush_csv_buffer()
     xls_csv_writer.close_cvs_xls_buffers()
     return True
@@ -714,37 +715,40 @@ def __get_keys_from_db(db, form):
         keys.append(r[0])
     return keys
 
+class OperationStatus:
+    def __init__(self, form, uuid):
+        self.db, self.session = get_db_engine()
+        self.__initialize(form, uuid)
 
-def __submit_operation_success(form, session, uuid):
-    session.add(
-        DownloadDataFiles(
-            uuid=uuid,
-            generation_time=datetime.now(),
-            type=form,
-            success=1,
-            status=1
-        )
-    )
-    session.commit()
+    def __initialize(self, form, uuid):
+        self.download_data_file = DownloadDataFiles(uuid=uuid, generation_time=datetime.now(), type=form, success=0,
+                                                    status=0.0)
+        self.session.add(self.download_data_file)
+        self.session.commit()
 
-
-def __submit_operation_failure(form, session, uuid):
-    session.add(
-        DownloadDataFiles(
-            uuid=uuid,
-            generation_time=datetime.now(),
-            type=form,
-            success=0,
-            status=1
-        )
-    )
-    session.commit()
+    def update_operation_status(self, status):
+        self.download_data_file.status = status
+        self.download_data_file.success = 0
+        self.session.commit()
 
 
-def __save_form_data(xls_csv_writer, query_form_data, keys, allowed_location, location_data):
-    (locations, locs_by_deviceid, regions, districts, devices) = location_data
+    def submit_operation_success(self):
+        self.download_data_file.status = 1.0
+        self.download_data_file.success = 1
+        self.session.commit()
+
+
+    def submit_operation_failure(self):
+        self.download_data_file.status = 1.0
+        self.download_data_file.success = 0
+        self.session.commit()
+
+
+def __save_form_data(xls_csv_writer, query_form_data, operation_status, keys, allowed_location, location_data):
+    (locations, locs_by_deviceid, zones, regions, districts, devices) = location_data
     results = query_form_data.yield_per(1000)
-    for result in results:
+    results_count = query_form_data.count()
+    for i, result in enumerate(results):
         # Initialise empty result for header line
         row = []
         for key in keys:
@@ -767,6 +771,11 @@ def __save_form_data(xls_csv_writer, query_form_data, keys, allowed_location, lo
 
         xls_csv_writer.write_xls_row(row)
         xls_csv_writer.write_csv_row(row)
+
+        five_percent_progress = i % (results_count / 20) == 0
+        if five_percent_progress:
+            new_status = float(i) / results_count
+            operation_status.update_operation_status(new_status)
 
 
 if __name__ == "__main__":
