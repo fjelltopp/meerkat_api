@@ -32,17 +32,71 @@ class NewIdsProvider:
         return result
 
 
+def update_program(a_program_id):
+    payload = {
+        "name": form_name,
+        "shortName": form_name,
+        "programType": "WITHOUT_REGISTRATION",
+    }
+    organisation_ids = [{"id": x} for x in get_dhis2_organisations().values()]
+    if a_program_id is None:
+        response = requests.get("{}programs?filter=shortName:eq:{}".format(api_url, form_name), auth=credentials)
+        try:
+            id_ = response.json().get("programs")[0].get("id")
+        except IndexError:
+            id_ = None
+        if id_:
+            a_program_id = id_
+            __update_existing_program_with_organisations(a_program_id, organisation_ids, payload)
+        else:
+            a_program_id = ids.pop()
+
+            payload["id"] = a_program_id
+            payload["organisationUnits"] = organisation_ids
+            json_payload = json.dumps(payload)
+            req = requests.post("{}programs".format(api_url), data=json_payload, headers=headers)
+            logging.info("Created program %s with status %d", payload["id"], req.status_code)
+
+            data_element_keys = [{"dataElement": {"id": key}} for key in dhis_keys.values()]
+            stage_payload = {
+                "name": a_program_id,
+                "program": {
+                    "id": a_program_id
+                },
+                "programStageDataElements": data_element_keys
+            }
+            json_stage_payload = json.dumps(stage_payload)
+            res = requests.post("{}programStages".format(api_url), data=json_stage_payload, headers=headers)
+            logging.info("Created stage for program %s with status %d", a_program_id, res.status_code)
+    else:
+        __update_existing_program_with_organisations(a_program_id, organisation_ids, payload)
+
+    return a_program_id
+
+
+def __update_existing_program_with_organisations(a_program_id, organisation_ids, payload):
+    req = requests.get("{}programs/{}".format(api_url, a_program_id), auth=credentials)
+    old_organisation_ids = req.json().get('organistaionUnits', [])
+    req = requests.put("{}programs/{}".format(api_url, a_program_id), data=payload, auth=credentials)
+    payload["organisationUnits"] = organisation_ids + old_organisation_ids
+    logging.info("Updated program %s with status %d", a_program_id, req.status_code)
+
+
 def clear_old_events(program_id, org_unit_id):
     events_id_list = []
     res = requests.get("{}events?program={}&orgUnit={}&skipPaging=true".format(api_url, program_id, org_unit_id),
                        auth=credentials)
     results = res.json()
-    for result in results["events"]:
+    for result in results.get("events", []):
         event_id = result['event']
         events_id_list.append({'event': event_id})
     delete_json = json.dumps({"events": events_id_list})
     a_delete = requests.post("{}events?strategy=DELETE".format(api_url), data=delete_json, headers=headers)
-    print("Deleted old events with status {}".format(a_delete.status_code))
+    print("Deleted old events for program {} and organisation {}  with status {}\n{!r}".format(program_id,
+                                                                                               organisation_id,
+                                                                                               a_delete.status_code,
+                                                                                               a_delete.json().get(
+                                                                                                   "message")))
 
 
 def update_data_elements(key, headers):
@@ -106,7 +160,8 @@ def send_events_batch(payload_list):
 
 def get_dhis2_organisations():
     result = {}
-    dhis2_organisations_res = requests.get("{}organisationUnits?skipPaging=True&pageSize=2000".format(api_url), auth=credentials)
+    dhis2_organisations_res = requests.get("{}organisationUnits?skipPaging=True&pageSize=2000".format(api_url),
+                                           auth=credentials)
     dhis2_organisations = dhis2_organisations_res.json()['organisationUnits']
     for d in dhis2_organisations:
         res = requests.get("{}organisationUnits/{}".format(api_url, d['id']), auth=credentials)
@@ -161,7 +216,7 @@ def create_dhis2_organisation(_location):
             parent_id = dhis2_config['country_id']
         else:
             parent_id = codes_to_ids[locations[parent_location_id].country_location_id]
-        json_string = {
+        json_dict = {
             "id": uid,
             "name": name,
             "shortName": name,
@@ -169,7 +224,7 @@ def create_dhis2_organisation(_location):
             "openingDate": opening_date,
             "parent": {"id": parent_id}
         }
-        payload = json.dumps(json_string)
+        payload = json.dumps(json_dict)
         response = requests.post("{}organisationUnits".format(api_url), headers=headers, data=payload)
         logging.info("Created location %s with response %d", name, response.status_code)
         logging.info(response.text)
@@ -195,19 +250,17 @@ def clear_all_data_elements():
     for d in data_elements:
         requests.delete("{}dataElements/{}".format(api_url, d['id']), auth=credentials)
 
+
 if __name__ == "__main__":
     logging.getLogger().setLevel(logging.INFO)
     logging.info("Using config:\n {}".format(json.dumps(dhis2_config, indent=4)))
     form_config = dhis2_config['forms'][0]
-    form = form_config['name']
+    form_name = form_config['name']
     url = dhis2_config['url']
     api_resource = dhis2_config['api_resource']
     api_url = url + api_resource
     credentials = dhis2_config['credentials']
     headers = dhis2_config['headers']
-
-    # TODO: for now only hardocded will be done in a more elegant way
-    program_id = form_config['program_id']
 
     db, session = get_db_engine()
     ids = NewIdsProvider(api_url, credentials)
@@ -218,23 +271,20 @@ if __name__ == "__main__":
     populate_dhis2_locations(locations, zones, regions, districts)
     dhis2_organisations = get_dhis2_organisations()
 
-    for organisation_id in dhis2_organisations.values():
-        clear_old_events(program_id, organisation_id)
-    #
-    # clear_all_data_elements()
-    # clear_all_organisations()
-    # exit(0)
-
-    keys = __get_keys_from_db(db, form)
+    keys = __get_keys_from_db(db, form_name)
     dhis_keys = get_dhis2_keys(api_url, credentials, headers, keys)
 
+    program_id = form_config.get('program_id', None)
+    program_id = update_program(program_id)
 
+    for organisation_id in dhis2_organisations.values():
+        clear_old_events(program_id, organisation_id)
 
     status = form_config['status']
     stored_by = form_config['stored_by']
 
     data_values = []
-    results = session.query(form_tables[form].data).all()
+    results = session.query(form_tables[form_name].data).all()
 
     event_payload_list = []
     for counter, result in enumerate(results):
