@@ -17,6 +17,7 @@ db, session = get_db_engine()
 __codes_to_ids = {}
 __data_elements_to_form_keys_dict = {}
 __dhis2_organisations = {}
+__form_keys = {}
 
 
 def put(url, data=None, json=None, **kwargs):
@@ -143,9 +144,10 @@ def __update_data_elements(key, headers):
     return uid
 
 
-def prepare_data_values(keys, dhis_keys, data, form_config):
+def prepare_data_values(dhis_keys, data, form_config):
     data_values = []
     organisation_code = None
+    keys = __get_form_keys(form_config.get("name"))
     # Add the location data if it has been requested and exists.
     for key in keys:
         if 'deviceid' in data:
@@ -163,7 +165,7 @@ def prepare_data_values(keys, dhis_keys, data, form_config):
     return data_values, eventDate, completedDate, organisation_code
 
 
-def get_data_elements_to_form_keys_dict(url, credentials, headers, form_keys):
+def get_data_elements_to_form_keys_dict(url, credentials, headers, form_name):
     global __data_elements_to_form_keys_dict
     if __data_elements_to_form_keys_dict:
         return __data_elements_to_form_keys_dict
@@ -176,7 +178,7 @@ def get_data_elements_to_form_keys_dict(url, credentials, headers, form_keys):
         data_elements_ids.append(d['id'])
         data_elements_names.append(d['displayName'])
     data_element_lookup = dict(zip(data_elements_names, data_elements_ids))
-    for key in form_keys:
+    for key in __get_form_keys(form_name):
         if key in data_element_lookup:
             dhis_key_id = data_element_lookup[key]
         else:
@@ -303,7 +305,7 @@ def process_form_records():
     event_payload_list = []
     for counter, result in enumerate(results):
 
-        data_values, event_date, completed_date, organisation_code = prepare_data_values(form_keys, dhis_keys,
+        data_values, event_date, completed_date, organisation_code = prepare_data_values(dhis_keys,
                                                                                          result.data,
                                                                                          form_config)
         event_payload = {
@@ -333,6 +335,16 @@ def setup_logging():
     logger.setLevel(level)
     logger.addHandler(handler)
 
+
+def __get_form_keys(form_name=None):
+    global __form_keys
+    if not __form_keys.get(form_name):
+        assert form_name
+        __form_keys[form_name] = __get_keys_from_db(db, form_name)
+    return __form_keys[form_name]
+
+
+
 if __name__ == "__main__":
     setup_logging()
     logger.info("Using config:\n {}".format(json.dumps(dhis2_config, indent=4)))
@@ -352,8 +364,7 @@ if __name__ == "__main__":
 
     populate_dhis2_locations(locations, zones, regions, districts)
 
-    form_keys = __get_keys_from_db(db, form_name)
-    dhis_keys = get_data_elements_to_form_keys_dict(api_url, credentials, headers, form_keys)
+    dhis_keys = get_data_elements_to_form_keys_dict(api_url, credentials, headers, form_name)
 
     program_id = update_program(form_config)
 
