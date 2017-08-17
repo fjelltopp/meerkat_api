@@ -1,5 +1,6 @@
 import json
 import logging
+
 from datetime import date
 
 import requests
@@ -28,7 +29,7 @@ class NewIdsProvider:
         response = requests.get("{}system/id.json?limit={}".format(self.dhis2_api_url, n), auth=self.credentials).json()
         result = response.get('codes', [])
         if not result:
-            logging.error("Could not get ids from DHIS2.")
+            logger.error("Could not get ids from DHIS2.")
         return result
 
 
@@ -55,7 +56,7 @@ def update_program(a_program_id):
             payload["organisationUnits"] = organisation_ids
             json_payload = json.dumps(payload)
             req = requests.post("{}programs".format(api_url), data=json_payload, headers=headers)
-            logging.info("Created program %s with status %d", payload["id"], req.status_code)
+            logger.info("Created program %s with status %d", payload["id"], req.status_code)
 
             data_element_keys = [{"dataElement": {"id": key}} for key in dhis_keys.values()]
             stage_payload = {
@@ -67,7 +68,7 @@ def update_program(a_program_id):
             }
             json_stage_payload = json.dumps(stage_payload)
             res = requests.post("{}programStages".format(api_url), data=json_stage_payload, headers=headers)
-            logging.info("Created stage for program %s with status %d", a_program_id, res.status_code)
+            logger.info("Created stage for program %s with status %d", a_program_id, res.status_code)
     else:
         __update_existing_program_with_organisations(a_program_id, organisation_ids, payload)
 
@@ -79,7 +80,7 @@ def __update_existing_program_with_organisations(a_program_id, organisation_ids,
     old_organisation_ids = req.json().get('organistaionUnits', [])
     req = requests.put("{}programs/{}".format(api_url, a_program_id), data=payload, auth=credentials)
     payload["organisationUnits"] = organisation_ids + old_organisation_ids
-    logging.info("Updated program %s with status %d", a_program_id, req.status_code)
+    logger.info("Updated program %s with status %d", a_program_id, req.status_code)
 
 
 def clear_old_events(program_id, org_unit_id):
@@ -92,7 +93,7 @@ def clear_old_events(program_id, org_unit_id):
         events_id_list.append({'event': event_id})
     delete_json = json.dumps({"events": events_id_list})
     a_delete = requests.post("{}events?strategy=DELETE".format(api_url), data=delete_json, headers=headers)
-    print("Deleted old events for program {} and organisation {}  with status {}\n{!r}".format(program_id,
+    logger.info("Deleted old events for program {} and organisation {}  with status {}\n{!r}".format(program_id,
                                                                                                organisation_id,
                                                                                                a_delete.status_code,
                                                                                                a_delete.json().get(
@@ -105,7 +106,7 @@ def update_data_elements(key, headers):
     post_res = requests.post("{}dataElements".format(api_url), data=json_payload, headers=headers)
     json_res = post_res.json()
     uid = json_res['response']['uid']
-    print("Created data element \"{}\" with uid: {}".format(key, uid))
+    logger.info("Created data element \"{}\" with uid: {}".format(key, uid))
     return uid
 
 
@@ -154,8 +155,8 @@ def send_events_batch(payload_list):
     json_event_payload = json.dumps(payload)
     s = requests.session()
     event_res = s.post("{}events".format(api_url), headers=headers, data=json_event_payload)
-    logging.info("Send batch of events with status: %d", event_res.status_code)
-    logging.info(event_res.text)
+    logger.info("Send batch of events with status: %d", event_res.status_code)
+    logger.info(event_res.json().get('message'))
 
 
 def get_dhis2_organisations():
@@ -226,11 +227,11 @@ def create_dhis2_organisation(_location):
         }
         payload = json.dumps(json_dict)
         response = requests.post("{}organisationUnits".format(api_url), headers=headers, data=payload)
-        logging.info("Created location %s with response %d", name, response.status_code)
-        logging.info(response.text)
+        logger.info("Created location %s with response %d", name, response.status_code)
+        logger.info(response.text)
         codes_to_ids[organisation_code] = uid
     else:
-        logging.info("Organisation %s with code %s already exists", name, organisation_code)
+        logger.info("Organisation %12s with code %15s already exists", name, organisation_code)
         uid = json_res['organisationUnits'][0]['id']
         codes_to_ids[organisation_code] = uid
 
@@ -252,8 +253,15 @@ def clear_all_data_elements():
 
 
 if __name__ == "__main__":
-    logging.getLogger().setLevel(logging.INFO)
-    logging.info("Using config:\n {}".format(json.dumps(dhis2_config, indent=4)))
+    FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    handler = logging.StreamHandler()
+    formatter = logging.Formatter(FORMAT)
+    handler.setFormatter(formatter)
+    logger = logging.getLogger('meerkat_api.dhis2')
+    logger.setLevel(logging.DEBUG)
+    logger.addHandler(handler)
+    logger.info("Using config:\n {}".format(json.dumps(dhis2_config, indent=4)))
+
     form_config = dhis2_config['forms'][0]
     form_name = form_config['name']
     url = dhis2_config['url']
