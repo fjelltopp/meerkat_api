@@ -65,7 +65,8 @@ class NewIdsProvider:
         return result
 
 
-def update_program(a_program_id):
+def update_program(form_config):
+    a_program_id = form_config.get('programId', None)
     payload = {
         "name": form_name,
         "shortName": form_name,
@@ -331,10 +332,10 @@ def setup_logging():
     level = logging.getLevelName(level_name)
     logger.setLevel(level)
     logger.addHandler(handler)
-    logger.info("Using config:\n {}".format(json.dumps(dhis2_config, indent=4)))
 
 if __name__ == "__main__":
     setup_logging()
+    logger.info("Using config:\n {}".format(json.dumps(dhis2_config, indent=4)))
 
     form_config = dhis2_config['forms'][0]
     form_name = form_config['name']
@@ -354,8 +355,7 @@ if __name__ == "__main__":
     form_keys = __get_keys_from_db(db, form_name)
     dhis_keys = get_data_elements_to_form_keys_dict(api_url, credentials, headers, form_keys)
 
-    program_id = form_config.get('programId', None)
-    program_id = update_program(program_id)
+    program_id = update_program(form_config)
 
     for organisation_id in get_dhis2_organisations().values():
         _clear_old_events(program_id, organisation_id)
