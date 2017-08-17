@@ -68,6 +68,7 @@ class NewIdsProvider:
 
 def update_program(form_config):
     a_program_id = form_config.get('programId', None)
+    form_name = form_config['name']
     payload = {
         "name": form_name,
         "shortName": form_name,
@@ -92,7 +93,8 @@ def update_program(form_config):
             req = post("{}programs".format(api_url), data=json_payload, headers=headers)
             logger.info("Created program %s with status %d", payload["id"], req.status_code)
 
-            data_element_keys = [{"dataElement": {"id": key}} for key in dhis_keys.values()]
+            dhis2_keys = get_data_elements_to_form_keys_dict(url, credentials, headers, form_name).values()
+            data_element_keys = [{"dataElement": {"id": key}} for key in dhis2_keys]
             stage_payload = {
                 "name": a_program_id,
                 "program": {
@@ -112,8 +114,8 @@ def update_program(form_config):
 def __update_existing_program_with_organisations(a_program_id, organisation_ids, payload):
     req = get("{}programs/{}".format(api_url, a_program_id), auth=credentials)
     old_organisation_ids = req.json().get('organistaionUnits', [])
-    req = put("{}programs/{}".format(api_url, a_program_id), data=payload, auth=credentials)
     payload["organisationUnits"] = organisation_ids + old_organisation_ids
+    req = put("{}programs/{}".format(api_url, a_program_id), data=payload, auth=credentials)
     logger.info("Updated program %s with status %d", a_program_id, req.status_code)
 
 
@@ -144,10 +146,12 @@ def __update_data_elements(key, headers):
     return uid
 
 
-def prepare_data_values(dhis_keys, data, form_config):
+def prepare_data_values(data, form_config):
     data_values = []
     organisation_code = None
-    keys = __get_form_keys(form_config.get("name"))
+    form_name = form_config.get("name")
+    dhis_keys = get_data_elements_to_form_keys_dict(api_url, credentials, headers, form_name)
+    keys = __get_form_keys(form_name)
     # Add the location data if it has been requested and exists.
     for key in keys:
         if 'deviceid' in data:
@@ -167,8 +171,8 @@ def prepare_data_values(dhis_keys, data, form_config):
 
 def get_data_elements_to_form_keys_dict(url, credentials, headers, form_name):
     global __data_elements_to_form_keys_dict
-    if __data_elements_to_form_keys_dict:
-        return __data_elements_to_form_keys_dict
+    if __data_elements_to_form_keys_dict.get(form_name):
+        return __data_elements_to_form_keys_dict.get(form_name)
     result = {}
     dhis2_data_elements_res = get("{}dataElements?skipPaging=True".format(url), auth=credentials)
     dhis2_data_elements = dhis2_data_elements_res.json()['dataElements']
@@ -184,8 +188,8 @@ def get_data_elements_to_form_keys_dict(url, credentials, headers, form_name):
         else:
             dhis_key_id = __update_data_elements(key, headers)
         result[key] = dhis_key_id
-    __data_elements_to_form_keys_dict = result
-    return __data_elements_to_form_keys_dict
+    __data_elements_to_form_keys_dict[form_name] = result
+    return __data_elements_to_form_keys_dict.get(form_name)
 
 
 def send_events_batch(payload_list):
@@ -299,15 +303,13 @@ def clear_all_data_elements():
         delete("{}dataElements/{}".format(api_url, d['id']), auth=credentials)
 
 
-def process_form_records():
+def process_form_records(form_config, program_id):
     status = form_config['status']
     results = session.query(form_tables[form_name].data).all()
     event_payload_list = []
     for counter, result in enumerate(results):
 
-        data_values, event_date, completed_date, organisation_code = prepare_data_values(dhis_keys,
-                                                                                         result.data,
-                                                                                         form_config)
+        data_values, event_date, completed_date, organisation_code = prepare_data_values(result.data, form_config)
         event_payload = {
             'program': program_id,
             'orgUnit': get_dhis2_organisations().get(organisation_code),
@@ -364,11 +366,9 @@ if __name__ == "__main__":
 
     populate_dhis2_locations(locations, zones, regions, districts)
 
-    dhis_keys = get_data_elements_to_form_keys_dict(api_url, credentials, headers, form_name)
-
     program_id = update_program(form_config)
 
     for organisation_id in get_dhis2_organisations().values():
         _clear_old_events(program_id, organisation_id)
 
-    process_form_records()
+    process_form_records(form_config, program_id)
