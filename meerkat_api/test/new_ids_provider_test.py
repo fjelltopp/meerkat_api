@@ -30,6 +30,7 @@ class NewIdsProviderTest(TestCase):
         self.get_mock = get_patch.start()
 
         self.response_mock.json.side_effect = [self.first_batch, self.second_batch]
+        self.response_mock.status_code = 200
         self.get_mock.return_value = self.response_mock
 
     def tearDown(self):
