@@ -1,12 +1,54 @@
-"""
-DHIS2 import/export Tests
-
-Unit tests for the new dhis2 ids provider
-"""
 from unittest import TestCase
 from unittest.mock import patch
 
-from api_background.dhis2_export import NewIdsProvider
+from api_background.dhis2_export import put, delete, get, post, NewIdsProvider
+
+
+class TestDhis2RequestsWrapper(TestCase):
+    """
+    DHIS2 import/export Tests
+
+    Unit tests for the requests wrapper
+    """
+
+    def setUp(self):
+        self.kwargs = {"they": "shall", "pass": "ok"}
+        self.fake_url = "http://foo"
+        self.bar = "bar"
+        self.baz = "baz"
+
+    @patch('requests.put')
+    def test_put(self, requests_mock):
+        put(self.fake_url, data=self.bar, json=self.baz, **self.kwargs)
+        requests_mock.assert_called_once_with(self.fake_url, data=self.bar, json=self.baz, **self.kwargs)
+
+    @patch('requests.post')
+    def test_put(self, requests_mock):
+        post(self.fake_url, data=self.bar, json=self.baz, **self.kwargs)
+        requests_mock.assert_called_once_with(self.fake_url, data=self.bar, json=self.baz, **self.kwargs)
+
+
+    @patch('requests.get')
+    def test_put(self, requests_mock):
+        get(self.fake_url, params=self.bar, **self.kwargs)
+        requests_mock.assert_called_once_with(self.fake_url, params=self.bar, **self.kwargs)
+
+
+    @patch('requests.delete')
+    def test_put(self, requests_mock):
+        delete(self.fake_url, **self.kwargs)
+        requests_mock.assert_called_once_with(self.fake_url, **self.kwargs)
+
+    @patch('requests.Response')
+    @patch('requests.get')
+    def test_should_report_error_when_error_response(self, requests_mock, response_mock):
+        response_mock.status_code = 999
+        response_mock.json.return_value = {"message":"Error 999"}
+        requests_mock.return_value = response_mock
+        with self.assertLogs('meerkat_api.dhis2', level='ERROR') as cm:
+            get(self.fake_url)
+            self.assertEqual(cm.output[0], 'ERROR:meerkat_api.dhis2:Request failed with code 999.')
+            self.assertTrue("Error 999" in cm.output[1])
 
 
 class NewIdsProviderTest(TestCase):
@@ -58,3 +100,4 @@ class NewIdsProviderTest(TestCase):
         for expected_id in reversed(batch_json["codes"]):
             actual_id = obj_under_test.pop()
             self.assertEqual(actual_id, expected_id)
+

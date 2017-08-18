@@ -325,17 +325,15 @@ def process_form_records(form_config, program_id):
     send_events_batch(event_payload_list)
 
 
-def setup_logging():
-    global logger
-    FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    handler = logging.StreamHandler()
-    formatter = logging.Formatter(FORMAT)
-    handler.setFormatter(formatter)
-    logger = logging.getLogger('meerkat_api.dhis2')
-    level_name = dhis2_config.get("loggingLevel", "ERROR")
-    level = logging.getLevelName(level_name)
-    logger.setLevel(level)
-    logger.addHandler(handler)
+FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+handler = logging.StreamHandler()
+formatter = logging.Formatter(FORMAT)
+handler.setFormatter(formatter)
+logger = logging.getLogger('meerkat_api.dhis2')
+level_name = dhis2_config.get("loggingLevel", "ERROR")
+level = logging.getLevelName(level_name)
+logger.setLevel(level)
+logger.addHandler(handler)
 
 
 def __get_form_keys(form_name=None):
@@ -348,7 +346,6 @@ def __get_form_keys(form_name=None):
 
 
 if __name__ == "__main__":
-    setup_logging()
     logger.info("Using config:\n {}".format(json.dumps(dhis2_config, indent=4)))
 
     form_config = dhis2_config['forms'][0]
