@@ -80,7 +80,7 @@ def delete(url, **kwargs):
 
 
 def __check_if_response_is_ok(response):
-    if response.status_code != requests.codes.ok:
+    if 200 < response.status_code >= 300:
         logger.error("Request failed with code %d.", response.status_code)
         logger.error(response.json().get("message"), stack_info=True)
     return response
@@ -113,7 +113,7 @@ def update_program(form_config, organisation_ids):
             req = post("{}programs".format(api_url), data=json_payload, headers=headers)
             logger.info("Created program %s with status %d", payload["id"], req.status_code)
 
-            dhis2_keys = get_form_keys_to_data_elements_dict(url, credentials, headers, form_name).values()
+            dhis2_keys = get_form_keys_to_data_elements_dict(api_url, credentials, headers, form_name).values()
             data_element_keys = [{"dataElement": {"id": key}} for key in dhis2_keys]
             stage_payload = {
                 "name": a_program_id,
@@ -135,13 +135,13 @@ def __update_existing_program_with_organisations(a_program_id, organisation_ids,
     req = get("{}programs/{}".format(api_url, a_program_id), auth=credentials)
     old_organisation_ids = req.json().get('organisationUnits', [])
     payload["organisationUnits"] = old_organisation_ids + organisation_ids
-    req = put("{}programs/{}".format(api_url, a_program_id), data=payload, auth=credentials)
+    req = put("{}programs/{}".format(api_url, a_program_id), data=payload, headers=headers)
     logger.info("Updated program %s with status %d", a_program_id, req.status_code)
 
 
 def _clear_old_events(program_id, org_unit_id):
     events_id_list = []
-    res = get("{}events?program={}&orgUnit={}&skipPaging=true".format(api_url, program_id, org_unit_id),
+    res = get("{}events?program={}&orgUnit={}&paging=False".format(api_url, program_id, org_unit_id),
               auth=credentials)
     results = res.json()
     for result in results.get("events", []):
@@ -194,7 +194,7 @@ def get_form_keys_to_data_elements_dict(url, credentials, headers, form_name):
     if __form_keys_to_data_elements_dict.get(form_name):
         return __form_keys_to_data_elements_dict.get(form_name)
     result = {}
-    dhis2_data_elements_res = get("{}dataElements?skipPaging=True".format(url), auth=credentials)
+    dhis2_data_elements_res = get("{}dataElements?paging=False".format(url), auth=credentials)
     dhis2_data_elements = dhis2_data_elements_res.json()['dataElements']
     data_elements_ids = []
     data_elements_names = []
@@ -227,7 +227,7 @@ def get_dhis2_organisations():
     if __dhis2_organisations:
         return __dhis2_organisations
     result = {}
-    dhis2_organisations_res = get("{}organisationUnits?skipPaging=True&pageSize=2000".format(api_url),
+    dhis2_organisations_res = get("{}organisationUnits?paging=False".format(api_url),
                                   auth=credentials)
     dhis2_organisations = dhis2_organisations_res.json()['organisationUnits']
     for d in dhis2_organisations:
@@ -363,7 +363,7 @@ if __name__ == "__main__":
 
     program_id = update_program(form_config, get_dhis2_organisations().values())
 
-    for organisation_id in get_dhis2_organisations().values():
-        _clear_old_events(program_id, organisation_id)
+    # for organisation_id in get_dhis2_organisations().values():
+    #     _clear_old_events(program_id, organisation_id)
 
     process_form_records(form_config, program_id)
