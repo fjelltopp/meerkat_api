@@ -126,13 +126,16 @@ class ProgramUpdateTestCase(TestCase):
     @patch('requests.put')
     @patch('requests.get')
     @patch('requests.Response')
-    def test_with_program_id_and_with_already_assigned_organisations(self, response_mock, get_mock, put_mock):
+    @patch('requests.Response')
+    def test_with_program_id_and_with_already_assigned_organisations(self, get_res_mock, put_res_mock, get_mock, put_mock):
         expected_program_id = "existing_program_id"
         self.form_config['programId'] = expected_program_id
         existing = ["one", "two", "three"]
-        response_mock.json.return_value = {self.ORGANISATION_UNITS_KEY: self.ids_jarray(existing)}
-        response_mock.status_code = 200
-        get_mock.return_value = response_mock
+        get_res_mock.status_code = 200
+        get_res_mock.json.return_value = {self.ORGANISATION_UNITS_KEY: self.ids_jarray(existing)}
+        get_mock.return_value = get_res_mock
+        put_res_mock.status_code = 200
+        put_mock.return_value = put_res_mock
         new = ["four", "five"]
 
         # code under test
@@ -152,11 +155,14 @@ class ProgramUpdateTestCase(TestCase):
     @patch('requests.put')
     @patch('requests.get')
     @patch('requests.Response')
-    def test_without_program_id_and_with_already_assigned_organisations(self, response_mock, get_mock, put_mock):
+    @patch('requests.Response')
+    def test_without_program_id_and_with_already_assigned_organisations(self, get_res_mock, put_res_mock, get_mock, put_mock):
         expected_program_id = "to_be_found_program_id"
-        response_mock.json.return_value = {"programs": [{"id": expected_program_id}]}
-        response_mock.status_code = 200
-        get_mock.return_value = response_mock
+        get_res_mock.json.return_value = {"programs": [{"id": expected_program_id}]}
+        get_res_mock.status_code = 200
+        get_mock.return_value = get_res_mock
+        put_res_mock.status_code = 200
+        put_mock.return_value = put_res_mock
         new = ["four", "five"]
 
         returned_program_id = dhis2_export.update_program(self.form_config, new)
