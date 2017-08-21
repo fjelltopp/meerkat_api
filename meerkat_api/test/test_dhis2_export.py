@@ -20,21 +20,25 @@ class Dhis2RequestsWrapperTestCase(TestCase):
 
     @patch('requests.put')
     def test_put(self, requests_mock):
+        self.__mock_ok_response(requests_mock)
         put(self.fake_url, data=self.bar, json=self.baz, **self.kwargs)
         requests_mock.assert_called_once_with(self.fake_url, data=self.bar, json=self.baz, **self.kwargs)
 
     @patch('requests.post')
-    def test_put(self, requests_mock):
+    def test_post(self, requests_mock):
+        self.__mock_ok_response(requests_mock)
         post(self.fake_url, data=self.bar, json=self.baz, **self.kwargs)
         requests_mock.assert_called_once_with(self.fake_url, data=self.bar, json=self.baz, **self.kwargs)
 
     @patch('requests.get')
-    def test_put(self, requests_mock):
+    def test_get(self, requests_mock):
+        self.__mock_ok_response(requests_mock)
         get(self.fake_url, params=self.bar, **self.kwargs)
         requests_mock.assert_called_once_with(self.fake_url, params=self.bar, **self.kwargs)
 
     @patch('requests.delete')
-    def test_put(self, requests_mock):
+    def test_delete(self, requests_mock):
+        self.__mock_ok_response(requests_mock)
         delete(self.fake_url, **self.kwargs)
         requests_mock.assert_called_once_with(self.fake_url, **self.kwargs)
 
@@ -48,6 +52,11 @@ class Dhis2RequestsWrapperTestCase(TestCase):
             get(self.fake_url)
             self.assertEqual(cm.output[0], 'ERROR:meerkat_api.dhis2:Request failed with code 999.')
             self.assertTrue("Error 999" in cm.output[1])
+
+    def __mock_ok_response(self, requests_mock):
+        response = MagicMock('requests.Response')
+        response.status_code = 200
+        requests_mock.return_value = response
 
 
 class NewIdsProviderTestCase(TestCase):
