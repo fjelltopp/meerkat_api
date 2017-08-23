@@ -7,9 +7,12 @@ import requests
 
 from api_background._populate_locations import populate_row_locations, set_empty_locations
 from api_background.export_data import __get_keys_from_db
-from meerkat_abacus.config import dhis2_config
 from meerkat_abacus.model import form_tables
 from meerkat_abacus.util import get_db_engine, all_location_data
+try:
+    from meerkat_abacus.config import dhis2_config
+except:
+    dhis2_config = {}
 
 db, session = get_db_engine()
 
