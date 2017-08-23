@@ -51,8 +51,8 @@ class DeviceID(Resource):
     def get(self, device_id):
 
         return jsonify(row_to_dict(db.session.query(model.Locations).filter(
-            model.Locations.deviceid == device_id).first()
-        ))
+            model.Locations.deviceid.contains(device_id)
+        ).first()))
 
 
 class LocationTree(Resource):
