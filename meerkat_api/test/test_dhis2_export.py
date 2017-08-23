@@ -3,8 +3,7 @@ from unittest import TestCase
 from unittest.mock import patch, MagicMock
 
 from api_background import dhis2_export
-from api_background.dhis2_export import put, delete, get, post, NewIdsProvider, \
-    __update_existing_program_with_organisations
+from api_background.dhis2_export import put, delete, get, post, NewIdsProvider
 
 
 class Dhis2RequestsWrapperTestCase(TestCase):
