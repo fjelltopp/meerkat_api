@@ -1,3 +1,8 @@
+"""
+Prof of Concept module to export data from Meerkat to DHIS2.
+Configuration is read from country_config.dhis2_config dictionary.
+IT NOT FULLY FUNCTIONAL MODULE YET. Will be transformed to a separate microservice.
+"""
 import json
 import logging
 
@@ -9,6 +14,7 @@ from api_background._populate_locations import populate_row_locations, set_empty
 from api_background.export_data import __get_keys_from_db
 from meerkat_abacus.model import form_tables
 from meerkat_abacus.util import get_db_engine, all_location_data
+
 try:
     from meerkat_abacus.config import dhis2_config
 except ImportError:
@@ -32,6 +38,7 @@ logger.setLevel(level)
 logger.addHandler(handler)
 
 form_config = dhis2_config['forms'][0]
+event_batch_size = dhis2_config.get('eventBatchSize', 100)
 form_name = form_config['name']
 url = dhis2_config['url']
 api_resource = dhis2_config['apiResource']
@@ -63,21 +70,53 @@ ids = NewIdsProvider(api_url, credentials)
 
 
 def put(url, data=None, json=None, **kwargs):
+    """
+    Wrapper for requests.put which validates status code of the response
+    :param url:
+    :param data:
+    :param json:
+    :param kwargs:
+    :return: requests.Response
+    """
     response = requests.put(url, data=data, json=json, **kwargs)
     return __check_if_response_is_ok(response)
 
 
 def get(url, params=None, **kwargs):
+    """
+    Wrapper for requests.get which validates status code of the response
+    :param url:
+    :param data:
+    :param json:
+    :param kwargs:
+    :return: requests.Response
+    """
     response = requests.get(url, params=params, **kwargs)
     return __check_if_response_is_ok(response)
 
 
 def post(url, data=None, json=None, **kwargs):
+    """
+    Wrapper for requests.post which validates status code of the response
+    :param url:
+    :param data:
+    :param json:
+    :param kwargs:
+    :return: requests.Response
+    """
     response = requests.post(url, data=data, json=json, **kwargs)
     return __check_if_response_is_ok(response)
 
 
 def delete(url, **kwargs):
+    """
+    Wrapper for requests.delete which validates status code of the response
+    :param url:
+    :param data:
+    :param json:
+    :param kwargs:
+    :return: requests.Response
+    """
     response = requests.delete(url, **kwargs)
     return __check_if_response_is_ok(response)
 
@@ -90,6 +129,14 @@ def __check_if_response_is_ok(response):
 
 
 def update_program(form_config, organisation_ids):
+    """
+
+    :param form_config: configuration for exporting meerkat form data @see dhis2_config
+    :param organisation_ids: list of dhis2_organisation assigned to thid dhis2_program
+    :return: String - program_id provided in form_config <br />
+      or of existing dhis2_program found by form_name <br />
+      or of newly created dhis2_program
+    """
     a_program_id = form_config.get('programId', None)
     form_name = form_config['name']
     payload = {
@@ -134,70 +181,16 @@ def update_program(form_config, organisation_ids):
     return a_program_id
 
 
-def __update_existing_program_with_organisations(a_program_id, organisation_ids, payload):
-    req = get("{}programs/{}".format(api_url, a_program_id), auth=credentials)
-    old_organisation_ids = req.json().get('organisationUnits', [])
-    payload["organisationUnits"] = old_organisation_ids + organisation_ids
-    req = put("{}programs/{}".format(api_url, a_program_id), data=payload, headers=headers)
-    logger.info("Updated program %s with status %d", a_program_id, req.status_code)
-
-
-def _clear_old_events(program_id, org_unit_id):
-    events_id_list = []
-    res = get("{}events?program={}&orgUnit={}&paging=False".format(api_url, program_id, org_unit_id),
-              auth=credentials)
-    results = res.json()
-    for result in results.get("events", []):
-        event_id = result['event']
-        events_id_list.append({'event': event_id})
-    delete_json = json.dumps({"events": events_id_list})
-    a_delete = post("{}events?strategy=DELETE".format(api_url), data=delete_json, headers=headers)
-    logger.info("Deleted old events for program {} and organisation {}  with status {}\n{!r}".format(program_id,
-                                                                                                     organisation_id,
-                                                                                                     a_delete.status_code,
-                                                                                                     a_delete.json().get(
-                                                                                                         "message")))
-
-
-def __update_data_elements(key, headers):
-    payload = {'name': key, 'shortName': key, 'domainType': 'TRACKER', 'valueType': 'TEXT', 'aggregationType': 'NONE'}
-    json_payload = json.dumps(payload)
-    post_res = post("{}dataElements".format(api_url), data=json_payload, headers=headers)
-    json_res = post_res.json()
-    uid = json_res['response']['uid']
-    logger.info("Created data element \"{}\" with uid: {}".format(key, uid))
-    return uid
-
-
-def prepare_data_values(row_data, form_config):
-    """
-    Prepares data for event capture in DHIS2.
-    :param row_data: a single case entry data
-    :param form_config: DHIS2 configuration for this form
-    :return: Tuple (DHIS2 translated row values, DHIS2 eventDate, DHIS2 completedDate, DHIS2 organisation code)
-    """
-    dhis2_data_values = []
-    dhis2_organisation_code = None
-    form_name = form_config.get("name")
-    dhis_keys = get_form_keys_to_data_elements_dict(api_url, credentials, headers, form_name)
-    keys = __get_form_keys(form_name)
-    for key in keys:
-        if 'deviceid' in row_data:
-            clinic_id = locs_by_deviceid.get(row_data["deviceid"], None)
-            populate_row_locations(row_data, keys, clinic_id, location_data, use_integer_keys=False)
-            dhis2_organisation_code = locations[clinic_id].country_location_id
-
-        else:
-            set_empty_locations(keys, dhis2_data_values)
-        if key in row_data.keys():
-            dhis2_data_values.append({'dataElement': dhis_keys[key], 'value': row_data[key]})
-    str_today = date.today().strftime("%Y-%m-%d")
-    dhis2_eventDate = row_data.get(form_config['event_date'], str_today)
-    dhis2_completedDate = row_data.get(form_config['completed_date'], str_today)
-    return dhis2_data_values, dhis2_eventDate, dhis2_completedDate, dhis2_organisation_code
-
-
 def get_form_keys_to_data_elements_dict(url, credentials, headers, form_name):
+    """
+    Gets lazy loaded map of meerkat form keys to dhis2_data_elements.
+    Matching is done by Meerkat column name and dhis2_data_element name.
+    :param url: dhis2_url
+    :param credentials: credentials (username, password)
+    :param headers: additional headers
+    :param form_name: name of Meerkat form to be processed
+    :return: a dictionary with keys: meerkat form keys and values: dhis2_data_elements
+    """
     global __form_keys_to_data_elements_dict
     if __form_keys_to_data_elements_dict.get(form_name):
         return __form_keys_to_data_elements_dict.get(form_name)
@@ -218,15 +211,6 @@ def get_form_keys_to_data_elements_dict(url, credentials, headers, form_name):
         result[key] = dhis_key_id
     __form_keys_to_data_elements_dict[form_name] = result
     return __form_keys_to_data_elements_dict.get(form_name)
-
-
-def send_events_batch(payload_list):
-    payload = {"events": payload_list}
-    json_event_payload = json.dumps(payload)
-    s = requests.session()
-    event_res = s.post("{}events".format(api_url), headers=headers, data=json_event_payload)
-    logger.info("Send batch of events with status: %d", event_res.status_code)
-    logger.info(event_res.json().get('message'))
 
 
 def get_dhis2_organisations_codes_to_ids():
@@ -250,6 +234,15 @@ def get_dhis2_organisations_codes_to_ids():
 
 
 def populate_dhis2_locations(locations, zones, regions, districts):
+    """
+    Populates Meerkat locations to dhis2 system. List of clinics is done by filtering all locations
+    by filter -> level == 'clinic'.
+    :param locations: list of locations
+    :param zones:  list of zones
+    :param regions:  list of regions
+    :param districts: list of districts
+    :return: void
+    """
     dhis2_organisations_res = get("{}organisationUnits".format(api_url), auth=credentials)
     organisation_units = dhis2_organisations_res.json()['organisationUnits']
     organisation_ids = []
@@ -278,6 +271,11 @@ def populate_dhis2_locations(locations, zones, regions, districts):
 
 
 def create_dhis2_organisation(_location):
+    """
+    Creates a dhis2 organisation.
+    :param _location: Meerkat location to be published as dhis2_organisation
+    :return: void
+    """
     organisation_code = _location.country_location_id
     if organisation_code is None:
         return
@@ -293,6 +291,83 @@ def create_dhis2_organisation(_location):
         logger.info("Organisation %12s with code %15s already exists", _location.name, organisation_code)
         uid = json_res['organisationUnits'][0]['id']
         __codes_to_ids[organisation_code] = uid
+
+
+def process_form_records(form_config, program_id):
+    """
+    Gets meerkat form from db and sends dhis2 events in batches.
+    Batch size can be configured in dhis2_config, defaults to 100.
+    :param form_config: Meerkat form config for dhis2
+    :param program_id: DHIS2 program id corresponding for the form
+    :return: void
+    """
+    status = form_config['status']
+    form_name = form_config['name']
+    results = session.query(form_tables[form_name].data).all()
+    event_payload_list = []
+    for counter, result in enumerate(results):
+
+        data_values, event_date, completed_date, organisation_code = __prepare_data_values(result.data, form_config)
+        event_payload = {
+            'program': program_id,
+            'orgUnit': get_dhis2_organisations_codes_to_ids().get(organisation_code),
+            'eventDate': event_date,
+            'completedDate': completed_date,
+            'dataValues': data_values,
+            'status': status
+        }
+        event_payload_list.append(event_payload)
+        if counter % event_batch_size == 0:
+            __send_events_batch(event_payload_list)
+            event_payload_list = []
+    __send_events_batch(event_payload_list)
+
+
+def __prepare_data_values(row_data, form_config):
+    """
+    Prepares data for event capture in DHIS2.
+    :param row_data: a single case entry data
+    :param form_config: DHIS2 configuration for this form
+    :return: Tuple (DHIS2 translated row values, DHIS2 eventDate, DHIS2 completedDate, DHIS2 organisation code)
+    """
+    dhis2_data_values = []
+    dhis2_organisation_code = None
+    form_name = form_config.get("name")
+    dhis_keys = get_form_keys_to_data_elements_dict(api_url, credentials, headers, form_name)
+    keys = __get_form_keys(form_name)
+    for key in keys:
+        if 'deviceid' in row_data:
+            clinic_id = locs_by_deviceid.get(row_data["deviceid"], None)
+            populate_row_locations(row_data, keys, clinic_id, location_data, use_integer_keys=False)
+            dhis2_organisation_code = locations[clinic_id].country_location_id
+
+        else:
+            set_empty_locations(keys, dhis2_data_values)
+        if key in row_data.keys():
+            dhis2_data_values.append({'dataElement': dhis_keys[key], 'value': row_data[key]})
+    str_today = date.today().strftime("%Y-%m-%d")
+    dhis2_eventDate = row_data.get(form_config['event_date'], str_today)
+    dhis2_completedDate = row_data.get(form_config['completed_date'], str_today)
+    return dhis2_data_values, dhis2_eventDate, dhis2_completedDate, dhis2_organisation_code
+
+
+def __send_events_batch(payload_list):
+    payload = {"events": payload_list}
+    json_event_payload = json.dumps(payload)
+    s = requests.session()
+    event_res = s.post("{}events".format(api_url), headers=headers, data=json_event_payload)
+    logger.info("Send batch of events with status: %d", event_res.status_code)
+    logger.info(event_res.json().get('message'))
+
+
+def __update_data_elements(key, headers):
+    payload = {'name': key, 'shortName': key, 'domainType': 'TRACKER', 'valueType': 'TEXT', 'aggregationType': 'NONE'}
+    json_payload = json.dumps(payload)
+    post_res = post("{}dataElements".format(api_url), data=json_payload, headers=headers)
+    json_res = post_res.json()
+    uid = json_res['response']['uid']
+    logger.info("Created data element \"{}\" with uid: {}".format(key, uid))
+    return uid
 
 
 def __create_new_organisation(_location, opening_date, organisation_code):
@@ -318,7 +393,40 @@ def __create_new_organisation(_location, opening_date, organisation_code):
     __codes_to_ids[organisation_code] = uid
 
 
-def clear_all_organisations():
+def __update_existing_program_with_organisations(a_program_id, organisation_ids, payload):
+    req = get("{}programs/{}".format(api_url, a_program_id), auth=credentials)
+    old_organisation_ids = req.json().get('organisationUnits', [])
+    payload["organisationUnits"] = old_organisation_ids + organisation_ids
+    req = put("{}programs/{}".format(api_url, a_program_id), data=payload, headers=headers)
+    logger.info("Updated program %s with status %d", a_program_id, req.status_code)
+
+
+def _clear_old_events(program_id, org_unit_id):
+    """
+    Used only for POC and demo
+    :return:
+    """
+    events_id_list = []
+    res = get("{}events?program={}&orgUnit={}&paging=False".format(api_url, program_id, org_unit_id),
+              auth=credentials)
+    results = res.json()
+    for result in results.get("events", []):
+        event_id = result['event']
+        events_id_list.append({'event': event_id})
+    delete_json = json.dumps({"events": events_id_list})
+    a_delete = post("{}events?strategy=DELETE".format(api_url), data=delete_json, headers=headers)
+    logger.info("Deleted old events for program {} and organisation {}  with status {}\n{!r}".format(program_id,
+                                                                                                     organisation_id,
+                                                                                                     a_delete.status_code,
+                                                                                                     a_delete.json().get(
+                                                                                                         "message")))
+
+
+def _clear_all_organisations():
+    """
+    Used only for POC and demo
+    :return:
+    """
     dhis2_organisations_res = get("{}organisationUnits".format(api_url), auth=credentials)
     organisation_units = dhis2_organisations_res.json()['organisationUnits']
 
@@ -326,35 +434,16 @@ def clear_all_organisations():
         delete("{}organisationUnits/{}".format(api_url, d['id']), auth=credentials)
 
 
-def clear_all_data_elements():
+def _clear_all_data_elements():
+    """
+    Used only for POC and demo
+    :return:
+    """
     dhis2_organisations_res = get("{}dataElements".format(api_url), auth=credentials)
     data_elements = dhis2_organisations_res.json()['dataElements']
 
     for d in data_elements:
         delete("{}dataElements/{}".format(api_url, d['id']), auth=credentials)
-
-
-def process_form_records(form_config, program_id):
-    status = form_config['status']
-    form_name = form_config['name']
-    results = session.query(form_tables[form_name].data).all()
-    event_payload_list = []
-    for counter, result in enumerate(results):
-
-        data_values, event_date, completed_date, organisation_code = prepare_data_values(result.data, form_config)
-        event_payload = {
-            'program': program_id,
-            'orgUnit': get_dhis2_organisations_codes_to_ids().get(organisation_code),
-            'eventDate': event_date,
-            'completedDate': completed_date,
-            'dataValues': data_values,
-            'status': status
-        }
-        event_payload_list.append(event_payload)
-        if counter % 100 == 0:
-            send_events_batch(event_payload_list)
-            event_payload_list = []
-    send_events_batch(event_payload_list)
 
 
 def __get_form_keys(form_name=None):
