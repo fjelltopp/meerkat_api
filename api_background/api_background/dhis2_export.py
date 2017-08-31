@@ -221,8 +221,7 @@ def get_form_keys_to_data_elements_dict(url, credentials, headers, form_name):
 
 
 def send_events_batch(payload_list):
-    payload = {}
-    payload['events'] = payload_list
+    payload = {"events": payload_list}
     json_event_payload = json.dumps(payload)
     s = requests.session()
     event_res = s.post("{}events".format(api_url), headers=headers, data=json_event_payload)
@@ -230,7 +229,11 @@ def send_events_batch(payload_list):
     logger.info(event_res.json().get('message'))
 
 
-def get_dhis2_organisations():
+def get_dhis2_organisations_codes_to_ids():
+    """
+    Provides a map between organisation codes and its ids from DHIS2
+    :return: dict with keys: codes & values: dhis2_organisation_ids
+    """
     global __dhis2_organisations
     if __dhis2_organisations:
         return __dhis2_organisations
@@ -341,7 +344,7 @@ def process_form_records(form_config, program_id):
         data_values, event_date, completed_date, organisation_code = prepare_data_values(result.data, form_config)
         event_payload = {
             'program': program_id,
-            'orgUnit': get_dhis2_organisations().get(organisation_code),
+            'orgUnit': get_dhis2_organisations_codes_to_ids().get(organisation_code),
             'eventDate': event_date,
             'completedDate': completed_date,
             'dataValues': data_values,
@@ -370,7 +373,7 @@ if __name__ == "__main__":
 
     populate_dhis2_locations(locations, zones, regions, districts)
 
-    program_id = update_program(form_config, get_dhis2_organisations().values())
+    program_id = update_program(form_config, get_dhis2_organisations_codes_to_ids().values())
 
     # for organisation_id in get_dhis2_organisations().values():
     #     _clear_old_events(program_id, organisation_id)
