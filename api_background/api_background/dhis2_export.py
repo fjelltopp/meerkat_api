@@ -11,7 +11,7 @@ from meerkat_abacus.model import form_tables
 from meerkat_abacus.util import get_db_engine, all_location_data
 try:
     from meerkat_abacus.config import dhis2_config
-except:
+except ImportError:
     dhis2_config = {}
 
 db, session = get_db_engine()
@@ -169,27 +169,32 @@ def __update_data_elements(key, headers):
     return uid
 
 
-def prepare_data_values(data, form_config):
-    data_values = []
-    organisation_code = None
+def prepare_data_values(row_data, form_config):
+    """
+    Prepares data for event capture in DHIS2.
+    :param row_data: a single case entry data
+    :param form_config: DHIS2 configuration for this form
+    :return: Tuple (DHIS2 translated row values, DHIS2 eventDate, DHIS2 completedDate, DHIS2 organisation code)
+    """
+    dhis2_data_values = []
+    dhis2_organisation_code = None
     form_name = form_config.get("name")
     dhis_keys = get_form_keys_to_data_elements_dict(api_url, credentials, headers, form_name)
     keys = __get_form_keys(form_name)
-    # Add the location data if it has been requested and exists.
     for key in keys:
-        if 'deviceid' in data:
-            clinic_id = locs_by_deviceid.get(data["deviceid"], None)
-            populate_row_locations(data, keys, clinic_id, location_data, use_integer_keys=False)
-            organisation_code = locations[clinic_id].country_location_id
+        if 'deviceid' in row_data:
+            clinic_id = locs_by_deviceid.get(row_data["deviceid"], None)
+            populate_row_locations(row_data, keys, clinic_id, location_data, use_integer_keys=False)
+            dhis2_organisation_code = locations[clinic_id].country_location_id
 
         else:
-            set_empty_locations(keys, data_values)
-        if key in data.keys():
-            data_values.append({'dataElement': dhis_keys[key], 'value': data[key]})
+            set_empty_locations(keys, dhis2_data_values)
+        if key in row_data.keys():
+            dhis2_data_values.append({'dataElement': dhis_keys[key], 'value': row_data[key]})
     str_today = date.today().strftime("%Y-%m-%d")
-    eventDate = data.get(form_config['event_date'], str_today)
-    completedDate = data.get(form_config['completed_date'], str_today)
-    return data_values, eventDate, completedDate, organisation_code
+    dhis2_eventDate = row_data.get(form_config['event_date'], str_today)
+    dhis2_completedDate = row_data.get(form_config['completed_date'], str_today)
+    return dhis2_data_values, dhis2_eventDate, dhis2_completedDate, dhis2_organisation_code
 
 
 def get_form_keys_to_data_elements_dict(url, credentials, headers, form_name):
@@ -328,6 +333,7 @@ def clear_all_data_elements():
 
 def process_form_records(form_config, program_id):
     status = form_config['status']
+    form_name = form_config['name']
     results = session.query(form_tables[form_name].data).all()
     event_payload_list = []
     for counter, result in enumerate(results):
