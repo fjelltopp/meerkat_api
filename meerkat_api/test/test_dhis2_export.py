@@ -6,7 +6,8 @@ from unittest.mock import patch, MagicMock
 from api_background import dhis2_export
 
 import api_background
-from api_background.dhis2_export import put, delete, get, post, NewIdsProvider, get_form_keys_to_data_elements_dict
+from api_background.dhis2_export import put, delete, get, post, NewIdsProvider, get_form_keys_to_data_elements_dict, \
+    get_dhis2_organisations_codes_to_ids
 
 
 class Dhis2RequestsWrapperTestCase(TestCase):
@@ -234,7 +235,7 @@ class ProgramUpdateTestCase(TestCase):
         return [{"id": id} for id in ids]
 
 
-class EventDataCreationTest(TestCase):
+class GetFormKeysToDataElementsDictTest(TestCase):
     """ Unit test for event capture metadata creation """
 
     def setUp(self):
@@ -246,7 +247,7 @@ class EventDataCreationTest(TestCase):
     @patch('requests.get')
     @patch('requests.Response', status_code=200)
     @patch('api_background.dhis2_export.__get_keys_from_db')
-    def test_get_form_keys_to_data_elements_dict(self, get_keys_mock, response_mock, get_mock):
+    def test_returns_valid_json(self, get_keys_mock, response_mock, get_mock):
         response_mock.json.return_value = {
             'dataElements': [{"id": item[0], "displayName": item[1]} for item in zip(self.dhis2_ids, self.keys)]
         }
@@ -263,9 +264,7 @@ class EventDataCreationTest(TestCase):
     @patch('requests.Response', status_code=200)
     @patch('api_background.dhis2_export.__get_keys_from_db')
     @patch('api_background.dhis2_export.__update_data_elements')
-    def test_get_form_keys_to_data_elements_dict_should_create_non_existing_keys(self, update_mock, get_keys_mock,
-                                                                                 response_mock,
-                                                                                 get_mock):
+    def test_should_create_non_existing_keys(self, update_mock, get_keys_mock, response_mock, get_mock):
         response_mock.json.return_value = {
             'dataElements': [{"id": item[0], "displayName": item[1]} for item in zip(self.dhis2_ids, self.keys)]
         }
@@ -283,7 +282,7 @@ class EventDataCreationTest(TestCase):
     @patch('requests.get')
     @patch('requests.Response', status_code=200)
     @patch('api_background.dhis2_export.__get_keys_from_db')
-    def test_get_form_keys_to_data_elements_dict_should_be_cached(self, get_keys_mock, response_mock, get_mock):
+    def test_result_should_be_cached(self, get_keys_mock, response_mock, get_mock):
         response_mock.json.return_value = {
             'dataElements': [{"id": item[0], "displayName": item[1]} for item in zip(self.dhis2_ids, self.keys)]
         }
@@ -292,5 +291,60 @@ class EventDataCreationTest(TestCase):
 
         for i in range(3):
             get_form_keys_to_data_elements_dict("fakeUrl", ('user', 'password'), {"headers": "some"},
-                                                               "my_form")
+                                                "my_form")
             get_mock.assert_called_once()
+
+
+
+class GetOrganisationsTest(TestCase):
+
+    dhis2_org_ids = ["FQ2o8UBlcrS", "M62VHgYT2n0", "uF1DLnZNlWe"]
+    dhis2_codes = ["code1", "code2", "code3"]
+
+    def setUp(self):
+        # clear module state (cached responses etc.)
+        api_background.dhis2_export = reload(api_background.dhis2_export)
+
+    def tearDown(self):
+        pass
+
+    def get_organisations_mock(*args, **kwargs):
+        response_mock = MagicMock(status_code=200)
+        ids = GetOrganisationsTest.dhis2_org_ids
+        codes = GetOrganisationsTest.dhis2_codes
+        url = args[0]
+        if 'paging=False' in url:
+            result = {"organisationUnits": [{"id": a_id} for a_id in ids]}
+            response_mock.json.return_value = result
+        else:
+            # side effect fun to return propre responses for given dhis2 ids
+            # e.g. get("http://localhost/organisationUnits/FQ2o8UBlcrS").json()
+            # should return {"code": "code1"}
+            def return_code(*_args, **_kwargs):
+                dhis2_org_id = args[0].split('/')[-1]
+                code = dict(zip(ids, codes))[dhis2_org_id]
+                return {"code": code}
+
+            response_mock.json.side_effect = return_code
+        return response_mock
+
+    @patch('requests.get', side_effect=get_organisations_mock)
+    def test_should_return_valid_json(self, get_mock):
+        actual_value = get_dhis2_organisations_codes_to_ids()
+        expected_value = dict(zip(GetOrganisationsTest.dhis2_codes, GetOrganisationsTest.dhis2_org_ids))
+        self.assertEqual(actual_value, expected_value)
+
+    @patch('requests.get')
+    @patch('requests.Response', status_code=200)
+    def test_should_cache_result(self, response_mock, get_mock):
+        # 1st call for http:localhost/organisationUnits
+        # 2nd call for http:localhost/organisationUnits/id_foo
+        response_mock.json.side_effect = [{'organisationUnits': [{"id": "id_foo"}]}, {"code": "code_bar"}]
+        get_mock.return_value = response_mock
+
+        get_dhis2_organisations_codes_to_ids()
+        get_mock.assert_called()
+
+        get_mock.reset_mock()
+        get_dhis2_organisations_codes_to_ids()
+        get_mock.assert_not_called()
