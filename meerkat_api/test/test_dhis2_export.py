@@ -295,9 +295,7 @@ class GetFormKeysToDataElementsDictTest(TestCase):
             get_mock.assert_called_once()
 
 
-
 class GetOrganisationsTest(TestCase):
-
     dhis2_org_ids = ["FQ2o8UBlcrS", "M62VHgYT2n0", "uF1DLnZNlWe"]
     dhis2_codes = ["code1", "code2", "code3"]
 
@@ -348,3 +346,51 @@ class GetOrganisationsTest(TestCase):
         get_mock.reset_mock()
         get_dhis2_organisations_codes_to_ids()
         get_mock.assert_not_called()
+
+
+class PopulateDhis2LocationTest(TestCase):
+    def setUp(self):
+        pass
+
+    def tearDown(self):
+        pass
+
+    def test_should_publish_locations_with_hierarchy(self):
+        pass
+
+    def test_should_use_already_existing_organisations(self):
+        pass
+
+
+class CreateDhis2OrganisationTest(TestCase):
+    def setUp(self):
+        pass
+
+    def tearDown(self):
+        pass
+
+    def test_should_create_dhis2_organisation(self):
+        pass
+
+    def test_should_create_dhis2_organisation_with_default_open_date(self):
+        pass
+
+    def test_should_handle_already_existing_organisation(self):
+        pass
+
+
+class ProcessFormRecordsTest(TestCase):
+    def setUp(self):
+        pass
+
+    def tearDown(self):
+        pass
+
+    def test_send_case_form_data(self):
+        pass
+
+    def test_should_create_a_valid_json_payload(self):
+        pass
+
+    def test_should_send_data_in_batches(self):
+        pass
