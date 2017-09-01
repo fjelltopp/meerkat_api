@@ -4,7 +4,7 @@ Resource for aggregating and querying data
 """
 from flask_restful import Resource
 from sqlalchemy import or_
-from datetime import datetime
+from datetime import datetime, timedelta
 from flask import jsonify, g
 from meerkat_api.util import rows_to_dicts
 from meerkat_api import db
@@ -15,6 +15,27 @@ from meerkat_api.util.data_query import query_sum
 from meerkat_api.util.data_query import latest_query
 from meerkat_abacus.util import get_locations
 
+
+class LatestData(Resource):
+    """
+    Data submitted in the last day
+    Args: \n
+        location: location_id
+    """
+    decorators = [authenticate]
+
+    def get(self, location_id):
+        if not is_allowed_location(location_id, g.allowed_location):
+            return {"records": []}
+            
+        results = db.session.query(Data).filter(or_(
+                loc == location_id for loc in (Data.country,
+                                               Data.region,
+                                               Data.district,
+                                               Data.clinic)),
+                                                Data.submission_date >= datetime.now() - timedelta(days=1)).order_by(Data.submission_date.desc()).all()
+
+        return jsonify({"records": rows_to_dicts(results)})
 
 class Aggregate(Resource):
     """
