@@ -4,24 +4,30 @@ import copy
 from flask_restful import Resource
 from sqlalchemy import or_
 from meerkat_api import db
-from meerkat_api.util import get_children, get_locations, series_to_json_dict
+from meerkat_api.util import series_to_json_dict
 from meerkat_analysis.indicators import count_over_count, count
-from meerkat_abacus.model import Data, Locations
+from meerkat_abacus.model import Data
 from meerkat_api.authentication import authenticate
 
 
 class Indicators(Resource):
     """
-    Return a value and a timeline of an indicator specified by a list of variables and flags. 
+    Return a value and a timeline of an indicator specified by a list of
+    variables and flags.
 
     Args: \n
-        flags: A list containings char flags defining operations on variables. `d` - denominator of an indicator, `n` - nominator, `v` - additional variable to restrict query. `m` - multfactor `\n
+        flags: A list containings char flags defining operations on variables.
+            `d` - denominator of an indicator, `n` - nominator, `v` -
+            additional variable to restrict query. `r` - restrict `
+            count_over_count` query if set to `1`\n
         variables: A list of variables id to which flags correspond\n
         location: location id
     Returns:\n
-        indicator_data: {cummulative: cummulative, timeline: timeline, current: current}\n
+        indicator_data:
+            {cummulative: cummulative, timeline: timeline, current: current}\n
     """
     decorators = [authenticate]
+
     def get(self, flags, variables, location, start_date=None, end_date=None):
         mult_factor = 1
         count_over = False
@@ -39,6 +45,7 @@ class Indicators(Resource):
                 nominator = op[1]
             if op[0] == "v":
                 restricted_var.append(op[1])
+
             if op[0] == "m":
                 mult_factor = int(op[1])
         # Limit to location and nominator variable

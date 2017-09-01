@@ -155,7 +155,7 @@ class Completeness(Resource):
         # We drop duplicates so each clinic can only have one record per day
         data = data.drop_duplicates(
             subset=["region", "district", "clinic", "date", variable])
-
+        print(data)
         if sublevel:
             # We first create an index with sublevel, clinic, dates
             # Where dates are the dates after the clinic started reporting
@@ -170,6 +170,8 @@ class Completeness(Resource):
                         start_date = locs[clinic].start_date
                         if start_date < begining:
                             start_date = begining
+                        if end_d - start_date < timedelta(days=7):
+                            start_date = (end_d - timedelta(days=6)).date()
                         for d in pd.date_range(start_date, end_d, freq=freq):
                             tuples.append((name, clinic, d))
             if len(tuples) == 0:
@@ -244,9 +246,14 @@ class Completeness(Resource):
                 level=1).mean() / number_per_week * 100
             dates_not_reported = []  # Not needed for this level
         else:
+            print("hei")
             # Take into account clinic start_date
             if locs[location].start_date > begining:
                 begining = locs[location].start_date
+            not_reported_dates_begining = begining
+            if end_d - begining < timedelta(days=7):
+                begining = (end_d - timedelta(days=6)).date()
+
             dates = pd.date_range(begining, end_d, freq=freq)
             completeness = data.groupby(
                 pd.TimeGrouper(
@@ -283,7 +290,7 @@ class Completeness(Resource):
                         weekday_mask = weekday_mask + weekdays[i] + " "
 
             bdays = CustomBusinessDay(weekmask=weekday_mask)
-            expected_days = pd.date_range(begining, end_d, freq=bdays)
+            expected_days = pd.date_range(not_reported_dates_begining, end_d, freq=bdays)
 
             found_dates = data["date"]
             dates_not_reported = expected_days.drop(
@@ -326,6 +333,9 @@ class NonReporting(Resource):
             require_case_report = False
         if num_weeks == "0":
             num_weeks = 0
+
+
+            
         locations = get_locations(db.session)
         location = int(location)
         clinics = get_children(location, locations, require_case_report=require_case_report)
@@ -339,7 +349,12 @@ class NonReporting(Resource):
                                         epi_week["epi_week"])
             conditions.append(Data.date >= start_date)
             conditions.append(Data.date < end_date)
-        
+        exclude_list = []
+        if exclude and "code:" in exclude:
+            query = db.session.query(Data.clinic).filter(Data.variables.has_key(exclude.split(":")[1]))
+            exclude_list = [r[0] for r in query.all()]
+        print(exclude, [(c, locations[c].name) for c in exclude_list])
+                                                         
         query = db.session.query(Data.clinic).filter(*conditions)
         clinics_with_variable = [r[0] for r in query.all()]
         non_reporting_clinics = []
@@ -351,12 +366,16 @@ class NonReporting(Resource):
                 include = [include]
         for clinic in clinics:
             if clinic not in clinics_with_variable:
+                if len(exclude_list) > 0:
+                    if clinic in exclude_list:
+                        continue
                 if include:
                     if locations[clinic].clinic_type in include:
                         non_reporting_clinics.append(clinic)
                 elif exclude:
                     if locations[clinic].case_type != exclude:
                         non_reporting_clinics.append(clinic)
+
                 else:
                     non_reporting_clinics.append(clinic)
         return {"clinics": non_reporting_clinics}

@@ -43,7 +43,7 @@ from meerkat_api.resources import alerts
 from meerkat_api.resources.explore import QueryVariable, QueryCategory, get_variables
 from meerkat_api.util.data_query import query_sum, latest_query
 from meerkat_api.resources.incidence import IncidenceRate
-from meerkat_abacus.util import get_locations, all_location_data, get_regions_districts
+from meerkat_abacus.util import get_locations, all_location_data, get_zones_regions_districts
 from meerkat_abacus import model
 from meerkat_api.authentication import authenticate, is_allowed_location
 from geoalchemy2.shape import to_shape
@@ -617,7 +617,7 @@ def create_ncd_report(location, start_date=None, end_date=None, params=['case'])
         }
         additional_variables = []
 
-    locations, ldid, regions, districts, devices = all_location_data(db.session)
+    locations, ldid, zones, regions, districts, devices = all_location_data(db.session)
     v = Variables()
 
 
@@ -775,7 +775,7 @@ class MhReport(Resource):
         nationality_visit_variables = get_variables('mh_visit_nationality')
         age_visit_variables = get_variables('visit_ncd_age')
         #Case based tables:
-        [regions,districts] = get_regions_districts(db.session)
+        [zones, regions, districts] = get_zones_regions_districts(db.session)
         mhgap_variables = get_variables('mhgap')
         gender_case_variables = get_variables('gender')
         nationality_case_variables = get_variables('mh_case_nationality')
@@ -4357,10 +4357,10 @@ class CTCReport(Resource):
 
         clinic_data_list = []
 
-        location_condtion = [
+        location_condition = [
                 or_(loc == location for loc in (
                     Data.country, Data.zone, Data.region, Data.district, Data.clinic))]
-        conditions = location_condtion  + [Data.variables.has_key(cholera_var)]
+        conditions = location_condition  + [Data.variables.has_key(cholera_var)]
         query = db.session.query(Data.clinic, Data.date, Data.region,
                                  Data.district,
                                  Data.variables,
@@ -4541,7 +4541,7 @@ class SCReport(Resource):
         children = get_children(location, locs, require_case_report=False)
 
         scs = db.session.query(Locations).filter(
-            Locations.clinic_type == "SU").filter(
+            or_(Locations.clinic_type == "SU", Locations.clinic_type == "OTP")).filter(
                 Locations.id.in_(children)
             ).all()
 
@@ -4551,19 +4551,29 @@ class SCReport(Resource):
         nutrition_cases_u5_variable = 'sc_cases_u5'
         nutrition_deaths_variable = 'sc_deaths'
 
-
-        nutrition_var = "sc_1"
+        nutrition_var = "sc_sc"
         # Summary data
-        ret['summary']={}
+        ret['summary'] = {}
 
         # Aggregate numbers of nutrition cases and deaths as an epi curve and a map.
 
-        nutrition_cases = latest_query(db, nutrition_cases_variable, nutrition_var, start_date, end_date_limit, location, weeks=True, week_offset=1)
-        nutrition_cases_u5 = latest_query(db, nutrition_cases_u5_variable, nutrition_var, start_date, end_date_limit, location, weeks=True, week_offset=1)
+        nutrition_cases = latest_query(db, nutrition_cases_variable,
+                                       nutrition_var, start_date,
+                                       end_date_limit, location,
+                                       weeks=True, week_offset=1)
+        nutrition_cases_u5 = latest_query(db, nutrition_cases_u5_variable,
+                                          nutrition_var, start_date, end_date_limit,
+                                          location, weeks=True, week_offset=1)
 
-        nutrition_deaths = latest_query(db, nutrition_deaths_variable, nutrition_var, start_date, end_date_limit, location, weeks=True, week_offset=1)
-        nutrition_cases_o5 = {"total": nutrition_cases["total"] - nutrition_cases_u5["total"]}
-        nutrition_cases_o5["weeks"] = {week: nutrition_cases["weeks"][week] - nutrition_cases_u5["weeks"].get(week, 0) for week in nutrition_cases["weeks"].keys()}
+        nutrition_deaths = latest_query(db, nutrition_deaths_variable,
+                                        nutrition_var, start_date, end_date_limit,
+                                        location, weeks=True, week_offset=1)
+        
+        nutrition_cases_o5 = {
+            "total": nutrition_cases["total"] - nutrition_cases_u5["total"]
+        }
+        nutrition_cases_o5["weeks"] = {
+            week: nutrition_cases["weeks"][week] - nutrition_cases_u5["weeks"].get(week, 0) for week in nutrition_cases["weeks"].keys()}
         ret['summary'].update({
             'nutrition_cases': nutrition_cases
             })
@@ -4578,10 +4588,9 @@ class SCReport(Resource):
             'nutrition_deaths': nutrition_deaths
             })
 
-
         total = latest_query(db, nutrition_var, nutrition_var,
                              start_date, end_date_limit, location,
-                             weeks=True)["weeks"].get(epi_week -1, 0)
+                             weeks=True)["weeks"].get(epi_week - 1, 0)
         ret["summary"]["surveyed"] = total
         
         # FIGURE 2: MAP of nutrition cases
@@ -4611,10 +4620,6 @@ class SCReport(Resource):
                 )
         ret["data"].update({"nutrition_map": nutrition_cases_map})
 
-        
-
-
-
         # Displaying indicators like the percentage of SC with case management protocols etc.
 
         # A list of clinics with no report in the last week ( A form of completeness).
@@ -4626,6 +4631,7 @@ class SCReport(Resource):
         num_codes = var.get("sc_overview_num").keys()
         yes_codes = var.get("sc_overview_yes_no")
 
+        sc_type_codes = var.get("sc_facility_type")
         overview_data = {}
 
 
@@ -4641,10 +4647,10 @@ class SCReport(Resource):
 
         clinic_data_list = []
 
-        location_condtion = [
+        location_condition = [
                 or_(loc == location for loc in (
                     Data.country, Data.zone, Data.region, Data.district, Data.clinic))]
-        conditions = location_condtion  + [Data.variables.has_key(nutrition_var)]
+        conditions = location_condition + [Data.variables.has_key(nutrition_var)]
         query = db.session.query(Data.clinic, Data.date, Data.region,
                                  Data.district,
                                  Data.variables,
@@ -4652,12 +4658,26 @@ class SCReport(Resource):
                                     Data.clinic).filter(*conditions).order_by(
                                              Data.clinic).order_by(Data.date.desc())
 
-        
+        non_sc_conditions = location_condition + [Data.variables.has_key("sc_1")]
+        query_non_sc = db.session.query(Data.clinic, Data.date, Data.region,
+                                        Data.district,
+                                        Data.variables,
+                                        Data.categories).distinct(
+                                            Data.clinic).filter(*non_sc_conditions).order_by(
+                                                Data.clinic).order_by(Data.date.desc())
         latest_sc = {}
+        latest_non_sc = {}
         surveyed_clinics_map = []
         non_surveyed_clinics_map = []
         for r in query:
             latest_sc[r.clinic] = r
+
+        for r in query_non_sc:
+            if nutrition_var not in r.variables:
+                latest_non_sc[r.clinic] = r
+        print(latest_non_sc.keys())
+                
+            
         overview_data.setdefault("baseline", {"Y": 0, "N": 0})
         overview_data.setdefault("surveyed_last_week", {"Y": 0, "N": 0})
 
@@ -4680,9 +4700,10 @@ class SCReport(Resource):
                     clinic_data["gps"] = [point.y, point.x]
 
 
-                overview_data["baseline"]["N"] += 1
-                overview_data["surveyed_last_week"]["N"] += 1
+
                 if sc.id in latest_sc:
+                    overview_data["baseline"]["N"] += 1
+                    overview_data["surveyed_last_week"]["N"] += 1
                     overview_data["baseline"]["Y"] += 1
                     sc_data = latest_sc[sc.id]
                     clinic_data["status"] = "Surveyed"
@@ -4718,7 +4739,11 @@ class SCReport(Resource):
                             recommendations.append("{}".format(sc_rec_variables[code]["name"]))
                     clinic_data["recommendations"] = recommendations
 
+                    clinic_data["services"] = []
 
+                    for code in sc_type_codes.keys():
+                        if code in sc_data.variables:
+                            clinic_data["services"].append(sc_type_codes[code]["name"])
 
                     # Overview data
 
@@ -4735,13 +4760,27 @@ class SCReport(Resource):
                     if "sc_beds_sufficient" in sc_data.variables:
                         overview_data["sc_beds_sufficient"]["Y"] += 1
                 else:
-                    clinic_data["status"] = "Not Surveyed"
-                    if "gps" in clinic_data:
-                        non_surveyed_clinics_map.append(clinic_data["gps"]+[sc.name])
+                    
+                    if sc.id in latest_non_sc:
+                        clinic_data["status"] = "Not SC"
+                        clinic_data["services"] = []
+
+                        for code in sc_type_codes.keys():
+                            if code in latest_non_sc[sc.id].variables:
+                                clinic_data["services"].append(sc_type_codes[code]["name"])
+                    else:
+                        overview_data["baseline"]["N"] += 1
+                        overview_data["surveyed_last_week"]["N"] += 1
+
+                        clinic_data["status"] = "Not Surveyed"
+                        if "gps" in clinic_data:
+                            non_surveyed_clinics_map.append(clinic_data["gps"] + [sc.name])
                 # Initialize data structure for current clinic
 
                 # Append clinic data to clinic data list
                 clinic_data_list.append(clinic_data)
+
+        ret["contents"].append(("Non SC surveyed", pageNumber))
         num_clin = overview_data["baseline"]["Y"]
         if num_clin == 0:
             num_clin = 1

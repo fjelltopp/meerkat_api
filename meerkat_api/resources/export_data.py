@@ -1,16 +1,18 @@
 """
 Data resource for exporting data
 """
-from flask_restful import Resource
-from flask import request, redirect, g
 import json
 import uuid
 
-from meerkat_api import db, output_csv, output_xls
+from flask import request, redirect, g
+from flask_restful import Resource, abort
+
 from meerkat_abacus.model import form_tables, DownloadDataFiles
-from meerkat_api.authentication import authenticate
-from meerkat_abacus.task_queue import export_form
 from meerkat_abacus.task_queue import export_category, export_data, export_data_table
+from meerkat_abacus.task_queue import export_form
+from meerkat_api import db, output_csv, output_xls
+from meerkat_api.authentication import authenticate
+
 
 # Uncomment to run export data during request
 # from meerkat_abacus.task_queue import app as celery_app
@@ -54,7 +56,6 @@ class ExportData(Resource):
     decorators = [authenticate]
 
     def get(self, use_loc_ids=False):
-
         uid = str(uuid.uuid4())
         export_data.delay(uid, g.allowed_location, use_loc_ids)
         return uid
@@ -125,7 +126,42 @@ class ExportCategory(Resource):
         return uid
 
 
-class GetCSVDownload(Resource):
+class ExportDataResource(Resource):
+    """
+    Validates if a resource is available in the system to be downloaded.
+    If resource is not found aborts with a http code 404.
+    If generation failed aborts with a http code 500.
+
+    Args:
+        uuid of download
+    Returns:
+        a record with matching DownloadDataFiles
+    """
+
+    def get_download_data_file(self, uid):
+        result = db.session.query(DownloadDataFiles).filter(
+            DownloadDataFiles.uuid == uid).first()
+        self.__abort_if_resource_not_exists(result, uid)
+        return result
+
+    @staticmethod
+    def abort_if_resource_generation_failed(download_data_file, uid):
+        if download_data_file.status == 1.0 and download_data_file.success != 1:
+            abort(500, message="Generation of resource with uid: {} failed. Please try again.".format(uid))
+
+    @staticmethod
+    def abort_if_resource_generation_still_in_progress(download_data_file, uid):
+        if download_data_file.status != 1.0:
+            message_template = "Generation of resource with uid: {} still in progress. Please try again later."
+            abort(206, message=(message_template).format(uid))
+
+    @staticmethod
+    def __abort_if_resource_not_exists(download_data_file, uid):
+        if not download_data_file:
+            abort(404, message="Resource with uid:{} doesn't exist".format(uid))
+
+
+class GetCSVDownload(ExportDataResource):
     """
     serves a pregenerated csv file
 
@@ -136,14 +172,13 @@ class GetCSVDownload(Resource):
     representations = {'text/csv': output_csv}
 
     def get(self, uid):
-        res = db.session.query(DownloadDataFiles).filter(
-            DownloadDataFiles.uuid == uid).first()
-        if res:
-            return redirect("/exported_data/" + uid + "/" + res.type + ".csv")
-        return {"url": "", "filename": "missing"}
+        result = self.get_download_data_file(uid)
+        self.abort_if_resource_generation_still_in_progress(result, uid)
+        self.abort_if_resource_generation_failed(result, uid)
+        return redirect("/exported_data/" + uid + "/" + result.type + ".csv")
 
 
-class GetXLSDownload(Resource):
+class GetXLSDownload(ExportDataResource):
     """
     Serves a pregenerated xls file
 
@@ -155,15 +190,13 @@ class GetXLSDownload(Resource):
                         'officedocument.spreadsheetml.sheet'): output_xls}
 
     def get(self, uid):
-        res = db.session.query(DownloadDataFiles).filter(
-            DownloadDataFiles.uuid == uid
-        ).first()
-        if res:
-            return redirect("/exported_data/" + uid + "/" + res.type + ".xlsx")
-        return {"url": "", "filename": "missing"}
+        result = self.get_download_data_file(uid)
+        self.abort_if_resource_generation_still_in_progress(result, uid)
+        self.abort_if_resource_generation_failed(result, uid)
+        return redirect("/exported_data/" + uid + "/" + result.type + ".xlsx")
 
 
-class GetStatus(Resource):
+class GetStatus(ExportDataResource):
     """
     Checks the current status of the generation
 
@@ -173,13 +206,8 @@ class GetStatus(Resource):
     decorators = [authenticate]
 
     def get(self, uid):
-
-        results = db.session.query(DownloadDataFiles).filter(
-            DownloadDataFiles.uuid == uid).first()
-        if results:
-            return {"status": results.status, "success": results.success}
-        else:
-            return None
+        result = self.get_download_data_file(uid)
+        return {"status": result.status, "success": result.success}
 
 
 class ExportForm(Resource):
@@ -193,7 +221,6 @@ class ExportForm(Resource):
        form: the form to export\n
 
     """
-    # representations = {'text/csv': output_csv}
     decorators = [authenticate]
 
     def get(self, form):
