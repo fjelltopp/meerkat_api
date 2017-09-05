@@ -8,9 +8,9 @@ from flask import request, redirect, g
 from flask_restful import Resource, abort
 
 from meerkat_abacus.model import form_tables, DownloadDataFiles
-#from meerkat_abacus.task_queue import export_category, export_data, export_data_table
-#from meerkat_abacus.task_queue import export_form
-from meerkat_api import db, output_csv, output_xls
+from api_background.export_data import export_category, export_data, export_data_table
+from api_background.export_data import export_form
+from meerkat_api import db, output_csv, output_xls, celery_app
 from meerkat_api.authentication import authenticate
 
 

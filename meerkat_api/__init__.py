@@ -3,6 +3,8 @@ meerkat_api.py
 
 Root Flask app for the Meerkat API.
 """
+from raven.contrib.celery import register_signal, register_logger_signal
+import raven
 from flask import Flask, make_response, abort
 from flask.json import JSONEncoder
 from flask_sqlalchemy import SQLAlchemy
@@ -16,6 +18,7 @@ import io
 import csv
 import os
 import resource
+import celery
 
 # from werkzeug.contrib.profiler import ProfilerMiddleware
 # Create the Flask app
@@ -40,6 +43,21 @@ class FlaskG(app.app_ctx_globals_class):
     allowed_location = 1
 
 app.app_ctx_globals_class = FlaskG
+
+
+class Celery(celery.Celery):
+    def on_configure(self):
+        if app.config["SENTRY_DNS"]:
+            client = raven.Client(app.config["SENTRY_DNS"])
+            # register a custom filter to filter out duplicate logs
+            register_logger_signal(client)
+            # hook into the Celery error handler
+            register_signal(client)
+
+
+celery_app = Celery()
+celery_app.config_from_object('meerkat_api.config.Config')
+
 
 
 # app.wsgi_app = ProfilerMiddleware(app.wsgi_app, restrictions=(30,))

@@ -164,7 +164,7 @@ def export_category(uuid, form_name, category, download_name,
     def add_translations_from_file(details):
         # Load the csv file and reader
         file_path = '{}api/{}'.format(
-            os.environ['COUNTRY_CONFIG_DIR'],
+            os.environ.get('COUNTRY_CONFIG_DIR', ""),
             details['dict_file']
         )
         csv_file = open(file_path, 'rt')

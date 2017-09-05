@@ -12,8 +12,8 @@ import os
 from . import settings
 import meerkat_api
 from meerkat_api.test import db_util
-from meerkat_abacus.task_queue import app as celery_app
-from meerkat_abacus import data_management, model, config
+from meerkat_api import celery_app
+from meerkat_abacus import util, model, config, data_import
 
 from api_background.export_data import base_folder
 
@@ -33,24 +33,29 @@ class MeerkatAPITestCase(unittest.TestCase):
         db_util.insert_cases(meerkat_api.db.session, "public_health_report")
         case_form_name = config.country_config["tables"][0]
         current_directory = os.path.dirname(__file__)
-        data_management.table_data_from_csv("demo_case",
-                                            model.form_tables[case_form_name],
-                                            current_directory + "/test_data/",
-                                            meerkat_api.db.session,
-                                            meerkat_api.db.engine,
-                                            deviceids=["1", "2", "3",
-                                                       "4", "5", "6"],
-                                            table_name=case_form_name)
+
+        form_data = []
+        for d in util.read_csv(current_directory + "/test_data/" + "demo_case.csv"):
+            form_data.append(d)
+        
+        data_import.add_rows_to_db("demo_case",
+                                   form_data,
+                                   meerkat_api.db.session,
+                                   meerkat_api.db.engine,
+                                   deviceids=["1", "2", "3",
+                                              "4", "5", "6"],
+                                   )
 
         dr_name = config.country_config["tables"][1]
-        data_management.table_data_from_csv("demo_alert",
-                                            model.form_tables[dr_name],
-                                            current_directory + "/test_data/",
-                                            meerkat_api.db.session,
-                                            meerkat_api.db.engine,
-                                            deviceids=["1", "2", "3",
-                                                       "4", "5", "6"],
-                                            table_name=dr_name)
+        form_data = []
+        for d in util.read_csv(current_directory + "/test_data/" + "demo_alert.csv"):
+            form_data.append(d)
+        data_import.add_rows_to_db("demo_alert",
+                                   form_data,
+                                   meerkat_api.db.session,
+                                   meerkat_api.db.engine,
+                                   deviceids=["1", "2", "3",
+                                              "4", "5", "6"])
 
     def tearDown(self):
         pass

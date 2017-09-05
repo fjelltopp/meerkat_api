@@ -10,7 +10,7 @@ import unittest
 from datetime import datetime
 
 import meerkat_api
-from meerkat_abacus.task_queue import app as celery_app
+from meerkat_api import celery_app
 from meerkat_api.test import db_util
 
 # Check if auth requirements have been installed
