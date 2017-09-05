@@ -435,7 +435,7 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
             data = json.loads(rv.data.decode("utf-8"))["data"]
             self.assertEqual(data["start_date"],
                              datetime(datetime.now().year, 1, 1).isoformat())
-            self.assertLess((datetime.now() - parser.parse(data["end_date"])).seconds , 20)
+            self.assertLess((datetime.now() - parser.parse(data["end_date"])).seconds , 25)
 
             # With specified dates
             end_date = datetime(2015, 8, 7).isoformat()
