@@ -28,10 +28,11 @@ class Config(object):
     SENTRY_DNS = getenv('SENTRY_DNS', '')
     INTERNAL_DEVICE_API_ROOT = getenv("MOB_API_ROOT", 'http://dev_nginx_1/mob')
     EXTERNAL_DEVICE_API_ROOT = '/mob'
+    SEND_LOGG_EVENTS = getenv("SEND_LOGG_EVENTS", True)
     LOGGING_URL = getenv("LOGGING_URL", None)
     LOGGING_SOURCE = getenv("LOGGING_SOURCE", "dev")
-    LOGGING_SOUCRE_TYPE = "api"
-    LOGGING_IMPLEMENTAION = getenv("LOGGING_IMPLEMENTAION", "demo")
+    LOGGING_SOURCE_TYPE = "api"
+    LOGGING_IMPLEMENTATION = getenv("LOGGING_IMPLEMENTAION", "demo")
 
 class Production(Config):
     DEBUG = False
