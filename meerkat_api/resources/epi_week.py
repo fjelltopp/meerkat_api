@@ -53,6 +53,9 @@ class EpiWeek(Resource):
             start_date = start_date.replace(year=start_date.year-1)
         year = start_date.year
 
+        if date < start_date:
+            year = start_date.year + 1
+
         return {"epi_week": (date - start_date).days // 7 + 1,
                 "year": year,
                 "offset": epi_week_start(date.year, 1).weekday()}
