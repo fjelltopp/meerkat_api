@@ -6,7 +6,7 @@ from flask import jsonify, g, request
 from sqlalchemy import func
 from meerkat_api.authentication import authenticate
 from meerkat_api.util import row_to_dict, rows_to_dicts, is_child, get_children
-from meerkat_api import db, app
+from meerkat_api import db
 from meerkat_abacus import model
 from meerkat_abacus.util import get_locations
 
@@ -19,9 +19,10 @@ class Locations(Resource):
        locations: Locations indexed by location_id
     """
     def get(self):
-        return jsonify(
-            rows_to_dicts(db.session.query(model.Locations).all(), dict_id="id")
-        )
+        return jsonify(rows_to_dicts(
+            db.session.query(model.Locations).all(),
+            dict_id="id"
+        ))
 
 
 class Location(Resource):
@@ -34,9 +35,11 @@ class Location(Resource):
        location: location
     """
     def get(self, location_id):
-
-        return jsonify(row_to_dict(db.session.query(model.Locations).filter(
-            model.Locations.id == location_id).first()))
+        return jsonify(row_to_dict(
+            db.session.query(model.Locations).filter(
+                model.Locations.id == location_id
+            ).first()
+        ))
 
 
 class DeviceID(Resource):
@@ -49,10 +52,11 @@ class DeviceID(Resource):
        location: location
     """
     def get(self, device_id):
-
-        return jsonify(row_to_dict(db.session.query(model.Locations).filter(
-            model.Locations.deviceid.contains(device_id)
-        ).first()))
+        return jsonify(row_to_dict(
+            db.session.query(model.Locations).filter(
+                model.Locations.deviceid.contains(device_id)
+            ).first()
+        ))
 
 
 class LocationTree(Resource):
@@ -67,23 +71,47 @@ class LocationTree(Resource):
     decorators = [authenticate]
 
     def get(self, only_case_reports=True):
-        case_type = request.args.get('case_type')
+        with_case_types = request.args.get('with_case_types', [])
+        without_case_types = request.args.get('without_case_types', [])
         locs = get_locations(db.session)
         loc = g.allowed_location
-
 
         ret = {loc: {"id": loc, "text": locs[loc].name, "nodes": []}}
         for l in sorted(locs.keys()):
             if l >= loc and is_child(loc, l, locs):
-                if not only_case_reports or (locs[l].case_report == 1 or not locs[l].deviceid):
+                if not only_case_reports or (locs[l].case_report == 1 or
+                                             not locs[l].deviceid):
                     if is_child(l, loc, locs):
                         ret.setdefault(locs[l].parent_location, {"nodes": []})
-                    # Filter by case type, if case type is specified.
-                    if (not case_type or not locs[l].level == 'clinic' or
-                       str(locs[l].case_type).strip() == case_type):
+
+                    # Factor out the process of adding a location to the tree
+                    def add_loc():
                         ret.setdefault(l, {"nodes": []})
                         ret[l].update({"id": l, "text": locs[l].name})
                         ret[locs[l].parent_location]["nodes"].append(ret[l])
+
+                    # Determine if the location matches incl and excl criteria
+                    loc_case_types = locs[l].case_type
+                    inc = bool(set(with_case_types) & set(loc_case_types))
+                    exc = bool(set(without_case_types) & set(loc_case_types))
+
+                    # Add the location if it is not a clinic
+                    if not locs[l].level == 'clinic':
+                        add_loc()
+                    # Otherwise add the location if no filters provided at all
+                    elif not with_case_types and not without_case_types:
+                        add_loc()
+                    # Otherwise add loc if both filters are provided and...
+                    # ...inclusion criteria is met but not exclusion criteria
+                    elif (with_case_types and without_case_types and
+                          (inc and not exc)):
+                        add_loc()
+                    # Otherwise add loc if incl criteria specified and met
+                    elif with_case_types and inc:
+                        add_loc()
+                    # Otherwise add loc if excl criteria specified and not met
+                    elif without_case_types and not exc:
+                        add_loc()
 
         # Recursively clean any branches without clinics in them.
         def clean(tree):
@@ -111,7 +139,7 @@ class TotClinics(Resource):
             res = db.session.query(func.count(model.Locations.id)).filter(
                 model.Locations.id.in_(children),
                 model.Locations.case_report == 1,
-                model.Locations.clinic_type==clinic_type).first()
+                model.Locations.clinic_type == clinic_type).first()
         else:
             res = db.session.query(func.count(model.Locations.id)).filter(
                 model.Locations.id.in_(children),
