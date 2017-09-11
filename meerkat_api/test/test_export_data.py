@@ -6,9 +6,11 @@ Unit tests for the export_data resource of Meerkat API
 """
 import json
 import unittest
-from datetime import datetime
+from unittest.mock import patch, PropertyMock
+
 import csv
 import os
+
 from . import settings
 import meerkat_api
 from meerkat_api.test import db_util
@@ -300,15 +302,17 @@ class MeerkatAPITestCase(unittest.TestCase):
         self.assertEqual(exported_form_request.uuid, uuid)
         self.assertEqual(exported_form_request.success, 0, "Export shouldn't succeed.")
 
-        rv = self.app.get('/export/getcsv/' + uuid,
-                          headers={**{"Accept": "text/csv"},
-                                   **settings.header})
-        self.assertEqual(rv.status_code, 500)
+        with patch('flask.app.Flask.logger', new_callable=PropertyMock):
+            rv = self.app.get('/export/getcsv/' + uuid,
+                              headers={**{"Accept": "text/csv"},
+                                       **settings.header})
+            self.assertEqual(rv.status_code, 500)
 
-        rv = self.app.get('/export/getcsv/' + uuid,
-                          headers={**{"Accept": "text/csv"},
-                                   **settings.header})
-        self.assertEqual(rv.status_code, 500)
+        with patch('flask.app.Flask.logger', new_callable=PropertyMock):
+            rv = self.app.get('/export/getcsv/' + uuid,
+                              headers={**{"Accept": "text/csv"},
+                                       **settings.header})
+            self.assertEqual(rv.status_code, 500)
 
     def test_exporting_a_non_existing_resource(self):
         """ Test getting a resource with a invalid uid"""
