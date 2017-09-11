@@ -309,7 +309,7 @@ class MeerkatAPITestCase(unittest.TestCase):
             self.assertEqual(rv.status_code, 500)
 
         with patch('flask.app.Flask.logger', new_callable=PropertyMock):
-            rv = self.app.get('/export/getcsv/' + uuid,
+            rv = self.app.get('/export/getxls/' + uuid,
                               headers={**{"Accept": "text/csv"},
                                        **settings.header})
             self.assertEqual(rv.status_code, 500)
@@ -323,7 +323,7 @@ class MeerkatAPITestCase(unittest.TestCase):
                                    **settings.header})
         self.assertEqual(rv.status_code, 404)
 
-        rv = self.app.get('/export/getcsv/' + uuid,
+        rv = self.app.get('/export/getxls/' + uuid,
                           headers={**{"Accept": "text/csv"},
                                    **settings.header})
         self.assertEqual(rv.status_code, 404)
