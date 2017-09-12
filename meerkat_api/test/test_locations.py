@@ -125,6 +125,9 @@ class MeerkatAPILocationTestCase(unittest.TestCase):
             headers=settings.header
         )
         clinics = get_clinics(json.loads(rv.data.decode("utf-8")))
+        print('/locationtree?inc_case_types=["pip"]')
+        print(json.loads(rv.data.decode("utf-8")))
+        print(clinics)
         self.assertEqual(rv.status_code, 200)
         self.assertIn('Clinic 2', clinics)
         self.assertIn('Clinic 4', clinics)
@@ -135,8 +138,10 @@ class MeerkatAPILocationTestCase(unittest.TestCase):
             '/locationtree?inc_case_types=["pip","mh"]',
             headers=settings.header
         )
-
         clinics = get_clinics(json.loads(rv.data.decode("utf-8")))
+        print('/locationtree?inc_case_types=["pip", "mh"]')
+        print(json.loads(rv.data.decode("utf-8")))
+        print(clinics)
         self.assertEqual(rv.status_code, 200)
         self.assertIn('Clinic 2', clinics)
         self.assertIn('Clinic 1', clinics)
@@ -150,6 +155,9 @@ class MeerkatAPILocationTestCase(unittest.TestCase):
             headers=settings.header
         )
         clinics = get_clinics(json.loads(rv.data.decode("utf-8")))
+        print('/locationtree?exc_case_types=["pip"]')
+        print(json.loads(rv.data.decode("utf-8")))
+        print(clinics)
         self.assertEqual(rv.status_code, 200)
         self.assertIn('Clinic 1', clinics)
         self.assertEqual(len(clinics), 1)
@@ -159,6 +167,9 @@ class MeerkatAPILocationTestCase(unittest.TestCase):
             headers=settings.header
         )
         clinics = get_clinics(json.loads(rv.data.decode("utf-8")))
+        print('/locationtree?exc_case_types=["mh"]')
+        print(json.loads(rv.data.decode("utf-8")))
+        print(clinics)
         self.assertEqual(rv.status_code, 200)
         self.assertIn('Clinic 2', clinics)
         self.assertEqual(len(clinics), 1)
@@ -169,6 +180,9 @@ class MeerkatAPILocationTestCase(unittest.TestCase):
             headers=settings.header
         )
         clinics = get_clinics(json.loads(rv.data.decode("utf-8")))
+        print('/locationtree?inc_case_types=["mh"]&exc_case_types=["foreigner"]')
+        print(json.loads(rv.data.decode("utf-8")))
+        print(clinics)
         self.assertEqual(rv.status_code, 200)
         self.assertIn('Clinic 1', clinics)
         self.assertIn('Clinic 5', clinics)
