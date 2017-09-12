@@ -10,6 +10,8 @@ import meerkat_api
 from meerkat_api.test import db_util
 from meerkat_api.resources import locations
 from . import settings
+import logging
+
 
 class MeerkatAPILocationTestCase(unittest.TestCase):
 
@@ -31,12 +33,11 @@ class MeerkatAPILocationTestCase(unittest.TestCase):
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(len(data), 11)
         self.assertEqual(sorted(data.keys()),
-                         sorted(["1", "2", "3","4" ,"5" ,"6" ,"7" ,"8" ,"9" ,"10", "11"]))
-
+                         sorted(["1", "2", "3", "4", "5",
+                                 "6", "7", "8", "9", "10", "11"]))
         self.assertEqual(data["11"]["name"], "Clinic 5")
         self.assertEqual(data["11"]["parent_location"], 6)
         self.assertEqual(data["5"]["name"], "District 2")
-
 
     def test_location(self):
         """Check location"""
@@ -51,7 +52,6 @@ class MeerkatAPILocationTestCase(unittest.TestCase):
         self.assertEqual(data["name"], "Clinic 1")
         self.assertEqual(data["parent_location"], 4)
 
-        
     def test_tot_clinics(self):
         """Check tot_clinics"""
         rv = self.app.get('/tot_clinics/1', headers=settings.header)
@@ -107,3 +107,69 @@ class MeerkatAPILocationTestCase(unittest.TestCase):
         self.assertNotIn(9, ids)
         self.assertNotIn(10, ids)
         self.assertNotIn(11, ids)
+
+        # Test location tree filtering functionality
+        # A utility function to recursively get the clinics out of the tree
+        def get_clinics(tree):
+            children = []
+            if tree['nodes']:
+                for child in tree['nodes']:
+                    children += get_clinics(child)
+                    if not child['nodes']:
+                        children += [child['text']]
+            return children
+
+        # Test inc functionality
+        rv = self.app.get(
+            '/locationtree?inc_case_types=["pip"]',
+            headers=settings.header
+        )
+        clinics = get_clinics(json.loads(rv.data.decode("utf-8")))
+        self.assertEqual(rv.status_code, 200)
+        self.assertIn('Clinic 2', clinics)
+        self.assertIn('Clinic 4', clinics)
+        self.assertIn('Clinic 5', clinics)
+        self.assertEqual(len(clinics), 3)
+
+        rv = self.app.get(
+            '/locationtree?inc_case_types=["pip","mh"]',
+            headers=settings.header
+        )
+
+        clinics = get_clinics(json.loads(rv.data.decode("utf-8")))
+        self.assertEqual(rv.status_code, 200)
+        self.assertIn('Clinic 2', clinics)
+        self.assertIn('Clinic 1', clinics)
+        self.assertIn('Clinic 4', clinics)
+        self.assertIn('Clinic 5', clinics)
+        self.assertEqual(len(clinics), 4)
+
+        # Test exc functionality
+        rv = self.app.get(
+            '/locationtree?exc_case_types=["pip"]',
+            headers=settings.header
+        )
+        clinics = get_clinics(json.loads(rv.data.decode("utf-8")))
+        self.assertEqual(rv.status_code, 200)
+        self.assertIn('Clinic 1', clinics)
+        self.assertEqual(len(clinics), 1)
+
+        rv = self.app.get(
+            '/locationtree?exc_case_types=["foreigner", "mh"]',
+            headers=settings.header
+        )
+        clinics = get_clinics(json.loads(rv.data.decode("utf-8")))
+        self.assertEqual(rv.status_code, 200)
+        self.assertIn('Clinic 2', clinics)
+        self.assertEqual(len(clinics), 1)
+
+        # Test both inc and exc functionality
+        rv = self.app.get(
+            '/locationtree?inc_case_types=["mh"]&exc_case_types=["foreigner"]',
+            headers=settings.header
+        )
+        clinics = get_clinics(json.loads(rv.data.decode("utf-8")))
+        self.assertEqual(rv.status_code, 200)
+        self.assertIn('Clinic 1', clinics)
+        self.assertIn('Clinic 5', clinics)
+        self.assertEqual(len(clinics), 2)
