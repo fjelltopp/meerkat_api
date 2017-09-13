@@ -9,7 +9,7 @@ from flask import request, g
 
 from meerkat_api.util import is_child, fix_dates
 from meerkat_api.resources.epi_week import epi_year_start
-from meerkat_api import db
+from meerkat_api.extensions import db, api
 from meerkat_abacus.model import Data
 from meerkat_abacus.util import get_locations
 from meerkat_api.resources.variables import Variables
@@ -327,3 +327,15 @@ class QueryCategory(Resource):
                     ret.setdefault(n1, {})
                     ret[n1][n2] = 0
         return ret
+
+api.add_resource(QueryVariable,
+                 "/query_variable/<variable>/<group_by>",
+                 "/query_variable/<variable>/<group_by>"
+                 "/<start_date>/<end_date>")
+api.add_resource(QueryCategory,
+                 "/query_category/<group_by1>/<group_by2>",
+                 "/query_category/<group_by1>/<group_by2>/<only_loc>",
+                 "/query_category/<group_by1>/<group_by2>"
+                 "/<start_date>/<end_date>",
+                 "/query_category/<group_by1>/<group_by2>"
+                 "/<start_date>/<end_date>/<only_loc>")

@@ -21,10 +21,11 @@ class MeerkatAPITestCase(unittest.TestCase):
         meerkat_api.app.config['TESTING'] = True
         meerkat_api.app.config['API_KEY'] = "should-work-even-with-api-key"
         self.app = meerkat_api.app.test_client()
-        meerkat_api.db.session.commit()
-        db_util.insert_codes(meerkat_api.db.session)
-        db_util.insert_locations(meerkat_api.db.session)
-        db_util.insert_cases(meerkat_api.db.session, "frontpage", "2016-07-02")
+        session = db_util.session
+        db_util.insert_codes(session)
+        db_util.insert_locations(session)
+        db_util.insert_cases(session, "frontpage", "2016-07-02")
+        self.session = session
 
     def tearDown(self):
         pass
@@ -77,7 +78,7 @@ class MeerkatAPITestCase(unittest.TestCase):
 
     def test_refugee_page(self):
         """ test the refugee page """
-        db_util.insert_cases(meerkat_api.db.session, "refugee_data")
+        db_util.insert_cases(self.session, "refugee_data")
         rv = self.app.get('/refugee_page')
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))

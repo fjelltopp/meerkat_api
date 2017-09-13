@@ -6,7 +6,8 @@ from flask import jsonify, g, request
 from sqlalchemy import func
 from meerkat_api.authentication import authenticate
 from meerkat_api.util import row_to_dict, rows_to_dicts, is_child, get_children
-from meerkat_api import db
+
+from meerkat_api.extensions import db, api
 from meerkat_abacus import model
 from meerkat_abacus.util import get_locations
 import json
@@ -165,3 +166,9 @@ class TotClinics(Resource):
                 model.Locations.case_report == 1).first()
 
         return {"total": res[0]}
+
+api.add_resource(Locations, "/locations")
+api.add_resource(LocationTree, "/locationtree")
+api.add_resource(Location, "/location/<location_id>")
+api.add_resource(DeviceID, "/device/<device_id>")
+api.add_resource(TotClinics, "/tot_clinics/<location_id>")

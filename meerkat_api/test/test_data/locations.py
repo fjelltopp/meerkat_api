@@ -165,5 +165,5 @@ locations = [
                  'deviceid': '1,6', 'case_report': 1, 'id': 7, 'other': None,
                  'point_location': 'POINT(0.1 0.1)', 'parent_location': 4,
                  'start_date': datetime(datetime.now().year, 2, 1),
-                 'level': 'clinic', 'name': 'Clinic 1', 'case_type': ['mh'],})
+                 'level': 'clinic', 'name': 'Clinic 1', 'case_type': ['mh']})
 ]

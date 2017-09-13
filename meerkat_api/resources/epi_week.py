@@ -5,14 +5,14 @@ from flask_restful import Resource
 from dateutil.parser import parse
 import datetime
 from flask import jsonify
-from meerkat_api import app
-
+from flask import current_app
+from meerkat_api.extensions import api
 # The epi_week start date is defined in the meerkat_abacus configs
 from meerkat_abacus.util import epi_week_start_date
 
 
 def epi_year_start(year):
-    if app.config["TESTING"]:
+    if current_app.config["TESTING"]:
         return datetime.datetime(year, 1, 1)
     else:
         return epi_week_start_date(year)
@@ -73,3 +73,8 @@ class EpiWeekStart(Resource):
     """
     def get(self, year, epi_week):
         return jsonify(start_date=epi_week_start(year, epi_week))
+
+    
+api.add_resource(EpiWeek, "/epi_week",
+                 "/epi_week/<date>")
+api.add_resource(EpiWeekStart, "/epi_week_start/<year>/<epi_week>")

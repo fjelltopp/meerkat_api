@@ -7,7 +7,7 @@ from sqlalchemy import or_
 from datetime import datetime
 from flask import jsonify, g
 from meerkat_api.util import rows_to_dicts
-from meerkat_api import db
+from meerkat_api.extensions import db, api
 from meerkat_abacus.model import Data
 from meerkat_api.resources.variables import Variables
 from meerkat_api.authentication import authenticate, is_allowed_location
@@ -311,3 +311,33 @@ class Records(Resource):
                                                Data.clinic))).all()
 
         return jsonify({"records": rows_to_dicts(results)})
+api.add_resource(Aggregate, "/aggregate/<variable_id>/<location_id>")
+api.add_resource(AggregateLatest, "/aggregate_latest/<variable_id>/<identifier_id>/<location_id>")
+
+api.add_resource(AggregateYear,
+                 "/aggregate_year/<variable_id>/<location_id>",
+                 "/aggregate_year/<variable_id>/<location_id>/<year>")
+api.add_resource(AggregateLatestYear,
+                 "/aggregate_latest_year/<variable_id>/<identifier_id>/<location_id>",
+                 "/aggregate_latest_year/<variable_id>/<identifier_id>/<location_id>/<weeks>",
+                 "/aggregate_latest_year/<variable_id>/<identifier_id>/<location_id>/<weeks>/<year>")
+api.add_resource(AggregateLatestLevel,
+                 "/aggregate_latest_level/<variable_id>/<identifier_id>/<level>",
+                 "/aggregate_latest_level/<variable_id>/<identifier_id>/<level>/<weekly>",
+                 "/aggregate_latest_level/<variable_id>/<identifier_id>/<level>/<weekly>/<location_id>")
+api.add_resource(AggregateLatestCategory,
+                 "/aggregate_latest_category/<category>/<identifier_id>/<location_id>",
+                 "/aggregate_latest_category/<category>/<identifier_id>/<location_id>/<weeks>",
+                 "/aggregate_latest_category/<category>/<identifier_id>/<location_id>/<weeks>/<year>"
+
+                )
+
+api.add_resource(AggregateCategory,
+                 "/aggregate_category/<category>/<location_id>",
+                 "/aggregate_category/<category>/<location_id>/<year>",
+                 "/aggregate_category/<category>/<location_id>/<year>/<lim_variable>")
+api.add_resource(AggregateCategorySum,
+                 "/aggregate_category_sum/<category>/<location_id>",
+                 "/aggregate_category_sum/<category>/<location_id>/<year>",
+                 "/aggregate_category_sum/<category>/<location_id>/<year>/<lim_variable>")
+api.add_resource(Records, "/records/<variable>/<location_id>")

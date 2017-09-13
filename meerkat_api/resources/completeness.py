@@ -7,8 +7,8 @@ from dateutil.parser import parse
 from sqlalchemy import extract, func, Integer, or_
 from datetime import datetime, timedelta
 import pandas as pd
-
-from meerkat_api import db, app
+import json
+from meerkat_api.extensions import db, api
 from meerkat_api.resources.epi_week import EpiWeek, epi_week_start, epi_year_start
 from meerkat_abacus.model import Data, Locations
 from meerkat_api.util import get_children, is_child, series_to_json_dict, get_locations
@@ -22,14 +22,14 @@ class Completeness(Resource):
     the average of the last two epi weeks and a timeline of the average number
     of records per week. We only allow one record per day.
 
-    We include data for both the given location and the sublocations.
+    We include_case_type data for both the given location and the sublocations.
 
     Args: \n
         variable: variable_id\n
         location: location id
         number_per_week: expected number per week\n
-        exclude: Exclude locations with this case_type. In order to provide
-    argument `weekend`, specify exclude as a string `None`\n
+        exclude_case_type: Exclude locations with this case_type. In order to provide
+    argument `weekend`, specify exclude_case_type as a string `None`\n
         weekend: specified weekend days in a comma separated string 0=Mon.
     Returns:\n
         completness data: {score: score, timeline: timeline, clinic_score: clinic:score, 
@@ -38,8 +38,11 @@ class Completeness(Resource):
     """
     decorators = [authenticate]
 
-    def get(self, variable, location, number_per_week, exclude=None,
-            weekend=None, start_week=1, end_date=None, non_reporting_variable=None, sublevel=None):
+    def get(self, variable, location, number_per_week,
+            weekend=None, start_week=1, end_date=None,
+            non_reporting_variable=None, sublevel=None):
+        inc_case_types = set(json.loads(request.args.get('inc_case_types', '[]')))
+        exc_case_types = set(json.loads(request.args.get('exc_case_types', '[]')))
         if sublevel == None:
             sublevel = request.args.get('sublevel')
 
@@ -76,13 +79,13 @@ class Completeness(Resource):
             loc == location
             for loc in (Data.country, Data.zone, Data.region, Data.district, Data.clinic)),
                       ]
-        if exclude and exclude != "None":
-            conditions.append(or_(Data.case_type is not None,
-                                  Data.case_type != exclude))
+        if exc_case_types and exc_case_types != []:
+            conditions.append(~Data.case_type.contains(exc_case_types))
+        if inc_case_types and inc_case_types != []:
+            conditions.append(Data.case_type.overlap(inc_case_types))
         if "tag" in request.args.keys():
             conditions.append(Data.tags.has_key(request.args["tag"]))
         # get the data
-
         data = pd.read_sql(
             db.session.query(Data.region, Data.zone, Data.district, Data.clinic,
                              Data.date,
@@ -95,7 +98,7 @@ class Completeness(Resource):
                             "clinic_yearly_score": {},
                             "dates_not_reported": [],
                             "yearly_score": {}})
-        # If end_date is the start of an epi week we do not want to include the current epi week
+        # If end_date is the start of an epi week we do not want to include_case_type the current epi week
         # We only calculate completeness for whole epi-weeks so we want to set end_d to the
         # the end of the previous epi_week.
         offset = end_date.weekday() - epi_year_weekday
@@ -124,6 +127,10 @@ class Completeness(Resource):
             for name in sublocations:
                 for clinic in get_children(name, locs):
                     if locs[clinic].case_report:
+                        if inc_case_types and not set(locs[clinic].case_type) & inc_case_types:
+                            continue
+                        if exc_case_types and set(locs[clinic].case_type) & exc_case_types:
+                            continue
                         start_date = locs[clinic].start_date
                         if start_date < begining:
                             start_date = begining
@@ -145,7 +152,7 @@ class Completeness(Resource):
             clinic_sums = completeness.groupby(level=1).sum()
             zero_clinics = clinic_sums[clinic_sums == 0].index
             nr = NonReporting()
-            non_reporting_clinics = nr.get(non_reporting_variable, location)["clinics"]
+            non_reporting_clinics = nr.get(non_reporting_variable, location )["clinics"]
             completeness = completeness.drop(non_reporting_clinics, level=1)
             completeness.reindex()
 
@@ -270,7 +277,7 @@ class NonReporting(Resource):
     Args: \n
         variable: variable_id\n
         location: location\n
-        exclude: Exclude locations with this case_type\n
+        exclude_case_type: Exclude locations with this case_type\n
         num_weeks: number_of_weeks \n
    
 
@@ -279,8 +286,9 @@ class NonReporting(Resource):
     """
     decorators = [authenticate]
 
-    def get(self, variable, location, exclude=None, num_weeks=0,
-            include=None, require_case_report=True):
+    def get(self, variable, location, exclude_case_type=None, num_weeks=0,
+            include_case_type=None, include_clinic_type=None, require_case_report=True):
+
 
         if not is_allowed_location(location, g.allowed_location):
             return {}
@@ -290,11 +298,18 @@ class NonReporting(Resource):
         if num_weeks == "0":
             num_weeks = 0
 
+        if exclude_case_type in [0, "0", "None"]:
+            exclude_case_type = None
+        if include_case_type in [0, "0", "None"]:
+            include_case_type = None
+        if include_clinic_type in [0, "0", "None"]:
+            include_clinic_type = None
 
             
         locations = get_locations(db.session)
         location = int(location)
-        clinics = get_children(location, locations, require_case_report=require_case_report)
+        clinics = get_children(location, locations,
+                               require_case_report=require_case_report)
         conditions = [Data.variables.has_key(variable)]
         if num_weeks:
             ew = EpiWeek()
@@ -306,30 +321,41 @@ class NonReporting(Resource):
             conditions.append(Data.date >= start_date)
             conditions.append(Data.date < end_date)
         exclude_list = []
-        if exclude and "code:" in exclude:
-            query = db.session.query(Data.clinic).filter(Data.variables.has_key(exclude.split(":")[1]))
+        if exclude_case_type and "code:" in exclude_case_type:
+            query = db.session.query(Data.clinic).filter(Data.variables.has_key(exclude_case_type.split(":")[1]))
             exclude_list = [r[0] for r in query.all()]
-        print(exclude, [(c, locations[c].name) for c in exclude_list])
                                                          
         query = db.session.query(Data.clinic).filter(*conditions)
         clinics_with_variable = [r[0] for r in query.all()]
         non_reporting_clinics = []
 
-        if include:
-            if "," in include:
-                include = include.split(",")
+        if include_clinic_type:
+            if "," in include_clinic_type:
+                include_clinic_type = set(include_clinic_type.split(","))
             else:
-                include = [include]
+                include_clinic_type = set([include_clinic_type])
+        if include_case_type:
+            if "," in include_case_type:
+                include_case_type = set(include_case_type.split(","))
+            else:
+                include_case_type = set([include_case_type])
+        if exclude_case_type and "code:" not in exclude_case_type:
+            if "," in exclude_case_type:
+                exclude_case_type = set(exclude_case_type.split(","))
+            else:
+                exclude_case_type = set([exclude_case_type])
         for clinic in clinics:
+            if include_clinic_type and locations[clinic].clinic_type not in include_clinic_type:
+                continue
             if clinic not in clinics_with_variable:
                 if len(exclude_list) > 0:
                     if clinic in exclude_list:
                         continue
-                if include:
-                    if locations[clinic].clinic_type in include:
+                if include_case_type:
+                    if set(locations[clinic].case_type) & include_case_type:
                         non_reporting_clinics.append(clinic)
-                elif exclude:
-                    if locations[clinic].case_type != exclude:
+                elif exclude_case_type:
+                    if not set(locations[clinic].case_type) & exclude_case_type:
                         non_reporting_clinics.append(clinic)
 
                 else:
@@ -338,3 +364,16 @@ class NonReporting(Resource):
 
 
     
+api.add_resource(NonReporting,
+                 "/non_reporting/<variable>/<location>",
+                 "/non_reporting/<variable>/<location>/<num_weeks>/<exclude_case_type>",
+                 "/non_reporting/<variable>/<location>/<num_weeks>/<exclude_case_type>/<include_case_type>",
+                 "/non_reporting/<variable>/<location>/<num_weeks>/<exclude_case_type>/<include_case_type>/<include_clinic_type>/<require_case_report>"
+)
+
+api.add_resource(Completeness,
+                 "/completeness/<variable>/<location>/<number_per_week>",
+                 "/completeness/<variable>/<location>/<number_per_week>/<start_week>",
+                 "/completeness/<variable>/<location>/<number_per_week>/<start_week>/<weekend>",
+                 "/completeness/<variable>/<location>/<number_per_week>/<start_week>/<weekend>/<non_reporting_variable>",
+                 "/completeness/<variable>/<location>/<number_per_week>/<start_week>/<weekend>/<non_reporting_variable>/<end_date>")
