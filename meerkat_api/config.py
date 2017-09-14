@@ -32,7 +32,7 @@ class Config(object):
     LOGGING_URL = getenv("LOGGING_URL", None)
     LOGGING_SOURCE = getenv("LOGGING_SOURCE", "dev")
     LOGGING_SOURCE_TYPE = "api"
-    LOGGING_IMPLEMENTATION = getenv("LOGGING_IMPLEMENTAION", "demo")
+    LOGGING_IMPLEMENTATION = getenv("LOGGING_IMPLEMENTATION", "demo")
 
 class Production(Config):
     DEBUG = False
