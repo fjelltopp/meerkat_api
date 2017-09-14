@@ -102,7 +102,10 @@ def valid_urls(app):
         "hard_date_limit": "2017-01-01",
         "monthly": "1",
         "flags": "n",
-        "variables": "gen_1"
+        "variables": "gen_1",
+        "include_case_type": "mh",
+        "exclude_case_type": "mh",
+        "include_clinic_type": "Refugee"
     }
     urls = []
     for url in meerkat_api.app.url_map.iter_rules():
@@ -143,7 +146,8 @@ class MeerkatAPITestCase(unittest.TestCase):
         celery_app.conf.CELERY_ALWAYS_EAGER = True
 
         # manage.set_up_everything(False, False, 500)
-        self.db_session = meerkat_api.db.session
+        self.db = meerkat_api.app.extensions["sqlalchemy"].db
+        self.db_session = db_util.session
         db_util.insert_calculation_parameters(self.db_session)
         db_util.insert_codes(self.db_session)
         db_util.insert_locations(self.db_session)

@@ -8,6 +8,7 @@ from meerkat_api import util
 from meerkat_abacus import model
 
 
+
 class UtilTests(unittest.TestCase):
 
     def test_is_child(self):

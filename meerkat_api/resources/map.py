@@ -10,7 +10,7 @@ from datetime import datetime
 from geoalchemy2.shape import to_shape
 import shapely.geometry
 from meerkat_api.util import is_child, fix_dates
-from meerkat_api import db, app
+from meerkat_api.extensions import db, api
 from meerkat_abacus import model
 from meerkat_abacus.model import Data, Locations
 from meerkat_api.resources.incidence import IncidenceRate
@@ -202,3 +202,13 @@ class Shapes(Resource):
                 features.append(feature)
         return {"type": "FeatureCollection", "features": features}
             
+api.add_resource(Clinics, "/clinics/<location_id>",
+                 "/clinics/<location_id>/<clinic_type>",
+                 "/clinics/<location_id>/<clinic_type>/<require_case_report>")
+api.add_resource(Shapes, "/geo_shapes/<level>")
+
+api.add_resource(MapVariable, "/map/<variable_id>",
+                 "/map/<variable_id>/<location>",
+                 "/map/<variable_id>/<location>/<end_date>",
+                 "/map/<variable_id>/<location>/<end_date>/<start_date>" )
+api.add_resource(IncidenceMap, "/incidence_map/<variable_id>")

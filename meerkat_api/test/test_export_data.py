@@ -27,19 +27,21 @@ class MeerkatAPITestCase(unittest.TestCase):
         meerkat_api.app.config['API_KEY'] = ""
         celery_app.conf.CELERY_ALWAYS_EAGER = True
         self.app = meerkat_api.app.test_client()
+        self.session = db_util.session
         for table in model.form_tables:
-            meerkat_api.db.session.query(model.form_tables[table]).delete()
-        meerkat_api.db.session.commit()
-        db_util.insert_codes(meerkat_api.db.session)
-        db_util.insert_locations(meerkat_api.db.session)
-        db_util.insert_cases(meerkat_api.db.session, "public_health_report")
+            self.session.query(model.form_tables[table]).delete()
+        self.session.commit()
+
+        db_util.insert_codes(self.session)
+        db_util.insert_locations(self.session)
+        db_util.insert_cases(self.session, "public_health_report")
         case_form_name = config.country_config["tables"][0]
         current_directory = os.path.dirname(__file__)
         data_management.table_data_from_csv("demo_case",
                                             model.form_tables[case_form_name],
                                             current_directory + "/test_data/",
-                                            meerkat_api.db.session,
-                                            meerkat_api.db.engine,
+                                            self.session,
+                                            db_util.engine,
                                             deviceids=["1", "2", "3",
                                                        "4", "5", "6"],
                                             table_name=case_form_name)
@@ -48,8 +50,8 @@ class MeerkatAPITestCase(unittest.TestCase):
         data_management.table_data_from_csv("demo_alert",
                                             model.form_tables[dr_name],
                                             current_directory + "/test_data/",
-                                            meerkat_api.db.session,
-                                            meerkat_api.db.engine,
+                                            self.session,
+                                            db_util.engine,
                                             deviceids=["1", "2", "3",
                                                        "4", "5", "6"],
                                             table_name=dr_name)
@@ -84,7 +86,7 @@ class MeerkatAPITestCase(unittest.TestCase):
 
         self.assertEqual(rv.status_code, 200)
         uuid = rv.data.decode("utf-8")[1:-2]
-        test = meerkat_api.db.session.query(model.DownloadDataFiles).filter(
+        test = self.session.query(model.DownloadDataFiles).filter(
             model.DownloadDataFiles.uuid == uuid).all()
         self.assertEqual(len(test), 1)
         self.assertEqual(test[0].uuid, uuid)
@@ -120,7 +122,7 @@ class MeerkatAPITestCase(unittest.TestCase):
 
         self.assertEqual(rv.status_code, 200)
         uuid = rv.data.decode("utf-8")[1:-2]
-        test = meerkat_api.db.session.query(model.DownloadDataFiles).filter(
+        test = self.session.query(model.DownloadDataFiles).filter(
             model.DownloadDataFiles.uuid == uuid).all()
         self.assertEqual(len(test), 1)
         self.assertEqual(test[0].uuid, uuid)
@@ -164,7 +166,7 @@ class MeerkatAPITestCase(unittest.TestCase):
         self.assertEqual(rv.status_code, 200)
 
         uuid = rv.data.decode("utf-8")[1:-2]
-        test = meerkat_api.db.session.query(model.DownloadDataFiles).filter(
+        test = self.session.query(model.DownloadDataFiles).filter(
             model.DownloadDataFiles.uuid == uuid
         ).all()
         self.assertEqual(len(test), 1)
@@ -217,13 +219,13 @@ class MeerkatAPITestCase(unittest.TestCase):
     def test_export_forms(self):
         """ Test the basic export form functionality """
 
-        print(len(meerkat_api.db.session.query(model.form_tables["demo_case"]).all()))
+        print(len(self.session.query(model.form_tables["demo_case"]).all()))
         rv = self.app.get('/export/form/demo_case', headers={**settings.header})
 
         self.assertEqual(rv.status_code, 200)
 
         uuid = rv.data.decode("utf-8").strip('\n,\"')
-        test = meerkat_api.db.session.query(model.DownloadDataFiles).filter(
+        test = self.session.query(model.DownloadDataFiles).filter(
             model.DownloadDataFiles.uuid == uuid).all()
         self.assertEqual(len(test), 1)
         exported_form_request = test[0]
@@ -265,7 +267,7 @@ class MeerkatAPITestCase(unittest.TestCase):
         self.assertEqual(rv.status_code, 200)
 
         uuid = rv.data.decode("utf-8")[1:-2]
-        test = meerkat_api.db.session.query(model.DownloadDataFiles).filter(
+        test = self.session.query(model.DownloadDataFiles).filter(
             model.DownloadDataFiles.uuid == uuid).all()
         self.assertEqual(len(test), 1)
         exported_form_request = test[0]
@@ -295,7 +297,7 @@ class MeerkatAPITestCase(unittest.TestCase):
         self.assertEqual(rv.status_code, 200)
 
         uuid = rv.data.decode("utf-8")[1:-2]
-        test = meerkat_api.db.session.query(model.DownloadDataFiles).filter(
+        test = self.session.query(model.DownloadDataFiles).filter(
             model.DownloadDataFiles.uuid == uuid).all()
         self.assertEqual(len(test), 1)
         exported_form_request = test[0]
