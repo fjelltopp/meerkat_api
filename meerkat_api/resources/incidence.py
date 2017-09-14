@@ -5,7 +5,7 @@ Resource for aggregating and querying data
 from flask_restful import Resource
 from datetime import datetime
 from flask import g
-from meerkat_api import db
+from meerkat_api.extensions import db, api
 from meerkat_abacus.model import Locations
 from meerkat_api.authentication import authenticate, is_allowed_location
 from meerkat_api.util.data_query import query_sum
@@ -109,3 +109,18 @@ class WeeklyIncidenceRate(Resource):
         ret["year"] = ret["year"] / population * mult_factor
 
         return ret
+
+# IncidenceRate
+api.add_resource(
+    IncidenceRate,
+    "/incidence_rate/<variable_id>/<level>",
+    "/incidence_rate/<variable_id>/<level>/<mult_factor>",
+    "/incidence_rate/<variable_id>/<level>/<mult_factor>/<year>",
+    "/incidence_rate/<variable_id>/<level>/<mult_factor>/<year>/<monthly>"
+)
+api.add_resource(
+    WeeklyIncidenceRate,
+    "/weekly_incidence/<variable_id>/<loc_id>",
+    "/weekly_incidence/<variable_id>/<loc_id>/<year>",
+    "/weekly_incidence/<variable_id>/<loc_id>/<year>/<mult_factor>"
+)

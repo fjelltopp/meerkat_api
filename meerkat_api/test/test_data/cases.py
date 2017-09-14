@@ -647,12 +647,12 @@ offset = date.weekday() - start.weekday()
 if offset < 0:
     offset = 7 + offset
 completeness = [
-    Data(**{'uuid': 'uuid:b59474ed-29e7-490b-a947-558babdf80a1', 'clinic_type': 'Primary', 'district': 4, 'variables': {"data_entry":1,  'reg_1': 1}, 'clinic': 7, 'geolocation': 'POINT(0.2 0.2)',  'region': 2, 'country': 1, 'date': date - datetime.timedelta(days=1 + offset)}),
-    Data(**{'uuid': 'uuid:b59474ed-29e7-490b-a947-558babdf80a2', 'clinic_type': 'Primary', 'district': 4, 'variables': {"data_entry":1,  'reg_1': 1}, 'clinic': 7, 'geolocation': 'POINT(0.2 0.2)',  'region': 2, 'country': 1, 'date': date - datetime.timedelta(days=2 + offset)}),
-    Data(**{'uuid': 'uuid:b59474ed-29e7-490b-a947-558babdf80a3', 'clinic_type': 'Primary', 'district': 4, 'variables': {"data_entry":1,  'reg_1': 1}, 'clinic': 7, 'geolocation': 'POINT(0.2 0.2)',  'region': 2, 'country': 1, 'date': date - datetime.timedelta(days=3 + offset)}),
-    Data(**{'uuid': 'uuid:b59474ed-29e7-490b-a947-558babdf80a4', 'clinic_type': 'Primary', 'district': 4, 'variables': {"data_entry":1,  'reg_1': 1}, 'clinic': 7, 'geolocation': 'POINT(0.2 0.2)',  'region': 2, 'country': 1, 'date': date - datetime.timedelta(days=8 + offset)}),
-    Data(**{'uuid': 'uuid:b59474ed-29e7-490b-a947-558babdf80a5', 'clinic_type': 'Primary', 'district': 4, 'variables': {"data_entry":1,  'reg_1': 1}, 'clinic': 8, 'geolocation': 'POINT(0.2 0.2)',  'region': 2, 'country': 1, 'date': date - datetime.timedelta(days=1 + offset)}),
-    Data(**{'uuid': 'uuid:b59474ed-29e7-490b-a947-558babdf80a6', 'clinic_type': 'Primary', 'district': 4, 'variables': {"data_entry":1,  'reg_1': 1}, 'clinic': 8, 'geolocation': 'POINT(0.2 0.2)',  'region': 2, 'country': 1, 'date': date - datetime.timedelta(days=1 + offset)}) # Same day should not count,
+    Data(**{'uuid': 'uuid:b59474ed-29e7-490b-a947-558babdf80a1', 'clinic_type': 'Primary', 'district': 4, 'variables': {"data_entry":1,  'reg_1': 1}, 'clinic': 7, 'geolocation': 'POINT(0.2 0.2)',  'region': 2, 'country': 1, 'date': date - datetime.timedelta(days=1 + offset), 'case_type': ['mh']}),
+    Data(**{'uuid': 'uuid:b59474ed-29e7-490b-a947-558babdf80a2', 'clinic_type': 'Primary', 'district': 4, 'variables': {"data_entry":1,  'reg_1': 1}, 'clinic': 7, 'geolocation': 'POINT(0.2 0.2)',  'region': 2, 'country': 1, 'date': date - datetime.timedelta(days=2 + offset), 'case_type': ['mh']}),
+    Data(**{'uuid': 'uuid:b59474ed-29e7-490b-a947-558babdf80a3', 'clinic_type': 'Primary', 'district': 4, 'variables': {"data_entry":1,  'reg_1': 1}, 'clinic': 7, 'geolocation': 'POINT(0.2 0.2)',  'region': 2, 'country': 1, 'date': date - datetime.timedelta(days=3 + offset), 'case_type': ['mh']}),
+    Data(**{'uuid': 'uuid:b59474ed-29e7-490b-a947-558babdf80a4', 'clinic_type': 'Primary', 'district': 4, 'variables': {"data_entry":1,  'reg_1': 1}, 'clinic': 7, 'geolocation': 'POINT(0.2 0.2)',  'region': 2, 'country': 1, 'date': date - datetime.timedelta(days=8 + offset), 'case_type': ['mh']}),
+    Data(**{'uuid': 'uuid:b59474ed-29e7-490b-a947-558babdf80a5', 'clinic_type': 'Primary', 'district': 4, 'variables': {"data_entry":1,  'reg_1': 1}, 'clinic': 8, 'geolocation': 'POINT(0.2 0.2)',  'region': 2, 'country': 1, 'date': date - datetime.timedelta(days=1 + offset),  'case_type': ['pip']}),
+    Data(**{'uuid': 'uuid:b59474ed-29e7-490b-a947-558babdf80a6', 'clinic_type': 'Primary', 'district': 4, 'variables': {"data_entry":1,  'reg_1': 1}, 'clinic': 8, 'geolocation': 'POINT(0.2 0.2)',  'region': 2, 'country': 1, 'date': date - datetime.timedelta(days=1 + offset),  'case_type': ['pip']}) # Same day should not count,
 ]
 
 latest_test = [

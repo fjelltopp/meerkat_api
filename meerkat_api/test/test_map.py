@@ -22,9 +22,11 @@ class MeerkatAPIMapTestCase(unittest.TestCase):
         meerkat_api.app.config['TESTING'] = True
         meerkat_api.app.config['API_KEY'] = ""
         self.app = meerkat_api.app.test_client()
-        db_util.insert_codes(meerkat_api.db.session)
-        db_util.insert_locations(meerkat_api.db.session)
-        db_util.insert_cases(meerkat_api.db.session, "map_test", date="2016-07-02")
+        session = db_util.session
+        
+        db_util.insert_codes(session)
+        db_util.insert_locations(session)
+        db_util.insert_cases(session, "map_test", date="2016-07-02")
 
         
     def tearDown(self):

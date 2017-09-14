@@ -18,7 +18,7 @@ Vaccination Report
 """
 
 from flask_restful import Resource
-from flask import request, jsonify, g
+from flask import request, jsonify, g, current_app
 from sqlalchemy import or_, func, desc, Integer
 from datetime import datetime, timedelta
 from dateutil import parser
@@ -31,7 +31,7 @@ from functools import wraps
 from gettext import gettext
 import logging, json, operator
 from meerkat_api.util import get_children, is_child, fix_dates, rows_to_dicts, find_level
-from meerkat_api import db, app
+from meerkat_api.extensions import db, api
 from meerkat_abacus.model import Data, Locations, AggregationVariables, CalculationParameters
 from meerkat_api.resources.completeness import Completeness, NonReporting
 from meerkat_api.resources.variables import Variables, Variable
@@ -2375,7 +2375,7 @@ class RefugeePublicHealth(Resource):
     decorators = [authenticate, report_allowed_location]
 
     def get(self, location, start_date=None, end_date=None):
-        if not app.config["TESTING"] and "jor_refugee" not in model.form_tables:
+        if not current_app.config["TESTING"] and "jor_refugee" not in model.form_tables:
             return {}
         start_date, end_date = fix_dates(start_date, end_date)
         end_date_limit = end_date + timedelta(days=1)
@@ -2591,7 +2591,7 @@ class RefugeeDetail(Resource):
     decorators = [authenticate, report_allowed_location]
 
     def get(self, location, start_date=None, end_date=None):
-        if not app.config["TESTING"] and "jor_refugee" not in model.form_tables:
+        if not current_app.config["TESTING"] and "jor_refugee" not in model.form_tables:
             return {}
         start_date, end_date = fix_dates(start_date, end_date)
         end_date_limit = end_date + timedelta(days=1)
@@ -2755,7 +2755,7 @@ class RefugeeCd(Resource):
     decorators = [authenticate, report_allowed_location]
 
     def get(self, location, start_date=None, end_date=None):
-        if not app.config["TESTING"] and "jor_refugee" not in model.form_tables:
+        if not current_app.config["TESTING"] and "jor_refugee" not in model.form_tables:
             return {}
         start_date, end_date = fix_dates(start_date, end_date)
         end_date_limit = end_date + timedelta(days=1)
@@ -4799,3 +4799,70 @@ class SCReport(Resource):
 
         return ret
 
+
+api.add_resource(PublicHealth, "/reports/public_health/<location>",
+                 "/reports/public_health/<location>/<end_date>",
+                 "/reports/public_health/<location>/<end_date>/<start_date>")
+api.add_resource(NcdReport, "/reports/ncd_report/<location>",
+                 "/reports/ncd_report/<location>/<end_date>",
+                 "/reports/ncd_report/<location>/<end_date>/<start_date>")
+api.add_resource(NcdReportNewVisits, "/reports/ncd_report_new_visits/<location>",
+                 "/reports/ncd_report_new_visits/<location>/<end_date>",
+                 "/reports/ncd_report_new_visits/<location>/<end_date>/<start_date>")
+api.add_resource(NcdReportReturnVisits, "/reports/ncd_report_return_visits/<location>",
+                 "/reports/ncd_report_return_visits/<location>/<end_date>",
+                 "/reports/ncd_report_return_visits/<location>/<end_date>/<start_date>")
+api.add_resource(CdPublicHealth, "/reports/cd_public_health/<location>",
+                 "/reports/cd_public_health/<location>/<end_date>",
+                 "/reports/cd_public_health/<location>/<end_date>/<start_date>")
+api.add_resource(CdPublicHealthMad, "/reports/cd_public_health_mad/<location>",
+                 "/reports/cd_public_health_mad/<location>/<end_date>",
+                 "/reports/cd_public_health_mad/<location>/<end_date>/<start_date>")
+api.add_resource(CdPublicHealthSom, "/reports/cd_public_health_som/<location>",
+                 "/reports/cd_public_health_som/<location>/<end_date>",
+                 "/reports/cd_public_health_som/<location>/<end_date>/<start_date>")
+api.add_resource(NcdPublicHealth, "/reports/ncd_public_health/<location>",
+                 "/reports/ncd_public_health/<location>/<end_date>",
+                 "/reports/ncd_public_health/<location>/<end_date>/<start_date>")
+api.add_resource(RefugeePublicHealth, "/reports/refugee_public_health/<location>",
+                 "/reports/refugee_public_health/<location>/<end_date>",
+                 "/reports/refugee_public_health/<location>/<end_date>/<start_date>")
+api.add_resource(RefugeeCd, "/reports/refugee_cd/<location>",
+                 "/reports/refugee_cd/<location>/<end_date>",
+                 "/reports/refugee_cd/<location>/<end_date>/<start_date>")
+api.add_resource(RefugeeDetail, "/reports/refugee_detail/<location>",
+                 "/reports/refugee_detail/<location>/<end_date>",
+                 "/reports/refugee_detail/<location>/<end_date>/<start_date>")
+api.add_resource(CdReport, "/reports/cd_report/<location>",
+                 "/reports/cd_report/<location>/<end_date>",
+                 "/reports/cd_report/<location>/<end_date>/<start_date>")
+api.add_resource(Pip, "/reports/pip/<location>",
+                 "/reports/pip/<location>/<end_date>",
+                 "/reports/pip/<location>/<end_date>/<start_date>")
+api.add_resource(WeeklyEpiMonitoring, "/reports/epi_monitoring/<location>",
+                 "/reports/epi_monitoring/<location>/<end_date>",
+                 "/reports/epi_monitoring/<location>/<end_date>/<start_date>")
+api.add_resource(Malaria, "/reports/malaria/<location>",
+                 "/reports/malaria/<location>/<end_date>",
+                 "/reports/malaria/<location>/<end_date>/<start_date>")
+api.add_resource(VaccinationReport, "/reports/vaccination/<location>",
+                 "/reports/vaccination/<location>/<end_date>",
+                 "/reports/vaccination/<location>/<end_date>/<start_date>")
+api.add_resource(AFROBulletin, "/reports/afro/<location>",
+                 "/reports/afro/<location>/<end_date>",
+                 "/reports/afro/<location>/<end_date>/<start_date>")
+api.add_resource(MhReport, "/reports/mh_report/<location>",
+                 "/reports/mh_report/<location>/<end_date>",
+                 "/reports/mh_report/<location>/<end_date>/<start_date>")
+api.add_resource(PlagueReport, "/reports/plague/<location>",
+                 "/reports/plague/<location>/<end_date>",
+                 "/reports/plague/<location>/<end_date>/<start_date>")
+api.add_resource(EBSReport, "/reports/ebs/<location>",
+                 "/reports/ebs/<location>/<end_date>",
+                 "/reports/ebs/<location>/<end_date>/<start_date>")
+api.add_resource(CTCReport, "/reports/ctc/<location>",
+                 "/reports/ctc/<location>/<end_date>",
+                 "/reports/ctc/<location>/<end_date>/<start_date>")
+api.add_resource(SCReport, "/reports/sc/<location>",
+                 "/reports/sc/<location>/<end_date>",
+                 "/reports/sc/<location>/<end_date>/<start_date>")

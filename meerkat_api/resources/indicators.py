@@ -3,7 +3,7 @@ import numpy as np
 import copy
 from flask_restful import Resource
 from sqlalchemy import or_
-from meerkat_api import db
+from meerkat_api.extensions import db, api
 from meerkat_api.util import series_to_json_dict
 from meerkat_analysis.indicators import count_over_count, count
 from meerkat_abacus.model import Data
@@ -137,3 +137,5 @@ class Indicators(Resource):
         indicator_data["name"] = "Name is not passed to the API!"
 
         return indicator_data
+api.add_resource(Indicators, "/indicators/<flags>/<variables>/<location>",
+                  "/indicators/<flags>/<variables>/<location>/<start_date>/<end_date>")
