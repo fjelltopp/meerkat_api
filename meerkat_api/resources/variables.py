@@ -5,9 +5,10 @@ from flask_restful import Resource
 from sqlalchemy import or_
 from flask import request
 from meerkat_api.util import row_to_dict, rows_to_dicts
-from meerkat_api import db, app
+from meerkat_api.extensions import db, api
 from meerkat_abacus import model
 from meerkat_api.resources import locations
+
 
 class Variables(Resource):
     """
@@ -49,4 +50,5 @@ class Variable(Resource):
     def get(self, variable_id):
         return row_to_dict(db.session.query(model.AggregationVariables).filter(
             model.AggregationVariables.id == variable_id).first())
-
+api.add_resource(Variables, "/variables/<category>")
+api.add_resource(Variable, "/variable/<variable_id>")

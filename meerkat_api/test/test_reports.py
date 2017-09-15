@@ -127,7 +127,8 @@ class MeerkatAPIReportsUtilityTestCase(unittest.TestCase):
         #data_management.create_db(meerkat_api.app.config["SQLALCHEMY_DATABASE_URI"],
         #                          model.Base, False)
         self.app = meerkat_api.app.test_client()
-        self.db = meerkat_api.db
+        self.db = db_util.session
+
     def tearDown(self):
         pass
 
@@ -170,15 +171,15 @@ class MeerkatAPIReportsUtilityTestCase(unittest.TestCase):
         """ Test get category """
         category = "gender"
         db_util.create_category(
-            self.db.session,
+            self.db,
             ["gen_1", "gen_2"],
             "gender",
             names=["Male", "Female"]
         )
         variables = [{"gen_1": 1} for i in range(37)]
         variables += [{"gen_2": 1} for i in range(94)]
-        db_util.create_data(self.db.session, variables)
-        conn = meerkat_api.db.engine.connect()
+        db_util.create_data(self.db, variables)
+        conn = db_util.engine.connect()
         start_date = datetime(datetime.now().year, 1, 1)
         end_date = datetime.now()
         location = 2
@@ -205,7 +206,7 @@ class MeerkatAPIReportsUtilityTestCase(unittest.TestCase):
         category = "cd"
 
         db_util.create_category(
-            self.db.session,
+            self.db,
             ["cd_1", "cd_2", "cd_3", "cd_4", "cd_5", "cd_6"],
             "cd"
         )
@@ -215,9 +216,9 @@ class MeerkatAPIReportsUtilityTestCase(unittest.TestCase):
         variables += [{"cd_4": 1} for i in range(25)]
         variables += [{"cd_5": 1} for i in range(30)]
         variables += [{"cd_6": 1} for i in range(35)]
-        db_util.create_data(self.db.session, variables)
+        db_util.create_data(self.db, variables)
 
-        conn = meerkat_api.db.engine.connect()
+        conn =db_util.engine.connect()
         start_date = datetime(datetime.now().year, 1, 1)
         end_date = datetime.now()
         location = 2
@@ -293,7 +294,7 @@ class MeerkatAPIReportsUtilityTestCase(unittest.TestCase):
         """Test get_latest_category"""
         
         db_util.create_category(
-            self.db.session,
+            self.db,
             ["pop_1", "pop_2", "pop_3", "pop_4"],
             "population",
             ["Population, Male <20", "Population, Female <20",
@@ -304,7 +305,7 @@ class MeerkatAPIReportsUtilityTestCase(unittest.TestCase):
             {"pop_1": 15, "pop_2": 16, "pop_3": 17, "pop_4": 0}
         ]
         dates = [datetime(2016, 1, 1), datetime(2016, 2, 2)]
-        db_util.create_data(self.db.session, variables, dates=dates)
+        db_util.create_data(self.db, variables, dates=dates)
         start_date = datetime(2016, 1, 1)
         end_date = datetime.now()
         results = reports.get_latest_category("population", 4, start_date, end_date)
@@ -398,15 +399,16 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
         meerkat_api.app.config['TESTING'] = True
         meerkat_api.app.config['API_KEY'] = "" 
         self.app = meerkat_api.app.test_client()
-        self.db = meerkat_api.db
+        self.db = db_util.session
+
     def tearDown(self):
         pass
 
 
     def test_non_location(self):
         """ Teseting that reports returns None if wrong locations"""
-        db_util.insert_codes(self.db.session)
-        db_util.insert_locations(self.db.session)
+        db_util.insert_codes(self.db)
+        db_util.insert_locations(self.db)
         reports = [
             "public_health", "cd_public_health", "ncd_public_health", "epi_monitoring",
             "ncd_report", "cd_report", "refugee_public_health", "refugee_detail", "refugee_cd"
@@ -421,10 +423,10 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
     
     def test_dates(self):
         """ Testing that the dates are handled correctly """
-        db_util.insert_codes(self.db.session)
-        db_util.insert_locations(self.db.session)
-        self.db.session.query(model.Data).delete()
-        self.db.session.commit()
+        db_util.insert_codes(self.db)
+        db_util.insert_locations(self.db)
+        self.db.query(model.Data).delete()
+        self.db.commit()
         reports = [
             "public_health", "cd_public_health", "ncd_public_health", "epi_monitoring",
             "ncd_report", "cd_report", "refugee_public_health", "refugee_detail", "refugee_cd"
@@ -459,9 +461,9 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
 
     def test_public_health(self):
         """ test the public health report """
-        db_util.insert_codes(self.db.session)
-        db_util.insert_locations(self.db.session)
-        db_util.insert_cases(self.db.session, "public_health_report")
+        db_util.insert_codes(self.db)
+        db_util.insert_locations(self.db)
+        db_util.insert_cases(self.db, "public_health_report")
         end_date = datetime(2015, 12, 31).isoformat()
         start_date = datetime(2015, 1, 1).isoformat()
         rv = self.app.get('/reports/public_health/1/{}/{}'.format(end_date, start_date), headers=settings.header)
@@ -567,9 +569,9 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
         
     def test_ncd_public_health(self):
         """ test the ncd public health report """
-        db_util.insert_codes(self.db.session)
-        db_util.insert_locations(self.db.session)
-        db_util.insert_cases(self.db.session, "ncd_public_health_report")
+        db_util.insert_codes(self.db)
+        db_util.insert_locations(self.db)
+        db_util.insert_cases(self.db, "ncd_public_health_report")
 
         end_date = datetime(2015, 12, 31).isoformat()
         start_date = datetime(2015, 1, 1).isoformat()
@@ -655,9 +657,9 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
 
     def test_cd_public_health(self):
         """ test the cd public health report """
-        db_util.insert_codes(self.db.session)
-        db_util.insert_locations(self.db.session)
-        db_util.insert_cases(self.db.session, "public_health_report")
+        db_util.insert_codes(self.db)
+        db_util.insert_locations(self.db)
+        db_util.insert_cases(self.db, "public_health_report")
         end_date = datetime(2015, 12, 31).isoformat()
         start_date = datetime(2015, 1, 1).isoformat()
         rv = self.app.get('/reports/cd_public_health/1/{}/{}'.format(end_date, start_date), headers=settings.header)
@@ -737,9 +739,9 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
 
     def test_ncd_report(self):
         """ Test ncd report """
-        db_util.insert_codes(self.db.session)
-        db_util.insert_locations(self.db.session)
-        db_util.insert_cases(self.db.session, "ncd_report")
+        db_util.insert_codes(self.db)
+        db_util.insert_locations(self.db)
+        db_util.insert_cases(self.db, "ncd_report")
         end_date = datetime(2015, 12, 31).isoformat()
         start_date = datetime(2015, 1, 1).isoformat()
         urls = ["ncd_report", "ncd_report_new_visits", "ncd_report_return_visits"]
@@ -825,9 +827,9 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
 
     def test_cd_report(self):
         """ Test cd report """
-        db_util.insert_codes(self.db.session)
-        db_util.insert_locations(self.db.session)
-        db_util.insert_cases(self.db.session, "cd_report")
+        db_util.insert_codes(self.db)
+        db_util.insert_locations(self.db)
+        db_util.insert_cases(self.db, "cd_report")
         end_date = datetime(2015, 12, 31).isoformat()
         start_date = datetime(2015, 1, 1).isoformat()
         rv = self.app.get('/reports/cd_report/1/{}/{}'.format(end_date, start_date), headers=settings.header)
@@ -874,9 +876,9 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
 
     # def test_pip_report(self):
     #     """ Test pip report """
-    #     db_util.insert_codes(self.db.session)
-    #     db_util.insert_locations(self.db.session)
-    #     db_util.insert_cases(self.db.session, "pip_report")
+    #     db_util.insert_codes(self.db)
+    #     db_util.insert_locations(self.db)
+    #     db_util.insert_cases(self.db, "pip_report")
     #     end_date = datetime(2015, 12, 31).isoformat()
     #     start_date = datetime(2015, 1, 1).isoformat()
     #     rv = self.app.get('/reports/pip/1/{}/{}'.format(end_date, start_date))
@@ -980,9 +982,9 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
 
     def test_refugee_public_health(self):
         """ Test refugee public health report"""
-        db_util.insert_codes(self.db.session)
-        db_util.insert_locations(self.db.session)
-        db_util.insert_cases(self.db.session, "refugee_data")
+        db_util.insert_codes(self.db)
+        db_util.insert_locations(self.db)
+        db_util.insert_cases(self.db, "refugee_data")
         end_date = datetime(2015, 12, 31).isoformat()
         start_date = datetime(2015, 1, 1).isoformat()
         rv = self.app.get('/reports/refugee_public_health/1/{}/{}'.format(end_date, start_date), headers=settings.header)
@@ -1110,9 +1112,9 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
 
     def test_refugee_detail(self):
         """ Test refugee public health report"""
-        db_util.insert_codes(self.db.session)
-        db_util.insert_locations(self.db.session)
-        db_util.insert_cases(self.db.session, "refugee_data")
+        db_util.insert_codes(self.db)
+        db_util.insert_locations(self.db)
+        db_util.insert_cases(self.db, "refugee_data")
         end_date = datetime(2015, 12, 31).isoformat()
         start_date = datetime(2015, 1, 1).isoformat()
         rv = self.app.get('/reports/refugee_detail/1/{}/{}'.format(end_date, start_date), headers=settings.header)
@@ -1387,9 +1389,9 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
 
     def test_refugee_cd(self):
         """ Test refugee cd report"""
-        db_util.insert_codes(self.db.session)
-        db_util.insert_locations(self.db.session)
-        db_util.insert_cases(self.db.session, "refugee_data")
+        db_util.insert_codes(self.db)
+        db_util.insert_locations(self.db)
+        db_util.insert_cases(self.db, "refugee_data")
         end_date = datetime(2015, 12, 31).isoformat()
         start_date = datetime(2015, 1, 1).isoformat()
         rv = self.app.get('/reports/refugee_cd/1/{}/{}'.format(end_date, start_date), headers=settings.header)
@@ -1416,9 +1418,9 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
         """ Test epi monitoring report"""
 
         #Load the test data.
-        db_util.insert_locations(self.db.session)
-        db_util.insert_codes_from_file(self.db.session, "codes.csv")
-        db_util.insert_cases(self.db.session, "epi_monitoring")
+        db_util.insert_locations(self.db)
+        db_util.insert_codes_from_file(self.db, "codes.csv")
+        db_util.insert_cases(self.db, "epi_monitoring")
 
         #Select report params
         end_date = datetime(2015, 1, 7).isoformat()
@@ -1483,9 +1485,9 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
         """ Test malaria report"""
 
         #Load the test data.
-        db_util.insert_locations(self.db.session)
-        db_util.insert_codes_from_file(self.db.session, "codes.csv")
-        db_util.insert_cases(self.db.session, "malaria")
+        db_util.insert_locations(self.db)
+        db_util.insert_codes_from_file(self.db, "codes.csv")
+        db_util.insert_cases(self.db, "malaria")
 
         #Select report params
         end_date = datetime(2015, 1, 7).isoformat()
@@ -1547,9 +1549,9 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
         """ Test vaccination report"""
 
         #Load the test data.
-        db_util.insert_locations(self.db.session)
-        db_util.insert_codes_from_file(self.db.session, "codes.csv")
-        db_util.insert_cases(self.db.session, "vaccination_report")
+        db_util.insert_locations(self.db)
+        db_util.insert_codes_from_file(self.db, "codes.csv")
+        db_util.insert_cases(self.db, "vaccination_report")
 
         #Check the data is returned is as expected
         def check_data( end_date, start_date, location, expected ): 
@@ -1601,10 +1603,10 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
         print("freezing time")
 
         # Load the test data.
-        # db_util.insert_specific_locations(self.db.session, "mad_dump")
-        db_util.insert_specific_locations(self.db.session, "testshire")
-        db_util.insert_codes_from_file(self.db.session, "codes.csv")
-        db_util.insert_cases(self.db.session, "afro_report")
+        # db_util.insert_specific_locations(self.db, "mad_dump")
+        db_util.insert_specific_locations(self.db, "testshire")
+        db_util.insert_codes_from_file(self.db, "codes.csv")
+        db_util.insert_cases(self.db, "afro_report")
 
         #This test assumes the period is the whole year despite whatever it is
         rv = self.app.get(

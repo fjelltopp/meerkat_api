@@ -2,15 +2,16 @@
 Data resource for getting Alert data
 """
 from flask_restful import Resource
-from flask import jsonify, request, current_app, g
+from flask import jsonify, request, g
 from sqlalchemy import or_
-from meerkat_api.util import row_to_dict, rows_to_dicts, get_children
-from meerkat_api import db
+from dateutil.parser import parse
+
+from meerkat_api.util import row_to_dict, rows_to_dicts
+from meerkat_api.extensions import db, api
 from meerkat_abacus import model
-from meerkat_abacus.util import get_locations
 from meerkat_api.authentication import authenticate, is_allowed_location
 
-from dateutil.parser import parse
+
 class Alert(Resource):
     """
     Get alert with alert_id
@@ -206,3 +207,8 @@ class AggregateAlerts(Resource):
 
         ret["total"] = total
         return jsonify(ret)
+api.add_resource(AggregateAlerts, "/aggregate_alerts",
+                 "/aggregate_alerts/<central_review>",
+                 "/aggregate_alerts/<central_review>/<hard_date_limit>")
+api.add_resource(Alert, "/alert/<alert_id>")
+api.add_resource(Alerts, "/alerts")

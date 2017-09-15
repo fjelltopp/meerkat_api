@@ -42,6 +42,8 @@ install:
 - pip install .
 - python meerkat_abacus/manage.py create-db
 - cd ..
+- pip install git+https://github.com/meerkat-code/meerkat_libs.git@master
+
 script: nosetests -v
 notifications:
   slack:
