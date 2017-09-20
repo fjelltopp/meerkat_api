@@ -362,7 +362,7 @@ class NonReporting(Resource):
                 if include_case_type:
                     if set(locations[clinic].case_type) & include_case_type:
                         non_reporting_clinics.append(clinic)
-                elif exclude_case_type:
+                elif exclude_case_type and "code:" not in exclude_case_type:
                     if not set(locations[clinic].case_type) & exclude_case_type:
                         non_reporting_clinics.append(clinic)
 
