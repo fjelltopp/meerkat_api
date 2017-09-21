@@ -297,6 +297,13 @@ class NonReporting(Resource):
     def get(self, variable, location, exclude_case_type=None, num_weeks=0,
             include_case_type=None, include_clinic_type=None, require_case_report=True):
 
+        inc_case_types = set(
+            json.loads(request.args.get('inc_case_types', '[]'))
+        )
+        print(request.args.get('exc_case_types', '[]'))
+        exc_case_types = set(
+            json.loads(request.args.get('exc_case_types', '[]'))
+        )
 
         if not is_allowed_location(location, g.allowed_location):
             return {}
@@ -342,16 +349,27 @@ class NonReporting(Resource):
                 include_clinic_type = set(include_clinic_type.split(","))
             else:
                 include_clinic_type = set([include_clinic_type])
+            
         if include_case_type:
             if "," in include_case_type:
                 include_case_type = set(include_case_type.split(","))
             else:
                 include_case_type = set([include_case_type])
+            if inc_case_types:
+                include_case_type = inc_case_types.union(include_case_type)
+        elif inc_case_types:
+            include_case_type = inc_case_types
+                
         if exclude_case_type and "code:" not in exclude_case_type:
             if "," in exclude_case_type:
                 exclude_case_type = set(exclude_case_type.split(","))
             else:
                 exclude_case_type = set([exclude_case_type])
+            if exc_case_types:
+                exclude_case_type = exc_case_types.union(exclude_case_type)
+        elif exc_case_types:
+            exclude_case_type = exc_case_types
+                
         for clinic in clinics:
             if include_clinic_type and locations[clinic].clinic_type not in include_clinic_type:
                 continue
