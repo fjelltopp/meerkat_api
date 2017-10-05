@@ -883,7 +883,6 @@ class MhReport(Resource):
         ret['table_12_data'] = transposeMHtable(ret['table_12_data'], "age_categories", "mh_result_return",'name',"type")
 
         ret['table_13_data'] = transposeMHtable(ret['table_13_data'], "age_categories","service_provider",'name',"type")
-        print(ret["table_13_data"])
         return ret
 
 class CdReport(Resource):
@@ -1153,8 +1152,7 @@ class Pip(Resource):
                                          start_date=start_date.isoformat(),
                                          only_loc=location,
                                          use_ids=True)
-        print("pip_followup:")
-        print(pip_followup)
+
         total_followup = pip_followup["pif_1"]["total"]
         icu = pip_followup["pif_3"]["total"]
         ventilated = pip_followup["pif_4"]["total"]
@@ -1754,7 +1752,7 @@ class CdPublicHealth(Resource):
                 age_gender[ac][gender] = age[a]["total"]
             else:
                 age_gender[ac] = {gender: age[a]["total"]}
-        print(age_gender)
+
         age_variables = variables_instance.get("age")
         for age_key in sorted(age_variables.keys()):
             a = age_variables[age_key]["name"]
@@ -2325,7 +2323,7 @@ class NcdPublicHealth(Resource):
             only_loc=location,
             additional_variables=extra_var
         )
-        print(nationality_total)
+
         nationality = {}
         for nat in nationality_total.keys():
             nationality[nat] = nationality_total[nat]["total"]
@@ -3588,7 +3586,6 @@ class AFROBulletin(Resource):
                 return (key,
                         100 * (simple.get(key, 0) + severe.get(key, 0)) / rdt.get(key, 0))
             except ZeroDivisionError:
-                print("hei")
                 return (key, 0)
 
         ret["data"]["figure_malaria"] = {
@@ -3747,8 +3744,6 @@ class AFROBulletin(Resource):
             priority_disease_cases_total = priority_disease_cases_q["total"]
 
             # add regional case breakdown
-
-            print(disease, priority_disease_cases)
             for region in priority_disease_cases:
                 try:
                     ret["data"]["table_priority_diseases"][disease][locs[region].name] = priority_disease_cases[region]
@@ -4057,7 +4052,6 @@ class PlagueReport(Resource):
                         }
                     }
                 )
-        print(plague_cases_ret)
         ret["data"].update({"plague_map": plague_cases})
 
         plague_top_3 = top(plague_cases_ret, 3)
@@ -4720,8 +4714,6 @@ class SCReport(Resource):
         for r in query_non_sc:
             if nutrition_var not in r.variables:
                 latest_non_sc[r.clinic] = r
-        print(latest_non_sc.keys())
-
 
         overview_data.setdefault("baseline", {"Y": 0, "N": 0})
         overview_data.setdefault("surveyed_last_week", {"Y": 0, "N": 0})
