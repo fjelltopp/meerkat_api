@@ -148,7 +148,6 @@ def get_variables_category(category, start_date, end_date, location, conn, use_i
        aggregate_category(dict): dict with {variable: number, variable2: number3, ...}
     """
     variables = variables_instance.get(category)
-    logging.warning(additional_variables)
     return_data = {}
     for variable in variables.keys():
         r = query_sum(db, [variable] + additional_variables,
@@ -2326,6 +2325,7 @@ class NcdPublicHealth(Resource):
             only_loc=location,
             additional_variables=extra_var
         )
+        print(nationality_total)
         nationality = {}
         for nat in nationality_total.keys():
             nationality[nat] = nationality_total[nat]["total"]
