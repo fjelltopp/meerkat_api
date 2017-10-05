@@ -148,7 +148,6 @@ def get_variables_category(category, start_date, end_date, location, conn, use_i
        aggregate_category(dict): dict with {variable: number, variable2: number3, ...}
     """
     variables = variables_instance.get(category)
-    logging.warning(additional_variables)
     return_data = {}
     for variable in variables.keys():
         r = query_sum(db, [variable] + additional_variables,
@@ -2175,18 +2174,6 @@ class NcdPublicHealth(Resource):
 
         ret["data"]["percent_cases_male"] = male / total_cases * 100
         ret["data"]["percent_cases_female"] = female / total_cases * 100
-        less_5yo = query_variable.get(
-            "visit_prc_2", "visit_under_five",
-            end_date=end_date_limit.isoformat(),
-            start_date=start_date.isoformat(),
-            only_loc=location,
-            additional_variables=extra_var
-        )
-        less_5yo = sum(less_5yo[k]["total"] for k in less_5yo.keys())
-
-        ret["data"]["percent_cases_lt_5yo"] = less_5yo / total_cases * 100
-        if less_5yo == 0:
-            less_5yo = 1
 
         smoking = query_sum(
             db,
@@ -2298,7 +2285,6 @@ class NcdPublicHealth(Resource):
             additional_variables=extra_var
         )
 
-        logging.warning(age)
         age_gender = {}
         tot = sum([group["total"] for group in age.values()])
 
@@ -2339,6 +2325,7 @@ class NcdPublicHealth(Resource):
             only_loc=location,
             additional_variables=extra_var
         )
+        print(nationality_total)
         nationality = {}
         for nat in nationality_total.keys():
             nationality[nat] = nationality_total[nat]["total"]
