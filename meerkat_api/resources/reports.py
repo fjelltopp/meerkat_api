@@ -68,7 +68,7 @@ def mean(input_list):
     else:
         return None
 
-def get_disease_types(category, start_date, end_date, location, conn):
+def get_disease_types(category, start_date, end_date, location, conn, additional_variables=[]):
     """
     Get and return top five disease of a type
 
@@ -84,7 +84,7 @@ def get_disease_types(category, start_date, end_date, location, conn):
 
     """
     diseases = get_variables_category(category, start_date,
-                                      end_date, location, conn)
+                                      end_date, location, conn, additional_variables=additional_variables)
     tot_n = sum(diseases.values())
     if tot_n == 0:
         tot_n = 1
@@ -128,13 +128,11 @@ def top(values, number=5):
     return sorted(values, key=lambda k: (-values[k], k))[:number]
 
 
-
-
-#  Common variables_instance
+# Common variables_instance
 variables_instance = Variables()
 
 
-def get_variables_category(category, start_date, end_date, location, conn, use_ids=False):
+def get_variables_category(category, start_date, end_date, location, conn, use_ids=False, additional_variables=[]):
     """
     Aggregate category between dates and with location
 
@@ -150,13 +148,13 @@ def get_variables_category(category, start_date, end_date, location, conn, use_i
        aggregate_category(dict): dict with {variable: number, variable2: number3, ...}
     """
     variables = variables_instance.get(category)
-
+    logging.warning(additional_variables)
     return_data = {}
     for variable in variables.keys():
-        r = query_sum(db, [variable],
+        r = query_sum(db, [variable] + additional_variables,
                       start_date,
                       end_date,
-                      location,
+                      location
                       )["total"]
         if use_ids:
             return_data[variable] = r
@@ -2108,7 +2106,7 @@ class NcdPublicHealth(Resource):
         start_date, end_date = fix_dates(start_date, end_date)
         end_date_limit = end_date + timedelta(days=1)
         ret = {}
-
+        extra_var = ['vis_4']
         # meta data
         ret["meta"] = {
             "uuid": str(uuid.uuid4()),
@@ -2138,19 +2136,32 @@ class NcdPublicHealth(Resource):
         ret["data"]["clinic_num"] = tot_clinics.get(location)["total"]
         ret["data"]["global_clinic_num"] = tot_clinics.get(1)["total"]
 
-        total_cases = query_sum(db, ["prc_2"], start_date, end_date_limit, location)["total"]
+        total_cases = query_sum(
+            db,
+            ["visit_prc_2"] + extra_var,
+            start_date,
+            end_date_limit,
+            location
+        )["total"]
+
         ret["data"]["total_cases"] = int(round(total_cases))
         if total_cases == 0:
             total_cases = 1
         query_variable = QueryVariable()
-        gender = query_variable.get("prc_2", "gender",
-                                    end_date=end_date_limit.isoformat(),
-                                    start_date=start_date.isoformat(),
-                                    only_loc=location)
-        age = query_variable.get("prc_2", "ncd_age",
-                                 end_date=end_date_limit.isoformat(),
-                                 start_date=start_date.isoformat(),
-                                 only_loc=location)
+        gender = query_variable.get(
+            "visit_prc_2", "visit_gender",
+            end_date=end_date_limit.isoformat(),
+            start_date=start_date.isoformat(),
+            only_loc=location,
+            additional_variables=extra_var
+        )
+        age = query_variable.get(
+            "visit_prc_2", "visit_ncd_age",
+            end_date=end_date_limit.isoformat(),
+            start_date=start_date.isoformat(),
+            only_loc=location,
+            additional_variables=extra_var
+        )
         female = gender["Female"]["total"]
         male = gender["Male"]["total"]
         ret["data"]["gender"] = [
@@ -2165,16 +2176,45 @@ class NcdPublicHealth(Resource):
         ret["data"]["percent_cases_male"] = male / total_cases * 100
         ret["data"]["percent_cases_female"] = female / total_cases * 100
 
-        smoking = query_sum(db, ["prc_2", "smo_4"], start_date, end_date, location)["total"]
-        tot_diabetes = query_sum(db, ["ncd_1"], start_date, end_date, location)["total"]
-        tot_hypertension = query_sum(db, ["ncd_2"], start_date, end_date, location)["total"]
+        smoking = query_sum(
+            db,
+            ["visit_prc_2", "visit_smo_4"]+extra_var,
+            start_date,
+            end_date,
+            location
+        )["total"]
+        tot_diabetes = query_sum(
+            db,
+            ["visit_ncd_1"]+extra_var,
+            start_date,
+            end_date,
+            location
+        )["total"]
+        tot_hypertension = query_sum(
+            db,
+            ["visit_ncd_2"]+extra_var,
+            start_date,
+            end_date,
+            location
+        )["total"]
 
         if tot_diabetes == 0:
             tot_diabetes = 1
         if tot_hypertension == 0:
             tot_hypertension = 1
-        diabetes_with_hba1c = query_sum(db, ["ncd_1", "lab_8"], start_date, end_date,location)["total"]
-        hypertension_with_bp = query_sum(db, ["ncd_2", "lab_1"], start_date, end_date, location)["total"]
+        diabetes_with_hba1c = query_sum(
+            db,
+            ["visit_ncd_1", "visit_lab_8"]+extra_var,
+            start_date,
+            end_date,
+            location
+        )["total"]
+        hypertension_with_bp = query_sum(
+            db,
+            ["visit_ncd_2", "visit_lab_1"]+extra_var,
+            start_date, end_date,
+            location
+        )["total"]
 
         ret["data"]["public_health_indicators"] = [
             make_dict("Cases Reported", total_cases, 100)]
@@ -2195,10 +2235,13 @@ class NcdPublicHealth(Resource):
                       hypertension_with_bp,
                       hypertension_with_bp / tot_hypertension * 100))
 
-        medicines = query_variable.get("prc_2", "medicine",
-                                     end_date=end_date_limit.isoformat(),
-                                     start_date=start_date.isoformat(),
-                                     only_loc=location, use_ids=True)
+        medicines = query_variable.get(
+            "visit_prc_2", "visit_medicine",
+            end_date=end_date_limit.isoformat(),
+            start_date=start_date.isoformat(),
+            only_loc=location, use_ids=True,
+            additional_variables=extra_var
+        )
         if "med_1" in medicines and "med_2" in medicines:
             tot_med = medicines["med_1"]["total"]
             if tot_med == 0:
@@ -2209,8 +2252,11 @@ class NcdPublicHealth(Resource):
                           medicines["med_2"]["total"] / tot_med * 100))
         else:
             ret["data"]["public_health_indicators"].append(
-                make_dict(gettext("Availability of prescribed medicines"),
-                          0,0))
+                make_dict(
+                    gettext("Availability of prescribed medicines"),
+                    0, 0
+                )
+            )
 
         # Reporting sites
         locs = get_locations(db.session)
@@ -2219,26 +2265,32 @@ class NcdPublicHealth(Resource):
             if l.parent_location and int(l.parent_location) == int(location):
                 if l.level == "clinic" and l.case_report == 0:
                     continue
-                num = query_sum(db , ["prc_2"],
+                num = query_sum(db, ["visit_prc_2"]+extra_var,
                                 start_date,
                                 end_date_limit, l.id)["total"]
                 ret["data"]["reporting_sites"].append(
                     make_dict(l.name,
                               num,
                               num / total_cases * 100))
-        ret["data"]["reporting_sites"].sort(key=lambda x: x["quantity"], reverse=True)
+        ret["data"]["reporting_sites"].sort(
+            key=lambda x: x["quantity"],
+            reverse=True
+        )
         # Demographics
         ret["data"]["demographics"] = []
-        age =  query_variable.get("prc_2","ncd_age_gender",
-                                  end_date=end_date_limit.isoformat(),
-                                  start_date=start_date.isoformat(),
-                                  only_loc=location)
+        age = query_variable.get(
+            "visit_prc_2", "visit_ncd_age_gender",
+            end_date=end_date_limit.isoformat(),
+            start_date=start_date.isoformat(),
+            only_loc=location,
+            additional_variables=extra_var
+        )
 
         age_gender = {}
         tot = sum([group["total"] for group in age.values()])
 
         for a in age:
-            gender,ac = a.split(" ")
+            gender, ac = a.split(" ")
             if ac in age_gender.keys():
                 age_gender[ac][gender] = age[a]["total"]
             else:
@@ -2249,20 +2301,22 @@ class NcdPublicHealth(Resource):
             a = age_variables[age_key]["name"]
             if a in age_gender.keys():
                 a_sum = sum(age_gender[a].values())
-                a_perc = a_sum / tot *100 if tot != 0 else 0
+                a_perc = a_sum/tot*100 if tot != 0 else 0
                 if a_sum == 0:
                     a_sum = 1
-                ret["data"]["demographics"].append(
-                    {"age": a,
-                     "quantity": age_gender[a]["Male"] + age_gender[a]["Female"],
-                     "percent": round(a_perc, 2),
-                     "male": {"quantity": age_gender[a]["Male"],
-                              "percent": age_gender[a]["Male"] / a_sum * 100
-                     },
-                     "female":{"quantity": age_gender[a]["Female"],
-                               "percent": age_gender[a]["Female"]/float(a_sum)*100
-                     }
-                    })
+                ret["data"]["demographics"].append({
+                    "age": a,
+                    "quantity": age_gender[a]["Male"] + age_gender[a]["Female"],
+                    "percent": round(a_perc, 2),
+                    "male": {
+                        "quantity": age_gender[a]["Male"],
+                        "percent": age_gender[a]["Male"]/a_sum*100
+                    },
+                    "female": {
+                        "quantity": age_gender[a]["Female"],
+                        "percent": age_gender[a]["Female"]/float(a_sum)*100
+                    }
+                })
 
         # Nationality
         nationality_total = query_variable.get(
@@ -2277,7 +2331,7 @@ class NcdPublicHealth(Resource):
             nationality[nat] = nationality_total[nat]["total"]
         tot_nat = sum(nationality.values())
         if tot_nat == 0:
-            tot_nat=1
+            tot_nat = 1
         ret["data"]["nationality"] = []
         for nat in sorted(nationality, key=nationality.get, reverse=True):
             if nationality[nat] > 0:
@@ -2286,10 +2340,13 @@ class NcdPublicHealth(Resource):
                               nationality[nat],
                               nationality[nat] / tot_nat * 100))
         # Status
-        status_total = query_variable.get("prc_2","status",
-                                               end_date=end_date_limit.isoformat(),
-                                               start_date=start_date.isoformat(),
-                                               only_loc=location)
+        status_total = query_variable.get(
+            "visit_prc_2", "visit_status",
+            end_date=end_date_limit.isoformat(),
+            start_date=start_date.isoformat(),
+            only_loc=location,
+            additional_variables=extra_var
+        )
         status = {}
         for sta in status_total.keys():
             status[sta] = status_total[sta]["total"]
@@ -2303,21 +2360,22 @@ class NcdPublicHealth(Resource):
                           status[sta],
                           status[sta] / tot_sta * 100))
 
-
-
-        ret["data"]["morbidity_non_communicable_icd"] = get_disease_types("ncd", start_date, end_date_limit, location, conn)
-        ret["data"]["morbidity_non_communicable_ncd_tab"] = get_disease_types("ncd_tab", start_date, end_date_limit, location, conn)
+        ret["data"]["morbidity_non_communicable_ncd_tab"] = get_disease_types(
+            "visit_ncd_tab", start_date, end_date_limit, location, conn,
+            additional_variables=extra_var
+        )
 
         #  Map
         clin = Clinics()
         ret["data"]["map"] = clin.get(1)
+        regions = [
+            loc for loc in locs.keys() if locs[loc].parent_location == 1
+        ]
 
-        regions = [loc for loc in locs.keys()
-                   if locs[loc].parent_location == 1]
         # Diabets map
         ir = IncidenceRate()
-        dia_incidence = ir.get('ncd_1', 'region', mult_factor=1000)
-        hyp_incidence = ir.get('ncd_2', 'region', mult_factor=1000)
+        dia_incidence = ir.get('visit_ncd_1', 'region', mult_factor=1000)
+        hyp_incidence = ir.get('visit_ncd_2', 'region', mult_factor=1000)
         mapped_dia_incidence = {}
         mapped_hyp_incidence = {}
 
@@ -2339,7 +2397,6 @@ class NcdPublicHealth(Resource):
             "figure_diabetes_map":  mapped_dia_incidence,
             "figure_hyp_map":  mapped_hyp_incidence
         })
-
 
         return ret
 
