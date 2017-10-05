@@ -68,7 +68,7 @@ def mean(input_list):
     else:
         return None
 
-def get_disease_types(category, start_date, end_date, location, conn):
+def get_disease_types(category, start_date, end_date, location, conn, additional_variables=[]):
     """
     Get and return top five disease of a type
 
@@ -84,7 +84,7 @@ def get_disease_types(category, start_date, end_date, location, conn):
 
     """
     diseases = get_variables_category(category, start_date,
-                                      end_date, location, conn)
+                                      end_date, location, conn, additional_variables=additional_variables)
     tot_n = sum(diseases.values())
     if tot_n == 0:
         tot_n = 1
@@ -128,13 +128,11 @@ def top(values, number=5):
     return sorted(values, key=lambda k: (-values[k], k))[:number]
 
 
-
-
-#  Common variables_instance
+# Common variables_instance
 variables_instance = Variables()
 
 
-def get_variables_category(category, start_date, end_date, location, conn, use_ids=False):
+def get_variables_category(category, start_date, end_date, location, conn, use_ids=False, additional_variables=[]):
     """
     Aggregate category between dates and with location
 
@@ -150,13 +148,12 @@ def get_variables_category(category, start_date, end_date, location, conn, use_i
        aggregate_category(dict): dict with {variable: number, variable2: number3, ...}
     """
     variables = variables_instance.get(category)
-
     return_data = {}
     for variable in variables.keys():
-        r = query_sum(db, [variable],
+        r = query_sum(db, [variable] + additional_variables,
                       start_date,
                       end_date,
-                      location,
+                      location
                       )["total"]
         if use_ids:
             return_data[variable] = r
@@ -389,7 +386,7 @@ def generateMHtable(table_type, start_date, end_date, location, y_category_varia
             sub_keys_in_dict = 0
 
         for i in range(0, sub_keys_in_dict):
-            try: 
+            try:
                 national_totals[sub_category_name].append(y_category_dict[x_variables_name][0][sub_category_name][i])
                 national_totals[sub_category_name + "_values"].append(sum(item[sub_category_name + "_values"][i] for item in y_category_dict[x_variables_name]))
             except IndexError:
@@ -454,7 +451,7 @@ def generateMHtable(table_type, start_date, end_date, location, y_category_varia
         except IndexError:
             national_totals[sub_category_name].append(0)
             national_totals[sub_category_name + "_values"].append(0)
-            
+
 
     # Calculate national/age total percentages
     for i in range(1,sub_category_keys_in_dict,2):
@@ -786,7 +783,7 @@ class MhReport(Resource):
 
         result_new = get_variables("mh_result_new")
         result_return = get_variables("mh_result_return")
-        
+
         #Prepare region data to be in the same form as a visit list
         region_variables = dict()
         for region_id in regions:
@@ -826,7 +823,7 @@ class MhReport(Resource):
             "regions",  age_case_variables, "age_categories",
             gender_case_variables,
             "gender")
-        
+
         ret['table_6_data'] = generateMHtable(
             "visit", start_date, end_date, location, region_variables,
             "regions",  age_visit_variables, "age_categories",
@@ -837,18 +834,18 @@ class MhReport(Resource):
             "mhgap",  nationality_case_variables, "nationalities",
             gender_case_variables,
             "gender", require_variable="mh_provider_mhgap")
-        
+
         ret['table_8_data'] = generateMHtable(
             "case", start_date, end_date, location, mhgap_variables,
             "mhgap",  age_case_variables, "age_categories",
             gender_case_variables, "gender",require_variable="mh_provider_mhgap")
-        
+
         ret['table_9_data'] = generateMHtable(
             "case", start_date, end_date, location, icd_codes_variables,
             "mh_icd_block",  nationality_case_variables, "nationalities",
             gender_case_variables,
             "gender",require_variable="mh_provider_icd")
-        
+
         ret['table_10_data'] = generateMHtable(
             "case", start_date, end_date, location, icd_codes_variables,
             "mh_icd_block",  age_case_variables, "age_categories",
@@ -866,15 +863,15 @@ class MhReport(Resource):
             "case", start_date, end_date, location, service_provider_variables,
             "service_provider",  age_case_variables, "age_categories",
             gender_case_variables, "gender")
-       
-       
+
+
         # Transposing
-        
+
         ret['table_1_data'] = transposeMHtable(ret['table_1_data'], "nationalities","visit_types",'name',"type")
         ret['table_2_data'] = transposeMHtable(ret['table_2_data'], "age_categories","visit_types",'name',"type")
         ret['table_3_data'] = transposeMHtable(ret['table_3_data'], "nationalities","regions",'name',"type")
         ret['table_4_data'] = transposeMHtable(ret['table_4_data'], "nationalities","regions",'name',"type")
-        
+
         ret['table_5_data'] = transposeMHtable(ret['table_5_data'], "age_categories","regions",'name',"type")
         ret['table_6_data'] = transposeMHtable(ret['table_6_data'], "age_categories","regions",'name',"type")
         ret['table_7_data'] = transposeMHtable(ret['table_7_data'], "nationalities","mhgap",'name',"type")
@@ -886,9 +883,8 @@ class MhReport(Resource):
         ret['table_12_data'] = transposeMHtable(ret['table_12_data'], "age_categories", "mh_result_return",'name',"type")
 
         ret['table_13_data'] = transposeMHtable(ret['table_13_data'], "age_categories","service_provider",'name',"type")
-        print(ret["table_13_data"])
         return ret
- 
+
 class CdReport(Resource):
     """
     Communicable Disease Report
@@ -984,7 +980,7 @@ class CdReport(Resource):
                     continue
                 else:
                     report_status = "suspected"
-            
+
             epi_week = ew.get(a["date"].isoformat())["epi_week"]
             if epi_week == 53:
                 if a["date"].month == 1:
@@ -1156,8 +1152,7 @@ class Pip(Resource):
                                          start_date=start_date.isoformat(),
                                          only_loc=location,
                                          use_ids=True)
-        print("pip_followup:")
-        print(pip_followup)
+
         total_followup = pip_followup["pif_1"]["total"]
         icu = pip_followup["pif_3"]["total"]
         ventilated = pip_followup["pif_4"]["total"]
@@ -1692,7 +1687,7 @@ class CdPublicHealth(Resource):
         in_map = {}
         # Structure the data.
         reporting_sites = []
-       
+
         for area in areas:
             if area not in incidence:
                 in_map[locs[area].name] = 0
@@ -1739,7 +1734,7 @@ class CdPublicHealth(Resource):
                               num,
                               num / total_cases * 100))
         ret["data"]["reporting_sites"].sort(key=lambda x: x["quantity"], reverse=True)
-        
+
 
 
         # Demographics
@@ -1748,7 +1743,7 @@ class CdPublicHealth(Resource):
                                   end_date=end_date_limit.isoformat(),
                                   start_date=start_date.isoformat(),
                                   only_loc=location)
-        
+
         age_gender={}
         tot = sum([group["total"] for group in age.values()])
         for a in age:
@@ -1757,7 +1752,7 @@ class CdPublicHealth(Resource):
                 age_gender[ac][gender] = age[a]["total"]
             else:
                 age_gender[ac] = {gender: age[a]["total"]}
-        print(age_gender)
+
         age_variables = variables_instance.get("age")
         for age_key in sorted(age_variables.keys()):
             a = age_variables[age_key]["name"]
@@ -1913,7 +1908,7 @@ class CdPublicHealthSom(Resource):
         # Determine zone
         logo_dict = {"Puntland": "moh_pl.png",
                      "Somaliland": "moh_sl.png"}
-        zone_name = locs[int(location)].name        
+        zone_name = locs[int(location)].name
         if location == "1":
             #All of somalia
             logo = "som_moh.png"
@@ -1922,7 +1917,7 @@ class CdPublicHealthSom(Resource):
             zone_location = find_level(location, "zone", locs)
             zone_name = locs[zone_location].name
             logo = logo_dict.get(zone_name, "som_moh.png")
-        
+
 
         # This report is nearly the same as the CDPublicHealth Report
         # Let's just get that report and tweak it slightly.
@@ -1978,10 +1973,10 @@ class CdPublicHealthSom(Resource):
 
         # Delete unwanted indicators.
         # leaving only Case Reported and Alerts Investigated
-        del ret["data"]["public_health_indicators"][0:3] #TODO, we are relying here on the structure of standard profile report. 
+        del ret["data"]["public_health_indicators"][0:3] #TODO, we are relying here on the structure of standard profile report.
 
         # IMCI algorithm indicator
-  
+
         ret["data"]["public_health_indicators"].append(
             make_dict(gettext("Cases Reported"),
                       total_cases,
@@ -2083,9 +2078,8 @@ class CdPublicHealthSom(Resource):
         clin = Clinics()
         ret["data"]["map"] = clin.get(zone_location)
 
-        
-        return ret
 
+        return ret
 
 
 class NcdPublicHealth(Resource):
@@ -2109,7 +2103,7 @@ class NcdPublicHealth(Resource):
         start_date, end_date = fix_dates(start_date, end_date)
         end_date_limit = end_date + timedelta(days=1)
         ret = {}
-
+        extra_var = ['vis_4']
         # meta data
         ret["meta"] = {
             "uuid": str(uuid.uuid4()),
@@ -2139,19 +2133,32 @@ class NcdPublicHealth(Resource):
         ret["data"]["clinic_num"] = tot_clinics.get(location)["total"]
         ret["data"]["global_clinic_num"] = tot_clinics.get(1)["total"]
 
-        total_cases = query_sum(db, ["prc_2"], start_date, end_date_limit, location)["total"]
+        total_cases = query_sum(
+            db,
+            ["visit_prc_2"] + extra_var,
+            start_date,
+            end_date_limit,
+            location
+        )["total"]
+
         ret["data"]["total_cases"] = int(round(total_cases))
         if total_cases == 0:
             total_cases = 1
         query_variable = QueryVariable()
-        gender = query_variable.get("prc_2", "gender",
-                                    end_date=end_date_limit.isoformat(),
-                                    start_date=start_date.isoformat(),
-                                    only_loc=location)
-        age = query_variable.get("prc_2", "ncd_age",
-                                 end_date=end_date_limit.isoformat(),
-                                 start_date=start_date.isoformat(),
-                                 only_loc=location)
+        gender = query_variable.get(
+            "visit_prc_2", "visit_gender",
+            end_date=end_date_limit.isoformat(),
+            start_date=start_date.isoformat(),
+            only_loc=location,
+            additional_variables=extra_var
+        )
+        age = query_variable.get(
+            "visit_prc_2", "visit_ncd_age",
+            end_date=end_date_limit.isoformat(),
+            start_date=start_date.isoformat(),
+            only_loc=location,
+            additional_variables=extra_var
+        )
         female = gender["Female"]["total"]
         male = gender["Male"]["total"]
         ret["data"]["gender"] = [
@@ -2165,30 +2172,46 @@ class NcdPublicHealth(Resource):
 
         ret["data"]["percent_cases_male"] = male / total_cases * 100
         ret["data"]["percent_cases_female"] = female / total_cases * 100
-        less_5yo = query_variable.get(
-            "prc_2", "under_five",
-            end_date=end_date_limit.isoformat(),
-            start_date=start_date.isoformat(),
-            only_loc=location
-        )
-        less_5yo = sum(less_5yo[k]["total"] for k in less_5yo.keys())
 
-        ret["data"]["percent_cases_lt_5yo"] = less_5yo / total_cases * 100
-        if less_5yo == 0:
-            less_5yo = 1
-
-
-        smoking = query_sum(db, ["prc_2", "smo_4"], start_date, end_date, location)["total"]
-        tot_diabetes = query_sum(db, ["ncd_1"], start_date, end_date, location)["total"]
-        tot_hypertension = query_sum(db, ["ncd_2"], start_date, end_date, location)["total"]
-
+        smoking = query_sum(
+            db,
+            ["visit_prc_2", "visit_smo_4"]+extra_var,
+            start_date,
+            end_date,
+            location
+        )["total"]
+        tot_diabetes = query_sum(
+            db,
+            ["visit_ncd_1"]+extra_var,
+            start_date,
+            end_date,
+            location
+        )["total"]
+        tot_hypertension = query_sum(
+            db,
+            ["visit_ncd_2"]+extra_var,
+            start_date,
+            end_date,
+            location
+        )["total"]
 
         if tot_diabetes == 0:
             tot_diabetes = 1
         if tot_hypertension == 0:
             tot_hypertension = 1
-        diabetes_with_hba1c = query_sum(db, ["ncd_1", "lab_8"], start_date, end_date,location)["total"]
-        hypertension_with_bp = query_sum(db, ["ncd_2", "lab_1"], start_date, end_date, location)["total"]
+        diabetes_with_hba1c = query_sum(
+            db,
+            ["visit_ncd_1", "visit_lab_8"]+extra_var,
+            start_date,
+            end_date,
+            location
+        )["total"]
+        hypertension_with_bp = query_sum(
+            db,
+            ["visit_ncd_2", "visit_lab_1"]+extra_var,
+            start_date, end_date,
+            location
+        )["total"]
 
         ret["data"]["public_health_indicators"] = [
             make_dict("Cases Reported", total_cases, 100)]
@@ -2209,10 +2232,13 @@ class NcdPublicHealth(Resource):
                       hypertension_with_bp,
                       hypertension_with_bp / tot_hypertension * 100))
 
-        medicines = query_variable.get("prc_2", "medicine",
-                                     end_date=end_date_limit.isoformat(),
-                                     start_date=start_date.isoformat(),
-                                     only_loc=location, use_ids=True)
+        medicines = query_variable.get(
+            "visit_prc_2", "visit_medicine",
+            end_date=end_date_limit.isoformat(),
+            start_date=start_date.isoformat(),
+            only_loc=location, use_ids=True,
+            additional_variables=extra_var
+        )
         if "med_1" in medicines and "med_2" in medicines:
             tot_med = medicines["med_1"]["total"]
             if tot_med == 0:
@@ -2223,8 +2249,11 @@ class NcdPublicHealth(Resource):
                           medicines["med_2"]["total"] / tot_med * 100))
         else:
             ret["data"]["public_health_indicators"].append(
-                make_dict(gettext("Availability of prescribed medicines"),
-                          0,0))
+                make_dict(
+                    gettext("Availability of prescribed medicines"),
+                    0, 0
+                )
+            )
 
         # Reporting sites
         locs = get_locations(db.session)
@@ -2233,27 +2262,32 @@ class NcdPublicHealth(Resource):
             if l.parent_location and int(l.parent_location) == int(location):
                 if l.level == "clinic" and l.case_report == 0:
                     continue
-                num = query_sum(db , ["prc_2"],
+                num = query_sum(db, ["visit_prc_2"]+extra_var,
                                 start_date,
                                 end_date_limit, l.id)["total"]
                 ret["data"]["reporting_sites"].append(
                     make_dict(l.name,
                               num,
                               num / total_cases * 100))
-        ret["data"]["reporting_sites"].sort(key=lambda x: x["quantity"], reverse=True)
+        ret["data"]["reporting_sites"].sort(
+            key=lambda x: x["quantity"],
+            reverse=True
+        )
         # Demographics
         ret["data"]["demographics"] = []
-        age =  query_variable.get("prc_2","ncd_age_gender",
-                                  end_date=end_date_limit.isoformat(),
-                                  start_date=start_date.isoformat(),
-                                  only_loc=location)
+        age = query_variable.get(
+            "visit_prc_2", "visit_ncd_age_gender",
+            end_date=end_date_limit.isoformat(),
+            start_date=start_date.isoformat(),
+            only_loc=location,
+            additional_variables=extra_var
+        )
 
-        logging.warning(age)
-        age_gender={}
+        age_gender = {}
         tot = sum([group["total"] for group in age.values()])
 
         for a in age:
-            gender,ac = a.split(" ")
+            gender, ac = a.split(" ")
             if ac in age_gender.keys():
                 age_gender[ac][gender] = age[a]["total"]
             else:
@@ -2264,32 +2298,38 @@ class NcdPublicHealth(Resource):
             a = age_variables[age_key]["name"]
             if a in age_gender.keys():
                 a_sum = sum(age_gender[a].values())
-                a_perc = a_sum / tot *100 if tot != 0 else 0
+                a_perc = a_sum/tot*100 if tot != 0 else 0
                 if a_sum == 0:
                     a_sum = 1
-                ret["data"]["demographics"].append(
-                    {"age": a,
-                     "quantity": age_gender[a]["Male"] + age_gender[a]["Female"],
-                     "percent": round(a_perc, 2),
-                     "male": {"quantity": age_gender[a]["Male"],
-                              "percent": age_gender[a]["Male"] / a_sum * 100
-                     },
-                     "female":{"quantity": age_gender[a]["Female"],
-                               "percent": age_gender[a]["Female"]/float(a_sum)*100
-                     }
-                    })
+                ret["data"]["demographics"].append({
+                    "age": a,
+                    "quantity": age_gender[a]["Male"] + age_gender[a]["Female"],
+                    "percent": round(a_perc, 2),
+                    "male": {
+                        "quantity": age_gender[a]["Male"],
+                        "percent": age_gender[a]["Male"]/a_sum*100
+                    },
+                    "female": {
+                        "quantity": age_gender[a]["Female"],
+                        "percent": age_gender[a]["Female"]/float(a_sum)*100
+                    }
+                })
 
         # Nationality
-        nationality_total = query_variable.get("prc_2","nationality",
-                                  end_date=end_date_limit.isoformat(),
-                                  start_date=start_date.isoformat(),
-                                  only_loc=location)
+        nationality_total = query_variable.get(
+            "visit_prc_2", "visit_nationality",
+            end_date=end_date_limit.isoformat(),
+            start_date=start_date.isoformat(),
+            only_loc=location,
+            additional_variables=extra_var
+        )
+
         nationality = {}
         for nat in nationality_total.keys():
             nationality[nat] = nationality_total[nat]["total"]
         tot_nat = sum(nationality.values())
         if tot_nat == 0:
-            tot_nat=1
+            tot_nat = 1
         ret["data"]["nationality"] = []
         for nat in sorted(nationality, key=nationality.get, reverse=True):
             if nationality[nat] > 0:
@@ -2298,10 +2338,13 @@ class NcdPublicHealth(Resource):
                               nationality[nat],
                               nationality[nat] / tot_nat * 100))
         # Status
-        status_total = query_variable.get("prc_2","status",
-                                               end_date=end_date_limit.isoformat(),
-                                               start_date=start_date.isoformat(),
-                                               only_loc=location)
+        status_total = query_variable.get(
+            "visit_prc_2", "visit_status",
+            end_date=end_date_limit.isoformat(),
+            start_date=start_date.isoformat(),
+            only_loc=location,
+            additional_variables=extra_var
+        )
         status = {}
         for sta in status_total.keys():
             status[sta] = status_total[sta]["total"]
@@ -2315,21 +2358,22 @@ class NcdPublicHealth(Resource):
                           status[sta],
                           status[sta] / tot_sta * 100))
 
-
-
-        ret["data"]["morbidity_non_communicable_icd"] = get_disease_types("ncd", start_date, end_date_limit, location, conn)
-        ret["data"]["morbidity_non_communicable_ncd_tab"] = get_disease_types("ncd_tab", start_date, end_date_limit, location, conn)
+        ret["data"]["morbidity_non_communicable_ncd_tab"] = get_disease_types(
+            "visit_ncd_tab", start_date, end_date_limit, location, conn,
+            additional_variables=extra_var
+        )
 
         #  Map
         clin = Clinics()
         ret["data"]["map"] = clin.get(1)
+        regions = [
+            loc for loc in locs.keys() if locs[loc].parent_location == 1
+        ]
 
-        regions = [loc for loc in locs.keys()
-                   if locs[loc].parent_location == 1]
         # Diabets map
         ir = IncidenceRate()
-        dia_incidence = ir.get('ncd_1', 'region', mult_factor=1000)
-        hyp_incidence = ir.get('ncd_2', 'region', mult_factor=1000)
+        dia_incidence = ir.get('visit_ncd_1', 'region', mult_factor=1000)
+        hyp_incidence = ir.get('visit_ncd_2', 'region', mult_factor=1000)
         mapped_dia_incidence = {}
         mapped_hyp_incidence = {}
 
@@ -2351,7 +2395,6 @@ class NcdPublicHealth(Resource):
             "figure_diabetes_map":  mapped_dia_incidence,
             "figure_hyp_map":  mapped_hyp_incidence
         })
-
 
         return ret
 
@@ -3324,7 +3367,7 @@ class AFROBulletin(Resource):
         conn = db.engine.connect()
 
         # WEEKLY HIGHLIGHTS-----------------------------------------------------------------
-        
+
         # Get single variables
         ret["data"]["weekly_highlights"] = get_variables_category(
             'afro',
@@ -3543,7 +3586,6 @@ class AFROBulletin(Resource):
                 return (key,
                         100 * (simple.get(key, 0) + severe.get(key, 0)) / rdt.get(key, 0))
             except ZeroDivisionError:
-                print("hei")
                 return (key, 0)
 
         ret["data"]["figure_malaria"] = {
@@ -3702,8 +3744,6 @@ class AFROBulletin(Resource):
             priority_disease_cases_total = priority_disease_cases_q["total"]
 
             # add regional case breakdown
-
-            print(disease, priority_disease_cases)
             for region in priority_disease_cases:
                 try:
                     ret["data"]["table_priority_diseases"][disease][locs[region].name] = priority_disease_cases[region]
@@ -3827,8 +3867,8 @@ class AFROBulletin(Resource):
 
         nr = NonReporting().get("reg_1", 1)["clinics"]
 
-        
-        
+
+
         for district in districts:
             try:
                 n_clin = tot_clinics.get(district)["total"]
@@ -3932,7 +3972,7 @@ class PlagueReport(Resource):
         plague_cases = alerts.get_alerts({"location": location, "reason": plague_code})
 
         # Figure 1: Epi curve for plague cases
-        # Figure 2: Status breakdown 
+        # Figure 2: Status breakdown
         fig_1 = {"weeks": weeks,
                  "total": list(data_list)}
         fig_2 = {"weeks": weeks,
@@ -3952,7 +3992,7 @@ class PlagueReport(Resource):
                 continue
             else:
                 report_status = "suspected"
-            
+
             epi_week = ew.get(case["date"].isoformat())["epi_week"]
             if epi_week == 53:
                 if case["date"].month == 1:
@@ -3968,7 +4008,7 @@ class PlagueReport(Resource):
 
                 if ((case_year == current_year and epi_week < start_week) or
                     (case_year == current_year -1 and epi_week >= start_week)):
-                  
+
                     fig_2[report_status][weeks.index(epi_week)] += 1
 
                     fig_1["total"][weeks.index(epi_week)] += 1
@@ -3981,12 +4021,12 @@ class PlagueReport(Resource):
         if total == 0:
             total = 1
         ret["data"]["mortality_rate"] = (deaths / total) * 1000
-        
-                    
-       
+
+
+
         first_day_of_season = epi_week_start(current_year - 1, start_week)
         end_date_season = epi_week_start(current_year, start_week) - timedelta(days=1)
-        
+
 
         # FIGURE 3: MAP of plague cases
         plague_cases = {}
@@ -4012,7 +4052,6 @@ class PlagueReport(Resource):
                         }
                     }
                 )
-        print(plague_cases_ret)
         ret["data"].update({"plague_map": plague_cases})
 
         plague_top_3 = top(plague_cases_ret, 3)
@@ -4024,7 +4063,7 @@ class PlagueReport(Resource):
                 'number': plague_cases_ret[dist]
             })
         ret["data"]["top_plague_dists"] = plague_top
-        
+
         return ret
 class EBSReport(Resource):
     """
@@ -4119,7 +4158,7 @@ class EBSReport(Resource):
         ret["data"]["disregarded_events"] = disregarded
 
 
-        
+
         event_types = get_variables_category("ebs_event_type", start_date, end_date_limit,
                                               location, db)
         event_risks = get_variables_category("ebs_risk_level", start_date, end_date_limit,
@@ -4163,7 +4202,7 @@ class EBSReport(Resource):
 
         ret["data"]["records"].sort(key=lambda element: element["reported_date"],
                                     reverse=True)
-            
+
         mv = MapVariable()
 
         ebs_map = mv.get("ebs_case", location=location, start_date=start_date.isoformat(),
@@ -4263,7 +4302,7 @@ class CTCReport(Resource):
         ret['summary'].update({
             'cholera_cases_o5': cholera_cases_o5
             })
-        
+
         ret['summary'].update({
             'cholera_deaths': cholera_deaths
             })
@@ -4283,7 +4322,7 @@ class CTCReport(Resource):
             ret["summary"][p] = value * 100
 
 
-        
+
         # FIGURE 2: MAP of cholera cases
         cholera_cases_map = {}
         cholera_cases_ret = latest_query(
@@ -4311,7 +4350,7 @@ class CTCReport(Resource):
                 )
         ret["data"].update({"cholera_map": cholera_cases_map})
 
-        
+
 
 
 
@@ -4368,7 +4407,7 @@ class CTCReport(Resource):
                                     Data.clinic).filter(*conditions).order_by(
                                              Data.clinic).order_by(Data.date.desc())
 
-        
+
         latest_ctc = {}
         surveyed_clinics_map = []
         non_surveyed_clinics_map = []
@@ -4475,7 +4514,7 @@ class CTCReport(Resource):
         }})
 
         #In page numbering take into account amount of pages of table of content. Depends on styling etc, so it is a MASSIVE HACK indeed.
-        noOfContentPages = overview_data["baseline"]["Y"] / 45 
+        noOfContentPages = overview_data["baseline"]["Y"] / 45
         ret["contents_offset"] = ret["contents_offset"] + math.ceil( noOfContentPages )
 
         return ret
@@ -4568,7 +4607,7 @@ class SCReport(Resource):
         nutrition_deaths = latest_query(db, nutrition_deaths_variable,
                                         nutrition_var, start_date, end_date_limit,
                                         location, weeks=True, week_offset=1)
-        
+
         nutrition_cases_o5 = {
             "total": nutrition_cases["total"] - nutrition_cases_u5["total"]
         }
@@ -4583,7 +4622,7 @@ class SCReport(Resource):
         ret['summary'].update({
             'nutrition_cases_o5': nutrition_cases_o5
             })
-        
+
         ret['summary'].update({
             'nutrition_deaths': nutrition_deaths
             })
@@ -4592,7 +4631,7 @@ class SCReport(Resource):
                              start_date, end_date_limit, location,
                              weeks=True)["weeks"].get(epi_week - 1, 0)
         ret["summary"]["surveyed"] = total
-        
+
         # FIGURE 2: MAP of nutrition cases
         nutrition_cases_map = {}
         nutrition_cases_ret = latest_query(
@@ -4675,9 +4714,7 @@ class SCReport(Resource):
         for r in query_non_sc:
             if nutrition_var not in r.variables:
                 latest_non_sc[r.clinic] = r
-        print(latest_non_sc.keys())
-                
-            
+
         overview_data.setdefault("baseline", {"Y": 0, "N": 0})
         overview_data.setdefault("surveyed_last_week", {"Y": 0, "N": 0})
 
@@ -4760,7 +4797,7 @@ class SCReport(Resource):
                     if "sc_beds_sufficient" in sc_data.variables:
                         overview_data["sc_beds_sufficient"]["Y"] += 1
                 else:
-                    
+
                     if sc.id in latest_non_sc:
                         clinic_data["status"] = "Not SC"
                         clinic_data["services"] = []
@@ -4794,7 +4831,7 @@ class SCReport(Resource):
         }})
 
         #In page numbering take into account amount of pages of table of content. Depends on styling etc, so it is a MASSIVE HACK indeed.
-        noOfContentPages = overview_data["baseline"]["Y"] / 45 
+        noOfContentPages = overview_data["baseline"]["Y"] / 45
         ret["contents_offset"] = ret["contents_offset"] + math.ceil( noOfContentPages )
 
         return ret
