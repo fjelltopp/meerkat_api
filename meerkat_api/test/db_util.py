@@ -11,8 +11,12 @@ import random, csv, os, logging
 import json
 
 from meerkat_api.test.test_data import locations, cases
-
+from meerkat_api import app
 from meerkat_abacus import model
+from meerkat_abacus.util import get_db_engine
+engine, session = get_db_engine(app.config["SQLALCHEMY_DATABASE_URI"])
+
+
 
 
 def insert_cases(session, variable, date=None, delete=True):

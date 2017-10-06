@@ -2,19 +2,14 @@
 Data resource for completeness data
 """
 from flask_restful import Resource
-from flask import jsonify, request
-from dateutil.parser import parse
-from sqlalchemy import extract, func, Integer, or_
-from datetime import datetime, timedelta
-import pandas as pd
 
-from meerkat_api import db, app
+from meerkat_api.extensions import db, api
 from meerkat_api.resources.epi_week import EpiWeek, epi_week_start, epi_year_start
 from meerkat_abacus.model import Data, Locations, CalculationParameters
 from meerkat_api.util import get_children, is_child, fix_dates
 from meerkat_abacus.util import get_locations
 from meerkat_api.authentication import authenticate
-
+from sqlalchemy import func
 from meerkat_api.resources.explore import QueryVariable, get_variables
 import json
 
@@ -196,3 +191,6 @@ def findHighestDepletion(clinic_medicines):
     sorted_depletion_list = sorted(depletion_list, key=lambda k: k['depletion'], reverse=True)
     return sorted_depletion_list[0]
         
+api.add_resource(Prescriptions, "/prescriptions/<location>",
+                 "/prescriptions/<location>/<end_date>",
+                 "/prescriptions/<location>/<end_date>/<start_date>")

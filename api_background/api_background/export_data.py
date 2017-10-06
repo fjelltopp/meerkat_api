@@ -578,6 +578,7 @@ def export_data_table(uuid, download_name,
     db, session = get_db_engine()
     locs = get_locations(session)
     list_rows = []
+
     status = DownloadDataFiles(
         uuid=uuid,
         generation_time=datetime.now(),
@@ -587,9 +588,11 @@ def export_data_table(uuid, download_name,
     )
     session.add(status)
     session.commit()
+
     columns = []
     groups = []
     location_subs = []
+
     for i, v in enumerate(group_by):
         field = v[0]
         if ":location" in field:
@@ -605,7 +608,6 @@ def export_data_table(uuid, download_name,
 
     result = session.query(*columns).filter(
         Data.variables.has_key(restrict_by)).group_by(*groups)
-
     filename = base_folder + "/exported_data/" + uuid + "/" + download_name
     os.mkdir(base_folder + "/exported_data/" + uuid)
     csv_content = open(filename + ".csv", "w")
@@ -626,17 +628,15 @@ def export_data_table(uuid, download_name,
 
     write_xls_row(return_keys, 0, xls_sheet)
     i = 0
-    print(location_conditions)
     for row in result:
         # Can write row immediately to xls file as memory is flushed after.
-
         row_list = list(row)
         location_condition = True
         for l in location_subs:
             if row_list[l]:
                 if location_conditions:
-                    if getattr(locs[row_list[l]],
-                               location_conditions[0][0]) != location_conditions[0][1]:
+                    if location_conditions[0][1] in getattr(locs[row_list[l]],
+                                                            location_conditions[0][0]):
                         location_condition = False
                 row_list[l] = locs[row_list[l]].name
         if location_condition:
@@ -749,6 +749,15 @@ def __save_form_data(xls_csv_writer, query_form_data, operation_status, keys, al
     results = query_form_data.yield_per(1000)
     results_count = query_form_data.count()
     for i, result in enumerate(results):
+        if not result:
+            logging.error("Skipping result %d which is None", i)
+            continue
+        if not result.data:
+            logging.error("Skipping result %d. Data is None", i)
+            continue
+        if not isinstance(result.data, dict):
+            logging.error("Skipping result %d which data is not of a dictionary type", i)
+            continue
         # Initialise empty result for header line
         row = []
         for key in keys:

@@ -3,12 +3,12 @@ import numpy as np
 import copy
 from flask_restful import Resource
 from sqlalchemy import or_
-from meerkat_api import db
+from meerkat_api.extensions import db, api
 from meerkat_api.util import series_to_json_dict
 from meerkat_analysis.indicators import count_over_count, count
 from meerkat_abacus.model import Data
 from meerkat_api.authentication import authenticate
-
+import time
 
 class Indicators(Resource):
     """
@@ -29,6 +29,7 @@ class Indicators(Resource):
     decorators = [authenticate]
 
     def get(self, flags, variables, location, start_date=None, end_date=None):
+        s = time.time()
         mult_factor = 1
         count_over = False
         restricted_var = []
@@ -61,6 +62,7 @@ class Indicators(Resource):
         for res_var in restricted_var:
             conditions.append(Data.variables.has_key(res_var))
         # Add denominator
+        print("Before DB", time.time() - s)
         if count_over:
             if denominator == None or nominator == None:
                 return "Need both denominator and numerator"
@@ -100,7 +102,7 @@ class Indicators(Resource):
                 "current": 0,
                 "previous": 0
             }
-
+        print("After DB", time.time() - s)
 
         #Call meerkat_analysis
         
@@ -108,7 +110,9 @@ class Indicators(Resource):
             analysis_output = count_over_count(data, nominator, denominator, start_date, end_date)
         else:
             analysis_output = count(data, nominator, start_date, end_date)
- 
+
+
+        print("After Analysis", time.time() - s)
         indicator_data = dict()
         cummulative = analysis_output[0]
         if np.isnan(cummulative):
@@ -123,5 +127,7 @@ class Indicators(Resource):
         indicator_data["previous"] = timeline.iloc[-2]
 
         indicator_data["name"] = "Name is not passed to the API!"
-
+        print("End", time.time() - s)
         return indicator_data
+api.add_resource(Indicators, "/indicators/<flags>/<variables>/<location>",
+                  "/indicators/<flags>/<variables>/<location>/<start_date>/<end_date>")

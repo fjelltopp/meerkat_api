@@ -4,7 +4,7 @@ from meerkat_api.util import is_child
 from meerkat_libs.auth_client import Authorise as libs_auth
 from meerkat_abacus.util import get_locations
 import logging
-from meerkat_api import db
+from meerkat_api.app import db
 
 allowed_locations_locs = None
 
