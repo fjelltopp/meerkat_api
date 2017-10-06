@@ -160,33 +160,36 @@ class MeerkatAPILocationTestCase(unittest.TestCase):
         print(clinics)
         self.assertEqual(rv.status_code, 200)
         self.assertIn('Clinic 1', clinics)
-        self.assertEqual(len(clinics), 1)
+        self.assertIn('Clinic 4', clinics)
+        self.assertIn('Clinic 5', clinics)
+        self.assertEqual(len(clinics), 3)
 
         rv = self.app.get(
-            '/locationtree?exc_case_types=["foreigner", "mh"]',
+            '/locationtree?exc_case_types=["pip", "mh"]',
             headers=settings.header
         )
         clinics = get_clinics(json.loads(rv.data.decode("utf-8")))
-        print('/locationtree?exc_case_types=["mh"]')
+        print('/locationtree?exc_case_types=["pip", "mh"]')
         print(json.loads(rv.data.decode("utf-8")))
         print(clinics)
         self.assertEqual(rv.status_code, 200)
-        self.assertIn('Clinic 2', clinics)
+        self.assertIn('Clinic 4', clinics)
         self.assertEqual(len(clinics), 1)
 
         # Test both inc and exc functionality
         rv = self.app.get(
-            '/locationtree?inc_case_types=["mh"]&exc_case_types=["foreigner"]',
+            '/locationtree?inc_case_types=["mh"]&exc_case_types=["pip","mh"]',
             headers=settings.header
         )
         clinics = get_clinics(json.loads(rv.data.decode("utf-8")))
-        print('/locationtree?inc_case_types=["mh"]&exc_case_types=["foreigner"]')
+        print(
+            '/locationtree?inc_case_types=["mh"]&exc_case_types=["pip","mh"]'
+        )
         print(json.loads(rv.data.decode("utf-8")))
         print(clinics)
         self.assertEqual(rv.status_code, 200)
-        self.assertIn('Clinic 1', clinics)
-        self.assertIn('Clinic 5', clinics)
-        self.assertEqual(len(clinics), 2)
+        self.assertIn('Clinic 4', clinics)
+        self.assertEqual(len(clinics), 1)
 
     def test_location_by_non_existing_device_id(self):
         for id in ["42", "fake_device_id", DEVICEID_1[1:]]:

@@ -121,7 +121,7 @@ class LocationTree(Resource):
                     if locs[l].case_type:
                         loc_case_types = set(locs[l].case_type)
                     inc = bool(set(inc_case_types) & loc_case_types)
-                    exc = bool(set(exc_case_types) & loc_case_types)
+                    exc = set(exc_case_types) >= loc_case_types
 
                     # Add the location if it is not a clinic
                     if not locs[l].level == 'clinic':
