@@ -19,7 +19,8 @@ from meerkat_abacus import util, model, data_import
 from meerkat_abacus.config import config
 
 from meerkat_api.extensions import celery_app
-from meerkat_abacus import util, model, config, data_import
+from meerkat_abacus import util, model, data_import
+from meerkat_abacus.config import config
 from api_background.export_data import base_folder
 
 
