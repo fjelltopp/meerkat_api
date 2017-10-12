@@ -18,8 +18,9 @@ class MeerkatAPIVariablesTestCase(unittest.TestCase):
         meerkat_api.app.config['TESTING'] = True
         meerkat_api.app.config['API_KEY'] = ""
         self.app = meerkat_api.app.test_client()
-        db_util.insert_codes(meerkat_api.db.session)
-        db_util.insert_locations(meerkat_api.db.session)
+        session = db_util.session
+        db_util.insert_codes(session)
+        db_util.insert_locations(session)
 
     def tearDown(self):
         pass

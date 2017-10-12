@@ -10,7 +10,7 @@ from flask_restful import Resource, abort
 from meerkat_abacus.model import form_tables, DownloadDataFiles
 from api_background.export_data import export_category, export_data, export_data_table
 from api_background.export_data import export_form
-from meerkat_api import db, output_csv, output_xls, celery_app
+from meerkat_api.extensions import db, output_csv, output_xls, celery_app, api
 from meerkat_api.authentication import authenticate
 
 
@@ -231,3 +231,18 @@ class ExportForm(Resource):
             fields = None
         export_form.delay(uid, form, g.allowed_location, fields)
         return uid
+
+
+# Export data
+api.add_resource(GetCSVDownload, "/export/getcsv/<uid>")
+api.add_resource(GetXLSDownload, "/export/getxls/<uid>")
+api.add_resource(GetStatus, "/export/get_status/<uid>")
+api.add_resource(ExportData, "/export/data",
+                 "/export/data/<use_loc_ids>")
+api.add_resource(ExportForm, "/export/form/<form>")
+api.add_resource(Forms, "/export/forms")
+api.add_resource(ExportCategory,
+                 "/export/category/<form_name>/<category>/<download_name>",
+                 "/export/category/<form_name>/<category>/<download_name>/<data_type>")
+api.add_resource(ExportDataTable,
+                 "/export/data_table/<download_name>/<restrict_by>")

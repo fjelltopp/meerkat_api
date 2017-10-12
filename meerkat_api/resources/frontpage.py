@@ -6,10 +6,10 @@ from flask import g
 from datetime import datetime
 from geoalchemy2.shape import to_shape
 
-from meerkat_api import db
+from meerkat_api.extensions import db, api
 from meerkat_abacus.util import get_locations
 from meerkat_api.util import get_children
-from meerkat_api.resources.data import AggregateCategory, AggregateYear
+from meerkat_api.resources.data import AggregateYear
 from meerkat_api.resources.map import MapVariable
 from meerkat_api.resources.variables import Variables
 from meerkat_api.resources.alerts import Alerts, get_alerts
@@ -109,3 +109,16 @@ class RefugeePage(Resource):
                                "clinic": locs[clinic].name,
                                "location_id": clinic})
         return clinic_map
+
+
+api.add_resource(KeyIndicators, "/key_indicators",
+                 "/key_indicators/<int:location>")
+api.add_resource(TotMap, "/tot_map",
+                 "/tot_map/<int:location>")
+api.add_resource(ConsultationMap, "/consultation_map",
+                 "/consultation_map/<int:location>")
+api.add_resource(NumAlerts, "/num_alerts",
+                 "/num_alerts/<int:location>")
+api.add_resource(NumClinics, "/num_clinics",
+                 "/num_clinics/<int:location>")
+api.add_resource(RefugeePage, "/refugee_page")
