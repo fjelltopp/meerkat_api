@@ -16,7 +16,9 @@ from celery import task
 
 from api_background._populate_locations import set_empty_locations, populate_row_locations
 from api_background.xls_csv_writer import XlsCsvFileWriter
-from meerkat_abacus.config import country_config, config_directory
+from meerkat_abacus.config import config
+country_config = config.country_config
+config_directory = config.config_directory
 from meerkat_abacus.model import DownloadDataFiles, AggregationVariables
 from meerkat_abacus.model import form_tables, Data, Links
 from meerkat_abacus.util import all_location_data, get_db_engine, get_links

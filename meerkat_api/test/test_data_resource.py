@@ -11,7 +11,7 @@ from sqlalchemy import extract
 from . import settings
 import meerkat_api
 from meerkat_api.test import db_util
-import meerkat_abacus.config as config
+from meerkat_abacus.config.config import config
 import meerkat_abacus.model as model
 
 class MeerkatAPIDataTestCase(unittest.TestCase):
