@@ -112,8 +112,14 @@ testshire = [
                  "level": "clinic",
                  "start_date": "2016-08-01T00:00:00",
                  "case_type": ["pip", "mh"],
-                 "population":250})
+                 "population": 250})
 ]
+LOCATION_NUMBER = 13
+DEVICEID_1 = '55755081783680'
+DEVICEID_2 = '55755081833907'
+DEVICEID_3 = '55755081836330'
+DEVICE_IDS_CSV_LIST = '{!r},{!r},{!r}'.format(DEVICEID_1, DEVICEID_2, DEVICEID_3)
+DEVICE_IDS_IMEI_CSV_LIST = 'imei:{!r},imei:{!r},imei:{!r}'.format(DEVICEID_1, DEVICEID_2, DEVICEID_3)
 
 locations = [
     Locations(**{'population': 10000, 'clinic_type': None,
@@ -165,5 +171,15 @@ locations = [
                  'deviceid': '1,6', 'case_report': 1, 'id': 7, 'other': None,
                  'point_location': 'POINT(0.1 0.1)', 'parent_location': 4,
                  'start_date': datetime(datetime.now().year, 2, 1),
-                 'level': 'clinic', 'name': 'Clinic 1', 'case_type': ['mh']})
+                 'level': 'clinic', 'name': 'Clinic 1', 'case_type': ['mh']}),
+    Locations(**{'population': 3000, 'clinic_type': None,
+                 'deviceid': DEVICE_IDS_CSV_LIST, 'case_report': None, 'id': 12, 'other': None,
+                 'point_location': 'POINT(0.1 0.1)', 'parent_location': 1,
+                 'start_date': datetime(2017, 2, 1),
+                 'level': 'clinic', 'name': 'Clinic with 3 deviceids.', 'case_type': None}),
+    Locations(**{'population': 3000, 'clinic_type': None,
+                 'deviceid': DEVICE_IDS_IMEI_CSV_LIST, 'case_report': None, 'id': 13, 'other': None,
+                 'point_location': 'POINT(0.1 0.1)', 'parent_location': 1,
+                 'start_date': datetime(2017, 2, 1),
+                 'level': 'clinic', 'name': 'Clinic with 3 IMEI deviceids.', 'case_type': None})
 ]
