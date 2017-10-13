@@ -1,9 +1,9 @@
 """
 Locations resource for querying location data
 """
-from flask_restful import Resource
+from flask_restful import Resource, abort
 from flask import jsonify, g, request
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from meerkat_api.authentication import authenticate
 from meerkat_api.util import row_to_dict, rows_to_dicts, is_child, get_children
 
@@ -54,11 +54,19 @@ class DeviceID(Resource):
        location: location
     """
     def get(self, device_id):
-        return jsonify(row_to_dict(
-            db.session.query(model.Locations).filter(
-                model.Locations.deviceid.contains(device_id)
-            ).first()
-        ))
+        locations_deviceid = model.Locations.deviceid
+        location_filter = or_(locations_deviceid == device_id,
+                                locations_deviceid.startswith("{},".format(device_id)),
+                                locations_deviceid.contains(",{},".format(device_id)),
+                                locations_deviceid.endswith(",{}".format(device_id)),
+                                )
+        query = db.session.query(model.Locations).filter(location_filter)
+        if query.count() == 0:
+            abort(404, message="No location matching deviceid: {!r}".format(device_id))
+        else:
+            return jsonify(row_to_dict(
+                query.one()
+            ))
 
 
 class LocationTree(Resource):
