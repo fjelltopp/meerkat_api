@@ -8,6 +8,7 @@ import json
 import unittest
 import meerkat_api
 from meerkat_api.test import db_util
+from meerkat_api.test.test_data.locations import LOCATION_NUMBER
 from . import settings
 
 
@@ -53,7 +54,7 @@ class MeerkatAPIVariablesTestCase(unittest.TestCase):
         rv = self.app.get('/variables/locations', headers=settings.header)
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(rv.status_code, 200)
-        self.assertEqual(len(data), 11)
+        self.assertEqual(len(data), LOCATION_NUMBER)
         self.assertEqual(data["11"]["name"], "Clinic 5")
 
 

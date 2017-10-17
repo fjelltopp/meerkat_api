@@ -4423,6 +4423,9 @@ class CTCReport(Resource):
         for current_zone in zones:
             for ctc in ctcs:
                 clinic_data = {"name": ctc.name}
+                clinic_data["open"] = ctc.other["open"];
+                if clinic_data["open"] == "No":
+                    clinic_data["closed_date"] = ctc.other[ "closed_date" ]
                 district = locs[ctc.id].parent_location
                 region = locs[district].parent_location
                 zone = locs[region].parent_location
@@ -4725,6 +4728,9 @@ class SCReport(Resource):
         for current_zone in zones:
             for sc in scs:
                 clinic_data = {"name": sc.name}
+                clinic_data["open"] = sc.other["open"];
+                if clinic_data["open"] == "No":
+                    clinic_data["closed_date"] = sc.other[ "closed_date" ]
                 district = locs[sc.id].parent_location
                 region = locs[district].parent_location
                 zone = locs[region].parent_location
