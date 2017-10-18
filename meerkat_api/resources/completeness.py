@@ -77,10 +77,9 @@ class Completeness(Resource):
     """
     decorators = [authenticate]
 
-
     def get(self, variable, location, number_per_week,
-            weekend=None, start_week=1, raw_end_date=None,
-            non_reporting_variable=None, raw_sublevel=None):
+            weekend=None, start_week=1, end_date=None,
+            non_reporting_variable=None, sublevel=None):
         inc_case_types = set(
             json.loads(request.args.get('inc_case_types', '[]'))
         )
@@ -98,7 +97,7 @@ class Completeness(Resource):
         location = int(location)
         location_type = locs[location].level
 
-        sublevel = self._get_sublevel(location_type, raw_sublevel)
+        parsed_sublevel = self._get_sublevel(location_type, sublevel)
 
         conditions = [
             Data.variables.has_key(variable), or_(
@@ -125,16 +124,16 @@ class Completeness(Resource):
         data = data.drop_duplicates(
             subset=["region", "district", "clinic", "date", variable])
 
-        shifted_end_date, timeseries_freq = self._get_shifted_end_date_and_timeseries_frequency(raw_end_date)
+        shifted_end_date, timeseries_freq = self._get_shifted_end_date_and_timeseries_frequency(end_date)
 
         beginning_of_epi_start_week = self._get_epi_week_start(shifted_end_date, start_week)
 
-        if sublevel:
+        if parsed_sublevel:
             # We first create an index with sublevel, clinic, dates
             # Where dates are the dates after the clinic started reporting
             sublocations = []
             for l in locs.values():
-                if is_child(location, l.id, locs) and l.level == sublevel:
+                if is_child(location, l.id, locs) and l.level == parsed_sublevel:
                     sublocations.append(l.id)
             tuples = []
             for name in sublocations:
@@ -157,9 +156,9 @@ class Completeness(Resource):
                 return self.__empty_response
 
             new_index = pd.MultiIndex.from_tuples(
-                tuples, names=[sublevel, "clinic", "date"])
+                tuples, names=[parsed_sublevel, "clinic", "date"])
             completeness = data.groupby([
-                sublevel, "clinic", pd.TimeGrouper(
+                parsed_sublevel, "clinic", pd.TimeGrouper(
                     key="date", freq=timeseries_freq, label="left")
             ]).sum().reindex(new_index)[variable].fillna(0).sort_index()
 
@@ -203,10 +202,10 @@ class Completeness(Resource):
             # Sort the timeline data
             timeline = {}
             for sl in sublocations_completeness_per_week.index.get_level_values(
-                    sublevel):
+                    parsed_sublevel):
                 sl_time = sublocations_completeness_per_week.iloc[
                     sublocations_completeness_per_week.index.get_level_values(
-                        sublevel) == sl]
+                        parsed_sublevel) == sl]
                 timeline[str(sl)] = {
                     "weeks": sl_time.index.get_level_values("date"),
                     "values": sl_time
