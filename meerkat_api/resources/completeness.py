@@ -1,7 +1,7 @@
 """
 Data resource for completeness data
 """
-from flask_restful import Resource
+from flask_restful import Resource, abort
 from flask import jsonify, request, g
 from dateutil.parser import parse
 from sqlalchemy import extract, func, Integer, or_
@@ -84,15 +84,13 @@ class Completeness(Resource):
 
     def get(self, variable, location, number_per_week,
             weekend=None, start_week=1, raw_end_date=None,
-            non_reporting_variable=None, sublevel=None):
+            non_reporting_variable=None, raw_sublevel=None):
         inc_case_types = set(
             json.loads(request.args.get('inc_case_types', '[]'))
         )
         exc_case_types = set(
             json.loads(request.args.get('exc_case_types', '[]'))
         )
-        if sublevel is None:
-            sublevel = request.args.get('sublevel')
         if not is_allowed_location(location, g.allowed_location):
             return {}
 
@@ -103,19 +101,9 @@ class Completeness(Resource):
         locs = get_locations(db.session)
         location = int(location)
         location_type = locs[location].level
-        if not sublevel:
-            zones = db.session.query(func.count(Locations.id)).filter(
-                Locations.level == 'zone'
-            ).first()
-            sublevels = {"country": "region",
-                         "region": "district",
-                         "district": "clinic",
-                         "clinic": None}
 
-            if zones[0] > 0:
-                sublevels["country"] = "zone"
-                sublevels["zone"] = "region"
-            sublevel = sublevels[location_type]
+        sublevel = self._get_sublevel(location_type, raw_sublevel)
+
         conditions = [
             Data.variables.has_key(variable), or_(
                 loc == location
@@ -141,9 +129,9 @@ class Completeness(Resource):
         data = data.drop_duplicates(
             subset=["region", "district", "clinic", "date", variable])
 
-        shifted_end_date, timeseries_freq = self.get_shifted_end_date_and_timeseries_frequency(raw_end_date)
+        shifted_end_date, timeseries_freq = self._get_shifted_end_date_and_timeseries_frequency(raw_end_date)
 
-        beginning_of_epi_start_week = self.get_epi_week_start(shifted_end_date, start_week)
+        beginning_of_epi_start_week = self._get_epi_week_start(shifted_end_date, start_week)
 
         if sublevel:
             # We first create an index with sublevel, clinic, dates
@@ -293,7 +281,31 @@ class Completeness(Resource):
                         "dates_not_reported": dates_not_reported,
                         "yearly_score": series_to_json_dict(yearly_score)})
 
-    def get_epi_week_start(self, shifted_end_date, start_week):
+    def _get_sublevel(self, location_type, raw_sublevel):
+        sublevels = self._get_sublevels_dict()
+        result = raw_sublevel
+        if raw_sublevel is None:
+            result = request.args.get('sublevel')
+        if result not in sublevels.values():
+            abort(404, message='Unsupported sublevel: "{}" provided.'.format(result))
+        if not result:
+            result = sublevels[location_type]
+        return result
+
+    def _get_sublevels_dict(self):
+        zones = db.session.query(func.count(Locations.id)).filter(
+            Locations.level == 'zone'
+        ).first()
+        sublevels = {"country": "region",
+                     "region": "district",
+                     "district": "clinic",
+                     "clinic": None}
+        if zones[0] > 0:
+            sublevels["country"] = "zone"
+            sublevels["zone"] = "region"
+        return sublevels
+
+    def _get_epi_week_start(self, shifted_end_date, start_week):
         beginning = epi_week_start(shifted_end_date.year, start_week)
         ew = EpiWeek()
         if ew.get(shifted_end_date.isoformat())["epi_week"] == 53:
@@ -301,18 +313,18 @@ class Completeness(Resource):
 
         return beginning
 
-    def get_shifted_end_date_and_timeseries_frequency(self, raw_end_date):
+    def _get_shifted_end_date_and_timeseries_frequency(self, raw_end_date):
         # If end_date is the start of an epi week we do not want to include_case_type the current epi week
         # We only calculate completeness for whole epi-weeks so we want to set end_date to the
         # the end of the previous epi_week.
-        end_date = self.parse_end_date(raw_end_date)
+        end_date = self._parse_end_date(raw_end_date)
         epi_year_start_weekday = epi_year_start(end_date.year).weekday()
         timeseries_freq = ["W-MON", "W-TUE", "W-WED", "W-THU", "W-FRI", "W-SAT", "W-SUN"][epi_year_start_weekday]
         offset = (end_date.weekday() - epi_year_start_weekday) % 7
         shifted_end_date = end_date - timedelta(days=offset + 1)
         return shifted_end_date, timeseries_freq
 
-    def parse_end_date(self, end_date):
+    def _parse_end_date(self, end_date):
         if not end_date:
             end_date = datetime.now()
         else:
