@@ -29,10 +29,10 @@ install:
 - cd api_background
 - pip install .
 - cd ..
-- git clone https://github.com/meerkat-code/meerkat_libs.git
+- git clone --branch $MEERKAT_BRANCH --single-branch https://github.com/meerkat-code/meerkat_libs.git
 - pip install -r meerkat_libs/requirements.txt
 - export PYTHONPATH=$PYTHONPATH:$HOME/build/meerkat-code/meerkat_api/meerkat_libs
-- git clone https://github.com/meerkat-code/meerkat_analysis.git
+- git clone --branch $MEERKAT_BRANCH --single-branch https://github.com/meerkat-code/meerkat_analysis.git
 - pip install -r meerkat_analysis/requirements.txt
 - export PYTHONPATH=$PYTHONPATH:$HOME/build/meerkat-code/meerkat_api/meerkat_analysis
 - git clone https://github.com/meerkat-code/meerkat_abacus.git
@@ -42,7 +42,6 @@ install:
 - pip install .
 - python meerkat_abacus/manage.py create-db
 - cd ..
-- pip install git+https://github.com/meerkat-code/meerkat_libs.git@master
 
 script: nosetests -v
 notifications:
