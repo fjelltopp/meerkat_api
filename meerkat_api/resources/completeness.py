@@ -79,7 +79,7 @@ class Completeness(Resource):
     decorators = [authenticate]
 
     def get(self, variable, location, number_per_week,
-            weekend=None, start_week=1, _end_date=None,
+            weekend=None, start_week=1, raw_end_date=None,
             non_reporting_variable=None, sublevel=None):
         inc_case_types = set(
             json.loads(request.args.get('inc_case_types', '[]'))
@@ -92,11 +92,8 @@ class Completeness(Resource):
         if not is_allowed_location(location, g.allowed_location):
             return {}
 
-        end_date = self.parse_end_date(_end_date)
         if not non_reporting_variable:
             non_reporting_variable = variable
-        epi_year_weekday = epi_year_start(end_date.year).weekday()
-        timeseries_freq = ["W-MON", "W-TUE", "W-WED", "W-THU", "W-FRI", "W-SAT", "W-SUN"][epi_year_weekday]
 
         number_per_week = int(number_per_week)
         locs = get_locations(db.session)
@@ -142,19 +139,12 @@ class Completeness(Resource):
                             "dates_not_reported": [],
                             "yearly_score": {}})
 
-        # If end_date is the start of an epi week we do not want to include_case_type the current epi week
-        # We only calculate completeness for whole epi-weeks so we want to set end_d to the
-        # the end of the previous epi_week.
-        offset = end_date.weekday() - epi_year_weekday
-        if offset < 0:
-            offset = 7 + offset
-        end_date = end_date - timedelta(days=offset + 1)
+        shifted_end_date, timeseries_freq = self.get_shifted_end_date_and_timeseries_frequency(raw_end_date)
 
-
-        begining = epi_week_start(end_date.year, start_week)
+        begining = epi_week_start(shifted_end_date.year, start_week)
         ew = EpiWeek()
-        week = ew.get(end_date.isoformat())
-        if ew.get(end_date.isoformat())["epi_week"] == 53:
+        week = ew.get(shifted_end_date.isoformat())
+        if ew.get(shifted_end_date.isoformat())["epi_week"] == 53:
             begining = begining.replace(year=begining.year -1)
 
         # We drop duplicates so each clinic can only have one record per day
@@ -179,10 +169,10 @@ class Completeness(Resource):
                         start_date = locs[clinic].start_date
                         if start_date < begining:
                             start_date = begining
-                        if end_date - start_date < timedelta(days=7):
-                            start_date = (end_date - timedelta(days=6)).date()
+                        if shifted_end_date - start_date < timedelta(days=7):
+                            start_date = (shifted_end_date - timedelta(days=6)).date()
 
-                        for date in pd.date_range(start_date, end_date, freq=timeseries_freq):
+                        for date in pd.date_range(start_date, shifted_end_date, freq=timeseries_freq):
                             tuples.append((name, clinic, date))
             if len(tuples) == 0:
                 return jsonify({})
@@ -260,10 +250,10 @@ class Completeness(Resource):
             if locs[location].start_date > begining:
                 begining = locs[location].start_date
             not_reported_dates_begining = begining
-            if end_date - begining < timedelta(days=7):
-                begining = (end_date - timedelta(days=6)).date()
+            if shifted_end_date - begining < timedelta(days=7):
+                begining = (shifted_end_date - timedelta(days=6)).date()
 
-            dates = pd.date_range(begining, end_date, freq=timeseries_freq)
+            dates = pd.date_range(begining, shifted_end_date, freq=timeseries_freq)
             completeness = data.groupby(
                 pd.TimeGrouper(
                     key="date", freq=timeseries_freq, label="left")).sum().fillna(0)[
@@ -290,7 +280,7 @@ class Completeness(Resource):
 
             bdays = self._get_business_days(weekend_days=weekend)
 
-            expected_days = pd.date_range(not_reported_dates_begining, end_date, freq=bdays)
+            expected_days = pd.date_range(not_reported_dates_begining, shifted_end_date, freq=bdays)
 
             found_dates = data["date"]
             dates_not_reported = expected_days.drop(
@@ -306,6 +296,17 @@ class Completeness(Resource):
                         series_to_json_dict(clinic_yearly_scores),
                         "dates_not_reported": dates_not_reported,
                         "yearly_score": series_to_json_dict(yearly_score)})
+
+    def get_shifted_end_date_and_timeseries_frequency(self, raw_end_date):
+        # If end_date is the start of an epi week we do not want to include_case_type the current epi week
+        # We only calculate completeness for whole epi-weeks so we want to set end_date to the
+        # the end of the previous epi_week.
+        end_date = self.parse_end_date(raw_end_date)
+        epi_year_start_weekday = epi_year_start(end_date.year).weekday()
+        timeseries_freq = ["W-MON", "W-TUE", "W-WED", "W-THU", "W-FRI", "W-SAT", "W-SUN"][epi_year_start_weekday]
+        offset = (end_date.weekday() - epi_year_start_weekday) % 7
+        shifted_end_date = end_date - timedelta(days=offset + 1)
+        return shifted_end_date, timeseries_freq
 
     def parse_end_date(self, end_date):
         if not end_date:
