@@ -119,7 +119,7 @@ class Completeness(Resource):
                              Data.variables[variable].label(variable)).filter(
                 *conditions).statement, db.session.bind)
         if len(data) == 0:
-            return self.__empty_response
+            return jsonify(self.__empty_response)
         # We drop duplicates so each clinic can only have one record per day
         data = data.drop_duplicates(
             subset=["region", "district", "clinic", "date", variable])
@@ -153,7 +153,7 @@ class Completeness(Resource):
                         for date in pd.date_range(start_date, shifted_end_date, freq=timeseries_freq):
                             tuples.append((name, clinic, date))
             if len(tuples) == 0:
-                return self.__empty_response
+                return jsonify(self.__empty_response)
 
             new_index = pd.MultiIndex.from_tuples(
                 tuples, names=[parsed_sublevel, "clinic", "date"])
@@ -340,14 +340,15 @@ class Completeness(Resource):
         bdays = CustomBusinessDay(weekmask=weekday_mask)
         return bdays
 
-    __empty_response = jsonify({
+    __empty_response = {
         "score": {},
         "timeline": {},
         "clinic_score": {},
         "clinic_yearly_score": {},
         "dates_not_reported": [],
         "yearly_score": {}
-    })
+    }
+
 
 class NonReporting(Resource):
     """
