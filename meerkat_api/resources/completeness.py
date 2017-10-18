@@ -16,7 +16,6 @@ from meerkat_api.authentication import authenticate, is_allowed_location
 from pandas.tseries.offsets import CustomBusinessDay
 
 
-
 class CompletenessIndicator(Resource):
     """ 
     Return completeness data in indicator format 
@@ -27,13 +26,14 @@ class CompletenessIndicator(Resource):
     }
     """
     decorators = [authenticate]
+
     def get(self, variable, location, number_per_week, start_week=1, exclude=None):
         c = Completeness()
 
         completeness_data = json.loads(c.get(variable, location,
-                                  number_per_week,
-                                  start_week=start_week,
-                                  exclude=exclude).data)
+                                             number_per_week,
+                                             start_week=start_week,
+                                             exclude=exclude).data)
         cumulative = completeness_data["yearly_score"].get(location, 0)
         current = completeness_data["score"].get(location, 0)
         timeline = completeness_data["timeline"].get(location, {"values": [], "weeks": []})
@@ -54,7 +54,6 @@ class CompletenessIndicator(Resource):
             "previous": previous,
             "timeline": new_timeline
         }
-            
 
 
 class Completeness(Resource):
@@ -78,9 +77,6 @@ class Completeness(Resource):
     """
     decorators = [authenticate]
 
-    empty_response = jsonify(
-        {"score": {}, "timeline": {}, "clinic_score": {}, "clinic_yearly_score": {}, "dates_not_reported": [],
-         "yearly_score": {}})
 
     def get(self, variable, location, number_per_week,
             weekend=None, start_week=1, raw_end_date=None,
@@ -122,9 +118,9 @@ class Completeness(Resource):
             db.session.query(Data.region, Data.zone, Data.district,
                              Data.clinic, Data.date,
                              Data.variables[variable].label(variable)).filter(
-                                 *conditions).statement, db.session.bind)
+                *conditions).statement, db.session.bind)
         if len(data) == 0:
-            return self.empty_response
+            return self.__empty_response
         # We drop duplicates so each clinic can only have one record per day
         data = data.drop_duplicates(
             subset=["region", "district", "clinic", "date", variable])
@@ -158,7 +154,7 @@ class Completeness(Resource):
                         for date in pd.date_range(start_date, shifted_end_date, freq=timeseries_freq):
                             tuples.append((name, clinic, date))
             if len(tuples) == 0:
-                return self.empty_response
+                return self.__empty_response
 
             new_index = pd.MultiIndex.from_tuples(
                 tuples, names=[sublevel, "clinic", "date"])
@@ -172,7 +168,7 @@ class Completeness(Resource):
             clinic_sums = completeness.groupby(level=1).sum()
             zero_clinics = clinic_sums[clinic_sums == 0].index
             nr = NonReporting()
-            non_reporting_clinics = nr.get(non_reporting_variable, location )["clinics"]
+            non_reporting_clinics = nr.get(non_reporting_variable, location)["clinics"]
             completeness = completeness.drop(non_reporting_clinics, level=1)
             completeness.reindex()
 
@@ -201,7 +197,7 @@ class Completeness(Resource):
 
             # Add current location
             score[location] = location_completeness_per_week[
-                last_two_weeks].mean() / number_per_week * 100
+                                  last_two_weeks].mean() / number_per_week * 100
             yearly_score[location] = location_completeness_per_week.mean(
             ) / number_per_week * 100
             # Sort the timeline data
@@ -241,14 +237,14 @@ class Completeness(Resource):
             completeness = data.groupby(
                 pd.TimeGrouper(
                     key="date", freq=timeseries_freq, label="left")).sum().fillna(0)[
-                        variable].reindex(dates).sort_index().fillna(0)
+                variable].reindex(dates).sort_index().fillna(0)
 
             # We only want to count a maximum of number per week per week
             completeness[completeness > number_per_week] = number_per_week
 
             timeline = {str(location): {
                 "weeks":
-                [d.isoformat() for d in completeness.index.to_pydatetime()],
+                    [d.isoformat() for d in completeness.index.to_pydatetime()],
                 "values": [float(v) for v in completeness.values]
             }}
             last_two_weeks = completeness.index[-1:]
@@ -277,7 +273,7 @@ class Completeness(Resource):
                         "timeline": timeline,
                         "clinic_score": series_to_json_dict(clinic_scores),
                         "clinic_yearly_score":
-                        series_to_json_dict(clinic_yearly_scores),
+                            series_to_json_dict(clinic_yearly_scores),
                         "dates_not_reported": dates_not_reported,
                         "yearly_score": series_to_json_dict(yearly_score)})
 
@@ -345,6 +341,14 @@ class Completeness(Resource):
         bdays = CustomBusinessDay(weekmask=weekday_mask)
         return bdays
 
+    __empty_response = jsonify({
+        "score": {},
+        "timeline": {},
+        "clinic_score": {},
+        "clinic_yearly_score": {},
+        "dates_not_reported": [],
+        "yearly_score": {}
+    })
 
 class NonReporting(Resource):
     """
@@ -388,7 +392,6 @@ class NonReporting(Resource):
         if include_clinic_type in [0, "0", "None"]:
             include_clinic_type = None
 
-
         locations = get_locations(db.session)
         location = int(location)
         clinics = get_children(location, locations,
@@ -400,7 +403,7 @@ class NonReporting(Resource):
             start_date = epi_week_start(epi_week["year"],
                                         int(epi_week["epi_week"]) - int(num_weeks))
             end_date = epi_week_start(epi_week["year"],
-                                        epi_week["epi_week"])
+                                      epi_week["epi_week"])
             conditions.append(Data.date >= start_date)
             conditions.append(Data.date < end_date)
         exclude_list = []
@@ -417,7 +420,7 @@ class NonReporting(Resource):
                 include_clinic_type = set(include_clinic_type.split(","))
             else:
                 include_clinic_type = set([include_clinic_type])
-            
+
         if include_case_type:
             if "," in include_case_type:
                 include_case_type = set(include_case_type.split(","))
@@ -427,7 +430,7 @@ class NonReporting(Resource):
                 include_case_type = inc_case_types.union(include_case_type)
         elif inc_case_types:
             include_case_type = inc_case_types
-                
+
         if exclude_case_type and "code:" not in exclude_case_type:
             if "," in exclude_case_type:
                 exclude_case_type = set(exclude_case_type.split(","))
@@ -437,7 +440,7 @@ class NonReporting(Resource):
                 exclude_case_type = exc_case_types.union(exclude_case_type)
         elif exc_case_types:
             exclude_case_type = exc_case_types
-                
+
         for clinic in clinics:
             if include_clinic_type and locations[clinic].clinic_type not in include_clinic_type:
                 continue
@@ -457,13 +460,12 @@ class NonReporting(Resource):
         return {"clinics": non_reporting_clinics}
 
 
-
 api.add_resource(NonReporting,
                  "/non_reporting/<variable>/<location>",
                  "/non_reporting/<variable>/<location>/<num_weeks>/<exclude_case_type>",
                  "/non_reporting/<variable>/<location>/<num_weeks>/<exclude_case_type>/<include_case_type>",
                  "/non_reporting/<variable>/<location>/<num_weeks>/<exclude_case_type>/<include_case_type>/<include_clinic_type>/<require_case_report>"
-)
+                 )
 
 api.add_resource(Completeness,
                  "/completeness/<variable>/<location>/<number_per_week>",
