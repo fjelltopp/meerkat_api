@@ -79,7 +79,7 @@ class Completeness(Resource):
     decorators = [authenticate]
 
     def get(self, variable, location, number_per_week,
-            weekend=None, start_week=1, end_date=None,
+            weekend=None, start_week=1, _end_date=None,
             non_reporting_variable=None, sublevel=None):
         inc_case_types = set(
             json.loads(request.args.get('inc_case_types', '[]'))
@@ -92,16 +92,11 @@ class Completeness(Resource):
         if not is_allowed_location(location, g.allowed_location):
             return {}
 
-        if not end_date:
-            end_date = datetime.now()
-        else:
-            if isinstance(end_date, str):
-                end_date = parse(end_date)
+        end_date = self.parse_end_date(_end_date)
         if not non_reporting_variable:
             non_reporting_variable = variable
         epi_year_weekday = epi_year_start(end_date.year).weekday()
-        freq = ["W-MON", "W-TUE", "W-WED", "W-THU", "W-FRI", "W-SAT",
-                "W-SUN"][epi_year_weekday]
+        timeseries_freq = ["W-MON", "W-TUE", "W-WED", "W-THU", "W-FRI", "W-SAT", "W-SUN"][epi_year_weekday]
 
         number_per_week = int(number_per_week)
         locs = get_locations(db.session)
@@ -153,13 +148,13 @@ class Completeness(Resource):
         offset = end_date.weekday() - epi_year_weekday
         if offset < 0:
             offset = 7 + offset
-        end_d = end_date - timedelta(days=offset + 1)
+        end_date = end_date - timedelta(days=offset + 1)
 
 
         begining = epi_week_start(end_date.year, start_week)
         ew = EpiWeek()
-        week = ew.get(end_d.isoformat())
-        if ew.get(end_d.isoformat())["epi_week"] == 53:
+        week = ew.get(end_date.isoformat())
+        if ew.get(end_date.isoformat())["epi_week"] == 53:
             begining = begining.replace(year=begining.year -1)
 
         # We drop duplicates so each clinic can only have one record per day
@@ -180,20 +175,22 @@ class Completeness(Resource):
                             continue
                         if exc_case_types and set(locs[clinic].case_type) & exc_case_types:
                             continue
+
                         start_date = locs[clinic].start_date
                         if start_date < begining:
                             start_date = begining
-                        if end_d - start_date < timedelta(days=7):
-                            start_date = (end_d - timedelta(days=6)).date()
-                        for d in pd.date_range(start_date, end_d, freq=freq):
-                            tuples.append((name, clinic, d))
+                        if end_date - start_date < timedelta(days=7):
+                            start_date = (end_date - timedelta(days=6)).date()
+
+                        for date in pd.date_range(start_date, end_date, freq=timeseries_freq):
+                            tuples.append((name, clinic, date))
             if len(tuples) == 0:
                 return jsonify({})
             new_index = pd.MultiIndex.from_tuples(
                 tuples, names=[sublevel, "clinic", "date"])
             completeness = data.groupby([
                 sublevel, "clinic", pd.TimeGrouper(
-                    key="date", freq=freq, label="left")
+                    key="date", freq=timeseries_freq, label="left")
             ]).sum().reindex(new_index)[variable].fillna(0).sort_index()
 
             # Drop clinics with no submissions
@@ -263,13 +260,13 @@ class Completeness(Resource):
             if locs[location].start_date > begining:
                 begining = locs[location].start_date
             not_reported_dates_begining = begining
-            if end_d - begining < timedelta(days=7):
-                begining = (end_d - timedelta(days=6)).date()
+            if end_date - begining < timedelta(days=7):
+                begining = (end_date - timedelta(days=6)).date()
 
-            dates = pd.date_range(begining, end_d, freq=freq)
+            dates = pd.date_range(begining, end_date, freq=timeseries_freq)
             completeness = data.groupby(
                 pd.TimeGrouper(
-                    key="date", freq=freq, label="left")).sum().fillna(0)[
+                    key="date", freq=timeseries_freq, label="left")).sum().fillna(0)[
                         variable].reindex(dates).sort_index().fillna(0)
 
             # We only want to count a maximum of number per week per week
@@ -291,18 +288,9 @@ class Completeness(Resource):
             # Sort out the dates on which nothing was reported
             # Can specify on which weekdays we expect a record
 
-            if not weekend:
-                weekday_mask = "Mon Tue Wed Thu Fri"
-            else:
-                weekend = weekend.split(",")
-                weekdays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
-                weekday_mask = ""
-                for i, w in enumerate(weekdays):
-                    if i not in weekend and str(i) not in weekend:
-                        weekday_mask = weekday_mask + weekdays[i] + " "
+            bdays = self._get_business_days(weekend_days=weekend)
 
-            bdays = CustomBusinessDay(weekmask=weekday_mask)
-            expected_days = pd.date_range(not_reported_dates_begining, end_d, freq=bdays)
+            expected_days = pd.date_range(not_reported_dates_begining, end_date, freq=bdays)
 
             found_dates = data["date"]
             dates_not_reported = expected_days.drop(
@@ -318,6 +306,28 @@ class Completeness(Resource):
                         series_to_json_dict(clinic_yearly_scores),
                         "dates_not_reported": dates_not_reported,
                         "yearly_score": series_to_json_dict(yearly_score)})
+
+    def parse_end_date(self, end_date):
+        if not end_date:
+            end_date = datetime.now()
+        else:
+            if isinstance(end_date, str):
+                end_date = parse(end_date)
+        return end_date
+
+    def _get_business_days(self, weekend_days):
+        if not weekend_days:
+            weekday_mask = "Mon Tue Wed Thu Fri"
+        else:
+            weekend_days = weekend_days.split(",")
+            weekdays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+            weekday_mask = ""
+            for i, w in enumerate(weekdays):
+                if i not in weekend_days and str(i) not in weekend_days:
+                    weekday_mask = weekday_mask + weekdays[i] + " "
+        bdays = CustomBusinessDay(weekmask=weekday_mask)
+        return bdays
+
 
 class NonReporting(Resource):
     """
