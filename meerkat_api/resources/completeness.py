@@ -78,6 +78,10 @@ class Completeness(Resource):
     """
     decorators = [authenticate]
 
+    empty_response = jsonify(
+        {"score": {}, "timeline": {}, "clinic_score": {}, "clinic_yearly_score": {}, "dates_not_reported": [],
+         "yearly_score": {}})
+
     def get(self, variable, location, number_per_week,
             weekend=None, start_week=1, raw_end_date=None,
             non_reporting_variable=None, sublevel=None):
@@ -132,24 +136,15 @@ class Completeness(Resource):
                              Data.variables[variable].label(variable)).filter(
                                  *conditions).statement, db.session.bind)
         if len(data) == 0:
-            return jsonify({"score": {},
-                            "timeline": {},
-                            "clinic_score": {},
-                            "clinic_yearly_score": {},
-                            "dates_not_reported": [],
-                            "yearly_score": {}})
-
-        shifted_end_date, timeseries_freq = self.get_shifted_end_date_and_timeseries_frequency(raw_end_date)
-
-        begining = epi_week_start(shifted_end_date.year, start_week)
-        ew = EpiWeek()
-        week = ew.get(shifted_end_date.isoformat())
-        if ew.get(shifted_end_date.isoformat())["epi_week"] == 53:
-            begining = begining.replace(year=begining.year -1)
-
+            return self.empty_response
         # We drop duplicates so each clinic can only have one record per day
         data = data.drop_duplicates(
             subset=["region", "district", "clinic", "date", variable])
+
+        shifted_end_date, timeseries_freq = self.get_shifted_end_date_and_timeseries_frequency(raw_end_date)
+
+        beginning_of_epi_start_week = self.get_epi_week_start(shifted_end_date, start_week)
+
         if sublevel:
             # We first create an index with sublevel, clinic, dates
             # Where dates are the dates after the clinic started reporting
@@ -167,15 +162,16 @@ class Completeness(Resource):
                             continue
 
                         start_date = locs[clinic].start_date
-                        if start_date < begining:
-                            start_date = begining
+                        if start_date < beginning_of_epi_start_week:
+                            start_date = beginning_of_epi_start_week
                         if shifted_end_date - start_date < timedelta(days=7):
                             start_date = (shifted_end_date - timedelta(days=6)).date()
 
                         for date in pd.date_range(start_date, shifted_end_date, freq=timeseries_freq):
                             tuples.append((name, clinic, date))
             if len(tuples) == 0:
-                return jsonify({})
+                return self.empty_response
+
             new_index = pd.MultiIndex.from_tuples(
                 tuples, names=[sublevel, "clinic", "date"])
             completeness = data.groupby([
@@ -247,13 +243,13 @@ class Completeness(Resource):
             dates_not_reported = []  # Not needed for this level
         else:
             # Take into account clinic start_date
-            if locs[location].start_date > begining:
-                begining = locs[location].start_date
-            not_reported_dates_begining = begining
-            if shifted_end_date - begining < timedelta(days=7):
-                begining = (shifted_end_date - timedelta(days=6)).date()
+            if locs[location].start_date > beginning_of_epi_start_week:
+                beginning_of_epi_start_week = locs[location].start_date
+            not_reported_dates_begining = beginning_of_epi_start_week
+            if shifted_end_date - beginning_of_epi_start_week < timedelta(days=7):
+                beginning_of_epi_start_week = (shifted_end_date - timedelta(days=6)).date()
 
-            dates = pd.date_range(begining, shifted_end_date, freq=timeseries_freq)
+            dates = pd.date_range(beginning_of_epi_start_week, shifted_end_date, freq=timeseries_freq)
             completeness = data.groupby(
                 pd.TimeGrouper(
                     key="date", freq=timeseries_freq, label="left")).sum().fillna(0)[
@@ -296,6 +292,14 @@ class Completeness(Resource):
                         series_to_json_dict(clinic_yearly_scores),
                         "dates_not_reported": dates_not_reported,
                         "yearly_score": series_to_json_dict(yearly_score)})
+
+    def get_epi_week_start(self, shifted_end_date, start_week):
+        beginning = epi_week_start(shifted_end_date.year, start_week)
+        ew = EpiWeek()
+        if ew.get(shifted_end_date.isoformat())["epi_week"] == 53:
+            beginning = beginning.replace(year=beginning.year - 1)
+
+        return beginning
 
     def get_shifted_end_date_and_timeseries_frequency(self, raw_end_date):
         # If end_date is the start of an epi week we do not want to include_case_type the current epi week
