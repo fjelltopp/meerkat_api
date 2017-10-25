@@ -21,12 +21,12 @@ class Config(object):
     APPLICATION_ROOT = "/api"
     PROPAGATE_EXCEPTIONS = True
     BROKER_URL = 'amqp://guest@dev_rabbit_1//'
-    CELERY_RESULT_BACKEND = 'rpc://guest@dev_rabbit_1//'
+    CELERY_RESULT_BACKEND = 'rpc://guest@rabbit//'
     CELERY_TASK_SERIALIZER = 'json'
     CELERY_RESULT_SERIALIZER = 'json'
     CELERY_ACCEPT_CONTENT = ['json']
     SENTRY_DNS = getenv('SENTRY_DNS', '')
-    INTERNAL_DEVICE_API_ROOT = getenv("MOB_API_ROOT", 'http://dev_nginx_1/mob')
+    INTERNAL_DEVICE_API_ROOT = getenv("MOB_API_ROOT", 'http://nginx/mob')
     EXTERNAL_DEVICE_API_ROOT = '/mob'
     SEND_LOGG_EVENTS = getenv("SEND_LOGG_EVENTS", False)
     LOGGING_URL = getenv("LOGGING_URL", None)
@@ -41,7 +41,7 @@ class Production(Config):
 
 class Development(Config):
     DEBUG = True
-    TESTING = True
+    TESTING = False
 
 
 class Testing(Config):

@@ -46,7 +46,7 @@ class CustomJSONEncoder(JSONEncoder):
 
 def create_app():
     app = Flask(__name__)
-    app.config.from_object('meerkat_api.config.Config')
+    app.config.from_object(os.getenv('CONFIG_OBJECT', 'meerkat_api.config.Development'))
     app.config.from_envvar('MEERKAT_API_SETTINGS', silent=True)
     if os.environ.get("MEERKAT_API_DB_SETTINGS"):
         app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get(
