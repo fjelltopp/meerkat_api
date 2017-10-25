@@ -10,6 +10,7 @@ from os import getenv
 class Config(object):
     DEBUG = True
     TESTING = False
+    PRODUCTION = False
     # Global stuff
     SQLALCHEMY_DATABASE_URI = (
         'postgresql+psycopg2://postgres:postgres@db/meerkat_db')
@@ -36,14 +37,14 @@ class Config(object):
 
 class Production(Config):
     DEBUG = False
-    TESTING = False
+    PRODUCTION = True
 
 
 class Development(Config):
     DEBUG = True
-    TESTING = False
 
 
 class Testing(Config):
     DEBUG = False
     TESTING = True
+    API_KEY = ''

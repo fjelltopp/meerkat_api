@@ -138,11 +138,16 @@ def get_url(app, url, header):
     return rv
 
 
-class MeerkatAPITestCase(unittest.TestCase):
+class TestCase(unittest.TestCase):
+    meerkat_api.app.config.from_object('meerkat_api.config.Testing')
+    meerkat_api.app.app_context().push()
+    app = meerkat_api.app.test_client()
+    db = db_util.session
+
+
+class MeerkatAPITestCase(TestCase):
     def setUp(self):
         """Setup for testing"""
-        meerkat_api.app.config['TESTING'] = True
-        meerkat_api.app.config['API_KEY'] = ""
         celery_app.conf.CELERY_ALWAYS_EAGER = True
 
         # manage.set_up_everything(False, False, 500)
@@ -176,7 +181,6 @@ class MeerkatAPITestCase(unittest.TestCase):
                              delete=False)
         db_util.insert_cases(self.db_session, "mental_health",
                              delete=False)
-        self.app = meerkat_api.app.test_client()
         self.locations = {1: {"name": "Demo"}}
         self.variables = {1: {"name": "Total"}}
 
