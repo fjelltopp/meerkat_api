@@ -1266,6 +1266,92 @@ class Pip(Resource):
         return ret
 
 
+class ForeignScreening(Resource):
+    """
+    Foreign Screening Report
+
+    Args:\n
+       location: Location to generate report for\n
+       start_date: Start date of report\n
+       end_date: End date of report\n
+    Returns:\n
+       report_data\n
+    """
+    decorators = [authenticate, report_allowed_location]
+
+    def get(self, location, start_date=None, end_date=None):
+
+        start_date, end_date = fix_dates(start_date, end_date)
+        end_date_limit = end_date + timedelta(days=1)
+        ret = {}
+
+        # meta data
+        ret["meta"] = {
+            "uuid": str(uuid.uuid4()),
+            "project_id": 1,
+            "generation_timestamp": datetime.now().isoformat(),
+            "schema_version": 0.1
+        }
+
+        #  Date and location information
+        ew = EpiWeek()
+        epi_week = ew.get(end_date.isoformat())["epi_week"]
+        ret["data"] = {
+            "epi_week_num": epi_week,
+            "end_date": end_date.isoformat(),
+            "project_epoch": datetime(2015, 5, 20).isoformat(),
+            "start_date": start_date.isoformat(),
+            "email_summary": {}
+        }
+        conn = db.engine.connect()
+        locs = get_locations(db.session)
+        #foreign screening report is only for the whole country
+        if int(location) != 1:
+            return None
+        location_name = locs[int(location)].name
+        ret["data"]["project_region"] = location_name
+        districts = [loc for loc in locs.keys()
+                     if locs[loc].level == "district"]
+        # for each districts
+        priority_vars=["tb_type_1","tb_type_4","tb_result_hiv","tb_result_hepb"]
+
+        for var in priority_vars:
+            ret["data"][var] = query_sum(
+                db,
+                var,
+                start_date,
+                end_date,
+                location,
+                level="district"
+            )
+
+        table1 = []
+        for dis_id in districts:
+            record=dict()
+            record_total=0
+            record[ "name" ] =  locs[int(dis_id)].name
+            for var in priority_vars:
+                if int(dis_id) not in ret["data"][var]["district"]:
+                    record[var] = 0
+                else:
+                    record[var]=ret["data"][var]["district"][int(dis_id)]
+                    record_total+=record[var]
+            record["total"]=record_total
+            table1.append(record)
+
+        table1_totals=dict()
+        overall_total=0
+        for var in priority_vars:
+            table1_totals[var] = ret["data"][var]["total"]
+            overall_total+=table1_totals[var]
+        table1_totals["total_sum"]=overall_total
+
+        ret["data"]["table1"]=table1
+        ret["data"]["table1_totals"]=table1_totals
+
+
+        return ret
+
 class PublicHealth(Resource):
     """
     Public Health Profile Report
@@ -4879,6 +4965,9 @@ api.add_resource(RefugeeDetail, "/reports/refugee_detail/<location>",
 api.add_resource(CdReport, "/reports/cd_report/<location>",
                  "/reports/cd_report/<location>/<end_date>",
                  "/reports/cd_report/<location>/<end_date>/<start_date>")
+api.add_resource(ForeignScreening, "/reports/foreign_screening/<location>",
+                 "/reports/foreign_screening/<location>/<end_date>",
+                 "/reports/foreign_screening/<location>/<end_date>/<start_date>")
 api.add_resource(Pip, "/reports/pip/<location>",
                  "/reports/pip/<location>/<end_date>",
                  "/reports/pip/<location>/<end_date>/<start_date>")
