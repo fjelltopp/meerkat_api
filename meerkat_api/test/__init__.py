@@ -216,12 +216,16 @@ class MeerkatAPITestCase(unittest.TestCase):
                              "geo_shapes",
                              "variables",
                              "variable/tot_1",
-                             "device/"]
+                             "device/4/location"]
+        no_authentication_full_paths = ["/device/4"]
+
         for url in urls:
             needs_auth = True
             for na in no_authentication:
                 if na in url:
                     needs_auth = False
+            if url in no_authentication_full_paths:
+                needs_auth = False
             if url == "/" or url == "":
                 needs_auth = False
             print(url + " needs auth? " + str(needs_auth))
