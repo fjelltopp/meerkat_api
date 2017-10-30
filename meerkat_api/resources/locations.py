@@ -1,16 +1,17 @@
 """
 Locations resource for querying location data
 """
-from flask_restful import Resource, abort
-from flask import jsonify, g, request
-from sqlalchemy import func, or_
-from meerkat_api.authentication import authenticate
-from meerkat_api.util import row_to_dict, rows_to_dicts, is_child, get_children
+import json
 
-from meerkat_api.extensions import db, api
+from flask import jsonify, g, request
+from flask_restful import Resource
+from sqlalchemy import func
+
 from meerkat_abacus import model
 from meerkat_abacus.util import get_locations
-import json
+from meerkat_api.authentication import authenticate
+from meerkat_api.extensions import db, api
+from meerkat_api.util import row_to_dict, rows_to_dicts, is_child, get_children
 
 
 class Locations(Resource):
@@ -42,31 +43,6 @@ class Location(Resource):
                 model.Locations.id == location_id
             ).first()
         ))
-
-
-class DeviceID(Resource):
-    """
-    Location by device_id
-
-    Args:\n
-        location_id: id of location\n
-    Returns:\n
-       location: location
-    """
-    def get(self, device_id):
-        locations_deviceid = model.Locations.deviceid
-        location_filter = or_(locations_deviceid == device_id,
-                                locations_deviceid.startswith("{},".format(device_id)),
-                                locations_deviceid.contains(",{},".format(device_id)),
-                                locations_deviceid.endswith(",{}".format(device_id)),
-                                )
-        query = db.session.query(model.Locations).filter(location_filter)
-        if query.count() == 0:
-            abort(404, message="No location matching deviceid: {!r}".format(device_id))
-        else:
-            return jsonify(row_to_dict(
-                query.one()
-            ))
 
 
 class LocationTree(Resource):
@@ -178,5 +154,4 @@ class TotClinics(Resource):
 api.add_resource(Locations, "/locations")
 api.add_resource(LocationTree, "/locationtree")
 api.add_resource(Location, "/location/<location_id>")
-api.add_resource(DeviceID, "/device/<device_id>")
 api.add_resource(TotClinics, "/tot_clinics/<location_id>")
