@@ -193,20 +193,24 @@ class MeerkatAPILocationTestCase(unittest.TestCase):
 
     def test_location_by_non_existing_device_id(self):
         for id in ["42", "fake_device_id", DEVICEID_1[1:]]:
-            rv = self.app.get('/device/%s/location' % id, headers=settings.header)
-            self.assertEqual(rv.status_code, 404)
-            self.assertTrue(("No location matching deviceid: '%s'" % id) in rv.data.decode('utf-8'))
+            rv = self.app.get('locations?deviceId={}'.format(id), headers=settings.header)
+            self.assertEqual(rv.status_code, 200)
+            actual_response_json = json.loads(rv.data.decode('utf-8'))
+            empty_json = {}
+            self.assertEqual(actual_response_json, empty_json)
 
     def test_location_by_device_id(self):
         for id in DEVICE_IDS_CSV_LIST.split(','):
-            self.validate_correct_location_returned(deviceid=id, expected_loc_id=12)
+            self.validate_correct_location_returned(deviceid=id, expected_loc_id='12')
 
     def test_location_by_device_id_imei_format(self):
         for id in DEVICE_IDS_IMEI_CSV_LIST.split(','):
-            self.validate_correct_location_returned(deviceid=id, expected_loc_id=13)
+            self.validate_correct_location_returned(deviceid=id, expected_loc_id='13')
 
     def validate_correct_location_returned(self, deviceid=None, expected_loc_id=None):
-        rv = self.app.get('/device/%s/location' % deviceid, headers=settings.header)
+        rv = self.app.get('/locations?deviceId={}'.format(deviceid), headers=settings.header)
         self.assertEqual(rv.status_code, 200)
-        actual_loc_id = json.loads(rv.data.decode('utf-8'))['id']
-        self.assertEqual(actual_loc_id, expected_loc_id)
+        actual_json_response = json.loads(rv.data.decode('utf-8'))
+        self.assertTrue(expected_loc_id in actual_json_response)
+        actual_loc_id = actual_json_response[expected_loc_id]['id']
+        self.assertEqual(actual_loc_id, int(expected_loc_id))
