@@ -253,6 +253,8 @@ def export_category(uuid, form_name, category, download_name,
                 min_translation[v[1]] = tr_dict
             v[0] = field
             translation_dict[v[1]] = v[0]
+
+
         if "$to_columns" in v[0]:
             # Create columns of every possible value
             split = v[0].split("$")
@@ -424,6 +426,14 @@ def export_category(uuid, form_name, category, download_name,
                     list_row[index] = dates[field].day
                 else:
                     list_row[index] = None
+            elif "$quarter" in form_var:
+                field = form_var.split("$")[0]
+                if field in raw_data and raw_data[field]:
+                    if field not in dates:
+                        dates[field] = parse(raw_data[field])
+                    list_row[index] = 1 + (dates[field].month-1)//3
+                else:
+                    list_row[index] = None
             elif "$epi_week" in form_var:
                 field = form_var.split("$")[0]
                 if field in raw_data and raw_data[field]:
@@ -464,6 +474,26 @@ def export_category(uuid, form_name, category, download_name,
                     list_row[index] = " ".join(final_text)
                 else:
                     list_row[index] = default_value
+
+            # Look for abacus variables in a given category assigned to the row
+            # ... create a comma-seperated list of these variable names.
+            # Can be used to create e.g. age group column: category$ncd_age
+            elif "category" == form_var.split("$")[0]:
+                # Get the category's variables' data, indexed by ID.
+                category = form_var.split("$")[1]
+                cat_variables = {}
+                list_row[index] = ""
+                db_results = session.query(AggregationVariables).filter(
+                    AggregationVariables.category.has_key(category)
+                )
+                for variable in db_results:
+                    cat_variables[variable.id] = variable
+                # Create comma separated list from names of variables row
+                for var_id in cat_variables.keys():
+                    if var_id in r[0].variables:
+                        list_row[index] += cat_variables[var_id].name + ", "
+                # Remove the last space and comma
+                list_row[index] = list_row[index][:-2]
 
             elif "code_value" == form_var.split("$")[0]:
                 code = form_var.split("$")[1]
