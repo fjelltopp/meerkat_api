@@ -254,7 +254,6 @@ def export_category(uuid, form_name, category, download_name,
             v[0] = field
             translation_dict[v[1]] = v[0]
 
-
         if "$to_columns" in v[0]:
             # Create columns of every possible value
             split = v[0].split("$")
