@@ -198,8 +198,7 @@ def _get_by_device_id_filter(device_id):
     location_filter = or_(locations_deviceid == device_id,
                           locations_deviceid.startswith("{},".format(device_id)),
                           locations_deviceid.contains(",{},".format(device_id)),
-                          locations_deviceid.endswith(",{}".format(device_id)),
-                          )
+                          locations_deviceid.endswith(",{}".format(device_id)))
     return location_filter
 
 
