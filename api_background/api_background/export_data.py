@@ -498,7 +498,10 @@ def export_category(uuid, form_name, category, download_name,
                     list_row[index] = default_value
 
             elif "category" == form_var.split("$")[0]:
-                _list_category_variables(form_var.split("$")[1], r)
+                list_row[index] = _list_category_variables(
+                    form_var.split("$")[1],
+                    r
+                )
 
             elif "code_value" == form_var.split("$")[0]:
                 code = form_var.split("$")[1]
