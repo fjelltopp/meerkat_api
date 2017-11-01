@@ -4,8 +4,8 @@ Locations resource for querying location data
 import json
 
 from flask import jsonify, g, request
-from flask_restful import Resource
-from sqlalchemy import func
+from flask_restful import Resource, abort, reqparse
+from sqlalchemy import func, or_
 
 from meerkat_abacus import model
 from meerkat_abacus.util import get_locations
@@ -18,12 +18,27 @@ class Locations(Resource):
     """
     List all Locations
 
+    Params:\n
+        deviceId: return locations for a given deviceId
+
     Returns:\n
        locations: Locations indexed by location_id
     """
+
     def get(self):
+        parser = reqparse.RequestParser()
+        parser.add_argument('deviceId')
+        args = parser.parse_args()
+        device_id = args.get('deviceId')
+
+        location_query = db.session.query(model.Locations)
+
+        filter_conditions = []
+        if device_id:
+            filter_conditions.append(_get_by_device_id_filter(device_id))
+
         return jsonify(rows_to_dicts(
-            db.session.query(model.Locations).all(),
+            location_query.filter(*filter_conditions).all(),
             dict_id="id"
         ))
 
@@ -37,6 +52,7 @@ class Location(Resource):
     Returns:\n
        location: location
     """
+
     def get(self, location_id):
         return jsonify(row_to_dict(
             db.session.query(model.Locations).filter(
@@ -82,7 +98,7 @@ class LocationTree(Resource):
         for l in sorted(locs.keys()):
             if l >= loc and is_child(loc, l, locs):
                 if not only_case_reports or (locs[l].case_report == 1 or
-                                             not locs[l].deviceid):
+                                                 not locs[l].deviceid):
                     if is_child(l, loc, locs):
                         ret.setdefault(locs[l].parent_location, {"nodes": []})
 
@@ -123,6 +139,7 @@ class LocationTree(Resource):
                 clean(child)
                 if not (child['nodes'] or locs[child['id']].level == 'clinic'):
                     tree['nodes'].remove(child)
+
         clean(ret[loc])
 
         return jsonify(ret[loc])
@@ -136,6 +153,7 @@ class TotClinics(Resource):
     Returns:
         number of clinics
     """
+
     def get(self, location_id, clinic_type=None):
         locs = get_locations(db.session)
         children = get_children(location_id, locs)
@@ -151,7 +169,42 @@ class TotClinics(Resource):
 
         return {"total": res[0]}
 
+
+class LocationByDeviceId(Resource):
+    """
+    === Deprecated ===
+    Use Locations with "/locations?deviceId=<device_id> instead.
+    Location by device_id
+
+    Args:\n
+        device_id: id of a device\n
+    Returns:\n
+       location: location
+    """
+
+    def get(self, device_id):
+        location_filter = _get_by_device_id_filter(device_id)
+        query = db.session.query(model.Locations).filter(location_filter)
+        if query.count() == 0:
+            abort(404, message="No location matching deviceid: {!r}".format(device_id))
+        else:
+            return jsonify(row_to_dict(
+                query.one()
+            ))
+
+
+def _get_by_device_id_filter(device_id):
+    locations_deviceid = model.Locations.deviceid
+    location_filter = or_(locations_deviceid == device_id,
+                          locations_deviceid.startswith("{},".format(device_id)),
+                          locations_deviceid.contains(",{},".format(device_id)),
+                          locations_deviceid.endswith(",{}".format(device_id)))
+    return location_filter
+
+
 api.add_resource(Locations, "/locations")
 api.add_resource(LocationTree, "/locationtree")
 api.add_resource(Location, "/location/<location_id>")
+# endpoint "/device/<device_id>" is deprecated use /locations?deviceId=<device_id> instead
+api.add_resource(LocationByDeviceId, "/device/<device_id>")
 api.add_resource(TotClinics, "/tot_clinics/<location_id>")

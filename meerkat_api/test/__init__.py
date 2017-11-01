@@ -215,8 +215,7 @@ class MeerkatAPITestCase(unittest.TestCase):
                              "epi_week",
                              "geo_shapes",
                              "variables",
-                             "variable/tot_1",
-                             "device/4/location"]
+                             "variable/tot_1"]
         no_authentication_full_paths = ["/device/4"]
 
         for url in urls:
