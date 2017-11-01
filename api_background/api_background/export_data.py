@@ -351,6 +351,28 @@ def export_category(uuid, form_name, category, download_name,
     write_xls_row(return_keys, 0, xls_sheet)
 
     i = 0
+
+    def _list_category_variables(category, data_row):
+        """
+        Lists the variables from the specified category that are assigned to
+        the specified row. This can be used to create data columns such as
+        'Age Group' using 'category$ncd_age'.
+        """
+        # Get the category's variables' data, indexed by ID.
+        cat_variables = {}
+        variable_list = ""
+        db_results = session.query(AggregationVariables).filter(
+            AggregationVariables.category.has_key(category)
+        )
+        for variable in db_results:
+            cat_variables[variable.id] = variable
+        # Build a string listing the row's variables from specified category.
+        for var_id, var in cat_variables.items():
+            if var_id in r[0].variables:
+                variable_list += var.name + ", "
+        # Remove the last comma and space.
+        return variable_list[:-2]
+
     # Prepare each row
     for r in results:
         list_row = [''] * len(return_keys)
@@ -427,10 +449,11 @@ def export_category(uuid, form_name, category, download_name,
                     list_row[index] = None
             elif "$quarter" in form_var:
                 field = form_var.split("$")[0]
-                if field in raw_data and raw_data[field]:
+                if raw_data.get(field):
                     if field not in dates:
                         dates[field] = parse(raw_data[field])
-                    list_row[index] = 1 + (dates[field].month-1)//3
+                    quarter = 1 + (dates[field].month - 1)//3
+                    list_row[index] = quarter
                 else:
                     list_row[index] = None
             elif "$epi_week" in form_var:
@@ -474,25 +497,8 @@ def export_category(uuid, form_name, category, download_name,
                 else:
                     list_row[index] = default_value
 
-            # Look for abacus variables in a given category assigned to the row
-            # ... create a comma-seperated list of these variable names.
-            # Can be used to create e.g. age group column: category$ncd_age
             elif "category" == form_var.split("$")[0]:
-                # Get the category's variables' data, indexed by ID.
-                category = form_var.split("$")[1]
-                cat_variables = {}
-                list_row[index] = ""
-                db_results = session.query(AggregationVariables).filter(
-                    AggregationVariables.category.has_key(category)
-                )
-                for variable in db_results:
-                    cat_variables[variable.id] = variable
-                # Create comma separated list from names of variables row
-                for var_id in cat_variables.keys():
-                    if var_id in r[0].variables:
-                        list_row[index] += cat_variables[var_id].name + ", "
-                # Remove the last space and comma
-                list_row[index] = list_row[index][:-2]
+                _list_category_variables(form_var.split("$")[1], r)
 
             elif "code_value" == form_var.split("$")[0]:
                 code = form_var.split("$")[1]
