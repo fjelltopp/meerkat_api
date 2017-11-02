@@ -17,6 +17,7 @@ import meerkat_api
 from meerkat_api.test import db_util
 from meerkat_abacus import data_management
 from meerkat_abacus import model
+
 from meerkat_api.resources import reports
 from freezegun import freeze_time
 from meerkat_api.test.test_data import expected_output
@@ -975,6 +976,36 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
 
 
 
+    def test_foreigner_screening(self):
+        """ Test foreigner screening report"""
+        db_util.insert_specific_locations(self.db, "testshire")
+        db_util.insert_codes_from_file(self.db, "demo_codes.csv")
+        db_util.insert_cases(self.db, "foreigner_screening")
+        fs_expected = meerkat_api.test.test_data.expected_output.fs_expected
+
+        #This test assumes the period is the whole year despite whatever it is
+        rv = self.app.get(
+            '/reports/foreigner_screening/{}/{}/{}'
+            .format(
+                1,
+                datetime(2017, 12, 25).isoformat(),
+                datetime(2016, 12, 18).isoformat(),
+            ), headers=settings.header)
+        self.assertEqual(rv.status_code, 200)
+        fs_returned = json.loads(rv.data.decode("utf-8"))
+        print("[Output foreign_screening_returned]:")
+        print(type(fs_returned))
+        print("[end]")
+        fs_expected.pop("meta",None)
+        fs_returned.pop("meta",None)
+        dictdiffstructure = dict_struct_compare(fs_expected,fs_returned)
+        dictdiffcontent = simplified_dict_compare(fs_expected,fs_returned)
+        print("Difference in response structure")
+        print(dictdiffstructure)
+        print("Difference in response content")
+        print(dictdiffcontent)
+        self.assertTrue(dictdiffstructure == None)
+        self.assertTrue(dictdiffcontent == None)
 
     def test_refugee_public_health(self):
         """ Test refugee public health report"""
