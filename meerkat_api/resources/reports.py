@@ -1266,9 +1266,11 @@ class Pip(Resource):
         return ret
 
 
-class ForeignScreening(Resource):
+class ForeignerScreening(Resource):
     """
-    Foreign Screening Report
+    Foreigner Screening Report
+
+    Provides breakdown of positive test results for specified screening of foreigners intending to stay in the country.
 
     Args:\n
        location: Location to generate report for\n
@@ -1305,14 +1307,16 @@ class ForeignScreening(Resource):
         }
         conn = db.engine.connect()
         locs = get_locations(db.session)
-        #foreign screening report is only for the whole country
+        #foreigner screening report is only for the whole country
+
         if int(location) != 1:
             return None
+
         location_name = locs[int(location)].name
         ret["data"]["project_region"] = location_name
-        districts = [loc for loc in locs.keys()
-                     if locs[loc].level == "district"]
-        # for each districts
+        regions = [loc for loc in locs.keys()
+                     if locs[loc].level == "region"]
+        # for each regions
         priority_vars=["tb_type_1","tb_type_4","tb_result_hiv","tb_result_hepb"]
 
         for var in priority_vars:
@@ -1322,19 +1326,19 @@ class ForeignScreening(Resource):
                 start_date,
                 end_date,
                 location,
-                level="district"
+                level="region"
             )
 
         table1 = []
-        for dis_id in districts:
+        for dis_id in regions:
             record=dict()
             record_total=0
             record[ "name" ] =  locs[int(dis_id)].name
             for var in priority_vars:
-                if int(dis_id) not in ret["data"][var]["district"]:
+                if int(dis_id) not in ret["data"][var]["region"]:
                     record[var] = 0
                 else:
-                    record[var]=ret["data"][var]["district"][int(dis_id)]
+                    record[var]=ret["data"][var]["region"][int(dis_id)]
                     record_total+=record[var]
             record["total"]=record_total
             table1.append(record)
@@ -4965,9 +4969,9 @@ api.add_resource(RefugeeDetail, "/reports/refugee_detail/<location>",
 api.add_resource(CdReport, "/reports/cd_report/<location>",
                  "/reports/cd_report/<location>/<end_date>",
                  "/reports/cd_report/<location>/<end_date>/<start_date>")
-api.add_resource(ForeignScreening, "/reports/foreign_screening/<location>",
-                 "/reports/foreign_screening/<location>/<end_date>",
-                 "/reports/foreign_screening/<location>/<end_date>/<start_date>")
+api.add_resource(ForeignerScreening, "/reports/foreigner_screening/<location>",
+                 "/reports/foreigner_screening/<location>/<end_date>",
+                 "/reports/foreigner_screening/<location>/<end_date>/<start_date>")
 api.add_resource(Pip, "/reports/pip/<location>",
                  "/reports/pip/<location>/<end_date>",
                  "/reports/pip/<location>/<end_date>/<start_date>")
