@@ -1,20 +1,17 @@
 """
 Data resource for getting Device data
 """
+import json
 import logging
 
 from flask import current_app
 from flask_restful import Resource, abort
 
-from meerkat_api.extensions import db, api
 from meerkat_abacus import model
-import json
-
 from meerkat_api.authentication import authenticate
-
-from .. import common as c
-
+from meerkat_api.extensions import db, api
 from meerkat_api.util import rows_to_dicts
+from .. import common as c
 
 
 class Devices(Resource):
@@ -41,4 +38,6 @@ class Devices(Resource):
             return return_data
         else:
             return {"message": "No devices registered"}
+
+
 api.add_resource(Devices, "/devices")
