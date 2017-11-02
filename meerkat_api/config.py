@@ -12,8 +12,7 @@ class Config(object):
     TESTING = False
     PRODUCTION = False
     # Global stuff
-    SQLALCHEMY_DATABASE_URI = (
-        'postgresql+psycopg2://postgres:postgres@db/meerkat_db')
+    SQLALCHEMY_DATABASE_URI = getenv("SQLALCHEMY_DATABASE_URI", 'postgresql+psycopg2://postgres:postgres@db/meerkat_db')
     API_KEY = "test-api"
     AUTH = {
         'default': [['registered'], ['demo']]

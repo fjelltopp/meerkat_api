@@ -142,7 +142,7 @@ class TestCase(unittest.TestCase):
     meerkat_api.app.config.from_object('meerkat_api.config.Testing')
     meerkat_api.app.app_context().push()
     app = meerkat_api.app.test_client()
-    db = db_util.session
+    db_session = db_util.session
 
 
 class MeerkatAPITestCase(TestCase):
@@ -150,9 +150,6 @@ class MeerkatAPITestCase(TestCase):
         """Setup for testing"""
         celery_app.conf.CELERY_ALWAYS_EAGER = True
 
-        # manage.set_up_everything(False, False, 500)
-        self.db = meerkat_api.app.extensions["sqlalchemy"].db
-        self.db_session = db_util.session
         db_util.insert_calculation_parameters(self.db_session)
         db_util.insert_codes(self.db_session)
         db_util.insert_locations(self.db_session)
