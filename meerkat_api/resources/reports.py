@@ -1923,9 +1923,9 @@ class CdPublicHealthSom(Resource):
         # Let's just get that report and tweak it slightly.
         rv = CdPublicHealth()
         ret = rv.get( location, start_date.isoformat(), end_date.isoformat() )
-
-        ret["data"]["logo"] = logo
-        ret["data"]["project_region"] = zone_name
+        if current_app.config.get("COUNTRY") != "somaliland":
+            ret["data"]["logo"] = logo
+            ret["data"]["project_region"] = zone_name
         query_variable = QueryVariable()
         total_cases = query_sum(db, ["tot_1"], start_date, end_date_limit, location)["total"]
         gender = query_variable.get("tot_1", "gender",
