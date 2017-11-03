@@ -61,7 +61,7 @@ class TestDeviceResourceBase(meerkat_api.test.TestCase):
         device_id = "1"
         variable_id = "gen_1"
         actual = DeviceResourceBase._get_variable_count_for_deivce_id(device_id, variable_id, [])
-        expected = {'deviceId': device_id, 'variable': variable_id, 'count': 3}
+        expected = {'deviceId': device_id, 'variable': variable_id, 'submissionsCount': 3}
         self.assertEqual(expected, actual)
 
     def test_get_variable_count_for_deivce_id_should_return_zero_for_no_data(self):

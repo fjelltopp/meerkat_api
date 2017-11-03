@@ -107,10 +107,14 @@ def valid_urls(app):
         "exclude_case_type": "mh",
         "include_clinic_type": "Refugee"
     }
+    excluded_urls = [
+        '/devices/submissions/<variable_id>'
+    ]
     urls = []
     for url in meerkat_api.app.url_map.iter_rules():
-        if "static" not in str(url):
-            new_url = str(url)
+        str_url = str(url)
+        if "static" not in str_url and str_url not in excluded_urls:
+            new_url = str_url
             for arg in url.arguments:
                 new_url = new_url.replace("<" + arg + ">",
                                           substitutions[arg])
