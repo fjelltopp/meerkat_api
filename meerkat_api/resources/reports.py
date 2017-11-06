@@ -665,7 +665,7 @@ def create_ncd_report(location, start_date=None, end_date=None, params=['case'])
 
             # Add whole country summary for email report
             if region == 1:
-              ret[disease]["email_summary"]["cases"]=ret[disease]["age"]["data"][i]["values"][0]
+                ret[disease]["email_summary"]["cases"]=ret[disease]["age"]["data"][i]["values"][0]
 
             #  Get gender breakdown
             disease_gender = query_variable.get(d_id, gender_category,
@@ -718,8 +718,8 @@ def create_ncd_report(location, start_date=None, end_date=None, params=['case'])
 
             else:
                 #  We can N/A to the table if it includes data we are not collecting
-                 for r in range(len(regions) +1):
-                     ret[disease]["complications"]["data"][r]["values"].append("N/A")
+                for r in range(len(regions) +1):
+                    ret[disease]["complications"]["data"][r]["values"].append("N/A")
     return ret
 
 class MhReport(Resource):
@@ -1314,47 +1314,42 @@ class ForeignerScreening(Resource):
 
         location_name = locs[int(location)].name
         ret["data"]["project_region"] = location_name
-        regions = [loc for loc in locs.keys()
-                     if locs[loc].level == "region"]
+        regions = [loc for loc in locs.keys() if locs[loc].level == "region"]
         # for each regions
-        priority_vars=["tb_type_1","tb_type_4","tb_result_hiv","tb_result_hepb"]
+        priority_vars = [
+            "tb_type_1", "tb_type_4", "tb_result_hiv", "tb_result_hepb"
+        ]
 
         for var in priority_vars:
             ret["data"][var] = query_sum(
-                db,
-                var,
-                start_date,
-                end_date,
-                location,
-                level="region"
-            )
+                db, var, start_date, end_date, location, level="region")
 
         table1 = []
         for dis_id in regions:
-            record=dict()
-            record_total=0
-            record[ "name" ] =  locs[int(dis_id)].name
+            record = dict()
+            record_total = 0
+            record["name"] = locs[int(dis_id)].name
             for var in priority_vars:
                 if int(dis_id) not in ret["data"][var]["region"]:
                     record[var] = 0
                 else:
-                    record[var]=ret["data"][var]["region"][int(dis_id)]
-                    record_total+=record[var]
-            record["total"]=record_total
+                    record[var] = ret["data"][var]["region"][int(dis_id)]
+                    record_total += record[var]
+            record["total"] = record_total
             table1.append(record)
 
-        table1_totals=dict()
-        overall_total=0
+        table1_totals = dict()
+        overall_total = 0
         for var in priority_vars:
             table1_totals[var] = ret["data"][var]["total"]
-            overall_total+=table1_totals[var]
-        table1_totals["total_sum"]=overall_total
+            overall_total += table1_totals[var]
+        table1_totals["total_sum"] = overall_total
 
-        ret["data"]["table1"]=table1
-        ret["data"]["table1_totals"]=table1_totals
-
+        ret["data"]["table1"] = table1
+        ret["data"]["table1_totals"] = table1_totals
 
         return ret
+
 
 class PublicHealth(Resource):
     """
@@ -3103,10 +3098,10 @@ class WeeklyEpiMonitoring(Resource):
         investigated_alerts = 0
 
         for a in all_alerts:
-                tot_alerts += 1
-                report_status = False
-                if "ale_1" in a["variables"]:
-                    investigated_alerts += 1
+            tot_alerts += 1
+            report_status = False
+            if "ale_1" in a["variables"]:
+                investigated_alerts += 1
 
 
         ret['alerts'] = {
@@ -3179,7 +3174,7 @@ class Malaria(Resource):
 
         var = {}
         query_variable = QueryVariable()
-                #  get the age breakdown
+        #  get the age breakdown
         malaria_data = query_variable.get("cmd_17", "malaria_situation",
                                           end_date=end_date_limit.isoformat(),
                                           start_date=start_date.isoformat(),
@@ -3569,7 +3564,7 @@ class AFROBulletin(Resource):
         mort_top = []
         for var in mort:
             # Extract the cause's id from the count variables name e.g. mor_1 name is "Deaths icd_17"
-#            mort_var = Variable().get( var[0] )
+            #            mort_var = Variable().get( var[0] )
             cause_var = Variable().get(var[0].replace("mor", "cmd"))
             # Only return if there are more than zero deaths.
             if var[1] > 0:
@@ -3923,7 +3918,7 @@ class AFROBulletin(Resource):
                     "cases_cumulative":priority_disease_cases_cumulative
                 })
 
-                # add mortality
+            # add mortality
             try:
                 ret["data"]["table_priority_diseases_cumulative"][disease]["mortality"] = mort[mortality_codes[disease]]
             except KeyError:
@@ -3963,7 +3958,7 @@ class AFROBulletin(Resource):
             try:
                 n_clin = tot_clinics.get(district)["total"]
                 if n_clin> 0:
-                #  District names
+                    #  District names
                     ret["data"]["table_timeliness_completeness"].update(
                         {str(district): {"name": locs[district].name}})
 
@@ -4551,7 +4546,7 @@ class CTCReport(Resource):
                 #   clinic_data["cases_u5_history"] = cholera_cases_u5["clinic"][ctc.id]
                 #  clinic_data["cases_o5_history"] =cholera_cases_o5_ctc
 
-                    # Deal with recomendations
+                # Deal with recomendations
 
                     recommendations = []
                     cases = ctc_data.variables.get("ctc_cases", 0)

@@ -65,15 +65,15 @@ def simplified_dict_compare(d1, d2):
     for o in intersect_keys:
         #compare dictionaries recursively
         if ((type(d1[o]) == dict) and (type(d2[o]) == dict)):
-           mod_dict = simplified_dict_compare(d1[o],d2[o])
+            mod_dict = simplified_dict_compare(d1[o],d2[o])
         #compare lists as sets.
         elif ((type(d1[o]) == list) and (type(d2[o]) == list)):
-                if not compare_unhashable_list(d1[o],d2[o]):
-                    modified[o] = (d1[o],d2[o])
+            if not compare_unhashable_list(d1[o],d2[o]):
+                modified[o] = (d1[o],d2[o])
         #show differences
         else:
-                if(d1[o] != d2[o]):
-                    modified[o] = (d1[o],d2[o])
+            if(d1[o] != d2[o]):
+                modified[o] = (d1[o],d2[o])
     if (mod_dict == None or mod_dict == {}) and modified == {}:
         return None
     #same = set(o for o in intersect_keys if d1[o] == d2[o])
@@ -764,7 +764,7 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
                 self.assertEqual(data["diabetes"]["complications"]["titles"],
                                  ['reg', 'tot', 'gen_1', 'gen_2', 'lab_4', 'lab_5', 'lab_7', 'lab_9', 'com_2', 'smo_2', 'lab_11']
             )
-     #       print(data["diabetes"]["complications"]["data"][0])
+    #       print(data["diabetes"]["complications"]["data"][0])
             self.assertEqual(data["diabetes"]["complications"]["data"][0],
                              {"title": "Region 1",
                               "values": [3, [2 , 2/ 3 * 100], [1, 1/3 * 100] , [1, 50], [1, 50], [0, 0], [1, 50], [0, 0], [1, 1 / 2 * 100], [0, 0]]}
@@ -985,21 +985,21 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
 
         #This test assumes the period is the whole year despite whatever it is
         rv = self.app.get(
-            '/reports/foreigner_screening/{}/{}/{}'
-            .format(
+            '/reports/foreigner_screening/{}/{}/{}'.format(
                 1,
                 datetime(2017, 12, 25).isoformat(),
                 datetime(2016, 12, 18).isoformat(),
-            ), headers=settings.header)
+            ),
+            headers=settings.header)
         self.assertEqual(rv.status_code, 200)
         fs_returned = json.loads(rv.data.decode("utf-8"))
         print("[Output foreign_screening_returned]:")
         print(type(fs_returned))
         print("[end]")
-        fs_expected.pop("meta",None)
-        fs_returned.pop("meta",None)
-        dictdiffstructure = dict_struct_compare(fs_expected,fs_returned)
-        dictdiffcontent = simplified_dict_compare(fs_expected,fs_returned)
+        fs_expected.pop("meta", None)
+        fs_returned.pop("meta", None)
+        dictdiffstructure = dict_struct_compare(fs_expected, fs_returned)
+        dictdiffcontent = simplified_dict_compare(fs_expected, fs_returned)
         print("Difference in response structure")
         print(dictdiffstructure)
         print("Difference in response content")
