@@ -17,7 +17,7 @@ from meerkat_api.extensions import db, api
 from meerkat_api.resources.locations import Location
 from meerkat_api.util import rows_to_dicts, get_children
 from meerkat_abacus.util import get_locations
-from .. import common as c
+from meerkat_api import common as c
 
 
 class Devices(Resource):
@@ -61,6 +61,9 @@ sql_alchemy_comparators_dict.update({
 
 
 class DeviceResourceBase(Resource):
+    """
+    Base class to encapsulate logic used in DeviceSubmissions resources.
+    """
     def get_sql_alchemy_filters(self, filters):
         sql_alchemy_filters = []
         if filters:
@@ -96,6 +99,20 @@ class DeviceResourceBase(Resource):
 
 
 class DeviceSubmissions(DeviceResourceBase):
+    """
+    Resource handling device submissions api for a single device and selected variable id.
+    Results can be filtered by url param `filter` in format filter=data_column_name:comparator:value, where:\n
+    data_column_name: model.Data sqlalchemy field name.
+    comparator: eq =, ne !=, ge >=, le <=, gt >, lt <
+    value: value to filter results by
+
+    Result is returned in json:
+    {
+        "deviceId": <device_id>,
+        "variable": <variable_id>,
+        "submissionsCount": <caluclated_submissions_count>
+    }
+    """
     decorators = [authenticate]
 
     def get(self, device_id, variable_id):
@@ -110,6 +127,30 @@ class DeviceSubmissions(DeviceResourceBase):
 
 
 class DeviceSubmissionsForLocation(DeviceResourceBase):
+    """
+    Resource handling device submissions api for a all devices grouped by clinics under given parent location
+    Requires providing parameter 'location` with parent location id.
+    e.g. `http://host/api/devices/submissions/tot_1?location=1`
+    Results can be filtered by url param `filter` in format filter=data_column_name:comparator:value, where:\n
+    data_column_name: model.Data sqlalchemy field name.
+    comparator: eq =, ne !=, ge >=, le <=, gt >, lt <
+    value: value to filter results by
+
+    Result is returned in json:
+    {
+            "parentLocationId": <passed_location_id>,
+            "clinicCount": <number_of_descendant_clinics_under_parent>,
+            "clinicSubmissions": [
+                "clinicId": <clinic_id>
+                "deviceSubmissions": [
+                    "deviceId": <device_id>,
+                    "variable": <variable_id>,
+                    "submissionsCount": <caluclated_submissions_count>
+                    ...
+                ]
+            ]
+    }
+    """
     decorators = [authenticate]
 
     def get(self, variable_id):
