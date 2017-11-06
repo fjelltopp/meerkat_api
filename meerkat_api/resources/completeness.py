@@ -118,12 +118,12 @@ class Completeness(Resource):
                              Data.clinic, Data.date,
                              Data.variables[variable].label(variable)).filter(
                 *conditions).statement, db.session.bind)
+
         if len(data) == 0:
             return jsonify(self.__empty_response)
         # We drop duplicates so each clinic can only have one record per day
         data = data.drop_duplicates(
             subset=["region", "district", "clinic", "date", variable])
-
         shifted_end_date, timeseries_freq = self._get_shifted_end_date_and_timeseries_frequency(end_date)
 
         beginning_of_epi_start_week = self._get_epi_week_start(shifted_end_date, start_week)
@@ -141,9 +141,8 @@ class Completeness(Resource):
                     if locs[clinic].case_report:
                         if inc_case_types and not set(locs[clinic].case_type) & inc_case_types:
                             continue
-                        if exc_case_types and set(locs[clinic].case_type) & exc_case_types:
+                        if exc_case_types and set(locs[clinic].case_type) >= exc_case_types:
                             continue
-
                         start_date = locs[clinic].start_date
                         if start_date < beginning_of_epi_start_week:
                             start_date = beginning_of_epi_start_week
@@ -372,7 +371,6 @@ class NonReporting(Resource):
         inc_case_types = set(
             json.loads(request.args.get('inc_case_types', '[]'))
         )
-        print(request.args.get('exc_case_types', '[]'))
         exc_case_types = set(
             json.loads(request.args.get('exc_case_types', '[]'))
         )
