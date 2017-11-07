@@ -7,15 +7,14 @@ import datetime
 from flask import jsonify
 from flask import current_app
 from meerkat_api.extensions import api
-# The epi_week start date is defined in the meerkat_abacus configs
-from meerkat_abacus.util import epi_week_start_date
+from meerkat_abacus.util import epi_year_start_date
 
 
 def epi_year_start(year):
     if current_app.config["TESTING"]:
         return datetime.datetime(year, 1, 1)
     else:
-        return epi_week_start_date(year)
+        return epi_year_start_date(year)
 
 
 def epi_week_start(year, epi_week):
