@@ -6,11 +6,12 @@ python:
 - '3.6'
 env:
 - MEERKAT_ABACUS_DB_URL='postgresql+psycopg2://postgres:postgres@localhost/meerkat_db'
+  SQLALCHEMY_DATABASE_URI='postgresql+psycopg2://postgres:postgres@localhost/meerkat_db'
   MEERKAT_BRANCH='development'
-  MEERKAT_API_SETTINGS='../.travis_config'
   DATA_DIRECTORY="$TRAVIS_BUILD_DIR/meerkat_abacus/meerkat_abacus/data/"
   COUNTRY_CONFIG_DIR="$TRAVIS_BUILD_DIR/meerkat_abacus/meerkat_abacus/country_config/"
   MEERKAT_AUTH_SETTINGS="$TRAVIS_BUILD_DIR/meerkat_libs/meerkat_libs/auth_client/dev_auth_config.py"
+  CONFIG_OBJECT="meerkat_api.config.Testing"
 
 addons:
   postgresql: '9.6'

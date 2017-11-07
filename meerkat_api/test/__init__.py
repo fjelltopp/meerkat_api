@@ -107,10 +107,14 @@ def valid_urls(app):
         "exclude_case_type": "mh",
         "include_clinic_type": "Refugee"
     }
+    excluded_urls = [
+        '/devices/submissions/<variable_id>'
+    ]
     urls = []
     for url in meerkat_api.app.url_map.iter_rules():
-        if "static" not in str(url):
-            new_url = str(url)
+        str_url = str(url)
+        if "static" not in str_url and str_url not in excluded_urls:
+            new_url = str_url
             for arg in url.arguments:
                 new_url = new_url.replace("<" + arg + ">",
                                           substitutions[arg])
@@ -138,16 +142,18 @@ def get_url(app, url, header):
     return rv
 
 
-class MeerkatAPITestCase(unittest.TestCase):
+class TestCase(unittest.TestCase):
+    meerkat_api.app.config.from_object('meerkat_api.config.Testing')
+    meerkat_api.app.app_context().push()
+    app = meerkat_api.app.test_client()
+    db_session = db_util.session
+
+
+class MeerkatAPITestCase(TestCase):
     def setUp(self):
         """Setup for testing"""
-        meerkat_api.app.config['TESTING'] = True
-        meerkat_api.app.config['API_KEY'] = ""
         celery_app.conf.CELERY_ALWAYS_EAGER = True
 
-        # manage.set_up_everything(False, False, 500)
-        self.db = meerkat_api.app.extensions["sqlalchemy"].db
-        self.db_session = db_util.session
         db_util.insert_calculation_parameters(self.db_session)
         db_util.insert_codes(self.db_session)
         db_util.insert_locations(self.db_session)
@@ -176,7 +182,6 @@ class MeerkatAPITestCase(unittest.TestCase):
                              delete=False)
         db_util.insert_cases(self.db_session, "mental_health",
                              delete=False)
-        self.app = meerkat_api.app.test_client()
         self.locations = {1: {"name": "Demo"}}
         self.variables = {1: {"name": "Total"}}
 

@@ -55,10 +55,14 @@ class Location(Resource):
 
     def get(self, location_id):
         return jsonify(row_to_dict(
-            db.session.query(model.Locations).filter(
-                model.Locations.id == location_id
-            ).first()
+            Location.get_location_by_id(location_id)
         ))
+
+    @staticmethod
+    def get_location_by_id(location_id):
+        return db.session.query(model.Locations).filter(
+            model.Locations.id == location_id
+        ).one()
 
 
 class LocationTree(Resource):
