@@ -7,14 +7,10 @@ Unit tests for the epi week resource of Meerkat Api
 
 import json
 import unittest
-from datetime import datetime
-from datetime import timedelta
-from sqlalchemy import extract
-from . import settings
+
 import meerkat_api
-from meerkat_abacus.util import epi_year_start_date
-import meerkat_abacus.config as config
-import meerkat_abacus.model as model
+from meerkat_abacus.util import epi_year_start_date_by_year
+from . import settings
 
 
 class MeerkatAPIEpiWeekTestCase(unittest.TestCase):
@@ -34,7 +30,7 @@ class MeerkatAPIEpiWeekTestCase(unittest.TestCase):
         rv = self.app.get('/epi_week_start/2015/1', headers=settings.header)
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(rv.status_code, 200)
-        self.assertEqual(data["start_date"], epi_year_start_date(2015).isoformat())
+        self.assertEqual(data["start_date"], epi_year_start_date_by_year(2015).isoformat())
         
     def test_epi_week(self):
         """ Test date to epi week"""

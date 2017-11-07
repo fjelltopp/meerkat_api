@@ -1,19 +1,22 @@
 """
 Data resource for completeness data
 """
-from flask_restful import Resource, abort
-from flask import jsonify, request, g
-from dateutil.parser import parse
-from sqlalchemy import extract, func, Integer, or_
-from datetime import datetime, timedelta
-import pandas as pd
 import json
-from meerkat_api.extensions import db, api
-from meerkat_api.resources.epi_week import EpiWeek, epi_week_start, epi_year_start
-from meerkat_abacus.model import Data, Locations
-from meerkat_api.util import get_children, is_child, series_to_json_dict, get_locations
-from meerkat_api.authentication import authenticate, is_allowed_location
+
+import pandas as pd
+from datetime import datetime, timedelta
+from dateutil.parser import parse
+from flask import jsonify, request, g
+from flask_restful import Resource, abort
 from pandas.tseries.offsets import CustomBusinessDay
+from sqlalchemy import func, or_
+
+from meerkat_abacus.model import Data, Locations
+from meerkat_api.authentication import authenticate, is_allowed_location
+from meerkat_api.extensions import db, api
+from meerkat_api.resources.epi_week import EpiWeek
+from meerkat_api.util import get_children, is_child, series_to_json_dict
+from meerkat_abacus.util import get_locations, epi_year_start_date_by_year, epi_week_start
 
 
 class CompletenessIndicator(Resource):
@@ -312,7 +315,7 @@ class Completeness(Resource):
         # We only calculate completeness for whole epi-weeks so we want to set end_date to the
         # the end of the previous epi_week.
         end_date = self._parse_end_date(raw_end_date)
-        epi_year_start_weekday = epi_year_start(end_date.year).weekday()
+        epi_year_start_weekday = epi_year_start_date_by_year(year=end_date.year).weekday()
         timeseries_freq = ["W-MON", "W-TUE", "W-WED", "W-THU", "W-FRI", "W-SAT", "W-SUN"][epi_year_start_weekday]
         offset = (end_date.weekday() - epi_year_start_weekday) % 7
         shifted_end_date = end_date - timedelta(days=offset + 1)

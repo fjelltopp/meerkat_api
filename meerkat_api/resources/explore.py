@@ -1,20 +1,18 @@
 """
 Data resource for data exploration
 """
+from flask import request, g
 from flask_restful import Resource
 from sqlalchemy import or_, extract, func
-from datetime import datetime
-from dateutil.parser import parse
-from flask import request, g
 
-from meerkat_api.util import is_child, fix_dates
-from meerkat_api.resources.epi_week import epi_year_start
-from meerkat_api.extensions import db, api
 from meerkat_abacus.model import Data
-from meerkat_abacus.util import get_locations
-from meerkat_api.resources.variables import Variables
-from meerkat_api.resources.epi_week import EpiWeek
+from meerkat_abacus.util import get_locations, epi_year_start_date
 from meerkat_api.authentication import authenticate, is_allowed_location
+from meerkat_api.extensions import db, api
+from meerkat_api.resources.epi_week import EpiWeek
+from meerkat_api.resources.variables import Variables
+from meerkat_api.util import is_child, fix_dates
+
 
 def get_variables(category):
     """
@@ -99,7 +97,6 @@ class QueryVariable(Resource):
             return {}
 
         start_date, end_date = fix_dates(start_date, end_date)
-        year = start_date.year
         if "use_ids" in request.args.keys() or use_ids:
             use_ids = True
         else:
@@ -127,19 +124,19 @@ class QueryVariable(Resource):
             if only_loc:
                 conditions += [or_(loc == only_loc for loc in (
                     Data.country, Data.zone, Data.region, Data.district, Data.clinic))]
-        epi_week_start = epi_year_start(year)
+        epi_year_start = epi_year_start_date(start_date)
         # Determine which columns we want to extract from the Data table
         columns_to_extract = [func.count(Data.id).label('value')]
         if date_variable:
             columns_to_extract.append(func.floor(
                 extract('days', func.to_date(Data.variables[date_variable].astext, "YYYY-MM-DDTHH-MI-SS") -
-                epi_week_start) / 7 + 1
+                epi_year_start) / 7 + 1
             ).label("week"))
         else:
             columns_to_extract.append(
                 func.floor(
                     extract('days', Data.date -
-                            epi_week_start) / 7 + 1
+                            epi_year_start) / 7 + 1
                 ).label("week")
             )
         # We want to add the columns to extract based on the group_by value

@@ -3,11 +3,8 @@ meerkat_api util functions
 
 """
 from datetime import datetime
-from flask import jsonify
-from datetime import datetime, timedelta
 from dateutil import parser
-from meerkat_api.resources.epi_week import epi_year_start
-from meerkat_abacus.util import is_child, get_locations
+from meerkat_abacus.util import is_child, epi_year_start_date
 import numpy as np
 
 def series_to_json_dict(series):
@@ -49,8 +46,8 @@ def fix_dates(start_date, end_date):
                                       hour=0, second=0,
                                       minute=0,
                                       microsecond=0)
-    if start_date < epi_year_start(year=start_date.year):
-        start_date = epi_year_start(year=start_date.year)
+    if start_date < epi_year_start_date(date=start_date):
+        start_date = epi_year_start_date(date=start_date)
     return start_date, end_date
 
 

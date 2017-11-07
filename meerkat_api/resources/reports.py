@@ -18,24 +18,21 @@ Vaccination Report
 """
 
 from flask_restful import Resource
-from flask import request, jsonify, g, current_app
-from sqlalchemy import or_, func, desc, Integer
+from flask import request, g, current_app
+from sqlalchemy import or_, func, desc
 from datetime import datetime, timedelta
-from dateutil import parser
-from sqlalchemy.sql import text
 import uuid
 import math
 import numpy as np
-import traceback
 from functools import wraps
 from gettext import gettext
 import logging, json, operator
-from meerkat_api.util import get_children, is_child, fix_dates, rows_to_dicts, find_level
+from meerkat_api.util import get_children, is_child, fix_dates, find_level
 from meerkat_api.extensions import db, api
 from meerkat_abacus.model import Data, Locations, AggregationVariables, CalculationParameters
 from meerkat_api.resources.completeness import Completeness, NonReporting
 from meerkat_api.resources.variables import Variables, Variable
-from meerkat_api.resources.epi_week import EpiWeek, epi_week_start, epi_year_start
+from meerkat_api.resources.epi_week import EpiWeek
 from meerkat_api.resources.locations import TotClinics
 from meerkat_api.resources.data import AggregateYear
 from meerkat_api.resources.map import Clinics, MapVariable
@@ -43,7 +40,7 @@ from meerkat_api.resources import alerts
 from meerkat_api.resources.explore import QueryVariable, QueryCategory, get_variables
 from meerkat_api.util.data_query import query_sum, latest_query
 from meerkat_api.resources.incidence import IncidenceRate
-from meerkat_abacus.util import get_locations, all_location_data, get_zones_regions_districts
+from meerkat_abacus.util import get_locations, all_location_data, get_zones_regions_districts, epi_week_start
 from meerkat_abacus import model
 from meerkat_api.authentication import authenticate, is_allowed_location
 from geoalchemy2.shape import to_shape

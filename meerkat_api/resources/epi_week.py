@@ -1,35 +1,13 @@
 """
 Resource to deal with epi-weeks
 """
-from flask_restful import Resource
-from dateutil.parser import parse
 import datetime
+from dateutil.parser import parse
 from flask import jsonify
-from flask import current_app
+from flask_restful import Resource
+
+from meerkat_abacus.util import epi_year_start_date, epi_week_start
 from meerkat_api.extensions import api
-from meerkat_abacus.util import epi_year_start_date
-
-
-def epi_year_start(year):
-    if current_app.config["TESTING"]:
-        return datetime.datetime(year, 1, 1)
-    else:
-        return epi_year_start_date(year)
-
-
-def epi_week_start(year, epi_week):
-    """
-    Calculates the start of an epi week:
-
-    Args:
-        epi-week: epi week
-        year: year
-    Returns:
-        start-date: start-date
-    """
-    start_date = epi_year_start(int(year))
-    start_date = start_date + datetime.timedelta(weeks=int(epi_week) - 1)
-    return start_date
 
 
 class EpiWeek(Resource):
@@ -41,15 +19,16 @@ class EpiWeek(Resource):
     Returns:\n
         epi-week: epi-week\n
     """
+
     def get(self, date=None):
         if date:
             date = parse(date)
         else:
             date = datetime.datetime.today()
 
-        start_date = epi_year_start(date.year)
+        start_date = epi_year_start_date(date=date)
         if date < start_date:
-            start_date = start_date.replace(year=start_date.year-1)
+            start_date = start_date.replace(year=start_date.year - 1)
         year = start_date.year
 
         if date < start_date:
@@ -70,10 +49,11 @@ class EpiWeekStart(Resource):
     Returns:
         start-date: start-date\n
     """
+
     def get(self, year, epi_week):
         return jsonify(start_date=epi_week_start(year, epi_week))
 
-    
+
 api.add_resource(EpiWeek, "/epi_week",
                  "/epi_week/<date>")
 api.add_resource(EpiWeekStart, "/epi_week_start/<year>/<epi_week>")
