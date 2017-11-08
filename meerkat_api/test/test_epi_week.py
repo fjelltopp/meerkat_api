@@ -18,12 +18,6 @@ class MeerkatAPIEpiWeekTestCase(meerkat_api.test.TestCase):
     def setUp(self):
         """Setup for testing"""
         self._mock_epi_week_abacus_logic()
-        meerkat_api.app.config['TESTING'] = True
-        meerkat_api.app.config['API_KEY'] = ""
-        self.app = meerkat_api.app.test_client()
-
-    def tearDown(self):
-        pass
 
     def test_epi_year_start(self):
         """ Test the epi_year_start function """

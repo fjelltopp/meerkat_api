@@ -17,16 +17,9 @@ class MeerkatAPIIncidenceTestCase(meerkat_api.test.TestCase):
     def setUp(self):
         """Setup for testing"""
         self._mock_epi_week_abacus_logic()
-        meerkat_api.app.config['TESTING'] = True
-        meerkat_api.app.config['API_KEY'] = ""
-        self.app = meerkat_api.app.test_client()
-        session = db_util.session
-        db_util.insert_codes(session)
-        db_util.insert_locations(session)
-        db_util.insert_cases(session, "public_health_report")
-
-    def tearDown(self):
-        pass
+        db_util.insert_codes(self.db_session)
+        db_util.insert_locations(self.db_session)
+        db_util.insert_cases(self.db_session, "public_health_report")
 
     def test_incidence(self):
         rv = self.app.get('/incidence_rate/tot_1/region',

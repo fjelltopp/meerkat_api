@@ -157,9 +157,6 @@ class TestCase(unittest.TestCase):
     app = meerkat_api.app.test_client()
     db_session = db_util.session
 
-    def setUp(self):
-        self._mock_epi_week_abacus_logic()
-
     def _mock_epi_week_abacus_logic(self):
         epi_year_patch = patch('meerkat_abacus.util.epi_year_start_date')
         self.addCleanup(epi_year_patch.stop)

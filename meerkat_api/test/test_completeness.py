@@ -20,13 +20,9 @@ class MeerkatAPIDataTestCase(meerkat_api.test.TestCase):
     def setUp(self):
         """Setup for testing"""
         self._mock_epi_week_abacus_logic()
-        meerkat_api.app.config['TESTING'] = True
-        meerkat_api.app.config['API_KEY'] = ""
-        self.app = meerkat_api.app.test_client()
-        self.session = db_util.session
 
-        db_util.insert_codes(self.session)
-        db_util.insert_locations(self.session, date="2016-07-02")
+        db_util.insert_codes(self.db_session)
+        db_util.insert_locations(self.db_session, date="2016-07-02")
 
     def tearDown(self):
         pass
@@ -34,7 +30,7 @@ class MeerkatAPIDataTestCase(meerkat_api.test.TestCase):
     @freeze_time("2016-07-02")
     def test_non_reporting(self):
         """Check non_reporting"""
-        db_util.insert_cases(self.session,
+        db_util.insert_cases(self.db_session,
                              "completeness", "2016-07-02")
         rv = self.app.get('/non_reporting/reg_1/1', headers=settings.header)
         data = json.loads(rv.data.decode("utf-8"))
@@ -90,7 +86,7 @@ class MeerkatAPIDataTestCase(meerkat_api.test.TestCase):
     @freeze_time("2016-07-02")
     def test_completness(self):
         """Test completeness"""
-        db_util.insert_cases(self.session, "completeness", "2016-07-02")
+        db_util.insert_cases(self.db_session, "completeness", "2016-07-02")
         rv = self.app.get('completeness/reg_1/1/5', headers=settings.header)
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))
