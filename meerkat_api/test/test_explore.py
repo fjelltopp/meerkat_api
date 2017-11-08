@@ -13,10 +13,11 @@ import meerkat_api
 from meerkat_api.test import db_util
 from meerkat_api.resources import explore
 
-class MeerkatAPITestCase(unittest.TestCase):
+class MeerkatAPITestCase(meerkat_api.test.TestCase):
 
     def setUp(self):
         """Setup for testing"""
+        self._mock_epi_week_abacus_logic()
         meerkat_api.app.config['TESTING'] = True
         meerkat_api.app.config['API_KEY'] = ""
         self.app = meerkat_api.app.test_client()

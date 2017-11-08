@@ -4,22 +4,22 @@ Meerkat API Tests
 
 Unit tests for the data resource in Meerkat API
 """
-import json, logging
+import json
 import unittest
-from datetime import datetime, timedelta, date
-from sqlalchemy import extract
+from unittest.mock import patch
+
 import pandas as pd
-from . import settings
-import meerkat_api
+from datetime import datetime, timedelta, date
 from freezegun import freeze_time
 
+import meerkat_api
 from meerkat_api.test import db_util
-import meerkat_abacus.config as config
-import meerkat_abacus.model as model
+from . import settings
 
-class MeerkatAPIDataTestCase(unittest.TestCase):
+class MeerkatAPIDataTestCase(meerkat_api.test.TestCase):
     def setUp(self):
         """Setup for testing"""
+        self._mock_epi_week_abacus_logic()
         meerkat_api.app.config['TESTING'] = True
         meerkat_api.app.config['API_KEY'] = ""
         self.app = meerkat_api.app.test_client()
@@ -28,10 +28,9 @@ class MeerkatAPIDataTestCase(unittest.TestCase):
         db_util.insert_codes(self.session)
         db_util.insert_locations(self.session, date="2016-07-02")
 
-
     def tearDown(self):
         pass
-    
+
     @freeze_time("2016-07-02")
     def test_non_reporting(self):
         """Check non_reporting"""
@@ -57,7 +56,6 @@ class MeerkatAPIDataTestCase(unittest.TestCase):
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(rv.status_code, 200)
         self.assertEqual(sorted(data["clinics"]), [11])
-
 
         # Test with include/exclude
         rv = self.app.get('/non_reporting/reg_1/1/0/foreigner',
@@ -88,9 +86,6 @@ class MeerkatAPIDataTestCase(unittest.TestCase):
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(rv.status_code, 200)
         self.assertEqual(sorted(data["clinics"]), [7, 11])
-        
-    
-
 
     @freeze_time("2016-07-02")
     def test_completness(self):
@@ -99,12 +94,12 @@ class MeerkatAPIDataTestCase(unittest.TestCase):
         rv = self.app.get('completeness/reg_1/1/5', headers=settings.header)
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))
-        self.assertEqual( 
+        self.assertEqual(
             sorted(data.keys()),
             ["clinic_score", "clinic_yearly_score", "dates_not_reported", "score", "timeline", "yearly_score"]
         )
         self.assertEqual(data["score"]["1"], 4 / 10 * 100)
-        self.assertAlmostEqual(data["score"]["2"], 4 / 10 *100)
+        self.assertAlmostEqual(data["score"]["2"], 4 / 10 * 100)
         self.assertEqual(data["clinic_score"]["7"], 60)
         self.assertEqual(data["clinic_score"]["8"], 20)
         today = date.today()
@@ -112,7 +107,7 @@ class MeerkatAPIDataTestCase(unittest.TestCase):
         freq = "W-FRI"
         epi_year_weekday = 4
         start = datetime(today.year, 1, 1)
-        
+
         offset = today.weekday() - epi_year_weekday
         if offset < 0:
             offset = 7 + offset
@@ -121,17 +116,16 @@ class MeerkatAPIDataTestCase(unittest.TestCase):
         dates_iso = [d.isoformat() for d in dates.to_pydatetime()]
 
         self.assertEqual(data["timeline"]["1"]["weeks"], dates_iso)
-        
+
         self.assertEqual(data["timeline"]["1"]["values"][-1], 2)
         self.assertEqual(data["timeline"]["1"]["values"][-2], 0.5)
         self.assertAlmostEqual(data["timeline"]["2"]["values"][-1], 4 / 2)
         self.assertAlmostEqual(data["timeline"]["2"]["values"][-2], 1 / 2)
 
-
         rv = self.app.get('completeness/reg_1/4/5', headers=settings.header)
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))
-        self.assertEqual(data["score"]["4"], 4 / 10 *100)
+        self.assertEqual(data["score"]["4"], 4 / 10 * 100)
         self.assertAlmostEqual(data["score"]["7"], 60)
         self.assertEqual(data["score"]["8"], 20)
 
@@ -146,8 +140,6 @@ class MeerkatAPIDataTestCase(unittest.TestCase):
         dates_iso2 = [d.isoformat() for d in dates2.to_pydatetime()]
         self.assertEqual(data["timeline"]["7"]["weeks"], dates_iso2)
 
-        
-        
         rv = self.app.get('completeness/reg_1/7/5', headers=settings.header)
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))
@@ -155,7 +147,7 @@ class MeerkatAPIDataTestCase(unittest.TestCase):
         self.assertAlmostEqual(data["score"]["7"], 60)
         self.assertAlmostEqual(data["timeline"]["7"]["values"][-1], 3)
         self.assertAlmostEqual(data["timeline"]["7"]["values"][-2], 1)
-        
+
         offset = today.weekday() - start.weekday()
         if offset < 0:
             offset = 7 + offset
@@ -178,7 +170,7 @@ class MeerkatAPIDataTestCase(unittest.TestCase):
 
         rv = self.app.get('completeness/reg_1/1/5?inc_case_types=["mh"]',
                           headers=settings.header)
-        
+
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(data["score"]["1"], 3 / 5 * 100)
@@ -189,7 +181,7 @@ class MeerkatAPIDataTestCase(unittest.TestCase):
 
         rv = self.app.get('completeness/reg_1/1/5?exc_case_types=["mh"]',
                           headers=settings.header)
-        
+
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(data["score"]["1"], 1 / 5 * 100)

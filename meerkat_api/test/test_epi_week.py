@@ -9,14 +9,15 @@ import json
 import unittest
 
 import meerkat_api
-from meerkat_abacus.util import epi_year_start_date_by_year
+import meerkat_abacus.util as abacus_util
 from . import settings
 
 
-class MeerkatAPIEpiWeekTestCase(unittest.TestCase):
+class MeerkatAPIEpiWeekTestCase(meerkat_api.test.TestCase):
 
     def setUp(self):
         """Setup for testing"""
+        self._mock_epi_week_abacus_logic()
         meerkat_api.app.config['TESTING'] = True
         meerkat_api.app.config['API_KEY'] = ""
         self.app = meerkat_api.app.test_client()
@@ -30,7 +31,7 @@ class MeerkatAPIEpiWeekTestCase(unittest.TestCase):
         rv = self.app.get('/epi_week_start/2015/1', headers=settings.header)
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(rv.status_code, 200)
-        self.assertEqual(data["start_date"], epi_year_start_date_by_year(2015).isoformat())
+        self.assertEqual(data["start_date"], abacus_util.epi_year_start_date_by_year(2015).isoformat())
         
     def test_epi_week(self):
         """ Test date to epi week"""

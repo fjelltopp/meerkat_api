@@ -6,18 +6,16 @@ Unit tests for the data resource in Meerkat API
 """
 import json
 import unittest
-from datetime import datetime
-from sqlalchemy import extract
 from . import settings
 import meerkat_api
 from meerkat_api.test import db_util
-import meerkat_abacus.config as config
-import meerkat_abacus.model as model
+import meerkat_abacus.util as abacus_util
 
-class MeerkatAPIDataTestCase(unittest.TestCase):
+class MeerkatAPIDataTestCase(meerkat_api.test.TestCase):
 
     def setUp(self):
         """Setup for testing"""
+        self._mock_epi_week_abacus_logic()
         meerkat_api.app.config['TESTING'] = True
         meerkat_api.app.config['API_KEY'] = ""
         self.app = meerkat_api.app.test_client()

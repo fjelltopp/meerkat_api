@@ -3,8 +3,8 @@ from flask import g
 from sqlalchemy import or_, func, extract
 from sqlalchemy.sql import text
 
+import meerkat_abacus.util as abacus_util
 from meerkat_abacus.model import Data
-from meerkat_abacus.util import epi_year_start_date
 from meerkat_api.authentication import is_allowed_location
 
 qu = "SELECT sum(CAST(data.variables ->> :variables_1 AS FLOAT)) AS sum_1 extra_columns FROM data WHERE where_clause AND data.date >= :date_1 AND data.date < :date_2 AND (data.country = :country_1 OR data.zone = :zone_1 OR data.region = :region_1 OR data.district = :district_1 OR data.clinic = :clinic_1) group_by_clause"
@@ -65,7 +65,7 @@ def query_sum(db, var_ids, start_date, end_date, location,
 
     if weeks:
         extra_columns = ", floor(EXTRACT(days FROM data.date - :date_3) / 7 + 1) AS week"
-        variables["date_3"] = epi_year_start_date(start_date)
+        variables["date_3"] = abacus_util.epi_year_start_date(start_date)
         group_by.append("week")
         ret["weeks"] = {}
 
@@ -187,7 +187,7 @@ def latest_query(db, var_id, identifier_id, start_date, end_date,
     conditions = location_condtion + date_conditions + [Data.variables.has_key(identifier_id)]
 
     if weeks:
-        epi_year_start = epi_year_start_date(start_date)
+        epi_year_start = abacus_util.epi_year_start_date(start_date)
         if date_variable:
             c = func.floor(
                 extract('days', func.to_date(Data.variables[date_variable].astext, "YYYY-MM-DDTHH-MI-SS") -

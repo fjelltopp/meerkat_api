@@ -1,8 +1,7 @@
 from flask import request, current_app, g
 from functools import wraps
-from meerkat_api.util import is_child
 from meerkat_libs.auth_client import Authorise as libs_auth
-from meerkat_abacus.util import get_locations
+from meerkat_abacus.util import get_locations, is_child
 import logging
 from meerkat_api.app import db
 

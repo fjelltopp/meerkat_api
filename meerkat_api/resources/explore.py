@@ -6,12 +6,12 @@ from flask_restful import Resource
 from sqlalchemy import or_, extract, func
 
 from meerkat_abacus.model import Data
-from meerkat_abacus.util import get_locations, epi_year_start_date
+import meerkat_abacus.util as abacus_util
 from meerkat_api.authentication import authenticate, is_allowed_location
 from meerkat_api.extensions import db, api
 from meerkat_api.resources.epi_week import EpiWeek
 from meerkat_api.resources.variables import Variables
-from meerkat_api.util import is_child, fix_dates
+from meerkat_api.util import fix_dates
 
 
 def get_variables(category):
@@ -42,11 +42,11 @@ def get_locations_by_level(level, only_loc):
     Returns:
         names: {id: name}
     """
-    locations = get_locations(db.session)
+    locations = abacus_util.get_locations(db.session)
     names = {}
     for l in locations.values():
         if (l.level == level
-            and (not only_loc or is_child(only_loc, l.id, locations))
+            and (not only_loc or abacus_util.is_child(only_loc, l.id, locations))
             and (level != "clinic" or l.case_report)
         ):
             names[l.id] = l.name
@@ -124,7 +124,7 @@ class QueryVariable(Resource):
             if only_loc:
                 conditions += [or_(loc == only_loc for loc in (
                     Data.country, Data.zone, Data.region, Data.district, Data.clinic))]
-        epi_year_start = epi_year_start_date(start_date)
+        epi_year_start = abacus_util.epi_year_start_date(start_date)
         # Determine which columns we want to extract from the Data table
         columns_to_extract = [func.count(Data.id).label('value')]
         if date_variable:
@@ -150,7 +150,7 @@ class QueryVariable(Resource):
             else:
                 level = "clinic"
                 
-            locations = get_locations(db.session)
+            locations = abacus_util.get_locations(db.session)
             ids = locations.keys()
             names = get_locations_by_level(level, only_loc)
 

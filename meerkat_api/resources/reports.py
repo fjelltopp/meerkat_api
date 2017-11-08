@@ -27,7 +27,7 @@ import numpy as np
 from functools import wraps
 from gettext import gettext
 import logging, json, operator
-from meerkat_api.util import get_children, is_child, fix_dates, find_level
+from meerkat_api.util import get_children, fix_dates, find_level
 from meerkat_api.extensions import db, api
 from meerkat_abacus.model import Data, Locations, AggregationVariables, CalculationParameters
 from meerkat_api.resources.completeness import Completeness, NonReporting
@@ -40,7 +40,7 @@ from meerkat_api.resources import alerts
 from meerkat_api.resources.explore import QueryVariable, QueryCategory, get_variables
 from meerkat_api.util.data_query import query_sum, latest_query
 from meerkat_api.resources.incidence import IncidenceRate
-from meerkat_abacus.util import get_locations, all_location_data, get_zones_regions_districts, epi_week_start
+import meerkat_abacus.util as abacus_util
 from meerkat_abacus import model
 from meerkat_api.authentication import authenticate, is_allowed_location
 from geoalchemy2.shape import to_shape
@@ -611,7 +611,7 @@ def create_ncd_report(location, start_date=None, end_date=None, params=['case'])
         }
         additional_variables = []
 
-    locations, ldid, zones, regions, districts, devices = all_location_data(db.session)
+    locations, ldid, zones, regions, districts, devices = abacus_util.all_location_data(db.session)
     v = Variables()
 
 
@@ -750,7 +750,7 @@ class MhReport(Resource):
                        "start_date": start_date.isoformat()
         }
 
-        locs = get_locations(db.session)
+        locs = abacus_util.get_locations(db.session)
         if int(location) not in locs:
             return None
         location_name = locs[int(location)].name
@@ -758,7 +758,7 @@ class MhReport(Resource):
         tot_clinics = TotClinics()
         ret["data"]["clinic_num"] = tot_clinics.get(location)["total"]
 
-        locs = get_locations(db.session)
+        locs = abacus_util.get_locations(db.session)
         if int(location) not in locs:
             return None
         location_name = locs[int(location)].name
@@ -769,7 +769,7 @@ class MhReport(Resource):
         nationality_visit_variables = get_variables('mh_visit_nationality')
         age_visit_variables = get_variables('visit_ncd_age')
         #Case based tables:
-        [zones, regions, districts] = get_zones_regions_districts(db.session)
+        [zones, regions, districts] = abacus_util.get_zones_regions_districts(db.session)
         mhgap_variables = get_variables('mhgap')
         gender_case_variables = get_variables('gender')
         nationality_case_variables = get_variables('mh_case_nationality')
@@ -1047,7 +1047,7 @@ class Pip(Resource):
             "email_summary": {}
         }
         conn = db.engine.connect()
-        locs = get_locations(db.session)
+        locs = abacus_util.get_locations(db.session)
         if int(location) not in locs:
             return None
         location_name = locs[int(location)].name
@@ -1171,7 +1171,7 @@ class Pip(Resource):
         #  Reportin sites
         ret["data"]["reporting_sites"] = []
         for l in locs.values():
-            if is_child(location, l.id, locs) and l.case_report and l.case_type == "SARI":
+            if abacus_util.is_child(location, l.id, locs) and l.case_report and l.case_type == "SARI":
                 num = query_sum(db, [sari_code],
                                       start_date,
                                       end_date_limit, l.id)["total"]
@@ -1303,7 +1303,7 @@ class ForeignerScreening(Resource):
             "email_summary": {}
         }
         conn = db.engine.connect()
-        locs = get_locations(db.session)
+        locs = abacus_util.get_locations(db.session)
         #foreigner screening report is only for the whole country
 
         if int(location) != 1:
@@ -1453,7 +1453,7 @@ class PublicHealth(Resource):
                       smoking_prevalence / (smoking_prevalence_ever+smoking_non_prevalence_ever) * 100))
 
         # Reporting sites
-        locs = get_locations(db.session)
+        locs = abacus_util.get_locations(db.session)
         ret["data"]["reporting_sites"] = []
         for l in locs.values():
             if l.level == "clinic" and l.case_report == 0:
@@ -1748,7 +1748,7 @@ class CdPublicHealth(Resource):
         ir = IncidenceRate()
 
         all_cd_cases = "prc_1"
-        locs = get_locations(db.session)
+        locs = abacus_util.get_locations(db.session)
         #level = "district"
         #areas = [loc for loc in locs.keys()
         #         if locs[loc].level == "district"]
@@ -1794,7 +1794,7 @@ class CdPublicHealth(Resource):
                                start_date=start_date,
                                end_date=end_date_limit)
             for area in areas:
-                if is_child(location, area, locs) and area in incidence:
+                if abacus_util.is_child(location, area, locs) and area in incidence:
                     reporting_sites.append(make_dict(locs[area].name,
                                                      incidence[area] * mult_factor,
                                                      0))
@@ -1975,7 +1975,7 @@ class CdPublicHealthSom(Resource):
         conn = db.engine.connect()
         query_variable = QueryVariable()
 
-        locs = get_locations(db.session)
+        locs = abacus_util.get_locations(db.session)
         if int(location) not in locs:
             return None
         location_name = locs[int(location)]
@@ -2140,14 +2140,14 @@ class CdPublicHealthSom(Resource):
                                start_date=start_date,
                                end_date=end_date_limit)
         mapped_mal_incidence = {}
-        locs = get_locations(db.session)
+        locs = abacus_util.get_locations(db.session)
         districts = [loc for loc in locs.keys()
                      if locs[loc].level == "district"]
         # Structure the data.
         for district in districts:
             if district not in mal_incidence:
                 mal_incidence[district] = 0
-            if is_child(zone_location, district, locs):
+            if abacus_util.is_child(zone_location, district, locs):
                 mapped_mal_incidence[locs[district].name] = {
                     'value': int(mal_incidence[district])
                 }
@@ -2338,7 +2338,7 @@ class NcdPublicHealth(Resource):
             )
 
         # Reporting sites
-        locs = get_locations(db.session)
+        locs = abacus_util.get_locations(db.session)
         ret["data"]["reporting_sites"] = []
         for l in locs.values():
             if l.parent_location and int(l.parent_location) == int(location):
@@ -2523,7 +2523,7 @@ class RefugeePublicHealth(Resource):
                        "start_date": start_date.isoformat()
         }
         conn = db.engine.connect()
-        locs = get_locations(db.session)
+        locs = abacus_util.get_locations(db.session)
         if int(location) not in locs:
             return None
         location_name = locs[int(location)].name
@@ -2636,7 +2636,7 @@ class RefugeePublicHealth(Resource):
         )
 
         #  Reporting sites
-        locs = get_locations(db.session)
+        locs = abacus_util.get_locations(db.session)
         ret["data"]["reporting_sites"] = []
         for clinic in refugee_clinics:
             num =  sum(get_variables_category("morbidity_refugee", start_date, end_date_limit, clinic, conn, use_ids = True).values())
@@ -2737,7 +2737,7 @@ class RefugeeDetail(Resource):
                        "start_date": start_date.isoformat()
         }
         conn = db.engine.connect()
-        locs = get_locations(db.session)
+        locs = abacus_util.get_locations(db.session)
         if int(location) not in locs:
             return None
         location_name = locs[int(location)]
@@ -2902,7 +2902,7 @@ class RefugeeCd(Resource):
                        "start_date": start_date.isoformat()
         }
         conn = db.engine.connect()
-        locs = get_locations(db.session)
+        locs = abacus_util.get_locations(db.session)
         if int(location) not in locs:
             return None
         location_name = locs[int(location)]
@@ -2941,7 +2941,7 @@ class RefugeeCd(Resource):
                                                              "suspected": []})
             #  Need to loop through each epi week and add data for population and all cds per week.
         for week in weeks:
-            first_day = epi_week_start(end_date.year, week)
+            first_day = abacus_util.epi_week_start(end_date.year, week)
             last_day = first_day + timedelta(days=7)
             #  #  Population
             #  tot_pop = 0
@@ -3024,7 +3024,7 @@ class WeeklyEpiMonitoring(Resource):
                        "start_date": start_date.isoformat()
         }
 
-        locs = get_locations(db.session)
+        locs = abacus_util.get_locations(db.session)
         if int(location) not in locs:
             return None
         location_name = locs[int(location)]
@@ -3159,7 +3159,7 @@ class Malaria(Resource):
                        "start_date": start_date.isoformat()
         }
 
-        locs = get_locations(db.session)
+        locs = abacus_util.get_locations(db.session)
         if int(location) not in locs:
             return None
         location_name = locs[int(location)]
@@ -3265,7 +3265,7 @@ class VaccinationReport(Resource):
                        "start_date": start_date.isoformat()
         }
 
-        locs = get_locations(db.session)
+        locs = abacus_util.get_locations(db.session)
         if int(location) not in locs:
             return None
         location_name = locs[int(location)]
@@ -3432,7 +3432,7 @@ class AFROBulletin(Resource):
                        "project_epoch": datetime(2015, 5, 20).isoformat(),
                        "start_date": start_date.isoformat()
         }
-        locs = get_locations(db.session)
+        locs = abacus_util.get_locations(db.session)
         if int(location) not in locs:
             return None
         location_name = locs[int(location)]
@@ -4029,7 +4029,7 @@ class PlagueReport(Resource):
                        "project_epoch": datetime(2015, 5, 20).isoformat(),
                        "start_date": start_date.isoformat()
         }
-        locs = get_locations(db.session)
+        locs = abacus_util.get_locations(db.session)
         if int(location) not in locs:
             return None
         location_name = locs[int(location)]
@@ -4106,8 +4106,8 @@ class PlagueReport(Resource):
 
 
 
-        first_day_of_season = epi_week_start(current_year - 1, start_week)
-        end_date_season = epi_week_start(current_year, start_week) - timedelta(days=1)
+        first_day_of_season = abacus_util.epi_week_start(current_year - 1, start_week)
+        end_date_season = abacus_util.epi_week_start(current_year, start_week) - timedelta(days=1)
 
 
         # FIGURE 3: MAP of plague cases
@@ -4189,7 +4189,7 @@ class EBSReport(Resource):
                        "project_epoch": datetime(2015, 5, 20).isoformat(),
                        "start_date": start_date.isoformat()
         }
-        locs = get_locations(db.session)
+        locs = abacus_util.get_locations(db.session)
         if int(location) not in locs:
             return None
         location_name = locs[int(location)]
@@ -4335,7 +4335,7 @@ class CTCReport(Resource):
                        "project_epoch": datetime(2015, 5, 20).isoformat(),
                        "start_date": start_date.isoformat()
         }
-        locs = get_locations(db.session)
+        locs = abacus_util.get_locations(db.session)
         if int(location) not in locs:
             return None
         location_name = locs[int(location)]
@@ -4648,7 +4648,7 @@ class SCReport(Resource):
                        "project_epoch": datetime(2015, 5, 20).isoformat(),
                        "start_date": start_date.isoformat()
         }
-        locs = get_locations(db.session)
+        locs = abacus_util.get_locations(db.session)
         if int(location) not in locs:
             return None
         location_name = locs[int(location)]

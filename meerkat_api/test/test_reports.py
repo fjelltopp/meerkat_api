@@ -8,14 +8,12 @@ import json
 import unittest
 import logging
 from datetime import datetime
-from datetime import timedelta
-from sqlalchemy import extract
 from dateutil import parser
 import pytz
 from . import settings
 import meerkat_api
 from meerkat_api.test import db_util
-from meerkat_abacus import data_management
+import meerkat_abacus.util as abacus_util
 from meerkat_abacus import model
 
 from meerkat_api.resources import reports
@@ -119,14 +117,13 @@ def dict_struct_compare(d1, d2):
 
 
 
-class MeerkatAPIReportsUtilityTestCase(unittest.TestCase):
+class MeerkatAPIReportsUtilityTestCase(meerkat_api.test.TestCase):
 
     def setUp(self):
         """Setup for testing"""
+        self._mock_epi_week_abacus_logic()
         meerkat_api.app.config['TESTING'] = True
         meerkat_api.app.config['API_KEY'] = ""
-        #data_management.create_db(meerkat_api.app.config["SQLALCHEMY_DATABASE_URI"],
-        #                          model.Base, False)
         self.app = meerkat_api.app.test_client()
         self.db = db_util.session
 
@@ -393,10 +390,11 @@ def assert_dict(class_self, d, title, quantity, percent):
     class_self.assertEqual(d["quantity"], quantity)
     class_self.assertEqual(d["percent"], percent)
 
-class MeerkatAPIReportsTestCase(unittest.TestCase):
+class MeerkatAPIReportsTestCase(meerkat_api.test.TestCase):
 
     def setUp(self):
         """Setup for testing"""
+        self._mock_epi_week_abacus_logic()
         meerkat_api.app.config['TESTING'] = True
         meerkat_api.app.config['API_KEY'] = ""
         self.app = meerkat_api.app.test_client()

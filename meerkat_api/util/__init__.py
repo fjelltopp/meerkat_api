@@ -4,7 +4,7 @@ meerkat_api util functions
 """
 from datetime import datetime
 from dateutil import parser
-from meerkat_abacus.util import is_child, epi_year_start_date
+import meerkat_abacus.util as abacus_util
 import numpy as np
 
 def series_to_json_dict(series):
@@ -46,8 +46,8 @@ def fix_dates(start_date, end_date):
                                       hour=0, second=0,
                                       minute=0,
                                       microsecond=0)
-    if start_date < epi_year_start_date(date=start_date):
-        start_date = epi_year_start_date(date=start_date)
+    if start_date < abacus_util.epi_year_start_date(date=start_date):
+        start_date = abacus_util.epi_year_start_date(date=start_date)
     return start_date, end_date
 
 
@@ -114,7 +114,7 @@ def find_level(location, sublevel, locations):
     location = int(location)
 
     for loc in locations:
-        if locations[loc].level == sublevel and is_child(loc, location, locations):
+        if locations[loc].level == sublevel and abacus_util.is_child(loc, location, locations):
             return loc
         
     return None
@@ -135,6 +135,6 @@ def get_children(parent, locations, clinic_type=None, require_case_report=True, 
         if ( (not require_case_report or locations[location_id].case_report) and
             (not clinic_type or locations[location_id].clinic_type == clinic_type)):
             if( case_type is None or locations[location_id].case_type == case_type):
-                if is_child(parent, location_id, locations):
+                if abacus_util.is_child(parent, location_id, locations):
                     ret.append(location_id)
     return ret

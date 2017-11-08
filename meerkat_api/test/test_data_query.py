@@ -3,17 +3,17 @@ Unittests for meerkat_api.util
 """
 import unittest
 from datetime import datetime
-from meerkat_api import util
 from meerkat_api.util import data_query
-from meerkat_abacus import model
+import meerkat_abacus.util as abacus_util
 import meerkat_api
 from meerkat_api.test import db_util
 from collections import namedtuple
 
-class DataQueryTests(unittest.TestCase):
+class DataQueryTests(meerkat_api.test.TestCase):
 
     def setUp(self):
         """Setup for testing"""
+        self._mock_epi_week_abacus_logic()
         session = db_util.session
         db_util.insert_codes(session)
         db_util.insert_locations(session)

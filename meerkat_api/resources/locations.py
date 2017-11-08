@@ -8,10 +8,10 @@ from flask_restful import Resource, abort, reqparse
 from sqlalchemy import func, or_
 
 from meerkat_abacus import model
-from meerkat_abacus.util import get_locations
+from meerkat_abacus.util import is_child, get_locations
 from meerkat_api.authentication import authenticate
 from meerkat_api.extensions import db, api
-from meerkat_api.util import row_to_dict, rows_to_dicts, is_child, get_children
+from meerkat_api.util import row_to_dict, rows_to_dicts, get_children
 
 
 class Locations(Resource):
