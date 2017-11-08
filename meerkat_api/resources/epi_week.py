@@ -36,7 +36,7 @@ class EpiWeek(Resource):
 
         return {"epi_week": (date - start_date).days // 7 + 1,
                 "year": year,
-                "offset": abacus_util.epi_week_start(date.year, 1).weekday()}
+                "offset": abacus_util.epi_week_start_date(date.year, 1).weekday()}
 
 
 class EpiWeekStart(Resource):
@@ -51,7 +51,7 @@ class EpiWeekStart(Resource):
     """
 
     def get(self, year, epi_week):
-        return jsonify(start_date=abacus_util.epi_week_start(year, epi_week))
+        return jsonify(start_date=abacus_util.epi_week_start_date(year, epi_week))
 
 
 api.add_resource(EpiWeek, "/epi_week",

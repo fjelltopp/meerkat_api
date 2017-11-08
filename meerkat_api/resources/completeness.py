@@ -303,7 +303,7 @@ class Completeness(Resource):
         return sublevels
 
     def _get_epi_week_start(self, shifted_end_date, start_week):
-        beginning = abacus_util.epi_week_start(shifted_end_date.year, start_week)
+        beginning = abacus_util.epi_week_start_date(shifted_end_date.year, start_week)
         ew = EpiWeek()
         if ew.get(shifted_end_date.isoformat())["epi_week"] == 53:
             beginning = beginning.replace(year=beginning.year - 1)
@@ -401,10 +401,10 @@ class NonReporting(Resource):
         if num_weeks:
             ew = EpiWeek()
             epi_week = ew.get()
-            start_date = abacus_util.epi_week_start(epi_week["year"],
-                                        int(epi_week["epi_week"]) - int(num_weeks))
-            end_date = abacus_util.epi_week_start(epi_week["year"],
-                                      epi_week["epi_week"])
+            start_date = abacus_util.epi_week_start_date(epi_week["year"],
+                                                         int(epi_week["epi_week"]) - int(num_weeks))
+            end_date = abacus_util.epi_week_start_date(epi_week["year"],
+                                                       epi_week["epi_week"])
             conditions.append(Data.date >= start_date)
             conditions.append(Data.date < end_date)
         exclude_list = []
