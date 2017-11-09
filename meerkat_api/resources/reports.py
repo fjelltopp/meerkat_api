@@ -1923,9 +1923,9 @@ class CdPublicHealthSom(Resource):
         # Let's just get that report and tweak it slightly.
         rv = CdPublicHealth()
         ret = rv.get( location, start_date.isoformat(), end_date.isoformat() )
-
-        ret["data"]["logo"] = logo
-        ret["data"]["project_region"] = zone_name
+        if current_app.config.get("COUNTRY") != "somaliland":
+            ret["data"]["logo"] = logo
+            ret["data"]["project_region"] = zone_name
         query_variable = QueryVariable()
         total_cases = query_sum(db, ["tot_1"], start_date, end_date_limit, location)["total"]
         gender = query_variable.get("tot_1", "gender",
@@ -4423,6 +4423,9 @@ class CTCReport(Resource):
         for current_zone in zones:
             for ctc in ctcs:
                 clinic_data = {"name": ctc.name}
+                clinic_data["open"] = ctc.other["open"];
+                if clinic_data["open"] == "No":
+                    clinic_data["closed_date"] = ctc.other[ "closed_date" ]
                 district = locs[ctc.id].parent_location
                 region = locs[district].parent_location
                 zone = locs[region].parent_location
@@ -4725,6 +4728,9 @@ class SCReport(Resource):
         for current_zone in zones:
             for sc in scs:
                 clinic_data = {"name": sc.name}
+                clinic_data["open"] = sc.other["open"];
+                if clinic_data["open"] == "No":
+                    clinic_data["closed_date"] = sc.other[ "closed_date" ]
                 district = locs[sc.id].parent_location
                 region = locs[district].parent_location
                 zone = locs[region].parent_location

@@ -255,6 +255,7 @@ def export_category(uuid, form_name, category, download_name,
                 min_translation[v[1]] = tr_dict
             v[0] = field
             translation_dict[v[1]] = v[0]
+
         if "$to_columns" in v[0]:
             # Create columns of every possible value
             split = v[0].split("$")
@@ -352,6 +353,28 @@ def export_category(uuid, form_name, category, download_name,
     write_xls_row(return_keys, 0, xls_sheet)
 
     i = 0
+
+    def _list_category_variables(category, data_row):
+        """
+        Lists the variables from the specified category that are assigned to
+        the specified row. This can be used to create data columns such as
+        'Age Group' using 'category$ncd_age'.
+        """
+        # Get the category's variables' data, indexed by ID.
+        cat_variables = {}
+        variable_list = ""
+        db_results = session.query(AggregationVariables).filter(
+            AggregationVariables.category.has_key(category)
+        )
+        for variable in db_results:
+            cat_variables[variable.id] = variable
+        # Build a string listing the row's variables from specified category.
+        for var_id, var in cat_variables.items():
+            if var_id in r[0].variables:
+                variable_list += var.name + ", "
+        # Remove the last comma and space.
+        return variable_list[:-2]
+
     # Prepare each row
     for r in results:
         list_row = [''] * len(return_keys)
@@ -426,6 +449,15 @@ def export_category(uuid, form_name, category, download_name,
                     list_row[index] = dates[field].day
                 else:
                     list_row[index] = None
+            elif "$quarter" in form_var:
+                field = form_var.split("$")[0]
+                if raw_data.get(field):
+                    if field not in dates:
+                        dates[field] = parse(raw_data[field])
+                    quarter = 1 + (dates[field].month - 1)//3
+                    list_row[index] = quarter
+                else:
+                    list_row[index] = None
             elif "$epi_week" in form_var:
                 field = form_var.split("$")[0]
                 if field in raw_data and raw_data[field]:
@@ -466,6 +498,12 @@ def export_category(uuid, form_name, category, download_name,
                     list_row[index] = " ".join(final_text)
                 else:
                     list_row[index] = default_value
+
+            elif "category" == form_var.split("$")[0]:
+                list_row[index] = _list_category_variables(
+                    form_var.split("$")[1],
+                    r
+                )
 
             elif "code_value" == form_var.split("$")[0]:
                 code = form_var.split("$")[1]

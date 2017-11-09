@@ -1,17 +1,17 @@
 """
 Data resource for getting Device data
 """
-from flask_restful import Resource
-
-from meerkat_api.extensions import db, api
-from meerkat_abacus import model
 import json
+import logging
 
+from flask import current_app
+from flask_restful import Resource, abort
+
+from meerkat_abacus import model
 from meerkat_api.authentication import authenticate
-
-from .. import common as c
-
+from meerkat_api.extensions import db, api
 from meerkat_api.util import rows_to_dicts
+from .. import common as c
 
 
 class Devices(Resource):
@@ -24,6 +24,9 @@ class Devices(Resource):
     decorators = [authenticate]
 
     def get(self):
+        if not current_app.config['DEBUG']:
+            logging.warning("api/devices call not implemented for production")
+            abort(501, message="Api method not implemented.")
         devices = db.session.query(model.Devices)
         devices_dict = rows_to_dicts(devices)
         if devices_dict:
@@ -35,4 +38,6 @@ class Devices(Resource):
             return return_data
         else:
             return {"message": "No devices registered"}
+
+
 api.add_resource(Devices, "/devices")

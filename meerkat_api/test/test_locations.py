@@ -9,12 +9,12 @@ import unittest
 import meerkat_api
 from meerkat_api.test import db_util
 from meerkat_api.resources import locations
+from meerkat_api.test.test_data.locations import DEVICE_IDS_CSV_LIST, DEVICEID_1, DEVICE_IDS_IMEI_CSV_LIST, \
+    LOCATION_NUMBER
 from . import settings
-import logging
 
 
 class MeerkatAPILocationTestCase(unittest.TestCase):
-
     def setUp(self):
         """Setup for testing"""
         meerkat_api.app.config['TESTING'] = True
@@ -33,10 +33,8 @@ class MeerkatAPILocationTestCase(unittest.TestCase):
         rv = self.app.get('/locations', headers=settings.header)
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))
-        self.assertEqual(len(data), 11)
-        self.assertEqual(sorted(data.keys()),
-                         sorted(["1", "2", "3", "4", "5",
-                                 "6", "7", "8", "9", "10", "11"]))
+        self.assertEqual(len(data), LOCATION_NUMBER)
+        self.assertEqual(set(data.keys()), set([repr(x) for x in range(1, LOCATION_NUMBER + 1)]))
         self.assertEqual(data["11"]["name"], "Clinic 5")
         self.assertEqual(data["11"]["parent_location"], 6)
         self.assertEqual(data["5"]["name"], "District 2")
@@ -162,30 +160,57 @@ class MeerkatAPILocationTestCase(unittest.TestCase):
         print(clinics)
         self.assertEqual(rv.status_code, 200)
         self.assertIn('Clinic 1', clinics)
-        self.assertEqual(len(clinics), 1)
+        self.assertIn('Clinic 4', clinics)
+        self.assertIn('Clinic 5', clinics)
+        self.assertEqual(len(clinics), 3)
 
         rv = self.app.get(
-            '/locationtree?exc_case_types=["foreigner", "mh"]',
+            '/locationtree?exc_case_types=["pip", "mh"]',
             headers=settings.header
         )
         clinics = get_clinics(json.loads(rv.data.decode("utf-8")))
-        print('/locationtree?exc_case_types=["mh"]')
+        print('/locationtree?exc_case_types=["pip", "mh"]')
         print(json.loads(rv.data.decode("utf-8")))
         print(clinics)
         self.assertEqual(rv.status_code, 200)
-        self.assertIn('Clinic 2', clinics)
+        self.assertIn('Clinic 4', clinics)
         self.assertEqual(len(clinics), 1)
 
         # Test both inc and exc functionality
         rv = self.app.get(
-            '/locationtree?inc_case_types=["mh"]&exc_case_types=["foreigner"]',
+            '/locationtree?inc_case_types=["mh"]&exc_case_types=["pip","mh"]',
             headers=settings.header
         )
         clinics = get_clinics(json.loads(rv.data.decode("utf-8")))
-        print('/locationtree?inc_case_types=["mh"]&exc_case_types=["foreigner"]')
+        print(
+            '/locationtree?inc_case_types=["mh"]&exc_case_types=["pip","mh"]'
+        )
         print(json.loads(rv.data.decode("utf-8")))
         print(clinics)
         self.assertEqual(rv.status_code, 200)
-        self.assertIn('Clinic 1', clinics)
-        self.assertIn('Clinic 5', clinics)
-        self.assertEqual(len(clinics), 2)
+        self.assertIn('Clinic 4', clinics)
+        self.assertEqual(len(clinics), 1)
+
+    def test_location_by_non_existing_device_id(self):
+        for id in ["42", "fake_device_id", DEVICEID_1[1:]]:
+            rv = self.app.get('locations?deviceId={}'.format(id), headers=settings.header)
+            self.assertEqual(rv.status_code, 200)
+            actual_response_json = json.loads(rv.data.decode('utf-8'))
+            empty_json = {}
+            self.assertEqual(actual_response_json, empty_json)
+
+    def test_location_by_device_id(self):
+        for id in DEVICE_IDS_CSV_LIST.split(','):
+            self.validate_correct_location_returned(deviceid=id, expected_loc_id='12')
+
+    def test_location_by_device_id_imei_format(self):
+        for id in DEVICE_IDS_IMEI_CSV_LIST.split(','):
+            self.validate_correct_location_returned(deviceid=id, expected_loc_id='13')
+
+    def validate_correct_location_returned(self, deviceid=None, expected_loc_id=None):
+        rv = self.app.get('/locations?deviceId={}'.format(deviceid), headers=settings.header)
+        self.assertEqual(rv.status_code, 200)
+        actual_json_response = json.loads(rv.data.decode('utf-8'))
+        self.assertTrue(expected_loc_id in actual_json_response)
+        actual_loc_id = actual_json_response[expected_loc_id]['id']
+        self.assertEqual(actual_loc_id, int(expected_loc_id))
