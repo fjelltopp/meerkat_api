@@ -16,7 +16,6 @@ import meerkat_abacus.util.epi_week
 from meerkat_abacus.model import Data, Locations
 from meerkat_api.authentication import authenticate, is_allowed_location
 from meerkat_api.extensions import db, api
-from meerkat_api.resources.epi_week import EpiWeek
 from meerkat_api.util import get_children, series_to_json_dict
 
 
@@ -305,8 +304,8 @@ class Completeness(Resource):
 
     def _get_epi_week_start(self, shifted_end_date, start_week):
         beginning = meerkat_abacus.util.epi_week.epi_week_start_date(shifted_end_date.year, start_week)
-        ew = EpiWeek()
-        if ew.get(shifted_end_date.isoformat())["epi_week"] == 53:
+        shifted_end_date_epi_week = abacus_util.epi_week.epi_week_for_date(shifted_end_date)[1]
+        if shifted_end_date_epi_week == 53:
             beginning = beginning.replace(year=beginning.year - 1)
 
         return beginning
@@ -400,12 +399,11 @@ class NonReporting(Resource):
                                require_case_report=require_case_report)
         conditions = [Data.variables.has_key(variable)]
         if num_weeks:
-            ew = EpiWeek()
-            epi_week = ew.get()
-            start_date = meerkat_abacus.util.epi_week.epi_week_start_date(epi_week["year"],
-                                                           int(epi_week["epi_week"]) - int(num_weeks))
-            end_date = meerkat_abacus.util.epi_week.epi_week_start_date(epi_week["year"],
-                                                         epi_week["epi_week"])
+            epi_year, epi_week = abacus_util.epi_week.epi_week_for_date(datetime.today())
+            start_date = meerkat_abacus.util.epi_week.epi_week_start_date(epi_year,
+                                                           int(epi_week) - int(num_weeks))
+            end_date = meerkat_abacus.util.epi_week.epi_week_start_date(epi_year,
+                                                         epi_week)
             conditions.append(Data.date >= start_date)
             conditions.append(Data.date < end_date)
         exclude_list = []

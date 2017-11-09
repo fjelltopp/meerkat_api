@@ -27,17 +27,11 @@ class EpiWeek(Resource):
         else:
             date = datetime.datetime.today()
 
-        start_date = meerkat_abacus.util.epi_week.epi_year_start_date(date=date)
-        if date < start_date:
-            start_date = start_date.replace(year=start_date.year - 1)
-        year = start_date.year
-
-        if date < start_date:
-            year = start_date.year + 1
-
-        return {"epi_week": (date - start_date).days // 7 + 1,
-                "year": year,
-                "offset": meerkat_abacus.util.epi_week.epi_week_start_date(date.year, 1).weekday()}
+        _epi_year, _epi_week_number = abacus_util.epi_week.epi_week_for_date(date)
+        _epi_year_start_day_weekday = abacus_util.epi_week.epi_year_start_date(date).weekday()
+        return jsonify(epi_week=_epi_week_number,
+                       year=_epi_year,
+                       offset=_epi_year_start_day_weekday)
 
 
 class EpiWeekStart(Resource):
@@ -52,7 +46,8 @@ class EpiWeekStart(Resource):
     """
 
     def get(self, year, epi_week):
-        return jsonify(start_date=meerkat_abacus.util.epi_week.epi_week_start_date(year, epi_week))
+        _epi_week_start_date = abacus_util.epi_week.epi_week_start_date(year, epi_week)
+        return jsonify(start_date=_epi_week_start_date)
 
 
 api.add_resource(EpiWeek, "/epi_week",

@@ -1412,23 +1412,20 @@ class MeerkatAPIReportsTestCase(meerkat_api.test.TestCase):
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))["data"]
 
-        zeroes = [0 for i in range(53)]
+        zeroes = [0] * 53
+        wd = [0] * 53
+        [wd.insert(i, 2) for i in [0, 14, 16]]
 
-        wd = zeroes.copy()
-
-        wd[0] = 2
-        wd[14] = 2
-        wd[16] = 2
+        expected_weeks = ['Week 1, 2015'] + list(range(2,54))
         for key in data["communicable_diseases"]:
-            self.assertEqual(data["communicable_diseases"][key]["weeks"],
-                             ['Week 1, 2015', 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21,
-                              22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43,
-                              44, 45, 46, 47, 48, 49, 50, 51, 52, 53])
+            failure_message = f"Comparison failed for key: '{key}'"
+            actual_weeks = data["communicable_diseases"][key]["weeks"]
+            self.assertEqual(actual_weeks, expected_weeks, msg=failure_message)
 
             if key == "Watery Diarrhoea":
-                self.assertEqual(data["communicable_diseases"][key]["suspected"], wd)
+                self.assertEqual(data["communicable_diseases"][key]["suspected"], wd, msg=failure_message)
             else:
-                self.assertEqual(data["communicable_diseases"][key]["suspected"], zeroes)
+                self.assertEqual(data["communicable_diseases"][key]["suspected"], zeroes, msg=failure_message)
 
     def test_epi_monitoring(self):
         """ Test epi monitoring report"""

@@ -10,7 +10,6 @@ from meerkat_abacus.model import Data
 import meerkat_abacus.util as abacus_util
 from meerkat_api.authentication import authenticate, is_allowed_location
 from meerkat_api.extensions import db, api
-from meerkat_api.resources.epi_week import EpiWeek
 from meerkat_api.resources.variables import Variables
 from meerkat_api.util import fix_dates
 
@@ -171,19 +170,14 @@ class QueryVariable(Resource):
             group_by_query = ",".join(["id" + str(i) for i in ids])
         if use_ids:
             names = {vid: vid for vid in names.keys()}
-        ew = EpiWeek()
-        start_week = ew.get(start_date.isoformat())["epi_week"]
-        end_week = ew.get(end_date.isoformat())["epi_week"]
+        start_epi_week = abacus_util.epi_week.epi_week_for_date(start_date)[1]
+        end_epi_week = abacus_util.epi_week.epi_week_for_date(end_date)[1]
         
         # How we deal with start and end dates in different years
         if start_date.year != end_date.year:
-            end_week += 53 * (end_date.year - start_date.year)
-        if start_week == 0:
-            start_week = 1
+            end_epi_week += 53 * (end_date.year - start_date.year)
 
         # DB Query
-
-
         results = db.session.query(
             *tuple(columns_to_extract)
         ).filter(*conditions).group_by("week," + group_by_query)
@@ -191,7 +185,7 @@ class QueryVariable(Resource):
         ret = {}
         for n in names.values():
             ret[n] = {"total": 0,
-                      "weeks": {i: 0 for i in range(start_week, end_week + 1)}}
+                      "weeks": {i: 0 for i in range(start_epi_week, end_epi_week + 1)}}
             
         for r in results:
             # r = (number, week, other_columns_to_extract
