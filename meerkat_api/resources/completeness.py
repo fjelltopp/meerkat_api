@@ -12,6 +12,7 @@ from flask_restful import Resource, abort
 from pandas.tseries.offsets import CustomBusinessDay
 from sqlalchemy import func, or_
 
+import meerkat_abacus.util.epi_week
 from meerkat_abacus.model import Data, Locations
 from meerkat_api.authentication import authenticate, is_allowed_location
 from meerkat_api.extensions import db, api
@@ -303,7 +304,7 @@ class Completeness(Resource):
         return sublevels
 
     def _get_epi_week_start(self, shifted_end_date, start_week):
-        beginning = abacus_util.epi_week_start_date(shifted_end_date.year, start_week)
+        beginning = meerkat_abacus.util.epi_week.epi_week_start_date(shifted_end_date.year, start_week)
         ew = EpiWeek()
         if ew.get(shifted_end_date.isoformat())["epi_week"] == 53:
             beginning = beginning.replace(year=beginning.year - 1)
@@ -315,7 +316,7 @@ class Completeness(Resource):
         # We only calculate completeness for whole epi-weeks so we want to set end_date to the
         # the end of the previous epi_week.
         end_date = self._parse_end_date(raw_end_date)
-        epi_year_start_weekday = abacus_util.epi_year_start_date_by_year(year=end_date.year).weekday()
+        epi_year_start_weekday = meerkat_abacus.util.epi_week.epi_year_start_date_by_year(year=end_date.year).weekday()
         timeseries_freq = ["W-MON", "W-TUE", "W-WED", "W-THU", "W-FRI", "W-SAT", "W-SUN"][epi_year_start_weekday]
         offset = (end_date.weekday() - epi_year_start_weekday) % 7
         shifted_end_date = end_date - timedelta(days=offset + 1)
@@ -401,10 +402,10 @@ class NonReporting(Resource):
         if num_weeks:
             ew = EpiWeek()
             epi_week = ew.get()
-            start_date = abacus_util.epi_week_start_date(epi_week["year"],
-                                                         int(epi_week["epi_week"]) - int(num_weeks))
-            end_date = abacus_util.epi_week_start_date(epi_week["year"],
-                                                       epi_week["epi_week"])
+            start_date = meerkat_abacus.util.epi_week.epi_week_start_date(epi_week["year"],
+                                                           int(epi_week["epi_week"]) - int(num_weeks))
+            end_date = meerkat_abacus.util.epi_week.epi_week_start_date(epi_week["year"],
+                                                         epi_week["epi_week"])
             conditions.append(Data.date >= start_date)
             conditions.append(Data.date < end_date)
         exclude_list = []

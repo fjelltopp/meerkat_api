@@ -20,7 +20,8 @@ from meerkat_abacus.config import country_config, config_directory
 from meerkat_abacus.model import DownloadDataFiles, AggregationVariables
 from meerkat_abacus.model import form_tables, Data, Links
 from meerkat_abacus.util import all_location_data, get_db_engine, get_links
-from meerkat_abacus.util import epi_week_for_date, get_locations, is_child
+from meerkat_abacus.util import get_locations, is_child
+from meerkat_abacus.util.epi_week import epi_week_for_date
 
 translation_dir = country_config.get("translation_dir", None)
 

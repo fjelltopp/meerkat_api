@@ -5,6 +5,7 @@ from flask import request, g
 from flask_restful import Resource
 from sqlalchemy import or_, extract, func
 
+import meerkat_abacus.util.epi_week
 from meerkat_abacus.model import Data
 import meerkat_abacus.util as abacus_util
 from meerkat_api.authentication import authenticate, is_allowed_location
@@ -124,7 +125,7 @@ class QueryVariable(Resource):
             if only_loc:
                 conditions += [or_(loc == only_loc for loc in (
                     Data.country, Data.zone, Data.region, Data.district, Data.clinic))]
-        epi_year_start = abacus_util.epi_year_start_date(start_date)
+        epi_year_start = meerkat_abacus.util.epi_week.epi_year_start_date(start_date)
         # Determine which columns we want to extract from the Data table
         columns_to_extract = [func.count(Data.id).label('value')]
         if date_variable:

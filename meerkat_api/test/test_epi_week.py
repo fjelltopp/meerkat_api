@@ -10,6 +10,7 @@ import unittest
 
 import meerkat_api
 import meerkat_abacus.util as abacus_util
+import meerkat_abacus.util.epi_week
 from . import settings
 
 
@@ -25,7 +26,7 @@ class MeerkatAPIEpiWeekTestCase(meerkat_api.test.TestCase):
         rv = self.app.get('/epi_week_start/2015/1', headers=settings.header)
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(rv.status_code, 200)
-        self.assertEqual(data["start_date"], abacus_util.epi_year_start_date_by_year(2015).isoformat())
+        self.assertEqual(data["start_date"], meerkat_abacus.util.epi_week.epi_year_start_date_by_year(2015).isoformat())
         
     def test_epi_week(self):
         """ Test date to epi week"""

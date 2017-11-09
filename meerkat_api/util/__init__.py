@@ -7,6 +7,9 @@ from dateutil import parser
 import meerkat_abacus.util as abacus_util
 import numpy as np
 
+import meerkat_abacus.util.epi_week
+
+
 def series_to_json_dict(series):
     """
     Takes pandas series and turns into a dict with string keys
@@ -46,8 +49,8 @@ def fix_dates(start_date, end_date):
                                       hour=0, second=0,
                                       minute=0,
                                       microsecond=0)
-    if start_date < abacus_util.epi_year_start_date(date=start_date):
-        start_date = abacus_util.epi_year_start_date(date=start_date)
+    if start_date < meerkat_abacus.util.epi_week.epi_year_start_date(date=start_date):
+        start_date = meerkat_abacus.util.epi_week.epi_year_start_date(date=start_date)
     return start_date, end_date
 
 

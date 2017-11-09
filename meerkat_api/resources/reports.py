@@ -27,6 +27,8 @@ import numpy as np
 from functools import wraps
 from gettext import gettext
 import logging, json, operator
+
+import meerkat_abacus.util.epi_week
 from meerkat_api.util import get_children, fix_dates, find_level
 from meerkat_api.extensions import db, api
 from meerkat_abacus.model import Data, Locations, AggregationVariables, CalculationParameters
@@ -2941,7 +2943,7 @@ class RefugeeCd(Resource):
                                                              "suspected": []})
             #  Need to loop through each epi week and add data for population and all cds per week.
         for week in weeks:
-            first_day = abacus_util.epi_week_start_date(end_date.year, week)
+            first_day = meerkat_abacus.util.epi_week.epi_week_start_date(end_date.year, week)
             last_day = first_day + timedelta(days=7)
             #  #  Population
             #  tot_pop = 0
@@ -4106,8 +4108,8 @@ class PlagueReport(Resource):
 
 
 
-        first_day_of_season = abacus_util.epi_week_start_date(current_year - 1, start_week)
-        end_date_season = abacus_util.epi_week_start_date(current_year, start_week) - timedelta(days=1)
+        first_day_of_season = meerkat_abacus.util.epi_week.epi_week_start_date(current_year - 1, start_week)
+        end_date_season = meerkat_abacus.util.epi_week.epi_week_start_date(current_year, start_week) - timedelta(days=1)
 
 
         # FIGURE 3: MAP of plague cases

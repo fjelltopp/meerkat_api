@@ -158,11 +158,11 @@ class TestCase(unittest.TestCase):
     db_session = db_util.session
 
     def _mock_epi_week_abacus_logic(self):
-        epi_year_patch = patch('meerkat_abacus.util.epi_year_start_date')
+        epi_year_patch = patch('meerkat_abacus.util.epi_week.epi_year_start_date')
         self.addCleanup(epi_year_patch.stop)
         self.epi_year_mock = epi_year_patch.start()
         self.epi_year_mock.side_effect = _epi_year_by_date_side_effect
-        epi_year_by_year_patch = patch('meerkat_abacus.util.epi_year_start_date_by_year')
+        epi_year_by_year_patch = patch('meerkat_abacus.util.epi_week.epi_year_start_date_by_year')
         self.addCleanup(epi_year_by_year_patch.stop)
         self.epi_year_by_year_mock = epi_year_by_year_patch.start()
         self.epi_year_by_year_mock.side_effect = _epi_year_by_year_side_effect
