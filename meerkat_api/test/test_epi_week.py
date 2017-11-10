@@ -22,7 +22,6 @@ class MeerkatAPIEpiWeekTestCase(meerkat_api.test.TestCase):
 
     def test_epi_year_start(self):
         """ Test the epi_year_start function """
-        meerkat_api.app.config['TESTING'] = False
         rv = self.app.get('/epi_week_start/2015/1', headers=settings.header)
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(rv.status_code, 200)
