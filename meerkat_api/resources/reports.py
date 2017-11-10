@@ -28,7 +28,6 @@ from functools import wraps
 from gettext import gettext
 import logging, json, operator
 
-import meerkat_abacus.util.epi_week
 from meerkat_api.util import get_children, fix_dates, find_level
 from meerkat_api.extensions import db, api
 from meerkat_abacus.model import Data, Locations, AggregationVariables, CalculationParameters
@@ -42,6 +41,7 @@ from meerkat_api.resources.explore import QueryVariable, QueryCategory, get_vari
 from meerkat_api.util.data_query import query_sum, latest_query
 from meerkat_api.resources.incidence import IncidenceRate
 import meerkat_abacus.util as abacus_util
+import meerkat_abacus.util.epi_week as epi_week_util
 from meerkat_abacus import model
 from meerkat_api.authentication import authenticate, is_allowed_location
 from geoalchemy2.shape import to_shape
@@ -498,7 +498,7 @@ class NcdReportNewVisits(Resource):
     decorators = [authenticate, report_allowed_location]
 
     def get(self, location, start_date=None, end_date=None):
-        retval = create_ncd_report(location=location, start_date=start_date,\
+        retval = create_ncd_report(location=location, start_date=start_date,
             end_date=end_date, params=['new'])
         return retval
 
@@ -507,7 +507,7 @@ class NcdReportReturnVisits(Resource):
     decorators = [authenticate, report_allowed_location]
 
     def get(self, location, start_date=None, end_date=None):
-        retval = create_ncd_report(location=location, start_date=start_date,\
+        retval = create_ncd_report(location=location, start_date=start_date,
             end_date=end_date, params=['return'])
         return retval
 
@@ -516,7 +516,7 @@ class NcdReport(Resource):
     decorators = [authenticate, report_allowed_location]
 
     def get(self, location, start_date=None, end_date=None):
-        retval = create_ncd_report(location=location, start_date=start_date,\
+        retval = create_ncd_report(location=location, start_date=start_date,
             end_date=end_date, params=['case'])
         return retval
 
@@ -533,7 +533,7 @@ def create_ncd_report(location, start_date=None, end_date=None, params=['case'])
                    "schema_version": 0.1
     }
     #  Dates and Location Name
-    epi_week = abacus_util.epi_week.epi_week_for_date(end_date)[1]
+    epi_week = epi_week_util.epi_week_for_date(end_date)[1]
     ret["data"] = {"epi_week_num": epi_week,
                    "end_date": end_date.isoformat(),
                    "project_epoch": datetime(2015, 5, 20).isoformat(),
@@ -742,7 +742,7 @@ class MhReport(Resource):
                        "schema_version": 0.1
         }
         # Dates and Location Name
-        epi_week = abacus_util.epi_week.epi_week_for_date(end_date)[1]
+        epi_week = epi_week_util.epi_week_for_date(end_date)[1]
         ret["data"] = {"epi_week_num": epi_week,
                        "end_date": end_date.isoformat(),
                        "project_epoch": datetime(2015, 5, 20).isoformat(),
@@ -912,7 +912,7 @@ class CdReport(Resource):
         }
 
         #  Date and Location information
-        epi_week = abacus_util.epi_week.epi_week_for_date(end_date)[1]
+        epi_week = epi_week_util.epi_week_for_date(end_date)[1]
         ret["data"] = {"epi_week_num": epi_week,
                        "end_date": end_date.isoformat(),
                        "project_epoch": start_date.isoformat(),
@@ -971,7 +971,7 @@ class CdReport(Resource):
                 else:
                     report_status = "suspected"
 
-            epi_week = abacus_util.epi_week.epi_week_for_date(a['date'])[1]
+            epi_week = epi_week_util.epi_week_for_date(a['date'])[1]
             if epi_week == 53:
                 if a["date"].month == 1:
                     epi_week = 1
@@ -1030,7 +1030,7 @@ class Pip(Resource):
         }
 
         #  Date and location information
-        epi_week = abacus_util.epi_week.epi_week_for_date(end_date)[1]
+        epi_week = epi_week_util.epi_week_for_date(end_date)[1]
         ret["data"] = {
             "epi_week_num": epi_week,
             "end_date": end_date.isoformat(),
@@ -1285,7 +1285,7 @@ class ForeignerScreening(Resource):
         }
 
         #  Date and location information
-        epi_week = abacus_util.epi_week.epi_week_for_date(end_date)[1]
+        epi_week = epi_week_util.epi_week_for_date(end_date)[1]
         ret["data"] = {
             "epi_week_num": epi_week,
             "end_date": end_date.isoformat(),
@@ -1367,7 +1367,7 @@ class PublicHealth(Resource):
                        "schema_version": 0.1
         }
         #  Dates and Location
-        epi_week = abacus_util.epi_week.epi_week_for_date(end_date)[1]
+        epi_week = epi_week_util.epi_week_for_date(end_date)[1]
         ret["data"] = {"epi_week_num": epi_week,
                        "end_date": end_date.isoformat(),
                        "start_date": start_date.isoformat(),
@@ -1625,7 +1625,7 @@ class CdPublicHealth(Resource):
                        "schema_version": 0.1
         }
         # Date and Location Information
-        epi_week = abacus_util.epi_week.epi_week_for_date(end_date)[1]
+        epi_week = epi_week_util.epi_week_for_date(end_date)[1]
         ret["data"] = {"epi_week_num": epi_week,
                        "end_date": end_date.isoformat(),
                        "project_epoch": datetime(2015,5,20).isoformat(),
@@ -2183,7 +2183,7 @@ class NcdPublicHealth(Resource):
         }
 
         # Date and Location Information
-        epi_week = abacus_util.epi_week.epi_week_for_date(end_date)[1]
+        epi_week = epi_week_util.epi_week_for_date(end_date)[1]
         ret["data"] = {
             "epi_week_num": epi_week,
             "end_date": end_date.isoformat(),
@@ -2501,7 +2501,7 @@ class RefugeePublicHealth(Resource):
         }
 
         # Date and Location Information
-        epi_week = abacus_util.epi_week.epi_week_for_date(end_date)[1]
+        epi_week = epi_week_util.epi_week_for_date(end_date)[1]
         ret["data"] = {"epi_week_num": epi_week,
                        "end_date": end_date.isoformat(),
                        "project_epoch": datetime(2015, 5, 20).isoformat(),
@@ -2714,7 +2714,7 @@ class RefugeeDetail(Resource):
                        "schema_version": 0.1
         }
         #  Dates and Location Information
-        epi_week = abacus_util.epi_week.epi_week_for_date(end_date)[1]
+        epi_week = epi_week_util.epi_week_for_date(end_date)[1]
         ret["data"] = {"epi_week_num": epi_week,
                        "end_date": end_date.isoformat(),
                        "project_epoch": datetime(2015,5,20).isoformat(),
@@ -2878,7 +2878,7 @@ class RefugeeCd(Resource):
         }
 
         # Date and Location Information
-        epi_week = abacus_util.epi_week.epi_week_for_date(end_date)[1]
+        epi_week = epi_week_util.epi_week_for_date(end_date)[1]
         ret["data"] = {"epi_week_num": epi_week,
                        "end_date": end_date.isoformat(),
                        "project_epoch": datetime(2015,5,20).isoformat(),
@@ -2895,7 +2895,7 @@ class RefugeeCd(Resource):
         refugee_clinics = get_children(location, locs, clinic_type="Refugee")
         ret["data"]["clinic_num"] = len(refugee_clinics)
 
-        start_epi_year, start_epi_week = abacus_util.epi_week.epi_week_for_date(start_date)
+        start_epi_year, start_epi_week = epi_week_util.epi_week_for_date(start_date)
         year_diff = end_date.year - start_epi_year
         start_epi_week = start_epi_week - year_diff * 52
         weeks = [i for i in range(start_epi_week, epi_week + 1, 1)]
@@ -2922,7 +2922,7 @@ class RefugeeCd(Resource):
                                                              "suspected": []})
             #  Need to loop through each epi week and add data for population and all cds per week.
         for week in weeks:
-            first_day = meerkat_abacus.util.epi_week.epi_week_start_date(end_date.year, week)
+            first_day = epi_week_util.epi_week_start_date(end_date.year, week)
             last_day = first_day + timedelta(days=7)
             #  #  Population
             #  tot_pop = 0
@@ -2996,7 +2996,7 @@ class WeeklyEpiMonitoring(Resource):
         }
 
         #  Dates and Location Information
-        epi_week = abacus_util.epi_week.epi_week_for_date(end_date)[1]
+        epi_week = epi_week_util.epi_week_for_date(end_date)[1]
 
         ret["data"] = {"epi_week_num": epi_week,
                        "end_date": end_date.isoformat(),
@@ -3130,7 +3130,7 @@ class Malaria(Resource):
         }
 
         #  Dates and Location Information
-        epi_week = abacus_util.epi_week.epi_week_for_date(end_date)[1]
+        epi_week = epi_week_util.epi_week_for_date(end_date)[1]
 
         ret["data"] = {"epi_week_num": epi_week,
                        "end_date": end_date.isoformat(),
@@ -3235,7 +3235,7 @@ class VaccinationReport(Resource):
         }
 
         #  Dates and Location Information
-        epi_week = abacus_util.epi_week.epi_week_for_date(end_date)[1]
+        epi_week = epi_week_util.epi_week_for_date(end_date)[1]
 
         ret["data"] = {"epi_week_num": epi_week,
                        "end_date": end_date.isoformat(),
@@ -3376,7 +3376,7 @@ class AFROBulletin(Resource):
         # Calulation for start date is:
         # month_day - ( week_day-week_offset % 7) - 7
         # The offset is the # days into the current epi week.
-        _epi_year_start_day_weekday = abacus_util.epi_week.epi_year_start_date(today).weekday()
+        _epi_year_start_day_weekday = epi_week_util.epi_year_start_date(today).weekday()
         offset = (today.weekday() - _epi_year_start_day_weekday) % 7
         # Start date is today minus the offset minus one week.
         if not start_date:
@@ -3403,7 +3403,7 @@ class AFROBulletin(Resource):
         }
 
         #  Dates and Location Information
-        epi_week = abacus_util.epi_week.epi_week_for_date(end_date)[1]
+        epi_week = epi_week_util.epi_week_for_date(end_date)[1]
         ret["data"] = {"epi_week_num": epi_week,
                        "end_date": end_date.isoformat(),
                        "project_epoch": datetime(2015, 5, 20).isoformat(),
@@ -3994,7 +3994,7 @@ class PlagueReport(Resource):
         }
 
         #  Dates and Location Information
-        epi_week = abacus_util.epi_week.epi_week_for_date(end_date)[1]
+        epi_week = epi_week_util.epi_week_for_date(end_date)[1]
         ret["data"] = {"epi_week_num": epi_week,
                        "end_date": end_date.isoformat(),
                        "project_epoch": datetime(2015, 5, 20).isoformat(),
@@ -4046,7 +4046,7 @@ class PlagueReport(Resource):
             else:
                 report_status = "suspected"
 
-            epi_week = ew.get(case["date"].isoformat())["epi_week"]
+            epi_week = epi_week_util.epi_week_for_date(case["date"])[1]
             if epi_week == 53:
                 if case["date"].month == 1:
                     epi_week = 1
@@ -4077,8 +4077,8 @@ class PlagueReport(Resource):
 
 
 
-        first_day_of_season = meerkat_abacus.util.epi_week.epi_week_start_date(current_year - 1, start_week)
-        end_date_season = meerkat_abacus.util.epi_week.epi_week_start_date(current_year, start_week) - timedelta(days=1)
+        first_day_of_season = epi_week_util.epi_week_start_date(current_year - 1, start_week)
+        end_date_season = epi_week_util.epi_week_start_date(current_year, start_week) - timedelta(days=1)
 
 
         # FIGURE 3: MAP of plague cases
@@ -4149,7 +4149,7 @@ class EBSReport(Resource):
         }
 
         #  Dates and Location Information
-        epi_week = abacus_util.epi_week.epi_week_for_date(end_date)[1]
+        epi_week = epi_week_util.epi_week_for_date(end_date)[1]
         ret["data"] = {"epi_week_num": epi_week,
                        "end_date": end_date.isoformat(),
                        "project_epoch": datetime(2015, 5, 20).isoformat(),
@@ -4288,7 +4288,7 @@ class CTCReport(Resource):
         }
 
         #  Dates and Location Information
-        epi_week = abacus_util.epi_week.epi_week_for_date(end_date)[1]
+        epi_week = epi_week_util.epi_week_for_date(end_date)[1]
         ret["data"] = {"epi_week_num": epi_week,
                        "end_date": end_date.isoformat(),
                        "project_epoch": datetime(2015, 5, 20).isoformat(),
@@ -4491,7 +4491,8 @@ class CTCReport(Resource):
                     clinic_data["latest_categories"] = ctc_data.categories
                     clinic_data["latest_date"] = ctc_data.date.isoformat().split("T")[0]
 
-                    if ew.get(ctc_data.date.isoformat())["epi_week"] in [epi_week, epi_week - 1]:
+                    ctc_epi_week = epi_week_util.epi_week_for_date(ctc_data.date)[1]
+                    if ctc_epi_week in [epi_week, epi_week - 1]:
                         overview_data["surveyed_last_week"]["Y"] += 1
                     # clinic_data["cases_history"] = cholera_cases["clinic"].get(ctc.id, {})
 
@@ -4595,7 +4596,7 @@ class SCReport(Resource):
         }
 
         #  Dates and Location Information
-        epi_week = abacus_util.epi_week.epi_week_for_date(end_date)[1]
+        epi_week = epi_week_util.epi_week_for_date(end_date)[1]
         ret["data"] = {"epi_week_num": epi_week,
                        "end_date": end_date.isoformat(),
                        "project_epoch": datetime(2015, 5, 20).isoformat(),
@@ -4792,7 +4793,8 @@ class SCReport(Resource):
                     clinic_data["latest_categories"] = sc_data.categories
                     clinic_data["latest_date"] = sc_data.date.isoformat().split("T")[0]
 
-                    if ew.get(sc_data.date.isoformat())["epi_week"] in [epi_week, epi_week - 1]:
+                    sc_epi_week = epi_week_util.epi_week_for_date(sc_data.date)
+                    if sc_epi_week in [epi_week, epi_week - 1]:
                         overview_data["surveyed_last_week"]["Y"] += 1
                     # Deal with recomendations
                     recommendations = []

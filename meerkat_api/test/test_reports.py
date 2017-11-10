@@ -408,31 +408,29 @@ class MeerkatAPIReportsTestCase(meerkat_api.test.TestCase):
             "ncd_report", "cd_report", "refugee_public_health", "refugee_detail", "refugee_cd"
         ]
         for report in reports:
+            failure_message = f"Failed for report '{report}'."
             rv = self.app.get('/reports/{}/1'.format(report), headers=settings.header)
             self.assertEqual(rv.status_code, 200)
             data = json.loads(rv.data.decode("utf-8"))["data"]
+            now = datetime.now()
             self.assertEqual(data["start_date"],
-                             datetime(datetime.now().year, 1, 1).isoformat())
-            self.assertLess((datetime.now() - parser.parse(data["end_date"])).seconds, 20)
+                             datetime(now.year, 1, 1).isoformat(), msg=failure_message)
+            self.assertLess((now - parser.parse(data["end_date"])).seconds, 20, msg=failure_message)
 
             # With specified dates
             end_date = datetime(2015, 8, 7).isoformat()
             start_date = datetime(2014, 2, 3).isoformat()
             rv = self.app.get('/reports/{}/1/{}'.format(report, end_date), headers=settings.header)
-            self.assertEqual(rv.status_code, 200)
+            self.assertEqual(rv.status_code, 200, msg=failure_message)
             data = json.loads(rv.data.decode("utf-8"))["data"]
-            self.assertEqual(data["start_date"],
-                             datetime(2015, 1, 1).isoformat())
-            self.assertEqual(data["end_date"],
-                             end_date)
+            self.assertEqual(data["start_date"], datetime(2015, 1, 1).isoformat(), msg=failure_message)
+            self.assertEqual(data["end_date"], end_date, msg=failure_message)
 
             rv = self.app.get('/reports/{}/1/{}/{}'.format(report, end_date, start_date), headers=settings.header)
-            self.assertEqual(rv.status_code, 200)
+            self.assertEqual(rv.status_code, 200, msg=failure_message)
             data = json.loads(rv.data.decode("utf-8"))["data"]
-            self.assertEqual(data["start_date"],
-                             start_date)
-            self.assertEqual(data["end_date"],
-                             end_date)
+            self.assertEqual(data["start_date"], start_date, msg=failure_message)
+            self.assertEqual(data["end_date"], end_date, msg=failure_message)
 
     def test_public_health(self):
         """ test the public health report """
@@ -1413,8 +1411,7 @@ class MeerkatAPIReportsTestCase(meerkat_api.test.TestCase):
         data = json.loads(rv.data.decode("utf-8"))["data"]
 
         zeroes = [0] * 53
-        wd = [0] * 53
-        [wd.insert(i, 2) for i in [0, 14, 16]]
+        wd = [2.0 if i in [0, 14, 16] else 0 for i in range(53)]
 
         expected_weeks = ['Week 1, 2015'] + list(range(2,54))
         for key in data["communicable_diseases"]:
