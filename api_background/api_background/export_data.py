@@ -20,7 +20,8 @@ from meerkat_abacus.config import country_config, config_directory
 from meerkat_abacus.model import DownloadDataFiles, AggregationVariables
 from meerkat_abacus.model import form_tables, Data, Links
 from meerkat_abacus.util import all_location_data, get_db_engine, get_links
-from meerkat_abacus.util import epi_week, get_locations, is_child
+from meerkat_abacus.util import get_locations, is_child
+from meerkat_abacus.util.epi_week import epi_week_for_date
 
 translation_dir = country_config.get("translation_dir", None)
 
@@ -461,7 +462,7 @@ def export_category(uuid, form_name, category, download_name,
                 if field in raw_data and raw_data[field]:
                     if field not in dates:
                         dates[field] = parse(raw_data[field])
-                    list_row[index] = epi_week(dates[field])[1]
+                    list_row[index] = epi_week_for_date(dates[field])[1]
                 else:
                     list_row[index] = None
 

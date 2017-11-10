@@ -19,6 +19,7 @@ from meerkat_api.resources import incidence
 from meerkat_api.resources import indicators
 from meerkat_api.resources import devices
 from meerkat_api.resources import completeness
+from meerkat_api.resources import epi_week
 
 app = create_app()
 

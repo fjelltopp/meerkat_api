@@ -1,21 +1,20 @@
 """
 Resources for creating maps
 """
-from flask_restful import Resource
-from flask import abort, g, request
-
-from geojson import Point, FeatureCollection, Feature
-from sqlalchemy import extract, func, Float, or_
-from datetime import datetime
-from geoalchemy2.shape import to_shape
 import shapely.geometry
-from meerkat_api.util import is_child, fix_dates
-from meerkat_api.extensions import db, api
+from flask import g, request
+from flask_restful import Resource
+from geoalchemy2.shape import to_shape
+from geojson import Point, FeatureCollection, Feature
+from sqlalchemy import func, Float, or_
+
 from meerkat_abacus import model
 from meerkat_abacus.model import Data, Locations
-from meerkat_api.resources.incidence import IncidenceRate
-from meerkat_abacus.util import get_locations
+from meerkat_abacus.util import is_child, get_locations
 from meerkat_api.authentication import authenticate, is_allowed_location
+from meerkat_api.extensions import db, api
+from meerkat_api.resources.incidence import IncidenceRate
+from meerkat_api.util import fix_dates
 
 
 class Clinics(Resource):

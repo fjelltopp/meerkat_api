@@ -6,6 +6,7 @@ Unit tests for the Meerkat API
 """
 import os
 import unittest
+from unittest.mock import patch
 
 from datetime import datetime
 
@@ -142,11 +143,35 @@ def get_url(app, url, header):
     return rv
 
 
+def _epi_year_start_by_year_side_effect(year):
+    return datetime(year, 1, 1)
+
+
+def _epi_year_start_by_date_side_effect(date):
+    return datetime(date.year, 1, 1)
+
+def _epi_year_by_date_side_effect(date):
+    return date.year
+
 class TestCase(unittest.TestCase):
     meerkat_api.app.config.from_object('meerkat_api.config.Testing')
     meerkat_api.app.app_context().push()
     app = meerkat_api.app.test_client()
     db_session = db_util.session
+
+    def _mock_epi_week_abacus_logic(self):
+        epi_year_patch = patch('meerkat_abacus.util.epi_week.epi_year_start_date')
+        self.addCleanup(epi_year_patch.stop)
+        self.epi_year_mock = epi_year_patch.start()
+        self.epi_year_mock.side_effect = _epi_year_start_by_date_side_effect
+        epi_year_by_year_patch = patch('meerkat_abacus.util.epi_week.epi_year_start_date_by_year')
+        self.addCleanup(epi_year_by_year_patch.stop)
+        self.epi_year_by_year_mock = epi_year_by_year_patch.start()
+        self.epi_year_by_year_mock.side_effect = _epi_year_start_by_year_side_effect
+        epi_year_by_year_patch = patch('meerkat_abacus.util.epi_week.epi_year_by_date')
+        self.addCleanup(epi_year_by_year_patch.stop)
+        self.epi_year_by_year_mock = epi_year_by_year_patch.start()
+        self.epi_year_by_year_mock.side_effect = _epi_year_by_date_side_effect
 
 
 class MeerkatAPITestCase(TestCase):
