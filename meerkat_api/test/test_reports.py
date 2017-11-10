@@ -415,7 +415,7 @@ class MeerkatAPIReportsTestCase(meerkat_api.test.TestCase):
             now = datetime.now()
             self.assertEqual(data["start_date"],
                              datetime(now.year, 1, 1).isoformat(), msg=failure_message)
-            self.assertLess((now - parser.parse(data["end_date"])).seconds, 20, msg=failure_message)
+            self.assertLess((now - parser.parse(data["end_date"])).seconds, 30, msg=failure_message)
 
             # With specified dates
             end_date = datetime(2015, 8, 7).isoformat()
