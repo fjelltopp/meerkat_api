@@ -4412,7 +4412,9 @@ class CTCReport(Resource):
         overview_data["cases_total"] = cholera_cases.get("total", 0)
         overview_data["cases_u5_total"] = cholera_cases_u5.get("total", 0)
         overview_data["deaths_total"] = cholera_deaths.get("total", 0)
-
+        overview_data.setdefault("ctc_beds_sufficient", {"Y": 0, "N": 0})
+        for code in yes_codes.keys():
+            overview_data.setdefault(code, {"Y": 0, "N": 0})
         weekly_cases = np.array([cholera_cases["clinic"][c]["total"] for c in sorted(cholera_cases["clinic"].keys())])
         weekly_deaths = np.array([cholera_deaths["clinic"][c]["total"] for c in sorted(cholera_cases["clinic"].keys())])
 
@@ -4531,11 +4533,9 @@ class CTCReport(Resource):
                         overview_data.setdefault(num_code, 0)
                         overview_data[num_code] += ctc_data.variables.get(num_code, 0)
                     for yes_code in yes_codes:
-                        overview_data.setdefault(yes_code, {"Y": 0, "N": 0})
                         overview_data[yes_code]["N"] += 1
                         if ctc_data.variables.get(yes_code, "missing") == "yes":
                             overview_data[yes_code]["Y"] += 1
-                    overview_data.setdefault("ctc_beds_sufficient", {"Y": 0, "N": 0})
                     overview_data["ctc_beds_sufficient"]["N"] += 1
                     if "ctc_beds_sufficient" in ctc_data.variables:
                         overview_data["ctc_beds_sufficient"]["Y"] += 1
@@ -4708,7 +4708,6 @@ class SCReport(Resource):
         var = Variables()
         num_codes = var.get("sc_overview_num").keys()
         yes_codes = var.get("sc_overview_yes_no")
-
         sc_type_codes = var.get("sc_facility_type")
         overview_data = {}
 
@@ -4716,6 +4715,9 @@ class SCReport(Resource):
         overview_data["cases_total"] = nutrition_cases.get("total", 0)
         overview_data["cases_u5_total"] = nutrition_cases_u5.get("total", 0)
         overview_data["deaths_total"] = nutrition_deaths.get("total", 0)
+        overview_data.setdefault("sc_beds_sufficient", {"Y": 0, "N": 0})
+        for code in yes_codes.keys():
+            overview_data.setdefault(code, {"Y": 0, "N": 0})
 
         weekly_cases = np.array([nutrition_cases["clinic"][c]["total"] for c in sorted(nutrition_cases["clinic"].keys())])
         weekly_deaths = np.array([nutrition_deaths["clinic"][c]["total"] for c in sorted(nutrition_cases["clinic"].keys())])
@@ -4758,7 +4760,7 @@ class SCReport(Resource):
         overview_data.setdefault("surveyed_last_week", {"Y": 0, "N": 0})
 
         ret["contents"] = []
-        ret["contents_offset"] = 3 #Here we HACK how many pages before first clinic page
+        ret["contents_offset"] = 3  # Here we HACK how many pages before first clinic page
         pageNumber = 0
 
         for current_zone in zones:
@@ -4777,8 +4779,6 @@ class SCReport(Resource):
                 if locs[sc.id].point_location is not None:
                     point = to_shape(locs[sc.id].point_location)
                     clinic_data["gps"] = [point.y, point.x]
-
-
 
                 if sc.id in latest_sc:
                     overview_data["baseline"]["N"] += 1
@@ -4831,11 +4831,9 @@ class SCReport(Resource):
                         overview_data.setdefault(num_code, 0)
                         overview_data[num_code] += int(sc_data.variables.get(num_code, 0))
                     for yes_code in yes_codes:
-                        overview_data.setdefault(yes_code, {"Y": 0, "N": 0})
                         overview_data[yes_code]["N"] += 1
                         if sc_data.variables.get(yes_code, "missing") == "yes":
                             overview_data[yes_code]["Y"] += 1
-                    overview_data.setdefault("sc_beds_sufficient", {"Y": 0, "N": 0})
                     overview_data["sc_beds_sufficient"]["N"] += 1
                     if "sc_beds_sufficient" in sc_data.variables:
                         overview_data["sc_beds_sufficient"]["Y"] += 1
