@@ -115,4 +115,16 @@ class MeerkatAPIAlertsTestCase(unittest.TestCase):
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))
         self.assertEqual(len(data["alerts"]), 2)
+
+        # Get only the last three alerts
+        rv = self.app.get('/alerts/3', headers=settings.header)
+        self.assertEqual(rv.status_code, 200)
+        data = json.loads(rv.data.decode("utf-8"))
+        self.assertEqual(len(data["alerts"]), 3)
         
+        self.assertEqual(data["alerts"][0]["uuid"],
+                         "uuid:b013c24a-4790-43d6-8b43-4d28a4ce9342")
+        self.assertEqual(data["alerts"][1]["uuid"],
+                         "uuid:b013c24a-4790-43d6-8b43-4d28a4ce9347")
+        self.assertEqual(data["alerts"][2]["uuid"],
+                         "uuid:b013c24a-4790-43d6-8b43-4d28a4ce9341")

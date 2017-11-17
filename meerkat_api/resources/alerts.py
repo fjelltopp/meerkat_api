@@ -139,6 +139,7 @@ def get_alerts(args, allowed_location=1, only_latest=None):
         results = db.session.query(model.Data).filter(*conditions).order_by(model.Data.date.desc()).limit(only_latest).all()
         results += db.session.query(model.DisregardedData).filter(
             *disregarded_conditions).order_by(model.DisregardedData.date.desc()).limit(only_latest).all()
+        results = sorted(results, key=lambda r: r.date, reverse=True)[:3]
     else:
         results = db.session.query(model.Data).filter(*conditions).all()
         results += db.session.query(model.DisregardedData).filter(

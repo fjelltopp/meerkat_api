@@ -106,7 +106,8 @@ def valid_urls(app):
         "variables": "gen_1",
         "include_case_type": "mh",
         "exclude_case_type": "mh",
-        "include_clinic_type": "Refugee"
+        "include_clinic_type": "Refugee",
+        "only_latest": "1"
     }
     excluded_urls = [
         '/devices/submissions/<variable_id>'
