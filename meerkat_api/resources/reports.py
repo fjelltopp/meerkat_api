@@ -4118,6 +4118,8 @@ class PlagueReport(Resource):
         ret["data"]["top_plague_dists"] = plague_top
 
         return ret
+
+
 class EBSReport(Resource):
     """
     EBSReport
@@ -4145,16 +4147,14 @@ class EBSReport(Resource):
         ret["meta"] = {"uuid": str(uuid.uuid4()),
                        "project_id": 1,
                        "generation_timestamp": datetime.now().isoformat(),
-                       "schema_version": 0.1
-        }
+                       "schema_version": 0.1}
 
         #  Dates and Location Information
         epi_week = epi_week_util.epi_week_for_date(end_date)[1]
         ret["data"] = {"epi_week_num": epi_week,
                        "end_date": end_date.isoformat(),
                        "project_epoch": datetime(2015, 5, 20).isoformat(),
-                       "start_date": start_date.isoformat()
-        }
+                       "start_date": start_date.isoformat()}
         locs = abacus_util.get_locations(db.session)
         if int(location) not in locs:
             return None
@@ -4257,6 +4257,7 @@ class EBSReport(Resource):
                          end_date=end_date_limit.isoformat())
         ret["data"]["map"] = ebs_map
         return ret
+
 
 class CTCReport(Resource):
 
@@ -4407,14 +4408,12 @@ class CTCReport(Resource):
         yes_codes = var.get("ctc_overview_yes_no")
 
         overview_data = {}
-
-
         overview_data["cases_total"] = cholera_cases.get("total", 0)
         overview_data["cases_u5_total"] = cholera_cases_u5.get("total", 0)
         overview_data["deaths_total"] = cholera_deaths.get("total", 0)
-        overview_data.setdefault("ctc_beds_sufficient", {"Y": 0, "N": 0})
-        for code in yes_codes.keys():
-            overview_data.setdefault(code, {"Y": 0, "N": 0})
+        overview_data["ctc_beds_sufficient"] = {"Y": 0, "N": 0}
+        for code in yes_codes:
+            overview_data[code] = {"Y": 0, "N": 0}
         weekly_cases = np.array([cholera_cases["clinic"][c]["total"] for c in sorted(cholera_cases["clinic"].keys())])
         weekly_deaths = np.array([cholera_deaths["clinic"][c]["total"] for c in sorted(cholera_cases["clinic"].keys())])
 
@@ -4432,7 +4431,7 @@ class CTCReport(Resource):
         else:
             max_cfr = np.max(clinic_cfr)
             min_cfr = np.min(clinic_cfr)
-        overview_data["cfr"] = (average_cfr, min_cfr, max_cfr )
+        overview_data["cfr"] = (average_cfr, min_cfr, max_cfr)
         ctc_lat_variables = var.get("ctc_lat_type")
         ret["variables"] = ctc_lat_variables
         ctc_rec_variables = var.get("ctc_recommendations")
@@ -4450,7 +4449,6 @@ class CTCReport(Resource):
                                     Data.clinic).filter(*conditions).order_by(
                                              Data.clinic).order_by(Data.date.desc())
 
-
         latest_ctc = {}
         surveyed_clinics_map = []
         non_surveyed_clinics_map = []
@@ -4460,7 +4458,7 @@ class CTCReport(Resource):
         overview_data.setdefault("surveyed_last_week", {"Y": 0, "N": 0})
 
         ret["contents"] = []
-        ret["contents_offset"] = 3 #Here we HACK how many pages before first clinic page
+        ret["contents_offset"] = 3  # Here we HACK how many pages before first clinic page
         pageNumber = 0
 
         for current_zone in zones:
@@ -4711,13 +4709,12 @@ class SCReport(Resource):
         sc_type_codes = var.get("sc_facility_type")
         overview_data = {}
 
-
         overview_data["cases_total"] = nutrition_cases.get("total", 0)
         overview_data["cases_u5_total"] = nutrition_cases_u5.get("total", 0)
         overview_data["deaths_total"] = nutrition_deaths.get("total", 0)
-        overview_data.setdefault("sc_beds_sufficient", {"Y": 0, "N": 0})
-        for code in yes_codes.keys():
-            overview_data.setdefault(code, {"Y": 0, "N": 0})
+        overview_data["sc_beds_sufficient"] = {"Y": 0, "N": 0}
+        for code in yes_codes:
+            overview_data[code] = {"Y": 0, "N": 0}
 
         weekly_cases = np.array([nutrition_cases["clinic"][c]["total"] for c in sorted(nutrition_cases["clinic"].keys())])
         weekly_deaths = np.array([nutrition_deaths["clinic"][c]["total"] for c in sorted(nutrition_cases["clinic"].keys())])
