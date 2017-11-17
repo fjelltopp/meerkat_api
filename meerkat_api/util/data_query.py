@@ -65,8 +65,8 @@ def query_sum(db, var_ids, start_date, end_date, location,
         variables["variables_" + str(i + 2)] = var_id
 
     if weeks:
-        extra_columns = ", floor(EXTRACT(days FROM data.date - :date_3) / 7 + 1) AS week"
-        variables["date_3"] = meerkat_abacus.util.epi_week.epi_year_start_date(start_date)
+        extra_columns = ", epi_week AS week"
+#        variables["date_3"] = meerkat_abacus.util.epi_week.epi_year_start_date(start_date)
         group_by.append("week")
         ret["weeks"] = {}
 
@@ -75,7 +75,9 @@ def query_sum(db, var_ids, start_date, end_date, location,
     
     if group_by_category:
         extra_columns += ", categories->>:category1 as category"
+        where_clauses.append("data.categories ? :category2")
         variables["category1"] = group_by_category
+        variables["category2"] = group_by_category
         ret[group_by_category] = {}
         group_by.append("category")
     if level:

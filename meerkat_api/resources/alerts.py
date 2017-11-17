@@ -60,15 +60,16 @@ class Alerts(Resource):
     """
     decorators = [authenticate]
 
-    def get(self):
+    def get(self, only_latest=None):
         args = request.args.to_dict()
 
         if "start_date" in args:
             args["start_date"] = parse(args["start_date"])
-        return jsonify({"alerts": get_alerts(args, allowed_location=g.allowed_location)})
+        return jsonify({"alerts": get_alerts(args, allowed_location=g.allowed_location,
+                                             only_latest=only_latest)})
 
 
-def get_alerts(args, allowed_location=1):
+def get_alerts(args, allowed_location=1, only_latest=None):
     """
     Gets all alerts where if reason is a key in args we only get alerts with a matching reason. 
     If "location" is in the key we get all alerts from the location or any child clinics. 
@@ -134,9 +135,14 @@ def get_alerts(args, allowed_location=1):
         disregarded_conditions.append(
             model.DisregardedData.date < args["end_date"])
 
-    results = db.session.query(model.Data).filter(*conditions).all()
-    results += db.session.query(model.DisregardedData).filter(
-        *disregarded_conditions).all()
+    if only_latest:
+        results = db.session.query(model.Data).filter(*conditions).order_by(model.Data.date.desc()).limit(only_latest).all()
+        results += db.session.query(model.DisregardedData).filter(
+            *disregarded_conditions).order_by(model.DisregardedData.date.desc()).limit(only_latest).all()
+    else:
+        results = db.session.query(model.Data).filter(*conditions).all()
+        results += db.session.query(model.DisregardedData).filter(
+            *disregarded_conditions).all()
 
     return rows_to_dicts(results)
 
@@ -156,6 +162,8 @@ class AggregateAlerts(Resource):
         args = request.args
         all_alerts = get_alerts(args, allowed_location=g.allowed_location)
         ret = {}
+        if central_review == "0":
+            central_review = False
         total = 0
         if hard_date_limit:
             hard_date_limit = parse(hard_date_limit)
@@ -211,4 +219,5 @@ api.add_resource(AggregateAlerts, "/aggregate_alerts",
                  "/aggregate_alerts/<central_review>",
                  "/aggregate_alerts/<central_review>/<hard_date_limit>")
 api.add_resource(Alert, "/alert/<alert_id>")
-api.add_resource(Alerts, "/alerts")
+api.add_resource(Alerts, "/alerts",
+                 "/alerts/<only_latest>")
