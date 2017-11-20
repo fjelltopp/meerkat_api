@@ -66,7 +66,6 @@ def query_sum(db, var_ids, start_date, end_date, location,
 
     if weeks:
         extra_columns = ", epi_week AS week"
-#        variables["date_3"] = meerkat_abacus.util.epi_week.epi_year_start_date(start_date)
         group_by.append("week")
         ret["weeks"] = {}
 

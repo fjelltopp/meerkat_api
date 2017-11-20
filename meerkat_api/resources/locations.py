@@ -94,7 +94,7 @@ class LocationTree(Resource):
         inc_case_types = json.loads(request.args.get('inc_case_types', '[]'))
         exc_case_types = json.loads(request.args.get('exc_case_types', '[]'))
 
-        key = str(inc_case_types) + str(exc_case_types)
+        key = f"{inc_case_types!r}_{exc_case_types!r}"
         if key in loc_trees:
             return loc_trees[key]
         

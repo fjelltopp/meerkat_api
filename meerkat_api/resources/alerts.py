@@ -60,9 +60,9 @@ class Alerts(Resource):
     """
     decorators = [authenticate]
 
-    def get(self, only_latest=None):
+    def get(self):
         args = request.args.to_dict()
-
+        only_latest = int(args.get("only_latest", 0))
         if "start_date" in args:
             args["start_date"] = parse(args["start_date"])
         return jsonify({"alerts": get_alerts(args, allowed_location=g.allowed_location,
@@ -132,18 +132,20 @@ def get_alerts(args, allowed_location=1, only_latest=None):
             model.DisregardedData.date >= args["start_date"])
     if "end_date" in args.keys():
         conditions.append(model.Data.date < args["end_date"])
-        disregarded_conditions.append(
-            model.DisregardedData.date < args["end_date"])
+        disregarded_conditions.append(model.DisregardedData.date < args["end_date"])
+    data_query = db.session.query(model.Data).filter(
+        *conditions).order_by(model.Data.date.desc())
+    disregarded_query = db.session.query(model.DisregardedData).filter(
+            *disregarded_conditions)
 
     if only_latest:
-        results = db.session.query(model.Data).filter(*conditions).order_by(model.Data.date.desc()).limit(only_latest).all()
-        results += db.session.query(model.DisregardedData).filter(
-            *disregarded_conditions).order_by(model.DisregardedData.date.desc()).limit(only_latest).all()
-        results = sorted(results, key=lambda r: r.date, reverse=True)[:3]
+        results = data_query.limit(only_latest).all()
+        results += disregarded_query.limit(only_latest).all()
+        results = sorted(results, key=lambda r: r.date,
+                         reverse=True)[:only_latest]
     else:
-        results = db.session.query(model.Data).filter(*conditions).all()
-        results += db.session.query(model.DisregardedData).filter(
-            *disregarded_conditions).all()
+        results = data_query.all()
+        results += disregarded_query.all()
 
     return rows_to_dicts(results)
 
@@ -220,5 +222,4 @@ api.add_resource(AggregateAlerts, "/aggregate_alerts",
                  "/aggregate_alerts/<central_review>",
                  "/aggregate_alerts/<central_review>/<hard_date_limit>")
 api.add_resource(Alert, "/alert/<alert_id>")
-api.add_resource(Alerts, "/alerts",
-                 "/alerts/<only_latest>")
+api.add_resource(Alerts, "/alerts")
