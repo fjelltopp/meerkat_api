@@ -64,6 +64,7 @@ class Location(Resource):
             model.Locations.id == location_id
         ).one()
 
+loc_trees = {}
 
 class LocationTree(Resource):
     """
@@ -93,6 +94,10 @@ class LocationTree(Resource):
         inc_case_types = json.loads(request.args.get('inc_case_types', '[]'))
         exc_case_types = json.loads(request.args.get('exc_case_types', '[]'))
 
+        key = f"{inc_case_types!r}_{exc_case_types!r}"
+        if key in loc_trees:
+            return loc_trees[key]
+        
         # Get location data from db and any access restrictions set by auth
         locs = get_locations(db.session)
         loc = g.allowed_location
@@ -145,7 +150,7 @@ class LocationTree(Resource):
                     tree['nodes'].remove(child)
 
         clean(ret[loc])
-
+        loc_trees[key] = jsonify(ret[loc])
         return jsonify(ret[loc])
 
 
