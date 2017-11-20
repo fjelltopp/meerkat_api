@@ -55,6 +55,12 @@ class Alerts(Resource):
     """
     Get alert all alerts
 
+
+    Takes url arguments to restrict the returned alerts \n
+       reason: restricts by variable \n
+       location: restricts by location \n
+       only_latest: returns only the latest alerts \n
+
     Returns:\n
         alerts\n
     """
@@ -62,14 +68,14 @@ class Alerts(Resource):
 
     def get(self):
         args = request.args.to_dict()
-        only_latest = int(args.get("only_latest", 0))
+
         if "start_date" in args:
             args["start_date"] = parse(args["start_date"])
-        return jsonify({"alerts": get_alerts(args, allowed_location=g.allowed_location,
-                                             only_latest=only_latest)})
+        return jsonify({"alerts": get_alerts(args,
+                                             allowed_location=g.allowed_location)})
 
 
-def get_alerts(args, allowed_location=1, only_latest=None):
+def get_alerts(args, allowed_location=1):
     """
     Gets all alerts where if reason is a key in args we only get alerts with a matching reason. 
     If "location" is in the key we get all alerts from the location or any child clinics. 
@@ -78,13 +84,16 @@ def get_alerts(args, allowed_location=1, only_latest=None):
     The link info is the alert investigation
 
     Args:\n
-        args: request args that can include "reason" and "location" as keys. \n
+        args: request args that can include "only_latest", "reason" and "location" as keys to restrict the returned alerts. \n
 
     Returns:\n
        alerts(list): a list of alerts. \n
     """
     conditions = [model.Data.variables.has_key("alert")]
     disregarded_conditions = [model.DisregardedData.variables.has_key("alert")]
+
+    only_latest = int(args.get("only_latest", 0))
+    
     if "reason" in args.keys():
         conditions.append(
             model.Data.variables["alert_reason"].astext == args["reason"])
