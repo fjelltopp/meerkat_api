@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 import copy
 from flask_restful import Resource
-from sqlalchemy import or_
+from sqlalchemy import or_, Float
 from meerkat_api.extensions import db, api
 from meerkat_api.util import series_to_json_dict
 from meerkat_analysis.indicators import count_over_count, count
@@ -71,10 +71,10 @@ class Indicators(Resource):
             data = pd.read_sql(
                 db.session.query(Data.region, Data.district, Data.clinic,
                                  Data.date,
-                                 Data.variables[nominator].label(nominator),
-                                 Data.variables[denominator].label(denominator)
+                                 Data.variables[nominator].astext.label(nominator),
+                                 Data.variables[denominator].astext.cast(Float).label(denominator)
                                  ).filter(
-                                    *conditions).statement, db.session.bind)
+                                     *conditions).statement, db.engine)
         else:
             conditions.append(Data.variables.has_key(nominator))
             data = pd.read_sql(

@@ -6,6 +6,7 @@ from datetime import datetime
 
 from meerkat_api import util
 from meerkat_abacus import model
+import meerkat_abacus.util as abacus_util
 
 
 
@@ -28,13 +29,13 @@ class UtilTests(unittest.TestCase):
             7: model.Locations(name="Clinic 2",
                                parent_location=5)
         }
-        self.assertTrue(util.is_child(1, 3, locations))
-        self.assertTrue(util.is_child(2, 4, locations))
-        self.assertTrue(util.is_child(1, 7, locations))
-        self.assertTrue(util.is_child(3, 7, locations))
-        self.assertTrue(util.is_child("3", "7", locations))
-        self.assertFalse(util.is_child(3, 6, locations))
-        self.assertFalse(util.is_child(2, 5, locations))
+        self.assertTrue(abacus_util.is_child(1, 3, locations))
+        self.assertTrue(abacus_util.is_child(2, 4, locations))
+        self.assertTrue(abacus_util.is_child(1, 7, locations))
+        self.assertTrue(abacus_util.is_child(3, 7, locations))
+        self.assertTrue(abacus_util.is_child("3", "7", locations))
+        self.assertFalse(abacus_util.is_child(3, 6, locations))
+        self.assertFalse(abacus_util.is_child(2, 5, locations))
 
     def test_get_children(self):
         """Test get_children"""

@@ -3,26 +3,23 @@ Unittests for meerkat_api.util
 """
 import unittest
 from datetime import datetime
-from meerkat_api import util
 from meerkat_api.util import data_query
-from meerkat_abacus import model
+import meerkat_abacus.util as abacus_util
 import meerkat_api
 from meerkat_api.test import db_util
 from collections import namedtuple
 
-class DataQueryTests(unittest.TestCase):
+class DataQueryTests(meerkat_api.test.TestCase):
 
     def setUp(self):
         """Setup for testing"""
-        session = db_util.session
-        db_util.insert_codes(session)
-        db_util.insert_locations(session)
-        db_util.insert_cases(session, "public_health_report")
-        self.session = session
+        self._mock_epi_week_abacus_logic()
+        db_util.insert_codes(self.db_session)
+        db_util.insert_locations(self.db_session)
+        db_util.insert_cases(self.db_session, "public_health_report")
         pseudo_db = namedtuple("pseudo_db", ["session", "engine"])
-        self.db = pseudo_db(session=self.session, engine=db_util.engine)
-        meerkat_api.app.config["TESTING"] = True
-        meerkat_api.app.app_context().push()
+        self.db = pseudo_db(session=self.db_session, engine=db_util.engine)
+
     def test_query_sum(self):
         """ Test basic query_sum functionality"""
         start_date = datetime(2015, 1, 1)
@@ -136,7 +133,7 @@ class DataQueryTests(unittest.TestCase):
 
     def test_latest_query(self):
         """ Test the latest query"""
-        db_util.insert_cases(self.session, "latest_test")
+        db_util.insert_cases(self.db_session, "latest_test")
         start_date = datetime(2017, 1, 1)
         end_date = datetime(2017, 1, 12)
         result = data_query.latest_query(self.db, "test_2", "test_1", start_date,

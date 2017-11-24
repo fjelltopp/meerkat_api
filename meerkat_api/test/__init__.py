@@ -6,6 +6,7 @@ Unit tests for the Meerkat API
 """
 import os
 import unittest
+from unittest.mock import patch
 
 from datetime import datetime
 
@@ -105,12 +106,17 @@ def valid_urls(app):
         "variables": "gen_1",
         "include_case_type": "mh",
         "exclude_case_type": "mh",
-        "include_clinic_type": "Refugee"
+        "include_clinic_type": "Refugee",
+        "only_latest": "1"
     }
+    excluded_urls = [
+        '/devices/submissions/<variable_id>'
+    ]
     urls = []
     for url in meerkat_api.app.url_map.iter_rules():
-        if "static" not in str(url):
-            new_url = str(url)
+        str_url = str(url)
+        if "static" not in str_url and str_url not in excluded_urls:
+            new_url = str_url
             for arg in url.arguments:
                 new_url = new_url.replace("<" + arg + ">",
                                           substitutions[arg])
@@ -138,16 +144,42 @@ def get_url(app, url, header):
     return rv
 
 
-class MeerkatAPITestCase(unittest.TestCase):
+def _epi_year_start_by_year_side_effect(year):
+    return datetime(year, 1, 1)
+
+
+def _epi_year_start_by_date_side_effect(date):
+    return datetime(date.year, 1, 1)
+
+def _epi_year_by_date_side_effect(date):
+    return date.year
+
+class TestCase(unittest.TestCase):
+    meerkat_api.app.config.from_object('meerkat_api.config.Testing')
+    meerkat_api.app.app_context().push()
+    app = meerkat_api.app.test_client()
+    db_session = db_util.session
+
+    def _mock_epi_week_abacus_logic(self):
+        epi_year_patch = patch('meerkat_abacus.util.epi_week.epi_year_start_date')
+        self.addCleanup(epi_year_patch.stop)
+        self.epi_year_mock = epi_year_patch.start()
+        self.epi_year_mock.side_effect = _epi_year_start_by_date_side_effect
+        epi_year_by_year_patch = patch('meerkat_abacus.util.epi_week.epi_year_start_date_by_year')
+        self.addCleanup(epi_year_by_year_patch.stop)
+        self.epi_year_by_year_mock = epi_year_by_year_patch.start()
+        self.epi_year_by_year_mock.side_effect = _epi_year_start_by_year_side_effect
+        epi_year_by_year_patch = patch('meerkat_abacus.util.epi_week.epi_year_by_date')
+        self.addCleanup(epi_year_by_year_patch.stop)
+        self.epi_year_by_year_mock = epi_year_by_year_patch.start()
+        self.epi_year_by_year_mock.side_effect = _epi_year_by_date_side_effect
+
+
+class MeerkatAPITestCase(TestCase):
     def setUp(self):
         """Setup for testing"""
-        meerkat_api.app.config['TESTING'] = True
-        meerkat_api.app.config['API_KEY'] = ""
         celery_app.conf.CELERY_ALWAYS_EAGER = True
 
-        # manage.set_up_everything(False, False, 500)
-        self.db = meerkat_api.app.extensions["sqlalchemy"].db
-        self.db_session = db_util.session
         db_util.insert_calculation_parameters(self.db_session)
         db_util.insert_codes(self.db_session)
         db_util.insert_locations(self.db_session)
@@ -176,7 +208,6 @@ class MeerkatAPITestCase(unittest.TestCase):
                              delete=False)
         db_util.insert_cases(self.db_session, "mental_health",
                              delete=False)
-        self.app = meerkat_api.app.test_client()
         self.locations = {1: {"name": "Demo"}}
         self.variables = {1: {"name": "Total"}}
 

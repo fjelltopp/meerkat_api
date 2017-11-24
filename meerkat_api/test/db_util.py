@@ -14,17 +14,17 @@ from meerkat_api.test.test_data import locations, cases
 from meerkat_api import app
 from meerkat_abacus import model
 from meerkat_abacus.util import get_db_engine
+
 engine, session = get_db_engine(app.config["SQLALCHEMY_DATABASE_URI"])
 
 
-
-
-def insert_cases(session, variable, date=None, delete=True):
+def insert_cases(session, dataset_name, date=None, delete=True):
     """ Add a variable with cases from the cases.py file in test_data
 
     Args:
        session: db session
-       variable: name of the varible from cases.py we want
+       dataset_name: name of the dataset from cases.py we want
+       delete: Boolean, True if clean db before insert case data.
     """
     if date:
         freezer = freeze_time(date)
@@ -33,7 +33,7 @@ def insert_cases(session, variable, date=None, delete=True):
     if delete:
         session.query(model.Data).delete()
         session.query(model.DisregardedData).delete()
-    session.bulk_save_objects(getattr(cases, variable))
+    session.bulk_save_objects(getattr(cases, dataset_name))
     session.commit()
     if date:
         freezer.stop()

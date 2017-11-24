@@ -8,15 +8,14 @@ import json
 import unittest
 import logging
 from datetime import datetime
-from datetime import timedelta
-from sqlalchemy import extract
 from dateutil import parser
 import pytz
 from . import settings
 import meerkat_api
 from meerkat_api.test import db_util
-from meerkat_abacus import data_management
+import meerkat_abacus.util as abacus_util
 from meerkat_abacus import model
+
 from meerkat_api.resources import reports
 from freezegun import freeze_time
 from meerkat_api.test.test_data import expected_output
@@ -26,13 +25,14 @@ def compare_unhashable_list(s, t):
     """
     Compare list of unhashable objects (e.g. dictionaries). From SO by Steven Rumbalski.
     """
-    t = list(t)   # make a mutable copy
+    t = list(t)  # make a mutable copy
     try:
         for elem in s:
             t.remove(elem)
     except ValueError:
         return False
     return not t
+
 
 def simplified_dict_compare(d1, d2):
     """ The following helper function compare two dictionaries assuming identical structure.
@@ -62,21 +62,21 @@ def simplified_dict_compare(d1, d2):
     modified = dict()
     mod_dict = dict()
     for o in intersect_keys:
-        #compare dictionaries recursively
+        # compare dictionaries recursively
         if ((type(d1[o]) == dict) and (type(d2[o]) == dict)):
-           mod_dict = simplified_dict_compare(d1[o],d2[o])
-        #compare lists as sets.
+            mod_dict = simplified_dict_compare(d1[o], d2[o])
+        # compare lists as sets.
         elif ((type(d1[o]) == list) and (type(d2[o]) == list)):
-                if not compare_unhashable_list(d1[o],d2[o]):
-                    modified[o] = (d1[o],d2[o])
-        #show differences
+            if not compare_unhashable_list(d1[o], d2[o]):
+                modified[o] = (d1[o], d2[o])
+        # show differences
         else:
-                if(d1[o] != d2[o]):
-                    modified[o] = (d1[o],d2[o])
+            if (d1[o] != d2[o]):
+                modified[o] = (d1[o], d2[o])
     if (mod_dict == None or mod_dict == {}) and modified == {}:
         return None
-    #same = set(o for o in intersect_keys if d1[o] == d2[o])
-    #return added, removed, modified, same, mod_dict
+    # same = set(o for o in intersect_keys if d1[o] == d2[o])
+    # return added, removed, modified, same, mod_dict
     return modified, mod_dict
 
 
@@ -104,33 +104,23 @@ def dict_struct_compare(d1, d2):
     removed = d2_keys - d1_keys
     struct_dict = {}
     for o in intersect_keys:
-        #compare dictionaries recursively
+        # compare dictionaries recursively
         if ((type(d1[o]) == dict) and (type(d2[o]) == dict)):
             struct_dict_diff = {}
-            struct_dict_diff = dict_struct_compare(d1[o],d2[o])
-            if(struct_dict_diff != None):
+            struct_dict_diff = dict_struct_compare(d1[o], d2[o])
+            if (struct_dict_diff != None):
                 struct_dict[o] = struct_dict_diff
 
-    if(added == set() and removed == set() and (struct_dict == None or struct_dict == {})):
+    if (added == set() and removed == set() and (struct_dict == None or struct_dict == {})):
         return None
-    return {"added":added, "removed":removed, "inner structure":struct_dict}
+    return {"added": added, "removed": removed, "inner structure": struct_dict}
 
 
-
-
-class MeerkatAPIReportsUtilityTestCase(unittest.TestCase):
-
+class MeerkatAPIReportsUtilityTestCase(meerkat_api.test.TestCase):
     def setUp(self):
         """Setup for testing"""
-        meerkat_api.app.config['TESTING'] = True
-        meerkat_api.app.config['API_KEY'] = ""
-        #data_management.create_db(meerkat_api.app.config["SQLALCHEMY_DATABASE_URI"],
-        #                          model.Base, False)
-        self.app = meerkat_api.app.test_client()
-        self.db = db_util.session
-
-    def tearDown(self):
-        pass
+        self._mock_epi_week_abacus_logic()
+        self.db_session = db_util.session
 
     def test_top(self):
         """Test top function"""
@@ -144,7 +134,6 @@ class MeerkatAPIReportsUtilityTestCase(unittest.TestCase):
         self.assertEqual(result, ["five", "four"])
         result = reports.top(values, number=3)
         self.assertEqual(result, ["five", "four", "one"])
-
 
     def test_fix_dates(self):
         """Test fix dates"""
@@ -166,19 +155,18 @@ class MeerkatAPIReportsUtilityTestCase(unittest.TestCase):
         self.assertEqual(new_dates[0], start_date)
         self.assertEqual(new_dates[1], end_date)
 
-
     def test_get_variables_category(self):
         """ Test get category """
         category = "gender"
         db_util.create_category(
-            self.db,
+            self.db_session,
             ["gen_1", "gen_2"],
             "gender",
             names=["Male", "Female"]
         )
         variables = [{"gen_1": 1} for i in range(37)]
         variables += [{"gen_2": 1} for i in range(94)]
-        db_util.create_data(self.db, variables)
+        db_util.create_data(self.db_session, variables)
         conn = db_util.engine.connect()
         start_date = datetime(datetime.now().year, 1, 1)
         end_date = datetime.now()
@@ -200,13 +188,11 @@ class MeerkatAPIReportsUtilityTestCase(unittest.TestCase):
         self.assertEqual(result["gen_2"], 94)
         self.assertEqual(result["gen_1"], 37)
 
-
-
     def test_get_diease_types(self):
         category = "cd"
 
         db_util.create_category(
-            self.db,
+            self.db_session,
             ["cd_1", "cd_2", "cd_3", "cd_4", "cd_5", "cd_6"],
             "cd"
         )
@@ -216,9 +202,9 @@ class MeerkatAPIReportsUtilityTestCase(unittest.TestCase):
         variables += [{"cd_4": 1} for i in range(25)]
         variables += [{"cd_5": 1} for i in range(30)]
         variables += [{"cd_6": 1} for i in range(35)]
-        db_util.create_data(self.db, variables)
+        db_util.create_data(self.db_session, variables)
 
-        conn =db_util.engine.connect()
+        conn = db_util.engine.connect()
         start_date = datetime(datetime.now().year, 1, 1)
         end_date = datetime.now()
         location = 2
@@ -241,15 +227,15 @@ class MeerkatAPIReportsUtilityTestCase(unittest.TestCase):
         self.assertEqual(result[4]["quantity"], 15)
 
         self.assertEqual(result[0]["percent"],
-                        35 / (35 + 30 + 25 + 20 + 15 + 10) * 100)
+                         35 / (35 + 30 + 25 + 20 + 15 + 10) * 100)
         self.assertEqual(result[1]["percent"],
-                        30 / (35 + 30 + 25 + 20 + 15 + 10) * 100)
+                         30 / (35 + 30 + 25 + 20 + 15 + 10) * 100)
         self.assertEqual(result[2]["percent"],
-                        25 / (35 + 30 + 25 + 20 + 15 + 10) * 100)
+                         25 / (35 + 30 + 25 + 20 + 15 + 10) * 100)
         self.assertEqual(result[3]["percent"],
-                        20 / (35 + 30 + 25 + 20 + 15 + 10) * 100)
+                         20 / (35 + 30 + 25 + 20 + 15 + 10) * 100)
         self.assertEqual(result[4]["percent"],
-                        15 / (35 + 30 + 25 + 20 + 15 + 10) * 100)
+                         15 / (35 + 30 + 25 + 20 + 15 + 10) * 100)
 
     def test_make_dict(self):
         """Test make_dict"""
@@ -257,7 +243,6 @@ class MeerkatAPIReportsUtilityTestCase(unittest.TestCase):
         self.assertEqual(new_dict["title"], "Test")
         self.assertEqual(new_dict["quantity"], 87)
         self.assertEqual(new_dict["percent"], 23)
-
 
     def test_disease_breakdown(self):
         """Test disease_breakdown"""
@@ -294,7 +279,7 @@ class MeerkatAPIReportsUtilityTestCase(unittest.TestCase):
         """Test get_latest_category"""
 
         db_util.create_category(
-            self.db,
+            self.db_session,
             ["pop_1", "pop_2", "pop_3", "pop_4"],
             "population",
             ["Population, Male <20", "Population, Female <20",
@@ -305,7 +290,7 @@ class MeerkatAPIReportsUtilityTestCase(unittest.TestCase):
             {"pop_1": 15, "pop_2": 16, "pop_3": 17, "pop_4": 0}
         ]
         dates = [datetime(2016, 1, 1), datetime(2016, 2, 2)]
-        db_util.create_data(self.db, variables, dates=dates)
+        db_util.create_data(self.db_session, variables, dates=dates)
         start_date = datetime(2016, 1, 1)
         end_date = datetime.now()
         results = reports.get_latest_category("population", 4, start_date, end_date)
@@ -350,7 +335,6 @@ class MeerkatAPIReportsUtilityTestCase(unittest.TestCase):
             "Measels5, Female <20": 7,
             "Measels5, Female >20": 7,
 
-
         }
         results = reports.refugee_disease(diseases)
 
@@ -367,15 +351,16 @@ class MeerkatAPIReportsUtilityTestCase(unittest.TestCase):
         self.assertEqual(results[4]["quantity"], 3 * 4)
         total = (7 + 6 + 5 + 4 + 3 + 2 + 1) * 4
         self.assertEqual(results[0]["percent"],
-                         7 * 4 / total * 100 )
+                         7 * 4 / total * 100)
         self.assertEqual(results[1]["percent"],
-                         6 * 4 / total  * 100)
+                         6 * 4 / total * 100)
         self.assertEqual(results[2]["percent"],
                          5 * 4 / total * 100)
         self.assertEqual(results[3]["percent"],
                          4 * 4 / total * 100)
         self.assertEqual(results[4]["percent"],
                          3 * 4 / total * 100)
+
 
 def assert_dict(class_self, d, title, quantity, percent):
     """
@@ -392,78 +377,66 @@ def assert_dict(class_self, d, title, quantity, percent):
     class_self.assertEqual(d["quantity"], quantity)
     class_self.assertEqual(d["percent"], percent)
 
-class MeerkatAPIReportsTestCase(unittest.TestCase):
 
+class MeerkatAPIReportsTestCase(meerkat_api.test.TestCase):
     def setUp(self):
         """Setup for testing"""
-        meerkat_api.app.config['TESTING'] = True
-        meerkat_api.app.config['API_KEY'] = ""
-        self.app = meerkat_api.app.test_client()
-        self.db = db_util.session
-
-    def tearDown(self):
-        pass
-
+        self._mock_epi_week_abacus_logic()
 
     def test_non_location(self):
         """ Teseting that reports returns None if wrong locations"""
-        db_util.insert_codes(self.db)
-        db_util.insert_locations(self.db)
+        db_util.insert_codes(self.db_session)
+        db_util.insert_locations(self.db_session)
         reports = [
             "public_health", "cd_public_health", "ncd_public_health", "epi_monitoring",
             "ncd_report", "cd_report", "refugee_public_health", "refugee_detail", "refugee_cd"
-            ]
+        ]
         for report in reports:
             rv = self.app.get('/reports/{}/99'.format(report), headers=settings.header)
             self.assertEqual(rv.status_code, 200)
             data = json.loads(rv.data.decode("utf-8"))
             self.assertEqual(data, None)
 
-
-
     def test_dates(self):
         """ Testing that the dates are handled correctly """
-        db_util.insert_codes(self.db)
-        db_util.insert_locations(self.db)
-        self.db.query(model.Data).delete()
-        self.db.commit()
+        db_util.insert_codes(self.db_session)
+        db_util.insert_locations(self.db_session)
+        self.db_session.query(model.Data).delete()
+        self.db_session.commit()
         reports = [
             "public_health", "cd_public_health", "ncd_public_health", "epi_monitoring",
             "ncd_report", "cd_report", "refugee_public_health", "refugee_detail", "refugee_cd"
         ]
         for report in reports:
+            failure_message = f"Failed for report '{report}'."
             rv = self.app.get('/reports/{}/1'.format(report), headers=settings.header)
             self.assertEqual(rv.status_code, 200)
             data = json.loads(rv.data.decode("utf-8"))["data"]
+            now = datetime.now()
             self.assertEqual(data["start_date"],
-                             datetime(datetime.now().year, 1, 1).isoformat())
-            self.assertLess((datetime.now() - parser.parse(data["end_date"])).seconds , 25)
+                             datetime(now.year, 1, 1).isoformat(), msg=failure_message)
+            self.assertLess((now - parser.parse(data["end_date"])).seconds, 30, msg=failure_message)
 
             # With specified dates
             end_date = datetime(2015, 8, 7).isoformat()
             start_date = datetime(2014, 2, 3).isoformat()
             rv = self.app.get('/reports/{}/1/{}'.format(report, end_date), headers=settings.header)
-            self.assertEqual(rv.status_code, 200)
+            self.assertEqual(rv.status_code, 200, msg=failure_message)
             data = json.loads(rv.data.decode("utf-8"))["data"]
-            self.assertEqual(data["start_date"],
-                             datetime(2015, 1, 1).isoformat())
-            self.assertEqual(data["end_date"],
-                             end_date)
+            self.assertEqual(data["start_date"], datetime(2015, 1, 1).isoformat(), msg=failure_message)
+            self.assertEqual(data["end_date"], end_date, msg=failure_message)
 
             rv = self.app.get('/reports/{}/1/{}/{}'.format(report, end_date, start_date), headers=settings.header)
-            self.assertEqual(rv.status_code, 200)
+            self.assertEqual(rv.status_code, 200, msg=failure_message)
             data = json.loads(rv.data.decode("utf-8"))["data"]
-            self.assertEqual(data["start_date"],
-                             start_date)
-            self.assertEqual(data["end_date"],
-                             end_date)
-
+            self.assertEqual(data["start_date"], start_date, msg=failure_message)
+            self.assertEqual(data["end_date"], end_date, msg=failure_message)
 
     def test_public_health(self):
         """ test the public health report """
-        db_util.insert_codes(self.db)
-        db_util.insert_locations(self.db)
-        db_util.insert_cases(self.db, "public_health_report")
+        db_util.insert_codes(self.db_session)
+        db_util.insert_locations(self.db_session)
+        db_util.insert_cases(self.db_session, "public_health_report")
         end_date = datetime(2015, 12, 31).isoformat()
         start_date = datetime(2015, 1, 1).isoformat()
         rv = self.app.get('/reports/public_health/1/{}/{}'.format(end_date, start_date), headers=settings.header)
@@ -544,7 +517,7 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
         assert_dict(self, data["morbidity_non_communicable_tab"][1], "Hypertension", 1, 50.0)
 
         # Mental Health
-        assert_dict(self,data["mental_health"][0], "Organic,including symptomatic, mental disorders", 1, 100.0)
+        assert_dict(self, data["mental_health"][0], "Organic,including symptomatic, mental disorders", 1, 100.0)
         # Public Health Indicators
 
         self.assertEqual(data["public_health_indicators"][0]["quantity"], 10)
@@ -554,7 +527,6 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
         self.assertEqual(data["public_health_indicators"][4]["quantity"], 1)
         self.assertEqual(data["public_health_indicators"][5]["quantity"], 1)
         self.assertEqual(data["public_health_indicators"][6]["quantity"], 1)
-
 
         # test with a different Location
 
@@ -566,12 +538,11 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
         self.assertEqual(data["total_consultations"], 15)
         self.assertEqual(data["clinic_num"], 3)
 
-
     def test_ncd_public_health(self):
         """ test the ncd public health report """
-        db_util.insert_codes(self.db)
-        db_util.insert_locations(self.db)
-        db_util.insert_cases(self.db, "ncd_public_health_report")
+        db_util.insert_codes(self.db_session)
+        db_util.insert_locations(self.db_session)
+        db_util.insert_cases(self.db_session, "ncd_public_health_report")
 
         end_date = datetime(2015, 12, 31).isoformat()
         start_date = datetime(2015, 1, 1).isoformat()
@@ -584,20 +555,20 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
 
         # Reporting Sites
         assert_dict(self, data["reporting_sites"][0], "Region 1", 4, 4 / 6 * 100)
-        assert_dict(self, data["reporting_sites"][1], "Region 2", 2, 2 / 6 *100)
+        assert_dict(self, data["reporting_sites"][1], "Region 2", 2, 2 / 6 * 100)
 
         # Demographics
         self.assertEqual(data["percent_cases_female"], 50.0)
         self.assertEqual(data["percent_cases_male"], 50.0)
         self.assertEqual(data["demographics"][0]["age"], "0-9")
-        self.assertEqual(data["demographics"][0]["percent"], round(2*100/6, 2))
+        self.assertEqual(data["demographics"][0]["percent"], round(2 * 100 / 6, 2))
         self.assertEqual(data["demographics"][0]["male"]["quantity"], 1)
         self.assertEqual(data["demographics"][0]["male"]["percent"], 50.0)
         self.assertEqual(data["demographics"][0]["female"]["quantity"], 1)
         self.assertEqual(data["demographics"][0]["female"]["percent"], 50.0)
 
         self.assertEqual(data["demographics"][2]["age"], "20-29")
-        self.assertEqual(data["demographics"][2]["percent"], round(2*100/6, 2))
+        self.assertEqual(data["demographics"][2]["percent"], round(2 * 100 / 6, 2))
         self.assertEqual(data["demographics"][2]["male"]["quantity"], 2)
         self.assertEqual(data["demographics"][2]["male"]["percent"], 100.0)
         self.assertEqual(data["demographics"][2]["female"]["quantity"], 0)
@@ -611,14 +582,14 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
         self.assertEqual(data["demographics"][3]["female"]["percent"], 0)
 
         self.assertEqual(data["demographics"][4]["age"], "40-49")
-        self.assertEqual(data["demographics"][4]["percent"], round(100/6, 2))
+        self.assertEqual(data["demographics"][4]["percent"], round(100 / 6, 2))
         self.assertEqual(data["demographics"][4]["male"]["quantity"], 0)
         self.assertEqual(data["demographics"][4]["male"]["percent"], 0)
         self.assertEqual(data["demographics"][4]["female"]["quantity"], 1)
         self.assertEqual(data["demographics"][4]["female"]["percent"], 100.0)
 
         self.assertEqual(data["demographics"][5]["age"], "50-59")
-        self.assertEqual(data["demographics"][5]["percent"], round(1*100/6, 2))
+        self.assertEqual(data["demographics"][5]["percent"], round(1 * 100 / 6, 2))
         self.assertEqual(data["demographics"][5]["male"]["quantity"], 0)
         self.assertEqual(data["demographics"][5]["male"]["percent"], 0)
         self.assertEqual(data["demographics"][5]["female"]["quantity"], 1)
@@ -653,9 +624,9 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
 
     def test_cd_public_health(self):
         """ test the cd public health report """
-        db_util.insert_codes(self.db)
-        db_util.insert_locations(self.db)
-        db_util.insert_cases(self.db, "public_health_report")
+        db_util.insert_codes(self.db_session)
+        db_util.insert_locations(self.db_session)
+        db_util.insert_cases(self.db_session, "public_health_report")
         end_date = datetime(2015, 12, 31).isoformat()
         start_date = datetime(2015, 1, 1).isoformat()
         rv = self.app.get('/reports/cd_public_health/1/{}/{}'.format(end_date, start_date), headers=settings.header)
@@ -667,38 +638,38 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
         self.assertEqual(data["alerts_total"], 3)
 
         # Reporting Sites
-        assert_dict(self, data["reporting_sites"][0], "Region 1", 6, 6 / 7 *100)
-        assert_dict(self, data["reporting_sites"][1], "Region 2", 1, 1 / 7 *100)
+        assert_dict(self, data["reporting_sites"][0], "Region 1", 6, 6 / 7 * 100)
+        assert_dict(self, data["reporting_sites"][1], "Region 2", 1, 1 / 7 * 100)
 
         # Demographics
         logging.warning(data["demographics"])
         self.assertEqual(data["percent_cases_male"], 3 / 7 * 100)
         self.assertEqual(data["percent_cases_female"], 4 / 7 * 100)
-        self.assertEqual(data["percent_cases_lt_5yo"], 2 / 7 *100)
+        self.assertEqual(data["percent_cases_lt_5yo"], 2 / 7 * 100)
         self.assertEqual(data["demographics"][0]["age"], "<5")
 
         self.assertEqual(data["demographics"][0]["male"]["quantity"], 2)
-        self.assertEqual(data["demographics"][0]["percent"], round(2*100/7, 2))
+        self.assertEqual(data["demographics"][0]["percent"], round(2 * 100 / 7, 2))
         self.assertEqual(data["demographics"][0]["male"]["percent"], 100)
         self.assertEqual(data["demographics"][0]["female"]["quantity"], 0)
         self.assertEqual(data["demographics"][0]["female"]["percent"], 0)
 
         self.assertEqual(data["demographics"][1]["age"], "5-9")
-        self.assertEqual(data["demographics"][1]["percent"], round(2*100/7, 2))
+        self.assertEqual(data["demographics"][1]["percent"], round(2 * 100 / 7, 2))
         self.assertEqual(data["demographics"][1]["male"]["quantity"], 0)
         self.assertEqual(data["demographics"][1]["male"]["percent"], 0)
         self.assertEqual(data["demographics"][1]["female"]["quantity"], 2)
         self.assertEqual(data["demographics"][1]["female"]["percent"], 100)
 
         self.assertEqual(data["demographics"][2]["age"], "10-14")
-        self.assertEqual(data["demographics"][2]["percent"], round(2*100/7, 2))
+        self.assertEqual(data["demographics"][2]["percent"], round(2 * 100 / 7, 2))
         self.assertEqual(data["demographics"][2]["male"]["quantity"], 1)
         self.assertEqual(data["demographics"][2]["male"]["percent"], 50.0)
         self.assertEqual(data["demographics"][2]["female"]["quantity"], 1)
         self.assertEqual(data["demographics"][2]["female"]["percent"], 50.0)
 
         self.assertEqual(data["demographics"][3]["age"], "15-19")
-        self.assertEqual(data["demographics"][3]["percent"], round(1*100/7, 2))
+        self.assertEqual(data["demographics"][3]["percent"], round(1 * 100 / 7, 2))
         self.assertEqual(data["demographics"][3]["male"]["quantity"], 0)
         self.assertEqual(data["demographics"][3]["male"]["percent"], 0)
         self.assertEqual(data["demographics"][3]["female"]["quantity"], 1)
@@ -719,7 +690,6 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
         self.assertEqual(data["public_health_indicators"][0]["quantity"], 7)
         self.assertEqual(data["public_health_indicators"][1]["quantity"], 3)
 
-
         # Test with a different Location
         rv = self.app.get('/reports/cd_public_health/2/{}/{}'.format(end_date, start_date), headers=settings.header)
         self.assertEqual(rv.status_code, 200)
@@ -727,6 +697,7 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
 
         self.assertEqual(data["total_cases"], 6)
         self.assertEqual(data["clinic_num"], 3)
+
     # def test_cd_report(self):
     #     location = 2
     #     rv = self.app.get('/reports/cd_report/{}'.format(location), headers=settings.header)
@@ -735,9 +706,9 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
 
     def test_ncd_report(self):
         """ Test ncd report """
-        db_util.insert_codes(self.db)
-        db_util.insert_locations(self.db)
-        db_util.insert_cases(self.db, "ncd_report")
+        db_util.insert_codes(self.db_session)
+        db_util.insert_locations(self.db_session)
+        db_util.insert_cases(self.db_session, "ncd_report")
         end_date = datetime(2015, 12, 31).isoformat()
         start_date = datetime(2015, 1, 1).isoformat()
         urls = ["ncd_report", "ncd_report_new_visits", "ncd_report_return_visits"]
@@ -748,41 +719,47 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
             data = json.loads(rv.data.decode("utf-8"))
             # Diabetes
             self.assertEqual(data["diabetes"]["age"]["titles"],
-                             ['reg','Total','0-9','10-19','20-29','30-39','40-49','50-59','60-69','70-79', '>80'])
+                             ['reg', 'Total', '0-9', '10-19', '20-29', '30-39', '40-49', '50-59', '60-69', '70-79',
+                              '>80'])
             self.assertEqual(data["diabetes"]["age"]["data"][0],
-                                {"title": "Region 1", "values": [3, 2, 0, 0, 1, 0, 0, 0, 0, 0]})
+                             {"title": "Region 1", "values": [3, 2, 0, 0, 1, 0, 0, 0, 0, 0]})
             self.assertEqual(data["diabetes"]["age"]["data"][1],
-                                {"title": "Region 2", "values": [1, 0, 0, 0, 0, 1, 0, 0, 0, 0]})
+                             {"title": "Region 2", "values": [1, 0, 0, 0, 0, 1, 0, 0, 0, 0]})
             self.assertEqual(data["diabetes"]["age"]["data"][2],
-                                {"title": "Total", "values": [4, 2, 0, 0, 1, 1, 0, 0, 0, 0]})
+                             {"title": "Total", "values": [4, 2, 0, 0, 1, 1, 0, 0, 0, 0]})
 
             if "visits" in url:
                 self.assertEqual(data["diabetes"]["complications"]["titles"],
-                                 ['reg', 'vis_0', 'visit_gen_1', 'visit_gen_2', 'visit_lab_4', 'visit_lab_5', 'visit_lab_7', 'visit_lab_9', 'visit_com_2', 'visit_smo_2', 'visit_lab_11'])
+                                 ['reg', 'vis_0', 'visit_gen_1', 'visit_gen_2', 'visit_lab_4', 'visit_lab_5',
+                                  'visit_lab_7', 'visit_lab_9', 'visit_com_2', 'visit_smo_2', 'visit_lab_11'])
             else:
                 self.assertEqual(data["diabetes"]["complications"]["titles"],
-                                 ['reg', 'tot', 'gen_1', 'gen_2', 'lab_4', 'lab_5', 'lab_7', 'lab_9', 'com_2', 'smo_2', 'lab_11']
-            )
-     #       print(data["diabetes"]["complications"]["data"][0])
+                                 ['reg', 'tot', 'gen_1', 'gen_2', 'lab_4', 'lab_5', 'lab_7', 'lab_9', 'com_2', 'smo_2',
+                                  'lab_11']
+                                 )
+                #       print(data["diabetes"]["complications"]["data"][0])
             self.assertEqual(data["diabetes"]["complications"]["data"][0],
                              {"title": "Region 1",
-                              "values": [3, [2 , 2/ 3 * 100], [1, 1/3 * 100] , [1, 50], [1, 50], [0, 0], [1, 50], [0, 0], [1, 1 / 2 * 100], [0, 0]]}
+                              "values": [3, [2, 2 / 3 * 100], [1, 1 / 3 * 100], [1, 50], [1, 50], [0, 0], [1, 50],
+                                         [0, 0], [1, 1 / 2 * 100], [0, 0]]}
                              )
 
             self.assertEqual(data["diabetes"]["complications"]["data"][1],
                              {"title": "Region 2",
-                              "values": [1, [0 , 0], [1, 100] , [0, 0], [0, 0], [1, 100], [0, 0], [1, 100], [0, 0], [1, 100]]}
+                              "values": [1, [0, 0], [1, 100], [0, 0], [0, 0], [1, 100], [0, 0], [1, 100], [0, 0],
+                                         [1, 100]]}
                              )
             # print(data["diabetes"]["complications"]["data"][2])
             self.assertEqual(data["diabetes"]["complications"]["data"][2],
                              {"title": "Total",
-                              "values": [4, [2 , 2/ 4 * 100], [2, 2/4 * 100] , [1, 50], [1, 50], [1, 100], [1, 50], [1, 25], [1, 50], [1, 100]]}
+                              "values": [4, [2, 2 / 4 * 100], [2, 2 / 4 * 100], [1, 50], [1, 50], [1, 100], [1, 50],
+                                         [1, 25], [1, 50], [1, 100]]}
                              )
-
 
             # Hypertension
             self.assertEqual(data["hypertension"]["age"]["titles"],
-                             ['reg','Total','0-9','10-19','20-29','30-39','40-49','50-59','60-69','70-79', '>80'])
+                             ['reg', 'Total', '0-9', '10-19', '20-29', '30-39', '40-49', '50-59', '60-69', '70-79',
+                              '>80'])
 
             self.assertEqual(data["hypertension"]["age"]["data"][0],
                              {"title": "Region 1",
@@ -797,17 +774,17 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
                               "values": [4, 0, 0, 2, 1, 1, 0, 0, 0, 0]}
                              )
 
-
             if "visits" in url:
                 self.assertEqual(data["hypertension"]["complications"]["titles"],
-                                 ['reg', 'vis_0', 'visit_gen_1', 'visit_gen_2', 'visit_lab_4', 'visit_lab_5', 'visit_lab_2', 'visit_com_1', 'visit_smo_2', 'visit_lab_11'])
+                                 ['reg', 'vis_0', 'visit_gen_1', 'visit_gen_2', 'visit_lab_4', 'visit_lab_5',
+                                  'visit_lab_2', 'visit_com_1', 'visit_smo_2', 'visit_lab_11'])
             else:
                 self.assertEqual(data["hypertension"]["complications"]["titles"],
                                  ['reg', 'tot', 'gen_1', 'gen_2', 'lab_4', 'lab_5', 'lab_2', 'com_1', 'smo_2', 'lab_11']
-            )
+                                 )
             self.assertEqual(data["hypertension"]["complications"]["data"][0],
                              {"title": "Region 1",
-                              "values": [2, [0, 0], [2, 100], [1, 100],[0, 0], [0, 0], [1, 50], [0, 0], [0, 0]]}
+                              "values": [2, [0, 0], [2, 100], [1, 100], [0, 0], [0, 0], [1, 50], [0, 0], [0, 0]]}
                              )
             # print(data["hypertension"]["complications"]["data"])
             self.assertEqual(data["hypertension"]["complications"]["data"][1],
@@ -816,16 +793,15 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
                              )
             self.assertEqual(data["hypertension"]["complications"]["data"][2],
                              {"title": "Total",
-                              "values": [4, [2, 50], [2, 50], [1, 100], [0,0], [1, 50], [1, 1/4*100], [1,100], [1,100]]}
+                              "values": [4, [2, 50], [2, 50], [1, 100], [0, 0], [1, 50], [1, 1 / 4 * 100], [1, 100],
+                                         [1, 100]]}
                              )
-
-
 
     def test_cd_report(self):
         """ Test cd report """
-        db_util.insert_codes(self.db)
-        db_util.insert_locations(self.db)
-        db_util.insert_cases(self.db, "cd_report")
+        db_util.insert_codes(self.db_session)
+        db_util.insert_locations(self.db_session)
+        db_util.insert_cases(self.db_session, "cd_report")
         end_date = datetime(2015, 12, 31).isoformat()
         start_date = datetime(2015, 1, 1).isoformat()
         rv = self.app.get('/reports/cd_report/1/{}/{}'.format(end_date, start_date), headers=settings.header)
@@ -839,36 +815,51 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
         self.assertEqual(len(data.keys()), 3)
         # Cholera
         self.assertEqual(data["Cholera"]["weeks"],
-                         [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52])
+                         [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26,
+                          27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49,
+                          50, 51, 52])
         # One suspected case in epi_week 16 and no confirmed cases
         self.assertEqual(data["Cholera"]["suspected"],
-                         [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0])
+                         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
         self.assertEqual(data["Cholera"]["previous"],
-                         [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0])
+                         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
 
         self.assertEqual(data["Cholera"]["confirmed"],
-                         [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0])
+                         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
 
         # Typhoid Fever
         self.assertEqual(data["Typhoid fever"]["weeks"],
-                         [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52])
+                         [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26,
+                          27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49,
+                          50, 51, 52])
         # One suspected case in epi_week 16 and no confirmed cases
         self.assertEqual(data["Typhoid fever"]["suspected"],
-                         [0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0])
+                         [0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
         self.assertEqual(data["Typhoid fever"]["confirmed"],
-                         [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0])
+                         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
         self.assertEqual(data["Typhoid fever"]["previous"],
-                         [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0])
+                         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
         # Diphtheria
         self.assertEqual(data["Diphtheria"]["weeks"],
-                         [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52])
+                         [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26,
+                          27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49,
+                          50, 51, 52])
         # One suspected case in epi_week 16 and no confirmed cases
         self.assertEqual(data["Diphtheria"]["suspected"],
-                         [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0])
+                         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
         self.assertEqual(data["Diphtheria"]["confirmed"],
-                         [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0])
+                         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
         self.assertEqual(data["Diphtheria"]["previous"],
-                         [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0])
+                         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
 
     # def test_pip_report(self):
     #     """ Test pip report """
@@ -975,15 +966,46 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
 
 
 
+    def test_foreigner_screening(self):
+        """ Test foreigner screening report"""
+        db_util.insert_specific_locations(self.db_session, "testshire")
+        db_util.insert_codes_from_file(self.db_session, "demo_codes.csv")
+        db_util.insert_cases(self.db_session, "foreigner_screening")
+        fs_expected = meerkat_api.test.test_data.expected_output.fs_expected
+
+        # This test assumes the period is the whole year despite whatever it is
+        rv = self.app.get(
+            '/reports/foreigner_screening/{}/{}/{}'.format(
+                1,
+                datetime(2017, 12, 25).isoformat(),
+                datetime(2016, 12, 18).isoformat(),
+            ),
+            headers=settings.header)
+        self.assertEqual(rv.status_code, 200)
+        fs_returned = json.loads(rv.data.decode("utf-8"))
+        print("[Output foreign_screening_returned]:")
+        print(type(fs_returned))
+        print("[end]")
+        fs_expected.pop("meta", None)
+        fs_returned.pop("meta", None)
+        dictdiffstructure = dict_struct_compare(fs_expected, fs_returned)
+        dictdiffcontent = simplified_dict_compare(fs_expected, fs_returned)
+        print("Difference in response structure")
+        print(dictdiffstructure)
+        print("Difference in response content")
+        print(dictdiffcontent)
+        self.assertTrue(dictdiffstructure == None)
+        self.assertTrue(dictdiffcontent == None)
 
     def test_refugee_public_health(self):
         """ Test refugee public health report"""
-        db_util.insert_codes(self.db)
-        db_util.insert_locations(self.db)
-        db_util.insert_cases(self.db, "refugee_data")
+        db_util.insert_codes(self.db_session)
+        db_util.insert_locations(self.db_session)
+        db_util.insert_cases(self.db_session, "refugee_data")
         end_date = datetime(2015, 12, 31).isoformat()
         start_date = datetime(2015, 1, 1).isoformat()
-        rv = self.app.get('/reports/refugee_public_health/1/{}/{}'.format(end_date, start_date), headers=settings.header)
+        rv = self.app.get('/reports/refugee_public_health/1/{}/{}'.format(end_date, start_date),
+                          headers=settings.header)
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))["data"]
 
@@ -997,11 +1019,10 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
         self.assertEqual(data["total_consultations"], 170)
         self.assertEqual(data["total_cases"], 25)
 
-
         self.assertEqual(data["percent_morbidity_communicable"], 6 / 25 * 100)
         self.assertEqual(data["percent_morbidity_non_communicable"], 6 / 25 * 100)
         self.assertEqual(data["percent_morbidity_mental_health"], 10 / 25 * 100)
-        self.assertEqual(data["percent_morbidity_injury_health"], 3 / 25 *100)
+        self.assertEqual(data["percent_morbidity_injury_health"], 3 / 25 * 100)
 
         assert_dict(self, data["presenting_complaints"][0],
                     "Communicable Disease", 6, 6 / 25 * 100)
@@ -1015,7 +1036,6 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
         # pop = 89, mortality = 14, u5_mortalit = 6, u5_pop = 18
         self.assertEqual(data["crude_mortality_rate"], 14 / 89 * 1000)
         self.assertEqual(data["u5_crude_mortality_rate"], 6 / 18 * 1000)
-
 
         # Public health indicators days of report = 364
         assert_dict(self, data["public_health_indicators"][0],
@@ -1036,7 +1056,7 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
                     None)
         assert_dict(self, data["public_health_indicators"][4],
                     "Crude Mortality Rate (CMR)",
-                     14 / 89 * 1000,
+                    14 / 89 * 1000,
                     None)
         assert_dict(self, data["public_health_indicators"][5],
                     "Under-five Mortality Rate (U5MR)",
@@ -1108,9 +1128,9 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
 
     def test_refugee_detail(self):
         """ Test refugee public health report"""
-        db_util.insert_codes(self.db)
-        db_util.insert_locations(self.db)
-        db_util.insert_cases(self.db, "refugee_data")
+        db_util.insert_codes(self.db_session)
+        db_util.insert_locations(self.db_session)
+        db_util.insert_cases(self.db_session, "refugee_data")
         end_date = datetime(2015, 12, 31).isoformat()
         start_date = datetime(2015, 1, 1).isoformat()
         rv = self.app.get('/reports/refugee_detail/1/{}/{}'.format(end_date, start_date), headers=settings.header)
@@ -1132,12 +1152,10 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
                }
         self.assertEqual(data["population"]["Refugee Population"], pop)
 
-
-
         # Morbidity
         assert_dict(self, data["mortality"][0],
                     "Crude Mortality Rate",
-                     14 / 89 * 1000,
+                    14 / 89 * 1000,
                     None)
         assert_dict(self, data["mortality"][1],
                     "Under five crude mortality rate",
@@ -1198,12 +1216,12 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
                              "15-44": 3,
                              "45-64": 5,
                              ">65": 0
-                             })
+                         })
 
         # 3 Morbidity
         assert_dict(self, data["staffing"][0],
                     "Total Consultations",
-                     170,
+                    170,
                     None)
         assert_dict(self, data["staffing"][1],
                     "Number of Clinicians",
@@ -1217,7 +1235,6 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
                     "Number of consultations per clinician per day",
                     170 / 6 / 364,
                     None)
-
 
         for key in data["communicable_diseases"]["diseases"]:
             if key == "Watery Diarrhoea":
@@ -1251,7 +1268,7 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
                              "15-44": 6,
                              "45-64": 0,
                              ">65": 0
-                             })
+                         })
 
         for key in data["non_communicable_diseases"]["diseases"]:
             if key == "Hypertension":
@@ -1285,7 +1302,7 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
                              "15-44": 0,
                              "45-64": 0,
                              ">65": 0
-                             })
+                         })
         for key in data["mental_health"]["diseases"]:
             if key == "Alcohol or other substance use disorder":
                 self.assertEqual(data["mental_health"]["diseases"][key],
@@ -1329,7 +1346,7 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
                              "15-44": 0,
                              "45-64": 0,
                              ">65": 3
-                             })
+                         })
 
         for key in data["injury"]["diseases"]:
             if key == "Other":
@@ -1362,12 +1379,12 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
                              "15-44": 0,
                              "45-64": 0,
                              ">65": 0
-                             })
+                         })
         # Referral
 
         assert_dict(self, data["referrals"][0],
                     "Hospital Referrals",
-                     3,
+                    3,
                     None)
         assert_dict(self, data["referrals"][1],
                     "Other Referrals",
@@ -1375,61 +1392,59 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
                     None)
         assert_dict(self, data["referrals"][2],
                     "Hospitalisation rate",
-                    3 / 170 ,
+                    3 / 170,
                     None)
         assert_dict(self, data["referrals"][3],
                     "Referral rate",
                     9 / 170,
                     None)
 
-
     def test_refugee_cd(self):
         """ Test refugee cd report"""
-        db_util.insert_codes(self.db)
-        db_util.insert_locations(self.db)
-        db_util.insert_cases(self.db, "refugee_data")
+        db_util.insert_codes(self.db_session)
+        db_util.insert_locations(self.db_session)
+        db_util.insert_cases(self.db_session, "refugee_data")
         end_date = datetime(2015, 12, 31).isoformat()
         start_date = datetime(2015, 1, 1).isoformat()
         rv = self.app.get('/reports/refugee_cd/1/{}/{}'.format(end_date, start_date), headers=settings.header)
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))["data"]
 
-        zeroes = [0 for i in range(53)]
+        zeroes = [0] * 53
+        wd = [2.0 if i in [0, 14, 16] else 0 for i in range(53)]
 
-        wd = zeroes.copy()
-
-        wd[0] = 2
-        wd[14] = 2
-        wd[16] = 2
+        expected_weeks = ['Week 1, 2015'] + list(range(2,54))
         for key in data["communicable_diseases"]:
-            self.assertEqual(data["communicable_diseases"][key]["weeks"],
-                             ['Week 1, 2015', 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53])
+            failure_message = f"Comparison failed for key: '{key}'"
+            actual_weeks = data["communicable_diseases"][key]["weeks"]
+            self.assertEqual(actual_weeks, expected_weeks, msg=failure_message)
 
             if key == "Watery Diarrhoea":
-                self.assertEqual(data["communicable_diseases"][key]["suspected"], wd)
+                self.assertEqual(data["communicable_diseases"][key]["suspected"], wd, msg=failure_message)
             else:
-                self.assertEqual(data["communicable_diseases"][key]["suspected"], zeroes)
+                self.assertEqual(data["communicable_diseases"][key]["suspected"], zeroes, msg=failure_message)
 
     def test_epi_monitoring(self):
         """ Test epi monitoring report"""
 
-        #Load the test data.
-        db_util.insert_locations(self.db)
-        db_util.insert_codes_from_file(self.db, "codes.csv")
-        db_util.insert_cases(self.db, "epi_monitoring")
+        # Load the test data.
+        db_util.insert_locations(self.db_session)
+        db_util.insert_codes_from_file(self.db_session, "codes.csv")
+        db_util.insert_cases(self.db_session, "epi_monitoring")
 
-        #Select report params
+        # Select report params
         end_date = datetime(2015, 1, 7).isoformat()
         start_date = datetime(2015, 1, 1).isoformat()
         location = 1
 
-        #Call the api method and check the response is 200 OK. Store the data.
-        rv = self.app.get('/reports/epi_monitoring/{}/{}/{}'.format(location, end_date, start_date), headers=settings.header)
+        # Call the api method and check the response is 200 OK. Store the data.
+        rv = self.app.get('/reports/epi_monitoring/{}/{}/{}'.format(location, end_date, start_date),
+                          headers=settings.header)
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))
 
-        #Refactorisation: check the data is returned is as expected
-        def check_data( data, expected ):
+        # Refactorisation: check the data is returned is as expected
+        def check_data(data, expected):
 
             test_dict = {
                 **data["epi_monitoring"],
@@ -1440,65 +1455,68 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
 
             for key, value in test_dict.items():
 
-                if( value != expected ):
-                    print( "FAILED ASSERTION | Key: {}  Value: {} Should be {}."
-                           .format( key, value, expected ) )
+                if (value != expected):
+                    print("FAILED ASSERTION | Key: {}  Value: {} Should be {}."
+                          .format(key, value, expected))
                 self.assertEqual(value, expected)
 
-                if( key not in data["variables"] ):
-                    print( "KEY NOT INCLUDED IN VARIABLES | Key: {}".format(key) )
-                self.assertTrue( key in data["variables"] )
+                if (key not in data["variables"]):
+                    print("KEY NOT INCLUDED IN VARIABLES | Key: {}".format(key))
+                self.assertTrue(key in data["variables"])
 
             self.assertEqual(data["alerts"]["total"], expected)
             self.assertEqual(data["alerts"]["investigated"], expected)
 
-        #The data is set up to equal 2 everywhere, so check this is the case.
-        check_data( data, 2 )
+        # The data is set up to equal 2 everywhere, so check this is the case.
+        check_data(data, 2)
 
-        #Change the dates and check we get what's expected.
+        # Change the dates and check we get what's expected.
         end_date = datetime(2016, 1, 7).isoformat()
         start_date = datetime(2016, 1, 1).isoformat()
         location = 1
 
-        rv = self.app.get('/reports/epi_monitoring/{}/{}/{}'.format(location, end_date, start_date), headers=settings.header)
+        rv = self.app.get('/reports/epi_monitoring/{}/{}/{}'.format(location, end_date, start_date),
+                          headers=settings.header)
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))
 
-        check_data( data, 0 )
+        check_data(data, 0)
 
-        #Change the location and check we get whats expected.
+        # Change the location and check we get whats expected.
         end_date = datetime(2015, 1, 7).isoformat()
         start_date = datetime(2015, 1, 1).isoformat()
         location = 11
 
-        rv = self.app.get('/reports/epi_monitoring/{}/{}/{}'.format(location, end_date, start_date), headers=settings.header)
+        rv = self.app.get('/reports/epi_monitoring/{}/{}/{}'.format(location, end_date, start_date),
+                          headers=settings.header)
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))
 
-        check_data( data, 1 )
+        check_data(data, 1)
 
     def test_malaria(self):
         """ Test malaria report"""
 
-        #Load the test data.
-        db_util.insert_locations(self.db)
-        db_util.insert_codes_from_file(self.db, "codes.csv")
-        db_util.insert_cases(self.db, "malaria")
+        # Load the test data.
+        db_util.insert_locations(self.db_session)
+        db_util.insert_codes_from_file(self.db_session, "codes.csv")
+        db_util.insert_cases(self.db_session, "malaria")
 
-        #Select report params
+        # Select report params
         end_date = datetime(2015, 1, 7).isoformat()
         start_date = datetime(2015, 1, 1).isoformat()
         location = 1
 
-        #Call the api method and check the response is 200 OK. Store the data.
+        # Call the api method and check the response is 200 OK. Store the data.
         rv = self.app.get('/reports/malaria/{}/{}/{}'.format(location, end_date, start_date), headers=settings.header)
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))
 
         print("Malaria output data missing some variables")
         print(data)
-        #Refactorisation: check the data is returned is as expected
-        def check_data( data, expected ):
+
+        # Refactorisation: check the data is returned is as expected
+        def check_data(data, expected):
 
             test_dict = {
                 **data["malaria_prevention"],
@@ -1507,19 +1525,19 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
 
             for key, value in test_dict.items():
 
-                if( value != expected ):
-                    print( "FAILED ASSERTION | Key: {}  Value: {} Should be {}."
-                           .format( key, value, expected ) )
+                if (value != expected):
+                    print("FAILED ASSERTION | Key: {}  Value: {} Should be {}."
+                          .format(key, value, expected))
                 self.assertEqual(value, expected)
 
-                if( key not in data["variables"] ):
-                    print( "KEY NOT INCLUDED IN VARIABLES | Key: {}".format(key) )
-                self.assertTrue( key in data["variables"] )
+                if (key not in data["variables"]):
+                    print("KEY NOT INCLUDED IN VARIABLES | Key: {}".format(key))
+                self.assertTrue(key in data["variables"])
 
-        #The data is set up to equal 2 everywhere, so check this is the case.
-        check_data( data, 2 )
+        # The data is set up to equal 2 everywhere, so check this is the case.
+        check_data(data, 2)
 
-        #Change the dates and check we get what's expected.
+        # Change the dates and check we get what's expected.
         end_date = datetime(2016, 1, 7).isoformat()
         start_date = datetime(2016, 1, 1).isoformat()
         location = 1
@@ -1528,9 +1546,9 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))
 
-        check_data( data, 0 )
+        check_data(data, 0)
 
-        #Change the location and check we get whats expected.
+        # Change the location and check we get whats expected.
         end_date = datetime(2015, 1, 7).isoformat()
         start_date = datetime(2015, 1, 1).isoformat()
         location = 11
@@ -1539,42 +1557,43 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))
 
-        check_data( data, 1 )
+        check_data(data, 1)
 
     def test_vaccination(self):
         """ Test vaccination report"""
 
-        #Load the test data.
-        db_util.insert_locations(self.db)
-        db_util.insert_codes_from_file(self.db, "codes.csv")
-        db_util.insert_cases(self.db, "vaccination_report")
+        # Load the test data.
+        db_util.insert_locations(self.db_session)
+        db_util.insert_codes_from_file(self.db_session, "codes.csv")
+        db_util.insert_cases(self.db_session, "vaccination_report")
 
-        #Check the data is returned is as expected
-        def check_data( end_date, start_date, location, expected ):
+        # Check the data is returned is as expected
+        def check_data(end_date, start_date, location, expected):
 
-            rv = self.app.get('/reports/vaccination/{}/{}/{}'.format(location, end_date, start_date), headers=settings.header)
+            rv = self.app.get('/reports/vaccination/{}/{}/{}'.format(location, end_date, start_date),
+                              headers=settings.header)
             self.assertEqual(rv.status_code, 200)
             data = json.loads(rv.data.decode("utf-8"))
 
-            self.assertEqual(data["data"]["vaccination_sessions"],expected)
+            self.assertEqual(data["data"]["vaccination_sessions"], expected)
 
             for item in data["data"]["infants"]:
                 print('infant_item')
                 print(item)
-                if( item["vaccinated_0_11_mo_infants"] != expected or item["vaccinated_12_mo_infants"] != expected):
-                    print( "FAILED ASSERTION | Item name: {}  Value: {} Should be {}."
-                           .format( item["name"], item["vaccinated_0_11_mo_infants"], expected ) )
+                if (item["vaccinated_0_11_mo_infants"] != expected or item["vaccinated_12_mo_infants"] != expected):
+                    print("FAILED ASSERTION | Item name: {}  Value: {} Should be {}."
+                          .format(item["name"], item["vaccinated_0_11_mo_infants"], expected))
                 self.assertEqual(item["vaccinated_0_11_mo_infants"], expected)
                 self.assertEqual(item["vaccinated_12_mo_infants"], expected)
 
             for item in data["data"]["females"]:
-                if( item["vaccinated_pw"] != expected or item["vaccinated_notpw"] != expected):
-                    print( "FAILED ASSERTION | Item name: {}  Value: {} Should be {}."
-                           .format( item["name"], item["vaccinated_pw"], expected ) )
+                if (item["vaccinated_pw"] != expected or item["vaccinated_notpw"] != expected):
+                    print("FAILED ASSERTION | Item name: {}  Value: {} Should be {}."
+                          .format(item["name"], item["vaccinated_pw"], expected))
                 self.assertEqual(item["vaccinated_pw"], expected)
                 self.assertEqual(item["vaccinated_notpw"], expected)
 
-        #Run data checks with different parameters
+        # Run data checks with different parameters
 
         check_data(
             end_date=datetime(2015, 7, 1).isoformat(),
@@ -1588,9 +1607,6 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
             location=1,
             expected=1)
 
-
-
-
     @freeze_time("2016-12-30")
     def test_afro(self):
         """ Test AFRO report """
@@ -1600,14 +1616,14 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
 
         # Load the test data.
         # db_util.insert_specific_locations(self.db, "mad_dump")
-        db_util.insert_specific_locations(self.db, "testshire")
-        db_util.insert_codes_from_file(self.db, "codes.csv")
-        db_util.insert_cases(self.db, "afro_report")
+        db_util.insert_specific_locations(self.db_session, "testshire")
+        db_util.insert_codes_from_file(self.db_session, "codes.csv")
+        db_util.insert_cases(self.db_session, "afro_report")
 
-        #This test assumes the period is the whole year despite whatever it is
+        # This test assumes the period is the whole year despite whatever it is
         rv = self.app.get(
             '/reports/afro/{}/{}/{}'
-            .format(
+                .format(
                 1,
                 datetime(2016, 12, 25).isoformat(),
                 datetime(2016, 12, 18).isoformat(),
@@ -1618,16 +1634,17 @@ class MeerkatAPIReportsTestCase(unittest.TestCase):
         print(afro_returned)
         print(type(afro_returned))
         print("[end]")
-        afro_expected.pop("meta",None)
-        afro_returned.pop("meta",None)
-        dictdiffstructure = dict_struct_compare(afro_expected,afro_returned)
-        dictdiffcontent = simplified_dict_compare(afro_expected,afro_returned)
+        afro_expected.pop("meta", None)
+        afro_returned.pop("meta", None)
+        dictdiffstructure = dict_struct_compare(afro_expected, afro_returned)
+        dictdiffcontent = simplified_dict_compare(afro_expected, afro_returned)
         print("Difference in response structure")
         print(dictdiffstructure)
         print("Difference in response content")
         print(dictdiffcontent)
         self.assertTrue(dictdiffstructure == None)
         self.assertTrue(dictdiffcontent == None)
+
 
 if __name__ == '__main__':
     unittest.main()

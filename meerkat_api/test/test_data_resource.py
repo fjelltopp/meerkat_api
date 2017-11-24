@@ -5,29 +5,18 @@ Meerkat API Tests
 Unit tests for the data resource in Meerkat API
 """
 import json
-import unittest
-from datetime import datetime
-from sqlalchemy import extract
 from . import settings
 import meerkat_api
 from meerkat_api.test import db_util
-from meerkat_abacus.config import config
-import meerkat_abacus.model as model
 
-class MeerkatAPIDataTestCase(unittest.TestCase):
+class MeerkatAPIDataTestCase(meerkat_api.test.TestCase):
 
     def setUp(self):
         """Setup for testing"""
-        meerkat_api.app.config['TESTING'] = True
-        meerkat_api.app.config['API_KEY'] = ""
-        self.app = meerkat_api.app.test_client()
-        session = db_util.session
-        db_util.insert_codes(session)
-        db_util.insert_locations(session)
-        db_util.insert_cases(session, "public_health_report")
-
-    def tearDown(self):
-        pass
+        self._mock_epi_week_abacus_logic()
+        db_util.insert_codes(self.db_session)
+        db_util.insert_locations(self.db_session)
+        db_util.insert_cases(self.db_session, "public_health_report")
 
     def test_aggregate(self):
         """Check aggregate"""

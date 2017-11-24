@@ -55,6 +55,12 @@ class Alerts(Resource):
     """
     Get alert all alerts
 
+
+    Takes url arguments to restrict the returned alerts \n
+       reason: restricts by variable \n
+       location: restricts by location \n
+       only_latest: returns only the latest alerts \n
+
     Returns:\n
         alerts\n
     """
@@ -65,7 +71,8 @@ class Alerts(Resource):
 
         if "start_date" in args:
             args["start_date"] = parse(args["start_date"])
-        return jsonify({"alerts": get_alerts(args, allowed_location=g.allowed_location)})
+        return jsonify({"alerts": get_alerts(args,
+                                             allowed_location=g.allowed_location)})
 
 
 def get_alerts(args, allowed_location=1):
@@ -77,13 +84,16 @@ def get_alerts(args, allowed_location=1):
     The link info is the alert investigation
 
     Args:\n
-        args: request args that can include "reason" and "location" as keys. \n
+        args: request args that can include "only_latest", "reason" and "location" as keys to restrict the returned alerts. \n
 
     Returns:\n
        alerts(list): a list of alerts. \n
     """
     conditions = [model.Data.variables.has_key("alert")]
     disregarded_conditions = [model.DisregardedData.variables.has_key("alert")]
+
+    only_latest = int(args.get("only_latest", 0))
+    
     if "reason" in args.keys():
         conditions.append(
             model.Data.variables["alert_reason"].astext == args["reason"])
@@ -131,12 +141,20 @@ def get_alerts(args, allowed_location=1):
             model.DisregardedData.date >= args["start_date"])
     if "end_date" in args.keys():
         conditions.append(model.Data.date < args["end_date"])
-        disregarded_conditions.append(
-            model.DisregardedData.date < args["end_date"])
+        disregarded_conditions.append(model.DisregardedData.date < args["end_date"])
+    data_query = db.session.query(model.Data).filter(
+        *conditions).order_by(model.Data.date.desc())
+    disregarded_query = db.session.query(model.DisregardedData).filter(
+            *disregarded_conditions)
 
-    results = db.session.query(model.Data).filter(*conditions).all()
-    results += db.session.query(model.DisregardedData).filter(
-        *disregarded_conditions).all()
+    if only_latest:
+        results = data_query.limit(only_latest).all()
+        results += disregarded_query.limit(only_latest).all()
+        results = sorted(results, key=lambda r: r.date,
+                         reverse=True)[:only_latest]
+    else:
+        results = data_query.all()
+        results += disregarded_query.all()
 
     return rows_to_dicts(results)
 
@@ -156,6 +174,8 @@ class AggregateAlerts(Resource):
         args = request.args
         all_alerts = get_alerts(args, allowed_location=g.allowed_location)
         ret = {}
+        if central_review == "0":
+            central_review = False
         total = 0
         if hard_date_limit:
             hard_date_limit = parse(hard_date_limit)

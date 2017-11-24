@@ -18,24 +18,21 @@ Vaccination Report
 """
 
 from flask_restful import Resource
-from flask import request, jsonify, g, current_app
-from sqlalchemy import or_, func, desc, Integer
+from flask import request, g, current_app
+from sqlalchemy import or_, func, desc
 from datetime import datetime, timedelta
-from dateutil import parser
-from sqlalchemy.sql import text
 import uuid
 import math
 import numpy as np
-import traceback
 from functools import wraps
 from gettext import gettext
 import logging, json, operator
-from meerkat_api.util import get_children, is_child, fix_dates, rows_to_dicts, find_level
+
+from meerkat_api.util import get_children, fix_dates, find_level
 from meerkat_api.extensions import db, api
 from meerkat_abacus.model import Data, Locations, AggregationVariables, CalculationParameters
 from meerkat_api.resources.completeness import Completeness, NonReporting
 from meerkat_api.resources.variables import Variables, Variable
-from meerkat_api.resources.epi_week import EpiWeek, epi_week_start, epi_year_start
 from meerkat_api.resources.locations import TotClinics
 from meerkat_api.resources.data import AggregateYear
 from meerkat_api.resources.map import Clinics, MapVariable
@@ -43,7 +40,8 @@ from meerkat_api.resources import alerts
 from meerkat_api.resources.explore import QueryVariable, QueryCategory, get_variables
 from meerkat_api.util.data_query import query_sum, latest_query
 from meerkat_api.resources.incidence import IncidenceRate
-from meerkat_abacus.util import get_locations, all_location_data, get_zones_regions_districts
+import meerkat_abacus.util as abacus_util
+import meerkat_abacus.util.epi_week as epi_week_util
 from meerkat_abacus import model
 from meerkat_api.authentication import authenticate, is_allowed_location
 from geoalchemy2.shape import to_shape
@@ -500,7 +498,7 @@ class NcdReportNewVisits(Resource):
     decorators = [authenticate, report_allowed_location]
 
     def get(self, location, start_date=None, end_date=None):
-        retval = create_ncd_report(location=location, start_date=start_date,\
+        retval = create_ncd_report(location=location, start_date=start_date,
             end_date=end_date, params=['new'])
         return retval
 
@@ -509,7 +507,7 @@ class NcdReportReturnVisits(Resource):
     decorators = [authenticate, report_allowed_location]
 
     def get(self, location, start_date=None, end_date=None):
-        retval = create_ncd_report(location=location, start_date=start_date,\
+        retval = create_ncd_report(location=location, start_date=start_date,
             end_date=end_date, params=['return'])
         return retval
 
@@ -518,7 +516,7 @@ class NcdReport(Resource):
     decorators = [authenticate, report_allowed_location]
 
     def get(self, location, start_date=None, end_date=None):
-        retval = create_ncd_report(location=location, start_date=start_date,\
+        retval = create_ncd_report(location=location, start_date=start_date,
             end_date=end_date, params=['case'])
         return retval
 
@@ -535,8 +533,7 @@ def create_ncd_report(location, start_date=None, end_date=None, params=['case'])
                    "schema_version": 0.1
     }
     #  Dates and Location Name
-    ew = EpiWeek()
-    epi_week = ew.get(end_date.isoformat())["epi_week"]
+    epi_week = epi_week_util.epi_week_for_date(end_date)[1]
     ret["data"] = {"epi_week_num": epi_week,
                    "end_date": end_date.isoformat(),
                    "project_epoch": datetime(2015, 5, 20).isoformat(),
@@ -614,7 +611,7 @@ def create_ncd_report(location, start_date=None, end_date=None, params=['case'])
         }
         additional_variables = []
 
-    locations, ldid, zones, regions, districts, devices = all_location_data(db.session)
+    locations, ldid, zones, regions, districts, devices = abacus_util.all_location_data(db.session)
     v = Variables()
 
 
@@ -665,7 +662,7 @@ def create_ncd_report(location, start_date=None, end_date=None, params=['case'])
 
             # Add whole country summary for email report
             if region == 1:
-              ret[disease]["email_summary"]["cases"]=ret[disease]["age"]["data"][i]["values"][0]
+                ret[disease]["email_summary"]["cases"]=ret[disease]["age"]["data"][i]["values"][0]
 
             #  Get gender breakdown
             disease_gender = query_variable.get(d_id, gender_category,
@@ -718,8 +715,8 @@ def create_ncd_report(location, start_date=None, end_date=None, params=['case'])
 
             else:
                 #  We can N/A to the table if it includes data we are not collecting
-                 for r in range(len(regions) +1):
-                     ret[disease]["complications"]["data"][r]["values"].append("N/A")
+                for r in range(len(regions) +1):
+                    ret[disease]["complications"]["data"][r]["values"].append("N/A")
     return ret
 
 class MhReport(Resource):
@@ -745,15 +742,14 @@ class MhReport(Resource):
                        "schema_version": 0.1
         }
         # Dates and Location Name
-        ew = EpiWeek()
-        epi_week = ew.get(end_date.isoformat())["epi_week"]
+        epi_week = epi_week_util.epi_week_for_date(end_date)[1]
         ret["data"] = {"epi_week_num": epi_week,
                        "end_date": end_date.isoformat(),
                        "project_epoch": datetime(2015, 5, 20).isoformat(),
                        "start_date": start_date.isoformat()
         }
 
-        locs = get_locations(db.session)
+        locs = abacus_util.get_locations(db.session)
         if int(location) not in locs:
             return None
         location_name = locs[int(location)].name
@@ -761,7 +757,7 @@ class MhReport(Resource):
         tot_clinics = TotClinics()
         ret["data"]["clinic_num"] = tot_clinics.get(location)["total"]
 
-        locs = get_locations(db.session)
+        locs = abacus_util.get_locations(db.session)
         if int(location) not in locs:
             return None
         location_name = locs[int(location)].name
@@ -772,7 +768,7 @@ class MhReport(Resource):
         nationality_visit_variables = get_variables('mh_visit_nationality')
         age_visit_variables = get_variables('visit_ncd_age')
         #Case based tables:
-        [zones, regions, districts] = get_zones_regions_districts(db.session)
+        [zones, regions, districts] = abacus_util.get_zones_regions_districts(db.session)
         mhgap_variables = get_variables('mhgap')
         gender_case_variables = get_variables('gender')
         nationality_case_variables = get_variables('mh_case_nationality')
@@ -916,8 +912,7 @@ class CdReport(Resource):
         }
 
         #  Date and Location information
-        ew = EpiWeek()
-        epi_week = ew.get(end_date.isoformat())["epi_week"]
+        epi_week = epi_week_util.epi_week_for_date(end_date)[1]
         ret["data"] = {"epi_week_num": epi_week,
                        "end_date": end_date.isoformat(),
                        "project_epoch": start_date.isoformat(),
@@ -945,11 +940,6 @@ class CdReport(Resource):
 
         all_alerts = alerts.get_alerts({"location": location})
         data = {}
-        ewg = ew.get(start_date.isoformat())
-        start_epi_week = ewg["epi_week"]
-        start_year = ewg["year"]
-        year_diff = end_date.year - start_year
-        start_epi_week = start_epi_week - year_diff * 52
         weeks = list(range(1, 53))
         data_list = [0 for week in weeks]
         variable_query = db.session.query(AggregationVariables).filter(
@@ -981,7 +971,7 @@ class CdReport(Resource):
                 else:
                     report_status = "suspected"
 
-            epi_week = ew.get(a["date"].isoformat())["epi_week"]
+            epi_week = epi_week_util.epi_week_for_date(a['date'])[1]
             if epi_week == 53:
                 if a["date"].month == 1:
                     epi_week = 1
@@ -1040,8 +1030,7 @@ class Pip(Resource):
         }
 
         #  Date and location information
-        ew = EpiWeek()
-        epi_week = ew.get(end_date.isoformat())["epi_week"]
+        epi_week = epi_week_util.epi_week_for_date(end_date)[1]
         ret["data"] = {
             "epi_week_num": epi_week,
             "end_date": end_date.isoformat(),
@@ -1050,7 +1039,7 @@ class Pip(Resource):
             "email_summary": {}
         }
         conn = db.engine.connect()
-        locs = get_locations(db.session)
+        locs = abacus_util.get_locations(db.session)
         if int(location) not in locs:
             return None
         location_name = locs[int(location)].name
@@ -1174,7 +1163,7 @@ class Pip(Resource):
         #  Reportin sites
         ret["data"]["reporting_sites"] = []
         for l in locs.values():
-            if is_child(location, l.id, locs) and l.case_report and l.case_type == "SARI":
+            if abacus_util.is_child(location, l.id, locs) and l.case_report and l.case_type == "SARI":
                 num = query_sum(db, [sari_code],
                                       start_date,
                                       end_date_limit, l.id)["total"]
@@ -1266,6 +1255,90 @@ class Pip(Resource):
         return ret
 
 
+class ForeignerScreening(Resource):
+    """
+    Foreigner Screening Report
+
+    Provides breakdown of positive test results for specified screening of foreigners intending to stay in the country.
+
+    Args:\n
+       location: Location to generate report for\n
+       start_date: Start date of report\n
+       end_date: End date of report\n
+    Returns:\n
+       report_data\n
+    """
+    decorators = [authenticate, report_allowed_location]
+
+    def get(self, location, start_date=None, end_date=None):
+
+        start_date, end_date = fix_dates(start_date, end_date)
+        end_date_limit = end_date + timedelta(days=1)
+        ret = {}
+
+        # meta data
+        ret["meta"] = {
+            "uuid": str(uuid.uuid4()),
+            "project_id": 1,
+            "generation_timestamp": datetime.now().isoformat(),
+            "schema_version": 0.1
+        }
+
+        #  Date and location information
+        epi_week = epi_week_util.epi_week_for_date(end_date)[1]
+        ret["data"] = {
+            "epi_week_num": epi_week,
+            "end_date": end_date.isoformat(),
+            "project_epoch": datetime(2015, 5, 20).isoformat(),
+            "start_date": start_date.isoformat(),
+            "email_summary": {}
+        }
+        conn = db.engine.connect()
+        locs = abacus_util.get_locations(db.session)
+        #foreigner screening report is only for the whole country
+
+        if int(location) != 1:
+            return None
+
+        location_name = locs[int(location)].name
+        ret["data"]["project_region"] = location_name
+        regions = [loc for loc in locs.keys() if locs[loc].level == "region"]
+        # for each regions
+        priority_vars = [
+            "tb_type_1", "tb_type_4", "tb_result_hiv", "tb_result_hepb"
+        ]
+
+        for var in priority_vars:
+            ret["data"][var] = query_sum(
+                db, var, start_date, end_date, location, level="region")
+
+        table1 = []
+        for dis_id in regions:
+            record = dict()
+            record_total = 0
+            record["name"] = locs[int(dis_id)].name
+            for var in priority_vars:
+                if int(dis_id) not in ret["data"][var]["region"]:
+                    record[var] = 0
+                else:
+                    record[var] = ret["data"][var]["region"][int(dis_id)]
+                    record_total += record[var]
+            record["total"] = record_total
+            table1.append(record)
+
+        table1_totals = dict()
+        overall_total = 0
+        for var in priority_vars:
+            table1_totals[var] = ret["data"][var]["total"]
+            overall_total += table1_totals[var]
+        table1_totals["total_sum"] = overall_total
+
+        ret["data"]["table1"] = table1
+        ret["data"]["table1_totals"] = table1_totals
+
+        return ret
+
+
 class PublicHealth(Resource):
     """
     Public Health Profile Report
@@ -1294,9 +1367,7 @@ class PublicHealth(Resource):
                        "schema_version": 0.1
         }
         #  Dates and Location
-        ew = EpiWeek()
-        end_date = end_date
-        epi_week = ew.get(end_date.isoformat())["epi_week"]
+        epi_week = epi_week_util.epi_week_for_date(end_date)[1]
         ret["data"] = {"epi_week_num": epi_week,
                        "end_date": end_date.isoformat(),
                        "start_date": start_date.isoformat(),
@@ -1371,7 +1442,7 @@ class PublicHealth(Resource):
                       smoking_prevalence / (smoking_prevalence_ever+smoking_non_prevalence_ever) * 100))
 
         # Reporting sites
-        locs = get_locations(db.session)
+        locs = abacus_util.get_locations(db.session)
         ret["data"]["reporting_sites"] = []
         for l in locs.values():
             if l.level == "clinic" and l.case_report == 0:
@@ -1554,8 +1625,7 @@ class CdPublicHealth(Resource):
                        "schema_version": 0.1
         }
         # Date and Location Information
-        ew = EpiWeek()
-        epi_week = ew.get(end_date.isoformat())["epi_week"]
+        epi_week = epi_week_util.epi_week_for_date(end_date)[1]
         ret["data"] = {"epi_week_num": epi_week,
                        "end_date": end_date.isoformat(),
                        "project_epoch": datetime(2015,5,20).isoformat(),
@@ -1666,7 +1736,7 @@ class CdPublicHealth(Resource):
         ir = IncidenceRate()
 
         all_cd_cases = "prc_1"
-        locs = get_locations(db.session)
+        locs = abacus_util.get_locations(db.session)
         #level = "district"
         #areas = [loc for loc in locs.keys()
         #         if locs[loc].level == "district"]
@@ -1712,7 +1782,7 @@ class CdPublicHealth(Resource):
                                start_date=start_date,
                                end_date=end_date_limit)
             for area in areas:
-                if is_child(location, area, locs) and area in incidence:
+                if abacus_util.is_child(location, area, locs) and area in incidence:
                     reporting_sites.append(make_dict(locs[area].name,
                                                      incidence[area] * mult_factor,
                                                      0))
@@ -1893,7 +1963,7 @@ class CdPublicHealthSom(Resource):
         conn = db.engine.connect()
         query_variable = QueryVariable()
 
-        locs = get_locations(db.session)
+        locs = abacus_util.get_locations(db.session)
         if int(location) not in locs:
             return None
         location_name = locs[int(location)]
@@ -2058,14 +2128,14 @@ class CdPublicHealthSom(Resource):
                                start_date=start_date,
                                end_date=end_date_limit)
         mapped_mal_incidence = {}
-        locs = get_locations(db.session)
+        locs = abacus_util.get_locations(db.session)
         districts = [loc for loc in locs.keys()
                      if locs[loc].level == "district"]
         # Structure the data.
         for district in districts:
             if district not in mal_incidence:
                 mal_incidence[district] = 0
-            if is_child(zone_location, district, locs):
+            if abacus_util.is_child(zone_location, district, locs):
                 mapped_mal_incidence[locs[district].name] = {
                     'value': int(mal_incidence[district])
                 }
@@ -2113,8 +2183,7 @@ class NcdPublicHealth(Resource):
         }
 
         # Date and Location Information
-        ew = EpiWeek()
-        epi_week = ew.get(end_date.isoformat())["epi_week"]
+        epi_week = epi_week_util.epi_week_for_date(end_date)[1]
         ret["data"] = {
             "epi_week_num": epi_week,
             "end_date": end_date.isoformat(),
@@ -2256,7 +2325,7 @@ class NcdPublicHealth(Resource):
             )
 
         # Reporting sites
-        locs = get_locations(db.session)
+        locs = abacus_util.get_locations(db.session)
         ret["data"]["reporting_sites"] = []
         for l in locs.values():
             if l.parent_location and int(l.parent_location) == int(location):
@@ -2432,16 +2501,14 @@ class RefugeePublicHealth(Resource):
         }
 
         # Date and Location Information
-        ew = EpiWeek()
-        end_date = end_date
-        epi_week = ew.get(end_date.isoformat())["epi_week"]
+        epi_week = epi_week_util.epi_week_for_date(end_date)[1]
         ret["data"] = {"epi_week_num": epi_week,
                        "end_date": end_date.isoformat(),
                        "project_epoch": datetime(2015, 5, 20).isoformat(),
                        "start_date": start_date.isoformat()
         }
         conn = db.engine.connect()
-        locs = get_locations(db.session)
+        locs = abacus_util.get_locations(db.session)
         if int(location) not in locs:
             return None
         location_name = locs[int(location)].name
@@ -2554,7 +2621,7 @@ class RefugeePublicHealth(Resource):
         )
 
         #  Reporting sites
-        locs = get_locations(db.session)
+        locs = abacus_util.get_locations(db.session)
         ret["data"]["reporting_sites"] = []
         for clinic in refugee_clinics:
             num =  sum(get_variables_category("morbidity_refugee", start_date, end_date_limit, clinic, conn, use_ids = True).values())
@@ -2647,15 +2714,14 @@ class RefugeeDetail(Resource):
                        "schema_version": 0.1
         }
         #  Dates and Location Information
-        ew = EpiWeek()
-        epi_week = ew.get(end_date.isoformat())["epi_week"]
+        epi_week = epi_week_util.epi_week_for_date(end_date)[1]
         ret["data"] = {"epi_week_num": epi_week,
                        "end_date": end_date.isoformat(),
                        "project_epoch": datetime(2015,5,20).isoformat(),
                        "start_date": start_date.isoformat()
         }
         conn = db.engine.connect()
-        locs = get_locations(db.session)
+        locs = abacus_util.get_locations(db.session)
         if int(location) not in locs:
             return None
         location_name = locs[int(location)]
@@ -2812,15 +2878,14 @@ class RefugeeCd(Resource):
         }
 
         # Date and Location Information
-        ew = EpiWeek()
-        epi_week = ew.get(end_date.isoformat())["epi_week"]
+        epi_week = epi_week_util.epi_week_for_date(end_date)[1]
         ret["data"] = {"epi_week_num": epi_week,
                        "end_date": end_date.isoformat(),
                        "project_epoch": datetime(2015,5,20).isoformat(),
                        "start_date": start_date.isoformat()
         }
         conn = db.engine.connect()
-        locs = get_locations(db.session)
+        locs = abacus_util.get_locations(db.session)
         if int(location) not in locs:
             return None
         location_name = locs[int(location)]
@@ -2830,10 +2895,8 @@ class RefugeeCd(Resource):
         refugee_clinics = get_children(location, locs, clinic_type="Refugee")
         ret["data"]["clinic_num"] = len(refugee_clinics)
 
-        ewg = ew.get(start_date.isoformat())
-        start_epi_week = ewg["epi_week"]
-        start_year = ewg["year"]
-        year_diff = end_date.year - start_year
+        start_epi_year, start_epi_week = epi_week_util.epi_week_for_date(start_date)
+        year_diff = end_date.year - start_epi_year
         start_epi_week = start_epi_week - year_diff * 52
         weeks = [i for i in range(start_epi_week, epi_week + 1, 1)]
 
@@ -2859,7 +2922,7 @@ class RefugeeCd(Resource):
                                                              "suspected": []})
             #  Need to loop through each epi week and add data for population and all cds per week.
         for week in weeks:
-            first_day = epi_week_start(end_date.year, week)
+            first_day = epi_week_util.epi_week_start_date(end_date.year, week)
             last_day = first_day + timedelta(days=7)
             #  #  Population
             #  tot_pop = 0
@@ -2933,8 +2996,7 @@ class WeeklyEpiMonitoring(Resource):
         }
 
         #  Dates and Location Information
-        ew = EpiWeek()
-        epi_week = ew.get(end_date.isoformat())["epi_week"]
+        epi_week = epi_week_util.epi_week_for_date(end_date)[1]
 
         ret["data"] = {"epi_week_num": epi_week,
                        "end_date": end_date.isoformat(),
@@ -2942,7 +3004,7 @@ class WeeklyEpiMonitoring(Resource):
                        "start_date": start_date.isoformat()
         }
 
-        locs = get_locations(db.session)
+        locs = abacus_util.get_locations(db.session)
         if int(location) not in locs:
             return None
         location_name = locs[int(location)]
@@ -3013,10 +3075,10 @@ class WeeklyEpiMonitoring(Resource):
         investigated_alerts = 0
 
         for a in all_alerts:
-                tot_alerts += 1
-                report_status = False
-                if "ale_1" in a["variables"]:
-                    investigated_alerts += 1
+            tot_alerts += 1
+            report_status = False
+            if "ale_1" in a["variables"]:
+                investigated_alerts += 1
 
 
         ret['alerts'] = {
@@ -3068,8 +3130,7 @@ class Malaria(Resource):
         }
 
         #  Dates and Location Information
-        ew = EpiWeek()
-        epi_week = ew.get(end_date.isoformat())["epi_week"]
+        epi_week = epi_week_util.epi_week_for_date(end_date)[1]
 
         ret["data"] = {"epi_week_num": epi_week,
                        "end_date": end_date.isoformat(),
@@ -3077,7 +3138,7 @@ class Malaria(Resource):
                        "start_date": start_date.isoformat()
         }
 
-        locs = get_locations(db.session)
+        locs = abacus_util.get_locations(db.session)
         if int(location) not in locs:
             return None
         location_name = locs[int(location)]
@@ -3089,7 +3150,7 @@ class Malaria(Resource):
 
         var = {}
         query_variable = QueryVariable()
-                #  get the age breakdown
+        #  get the age breakdown
         malaria_data = query_variable.get("cmd_17", "malaria_situation",
                                           end_date=end_date_limit.isoformat(),
                                           start_date=start_date.isoformat(),
@@ -3174,8 +3235,7 @@ class VaccinationReport(Resource):
         }
 
         #  Dates and Location Information
-        ew = EpiWeek()
-        epi_week = ew.get(end_date.isoformat())["epi_week"]
+        epi_week = epi_week_util.epi_week_for_date(end_date)[1]
 
         ret["data"] = {"epi_week_num": epi_week,
                        "end_date": end_date.isoformat(),
@@ -3183,7 +3243,7 @@ class VaccinationReport(Resource):
                        "start_date": start_date.isoformat()
         }
 
-        locs = get_locations(db.session)
+        locs = abacus_util.get_locations(db.session)
         if int(location) not in locs:
             return None
         location_name = locs[int(location)]
@@ -3313,11 +3373,11 @@ class AFROBulletin(Resource):
     def get(self, location, start_date=None, end_date=None):
         # Set default date values to last epi week.
         today = datetime.now()
-        epi_week = EpiWeek().get()
         # Calulation for start date is:
         # month_day - ( week_day-week_offset % 7) - 7
         # The offset is the # days into the current epi week.
-        offset = (today.weekday() - epi_week["offset"]) % 7
+        _epi_year_start_day_weekday = epi_week_util.epi_year_start_date(today).weekday()
+        offset = (today.weekday() - _epi_year_start_day_weekday) % 7
         # Start date is today minus the offset minus one week.
         if not start_date:
             start_date = (datetime(today.year, today.month, today.day) -
@@ -3343,14 +3403,13 @@ class AFROBulletin(Resource):
         }
 
         #  Dates and Location Information
-        ew = EpiWeek()
-        epi_week = ew.get(end_date.isoformat())["epi_week"]
+        epi_week = epi_week_util.epi_week_for_date(end_date)[1]
         ret["data"] = {"epi_week_num": epi_week,
                        "end_date": end_date.isoformat(),
                        "project_epoch": datetime(2015, 5, 20).isoformat(),
                        "start_date": start_date.isoformat()
         }
-        locs = get_locations(db.session)
+        locs = abacus_util.get_locations(db.session)
         if int(location) not in locs:
             return None
         location_name = locs[int(location)]
@@ -3479,7 +3538,7 @@ class AFROBulletin(Resource):
         mort_top = []
         for var in mort:
             # Extract the cause's id from the count variables name e.g. mor_1 name is "Deaths icd_17"
-#            mort_var = Variable().get( var[0] )
+            #            mort_var = Variable().get( var[0] )
             cause_var = Variable().get(var[0].replace("mor", "cmd"))
             # Only return if there are more than zero deaths.
             if var[1] > 0:
@@ -3833,7 +3892,7 @@ class AFROBulletin(Resource):
                     "cases_cumulative":priority_disease_cases_cumulative
                 })
 
-                # add mortality
+            # add mortality
             try:
                 ret["data"]["table_priority_diseases_cumulative"][disease]["mortality"] = mort[mortality_codes[disease]]
             except KeyError:
@@ -3873,7 +3932,7 @@ class AFROBulletin(Resource):
             try:
                 n_clin = tot_clinics.get(district)["total"]
                 if n_clin> 0:
-                #  District names
+                    #  District names
                     ret["data"]["table_timeliness_completeness"].update(
                         {str(district): {"name": locs[district].name}})
 
@@ -3922,14 +3981,9 @@ class PlagueReport(Resource):
 
     def get(self, location, start_date=None, end_date=None):
 
-        # Set default date values to last epi week.
-        today = datetime.now()
-        epi_week = EpiWeek().get()
         # Initialise some stuff.
         start_date, end_date = fix_dates(start_date, end_date)
-        end_date_limit = end_date + timedelta(days=1)
-        first_day_of_year = datetime(year=end_date.year,
-                                     month=1, day=1)
+
         ret = {}
 
         #  Meta data.
@@ -3940,14 +3994,13 @@ class PlagueReport(Resource):
         }
 
         #  Dates and Location Information
-        ew = EpiWeek()
-        epi_week = ew.get(end_date.isoformat())["epi_week"]
+        epi_week = epi_week_util.epi_week_for_date(end_date)[1]
         ret["data"] = {"epi_week_num": epi_week,
                        "end_date": end_date.isoformat(),
                        "project_epoch": datetime(2015, 5, 20).isoformat(),
                        "start_date": start_date.isoformat()
         }
-        locs = get_locations(db.session)
+        locs = abacus_util.get_locations(db.session)
         if int(location) not in locs:
             return None
         location_name = locs[int(location)]
@@ -3993,7 +4046,7 @@ class PlagueReport(Resource):
             else:
                 report_status = "suspected"
 
-            epi_week = ew.get(case["date"].isoformat())["epi_week"]
+            epi_week = epi_week_util.epi_week_for_date(case["date"])[1]
             if epi_week == 53:
                 if case["date"].month == 1:
                     epi_week = 1
@@ -4024,8 +4077,8 @@ class PlagueReport(Resource):
 
 
 
-        first_day_of_season = epi_week_start(current_year - 1, start_week)
-        end_date_season = epi_week_start(current_year, start_week) - timedelta(days=1)
+        first_day_of_season = epi_week_util.epi_week_start_date(current_year - 1, start_week)
+        end_date_season = epi_week_util.epi_week_start_date(current_year, start_week) - timedelta(days=1)
 
 
         # FIGURE 3: MAP of plague cases
@@ -4082,14 +4135,10 @@ class EBSReport(Resource):
 
     def get(self, location, start_date=None, end_date=None):
 
-        # Set default date values to last epi week.
-        today = datetime.now()
-        epi_week = EpiWeek().get()
         # Initialise some stuff.
         start_date, end_date = fix_dates(start_date, end_date)
         end_date_limit = end_date + timedelta(days=1)
-        first_day_of_year = datetime(year=end_date.year,
-                                     month=1, day=1)
+
         ret = {}
 
         #  Meta data.
@@ -4100,14 +4149,13 @@ class EBSReport(Resource):
         }
 
         #  Dates and Location Information
-        ew = EpiWeek()
-        epi_week = ew.get(end_date.isoformat())["epi_week"]
+        epi_week = epi_week_util.epi_week_for_date(end_date)[1]
         ret["data"] = {"epi_week_num": epi_week,
                        "end_date": end_date.isoformat(),
                        "project_epoch": datetime(2015, 5, 20).isoformat(),
                        "start_date": start_date.isoformat()
         }
-        locs = get_locations(db.session)
+        locs = abacus_util.get_locations(db.session)
         if int(location) not in locs:
             return None
         location_name = locs[int(location)]
@@ -4228,14 +4276,8 @@ class CTCReport(Resource):
 
     def get(self, location, start_date=None, end_date=None):
 
-        # Set default date values to last epi week.
-        today = datetime.now()
-        epi_week = EpiWeek().get()
-        # Initialise some stuff.
         start_date, end_date = fix_dates(start_date, end_date)
         end_date_limit = end_date + timedelta(days=1)
-        first_day_of_year = datetime(year=end_date.year,
-                                     month=1, day=1)
         ret = {}
 
         #  Meta data.
@@ -4246,14 +4288,13 @@ class CTCReport(Resource):
         }
 
         #  Dates and Location Information
-        ew = EpiWeek()
-        epi_week = ew.get(end_date.isoformat())["epi_week"]
+        epi_week = epi_week_util.epi_week_for_date(end_date)[1]
         ret["data"] = {"epi_week_num": epi_week,
                        "end_date": end_date.isoformat(),
                        "project_epoch": datetime(2015, 5, 20).isoformat(),
                        "start_date": start_date.isoformat()
         }
-        locs = get_locations(db.session)
+        locs = abacus_util.get_locations(db.session)
         if int(location) not in locs:
             return None
         location_name = locs[int(location)]
@@ -4450,7 +4491,8 @@ class CTCReport(Resource):
                     clinic_data["latest_categories"] = ctc_data.categories
                     clinic_data["latest_date"] = ctc_data.date.isoformat().split("T")[0]
 
-                    if ew.get(ctc_data.date.isoformat())["epi_week"] in [epi_week, epi_week - 1]:
+                    ctc_epi_week = epi_week_util.epi_week_for_date(ctc_data.date)[1]
+                    if ctc_epi_week in [epi_week, epi_week - 1]:
                         overview_data["surveyed_last_week"]["Y"] += 1
                     # clinic_data["cases_history"] = cholera_cases["clinic"].get(ctc.id, {})
 
@@ -4461,7 +4503,7 @@ class CTCReport(Resource):
                 #   clinic_data["cases_u5_history"] = cholera_cases_u5["clinic"][ctc.id]
                 #  clinic_data["cases_o5_history"] =cholera_cases_o5_ctc
 
-                    # Deal with recomendations
+                # Deal with recomendations
 
                     recommendations = []
                     cases = ctc_data.variables.get("ctc_cases", 0)
@@ -4541,14 +4583,9 @@ class SCReport(Resource):
 
     def get(self, location, start_date=None, end_date=None):
 
-        # Set default date values to last epi week.
-        today = datetime.now()
-        epi_week = EpiWeek().get()
         # Initialise some stuff.
         start_date, end_date = fix_dates(start_date, end_date)
         end_date_limit = end_date + timedelta(days=1)
-        first_day_of_year = datetime(year=end_date.year,
-                                     month=1, day=1)
         ret = {}
 
         #  Meta data.
@@ -4559,14 +4596,13 @@ class SCReport(Resource):
         }
 
         #  Dates and Location Information
-        ew = EpiWeek()
-        epi_week = ew.get(end_date.isoformat())["epi_week"]
+        epi_week = epi_week_util.epi_week_for_date(end_date)[1]
         ret["data"] = {"epi_week_num": epi_week,
                        "end_date": end_date.isoformat(),
                        "project_epoch": datetime(2015, 5, 20).isoformat(),
                        "start_date": start_date.isoformat()
         }
-        locs = get_locations(db.session)
+        locs = abacus_util.get_locations(db.session)
         if int(location) not in locs:
             return None
         location_name = locs[int(location)]
@@ -4757,7 +4793,8 @@ class SCReport(Resource):
                     clinic_data["latest_categories"] = sc_data.categories
                     clinic_data["latest_date"] = sc_data.date.isoformat().split("T")[0]
 
-                    if ew.get(sc_data.date.isoformat())["epi_week"] in [epi_week, epi_week - 1]:
+                    sc_epi_week = epi_week_util.epi_week_for_date(sc_data.date)
+                    if sc_epi_week in [epi_week, epi_week - 1]:
                         overview_data["surveyed_last_week"]["Y"] += 1
                     # Deal with recomendations
                     recommendations = []
@@ -4879,6 +4916,9 @@ api.add_resource(RefugeeDetail, "/reports/refugee_detail/<location>",
 api.add_resource(CdReport, "/reports/cd_report/<location>",
                  "/reports/cd_report/<location>/<end_date>",
                  "/reports/cd_report/<location>/<end_date>/<start_date>")
+api.add_resource(ForeignerScreening, "/reports/foreigner_screening/<location>",
+                 "/reports/foreigner_screening/<location>/<end_date>",
+                 "/reports/foreigner_screening/<location>/<end_date>/<start_date>")
 api.add_resource(Pip, "/reports/pip/<location>",
                  "/reports/pip/<location>/<end_date>",
                  "/reports/pip/<location>/<end_date>/<start_date>")

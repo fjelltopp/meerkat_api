@@ -1,19 +1,22 @@
 """
 Data resource for completeness data
 """
-from flask_restful import Resource, abort
-from flask import jsonify, request, g
-from dateutil.parser import parse
-from sqlalchemy import extract, func, Integer, or_
-from datetime import datetime, timedelta
-import pandas as pd
 import json
-from meerkat_api.extensions import db, api
-from meerkat_api.resources.epi_week import EpiWeek, epi_week_start, epi_year_start
-from meerkat_abacus.model import Data, Locations
-from meerkat_api.util import get_children, is_child, series_to_json_dict, get_locations
-from meerkat_api.authentication import authenticate, is_allowed_location
+
+import pandas as pd
+import meerkat_abacus.util as abacus_util
+from datetime import datetime, timedelta
+from dateutil.parser import parse
+from flask import jsonify, request, g
+from flask_restful import Resource, abort
 from pandas.tseries.offsets import CustomBusinessDay
+from sqlalchemy import func, or_
+
+import meerkat_abacus.util.epi_week
+from meerkat_abacus.model import Data, Locations
+from meerkat_api.authentication import authenticate, is_allowed_location
+from meerkat_api.extensions import db, api
+from meerkat_api.util import get_children, series_to_json_dict
 
 
 class CompletenessIndicator(Resource):
@@ -93,7 +96,7 @@ class Completeness(Resource):
             non_reporting_variable = variable
 
         number_per_week = int(number_per_week)
-        locs = get_locations(db.session)
+        locs = abacus_util.get_locations(db.session)
         location = int(location)
         location_type = locs[location].level
 
@@ -118,12 +121,12 @@ class Completeness(Resource):
                              Data.clinic, Data.date,
                              Data.variables[variable].label(variable)).filter(
                 *conditions).statement, db.session.bind)
+
         if len(data) == 0:
             return jsonify(self.__empty_response)
         # We drop duplicates so each clinic can only have one record per day
         data = data.drop_duplicates(
             subset=["region", "district", "clinic", "date", variable])
-
         shifted_end_date, timeseries_freq = self._get_shifted_end_date_and_timeseries_frequency(end_date)
 
         beginning_of_epi_start_week = self._get_epi_week_start(shifted_end_date, start_week)
@@ -133,7 +136,7 @@ class Completeness(Resource):
             # Where dates are the dates after the clinic started reporting
             sublocations = []
             for l in locs.values():
-                if is_child(location, l.id, locs) and l.level == parsed_sublevel:
+                if abacus_util.is_child(location, l.id, locs) and l.level == parsed_sublevel:
                     sublocations.append(l.id)
             tuples = []
             for name in sublocations:
@@ -141,9 +144,8 @@ class Completeness(Resource):
                     if locs[clinic].case_report:
                         if inc_case_types and not set(locs[clinic].case_type) & inc_case_types:
                             continue
-                        if exc_case_types and set(locs[clinic].case_type) & exc_case_types:
+                        if exc_case_types and set(locs[clinic].case_type) >= exc_case_types:
                             continue
-
                         start_date = locs[clinic].start_date
                         if start_date < beginning_of_epi_start_week:
                             start_date = beginning_of_epi_start_week
@@ -301,9 +303,9 @@ class Completeness(Resource):
         return sublevels
 
     def _get_epi_week_start(self, shifted_end_date, start_week):
-        beginning = epi_week_start(shifted_end_date.year, start_week)
-        ew = EpiWeek()
-        if ew.get(shifted_end_date.isoformat())["epi_week"] == 53:
+        beginning = meerkat_abacus.util.epi_week.epi_week_start_date(shifted_end_date.year, start_week)
+        shifted_end_date_epi_week = abacus_util.epi_week.epi_week_for_date(shifted_end_date)[1]
+        if shifted_end_date_epi_week == 53:
             beginning = beginning.replace(year=beginning.year - 1)
 
         return beginning
@@ -313,7 +315,7 @@ class Completeness(Resource):
         # We only calculate completeness for whole epi-weeks so we want to set end_date to the
         # the end of the previous epi_week.
         end_date = self._parse_end_date(raw_end_date)
-        epi_year_start_weekday = epi_year_start(end_date.year).weekday()
+        epi_year_start_weekday = meerkat_abacus.util.epi_week.epi_year_start_date_by_year(year=end_date.year).weekday()
         timeseries_freq = ["W-MON", "W-TUE", "W-WED", "W-THU", "W-FRI", "W-SAT", "W-SUN"][epi_year_start_weekday]
         offset = (end_date.weekday() - epi_year_start_weekday) % 7
         shifted_end_date = end_date - timedelta(days=offset + 1)
@@ -372,7 +374,6 @@ class NonReporting(Resource):
         inc_case_types = set(
             json.loads(request.args.get('inc_case_types', '[]'))
         )
-        print(request.args.get('exc_case_types', '[]'))
         exc_case_types = set(
             json.loads(request.args.get('exc_case_types', '[]'))
         )
@@ -392,18 +393,17 @@ class NonReporting(Resource):
         if include_clinic_type in [0, "0", "None"]:
             include_clinic_type = None
 
-        locations = get_locations(db.session)
+        locations = abacus_util.get_locations(db.session)
         location = int(location)
         clinics = get_children(location, locations,
                                require_case_report=require_case_report)
         conditions = [Data.variables.has_key(variable)]
         if num_weeks:
-            ew = EpiWeek()
-            epi_week = ew.get()
-            start_date = epi_week_start(epi_week["year"],
-                                        int(epi_week["epi_week"]) - int(num_weeks))
-            end_date = epi_week_start(epi_week["year"],
-                                      epi_week["epi_week"])
+            epi_year, epi_week = abacus_util.epi_week.epi_week_for_date(datetime.today())
+            start_date = meerkat_abacus.util.epi_week.epi_week_start_date(epi_year,
+                                                           int(epi_week) - int(num_weeks))
+            end_date = meerkat_abacus.util.epi_week.epi_week_start_date(epi_year,
+                                                         epi_week)
             conditions.append(Data.date >= start_date)
             conditions.append(Data.date < end_date)
         exclude_list = []

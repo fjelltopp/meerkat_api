@@ -8,10 +8,10 @@ from flask_restful import Resource, abort, reqparse
 from sqlalchemy import func, or_
 
 from meerkat_abacus import model
-from meerkat_abacus.util import get_locations
+from meerkat_abacus.util import is_child, get_locations
 from meerkat_api.authentication import authenticate
 from meerkat_api.extensions import db, api
-from meerkat_api.util import row_to_dict, rows_to_dicts, is_child, get_children
+from meerkat_api.util import row_to_dict, rows_to_dicts, get_children
 
 
 class Locations(Resource):
@@ -55,11 +55,16 @@ class Location(Resource):
 
     def get(self, location_id):
         return jsonify(row_to_dict(
-            db.session.query(model.Locations).filter(
-                model.Locations.id == location_id
-            ).first()
+            Location.get_location_by_id(location_id)
         ))
 
+    @staticmethod
+    def get_location_by_id(location_id):
+        return db.session.query(model.Locations).filter(
+            model.Locations.id == location_id
+        ).one()
+
+loc_trees = {}
 
 class LocationTree(Resource):
     """
@@ -89,6 +94,10 @@ class LocationTree(Resource):
         inc_case_types = json.loads(request.args.get('inc_case_types', '[]'))
         exc_case_types = json.loads(request.args.get('exc_case_types', '[]'))
 
+        key = f"{inc_case_types!r}_{exc_case_types!r}"
+        if key in loc_trees:
+            return loc_trees[key]
+        
         # Get location data from db and any access restrictions set by auth
         locs = get_locations(db.session)
         loc = g.allowed_location
@@ -141,7 +150,7 @@ class LocationTree(Resource):
                     tree['nodes'].remove(child)
 
         clean(ret[loc])
-
+        loc_trees[key] = jsonify(ret[loc])
         return jsonify(ret[loc])
 
 
