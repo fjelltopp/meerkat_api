@@ -10,7 +10,7 @@ from flask_restful import Resource, abort
 from meerkat_abacus.model import form_tables, DownloadDataFiles
 from api_background.export_data import export_category, export_data, export_data_table
 from api_background.export_data import export_form
-from meerkat_api.extensions import db, output_csv, output_xls, celery_app, api
+from meerkat_api.extensions import db, output_csv, output_xls, api
 from meerkat_api.authentication import authenticate
 
 
@@ -30,9 +30,9 @@ class Forms(Resource):
 
     def get(self):
         return_data = {}
-        for form in form_tables.keys():
+        for form in form_tables():
             print(form)
-            results = db.session.query(form_tables[form]).first()
+            results = db.session.query(form_tables()[form]).first()
             if results and results.data:
                 return_data[form] = list(results.data.keys(
                 )) + ["clinic", "district", "region"]

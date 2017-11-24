@@ -14,9 +14,6 @@ import os
 from . import settings
 import meerkat_api
 from meerkat_api.test import db_util
-from meerkat_api.extensions import celery_app
-from meerkat_abacus import util, model, data_import
-from meerkat_abacus.config import config
 
 from meerkat_api.extensions import celery_app
 from meerkat_abacus import util, model, data_import
@@ -32,8 +29,8 @@ class MeerkatAPITestCase(unittest.TestCase):
         celery_app.conf.CELERY_ALWAYS_EAGER = True
         self.app = meerkat_api.app.test_client()
         self.session = db_util.session
-        for table in model.form_tables:
-            self.session.query(model.form_tables[table]).delete()
+        for table in model.form_tables():
+            self.session.query(model.form_tables()[table]).delete()
         self.session.commit()
 
         db_util.insert_codes(self.session)
@@ -228,7 +225,7 @@ class MeerkatAPITestCase(unittest.TestCase):
     def test_export_forms(self):
         """ Test the basic export form functionality """
 
-        print(len(self.session.query(model.form_tables["demo_case"]).all()))
+        print(len(self.session.query(model.form_tables()["demo_case"]).all()))
         rv = self.app.get('/export/form/demo_case', headers={**settings.header})
 
         self.assertEqual(rv.status_code, 200)

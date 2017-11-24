@@ -273,9 +273,9 @@ def export_category(uuid, form_name, category, download_name,
             results = session2.query(
                 func.distinct(
                     func.regexp_split_to_table(
-                        form_tables[form_name].data[field].astext, ' '))).join(
+                        form_tables()[form_name].data[field].astext, ' '))).join(
                 Data,
-                Data.uuid == form_tables[form_name].uuid).filter(
+                Data.uuid == form_tables()[form_name].uuid).filter(
                 *conditions).all()
             if tr_dict.get('dict_file', False):
                 translations = add_translations_from_file(tr_dict)
@@ -302,7 +302,7 @@ def export_category(uuid, form_name, category, download_name,
                                              country_config["links_file"])
     # DB query, with yield_per(200) for memory reasons
 
-    columns = [Data, form_tables[form_name]]
+    columns = [Data, form_tables()[form_name]]
 
     link_id_index = {}
     joins = []
@@ -314,16 +314,16 @@ def export_category(uuid, form_name, category, download_name,
             link_data[row.uuid_to] = row.data_to
 
     for i, l in enumerate(link_ids):
-        form = aliased(form_tables[links_by_name[l]["to_form"]])
+        form = aliased(form_tables()[links_by_name[l]["to_form"]])
         joins.append((form, Data.links[(l, -1)].astext == form.uuid))
         link_id_index[l] = i + 2
         columns.append(form.data)
 
     number_query = session2.query(func.count(Data.id)).join(
-        form_tables[form_name], Data.uuid == form_tables[form_name].uuid)
+        form_tables()[form_name], Data.uuid == form_tables()[form_name].uuid)
 
     results = session2.query(*columns).join(
-        form_tables[form_name], Data.uuid == form_tables[form_name].uuid)
+        form_tables()[form_name], Data.uuid == form_tables()[form_name].uuid)
     for join in joins:
         results = results.outerjoin(join[0], join[1])
 
@@ -720,7 +720,7 @@ def export_form(uuid, form, allowed_location, fields=None):
 
     db, session = get_db_engine()
     operation_status = OperationStatus(form, uuid)
-    if form not in form_tables.keys():
+    if form not in form_tables():
         operation_status.submit_operation_failure()
         return False
 
@@ -739,7 +739,7 @@ def export_form(uuid, form, allowed_location, fields=None):
     xls_csv_writer.write_xls_row(keys)
     xls_csv_writer.write_csv_row(keys)
 
-    query_form_data = session.query(form_tables[form].data)
+    query_form_data = session.query(form_tables()[form].data)
     __save_form_data(xls_csv_writer, query_form_data, operation_status, keys, allowed_location, location_data)
     operation_status.submit_operation_success()
     xls_csv_writer.flush_csv_buffer()
@@ -750,7 +750,7 @@ def export_form(uuid, form, allowed_location, fields=None):
 def __get_keys_from_db(db, form):
     keys = ["clinic", "region", "district"]
     sql = text("SELECT DISTINCT(jsonb_object_keys(data)) from {}".
-               format(form_tables[form].__tablename__))
+               format(form_tables()[form].__tablename__))
     results = db.execute(sql)
     for r in results:
         keys.append(r[0])

@@ -305,7 +305,7 @@ def process_form_records(form_config, program_id):
     """
     status = form_config['status']
     form_name = form_config['name']
-    results = session.query(form_tables[form_name].data).all()
+    results = session.query(form_tables()[form_name].data).all()
     event_payload_list = []
     for counter, result in enumerate(results):
 
