@@ -4,14 +4,12 @@ Data resource for completeness data
 from flask_restful import Resource
 
 from meerkat_api.extensions import db, api
-from meerkat_api.resources.epi_week import EpiWeek, epi_week_start, epi_year_start
-from meerkat_abacus.model import Data, Locations, CalculationParameters
-from meerkat_api.util import get_children, is_child, fix_dates
+from meerkat_abacus.model import Data, CalculationParameters
+from meerkat_api.util import get_children, fix_dates
 from meerkat_abacus.util import get_locations
 from meerkat_api.authentication import authenticate
 from sqlalchemy import func
-from meerkat_api.resources.explore import QueryVariable, get_variables
-import json
+from meerkat_api.resources.explore import get_variables
 
 class Prescriptions(Resource):
     """

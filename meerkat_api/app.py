@@ -15,15 +15,18 @@ import os
 
 from meerkat_api.extensions import db, api
 
+
 # Set the default values of the g object
 class FlaskG(Flask.app_ctx_globals_class):
     allowed_location = 1
+
 
 # app.wsgi_app = ProfilerMiddleware(app.wsgi_app, restrictions=(30,))
 class CustomJSONEncoder(JSONEncoder):
     """
     Custom JSON encoder to encode all datetime objects as ISO fromat
     """
+
     def default(self, obj):
         try:
             if isinstance(obj, datetime):
@@ -56,6 +59,8 @@ def create_app():
     app.app_ctx_globals_class = FlaskG
     app.json_encoder = CustomJSONEncoder
     return app
+
+
 def register_extensions(app):
     db.init_app(app)
     api.init_app(app)
@@ -63,13 +68,3 @@ def register_extensions(app):
     if app.config["SENTRY_DNS"]:
         sentry = Sentry(app, dsn=app.config["SENTRY_DNS"])
     app.wsgi_app = ProxyFix(app.wsgi_app)
-
-
-
-
-
-
-
-
-
-

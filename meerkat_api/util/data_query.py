@@ -1,12 +1,12 @@
-from meerkat_api.resources.epi_week import epi_year_start
-from flask import g, current_app
-from meerkat_api.authentication import is_allowed_location
-from meerkat_api.resources.variables import Variables
-from sqlalchemy.sql import text, distinct
 from datetime import datetime
-from meerkat_abacus.model import Data
+from flask import g
 from sqlalchemy import or_, func, extract
-from meerkat_api.resources.epi_week import epi_year_start
+from sqlalchemy.sql import text
+
+import meerkat_abacus.util as abacus_util
+import meerkat_abacus.util.epi_week
+from meerkat_abacus.model import Data
+from meerkat_api.authentication import is_allowed_location
 
 qu = "SELECT sum(CAST(data.variables ->> :variables_1 AS FLOAT)) AS sum_1 extra_columns FROM data WHERE where_clause AND data.date >= :date_1 AND data.date < :date_2 AND (data.country = :country_1 OR data.zone = :zone_1 OR data.region = :region_1 OR data.district = :district_1 OR data.clinic = :clinic_1) group_by_clause"
 
@@ -65,10 +65,7 @@ def query_sum(db, var_ids, start_date, end_date, location,
         variables["variables_" + str(i + 2)] = var_id
 
     if weeks:
-        extra_columns = ", floor(EXTRACT(days FROM data.date - :date_3) / 7 + 1) AS week"
-        year = start_date.year
-        epi_week_start = epi_year_start(year)
-        variables["date_3"] = epi_week_start
+        extra_columns = ", epi_week AS week"
         group_by.append("week")
         ret["weeks"] = {}
 
@@ -77,7 +74,9 @@ def query_sum(db, var_ids, start_date, end_date, location,
     
     if group_by_category:
         extra_columns += ", categories->>:category1 as category"
+        where_clauses.append("data.categories ? :category2")
         variables["category1"] = group_by_category
+        variables["category2"] = group_by_category
         ret[group_by_category] = {}
         group_by.append("category")
     if level:
@@ -190,17 +189,16 @@ def latest_query(db, var_id, identifier_id, start_date, end_date,
     conditions = location_condtion + date_conditions + [Data.variables.has_key(identifier_id)]
 
     if weeks:
-        year = start_date.year
-        epi_week_start = epi_year_start(year)
+        epi_year_start = meerkat_abacus.util.epi_week.epi_year_start_date(start_date)
         if date_variable:
             c = func.floor(
                 extract('days', func.to_date(Data.variables[date_variable].astext, "YYYY-MM-DDTHH-MI-SS") -
-                        epi_week_start) / 7 + 1
+                        epi_year_start) / 7 + 1
             ).label("week")
         else:
             c = func.floor(
                     extract('days', Data.date -
-                            epi_week_start) / 7 + 1
+                            epi_year_start) / 7 + 1
                 ).label("week")
         # This query selects that latest record for each clinic for each week
         # that has the variable identifier_id   

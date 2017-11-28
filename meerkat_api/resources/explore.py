@@ -1,20 +1,18 @@
 """
 Data resource for data exploration
 """
+from flask import request, g
 from flask_restful import Resource
 from sqlalchemy import or_, extract, func
-from datetime import datetime
-from dateutil.parser import parse
-from flask import request, g
 
-from meerkat_api.util import is_child, fix_dates
-from meerkat_api.resources.epi_week import epi_year_start
-from meerkat_api.extensions import db, api
+import meerkat_abacus.util.epi_week
 from meerkat_abacus.model import Data
-from meerkat_abacus.util import get_locations
-from meerkat_api.resources.variables import Variables
-from meerkat_api.resources.epi_week import EpiWeek
+import meerkat_abacus.util as abacus_util
 from meerkat_api.authentication import authenticate, is_allowed_location
+from meerkat_api.extensions import db, api
+from meerkat_api.resources.variables import Variables
+from meerkat_api.util import fix_dates
+
 
 def get_variables(category):
     """
@@ -44,11 +42,11 @@ def get_locations_by_level(level, only_loc):
     Returns:
         names: {id: name}
     """
-    locations = get_locations(db.session)
+    locations = abacus_util.get_locations(db.session)
     names = {}
     for l in locations.values():
         if (l.level == level
-            and (not only_loc or is_child(only_loc, l.id, locations))
+            and (not only_loc or abacus_util.is_child(only_loc, l.id, locations))
             and (level != "clinic" or l.case_report)
         ):
             names[l.id] = l.name
@@ -99,7 +97,6 @@ class QueryVariable(Resource):
             return {}
 
         start_date, end_date = fix_dates(start_date, end_date)
-        year = start_date.year
         if "use_ids" in request.args.keys() or use_ids:
             use_ids = True
         else:
@@ -127,19 +124,19 @@ class QueryVariable(Resource):
             if only_loc:
                 conditions += [or_(loc == only_loc for loc in (
                     Data.country, Data.zone, Data.region, Data.district, Data.clinic))]
-        epi_week_start = epi_year_start(year)
+        epi_year_start = meerkat_abacus.util.epi_week.epi_year_start_date(start_date)
         # Determine which columns we want to extract from the Data table
         columns_to_extract = [func.count(Data.id).label('value')]
         if date_variable:
             columns_to_extract.append(func.floor(
                 extract('days', func.to_date(Data.variables[date_variable].astext, "YYYY-MM-DDTHH-MI-SS") -
-                epi_week_start) / 7 + 1
+                epi_year_start) / 7 + 1
             ).label("week"))
         else:
             columns_to_extract.append(
                 func.floor(
                     extract('days', Data.date -
-                            epi_week_start) / 7 + 1
+                            epi_year_start) / 7 + 1
                 ).label("week")
             )
         # We want to add the columns to extract based on the group_by value
@@ -153,7 +150,7 @@ class QueryVariable(Resource):
             else:
                 level = "clinic"
                 
-            locations = get_locations(db.session)
+            locations = abacus_util.get_locations(db.session)
             ids = locations.keys()
             names = get_locations_by_level(level, only_loc)
 
@@ -173,19 +170,14 @@ class QueryVariable(Resource):
             group_by_query = ",".join(["id" + str(i) for i in ids])
         if use_ids:
             names = {vid: vid for vid in names.keys()}
-        ew = EpiWeek()
-        start_week = ew.get(start_date.isoformat())["epi_week"]
-        end_week = ew.get(end_date.isoformat())["epi_week"]
+        start_epi_week = abacus_util.epi_week.epi_week_for_date(start_date)[1]
+        end_epi_week = abacus_util.epi_week.epi_week_for_date(end_date)[1]
         
         # How we deal with start and end dates in different years
         if start_date.year != end_date.year:
-            end_week += 53 * (end_date.year - start_date.year)
-        if start_week == 0:
-            start_week = 1
+            end_epi_week += 53 * (end_date.year - start_date.year)
 
         # DB Query
-
-
         results = db.session.query(
             *tuple(columns_to_extract)
         ).filter(*conditions).group_by("week," + group_by_query)
@@ -193,7 +185,7 @@ class QueryVariable(Resource):
         ret = {}
         for n in names.values():
             ret[n] = {"total": 0,
-                      "weeks": {i: 0 for i in range(start_week, end_week + 1)}}
+                      "weeks": {i: 0 for i in range(start_epi_week, end_epi_week + 1)}}
             
         for r in results:
             # r = (number, week, other_columns_to_extract
