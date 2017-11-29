@@ -3,11 +3,28 @@ from flask import make_response, abort
 from flask_restful import Api
 import io
 from flask import current_app
+from meerkat_api import config
 import resource
 import csv
+from raven.contrib.celery import register_signal, register_logger_signal
+import celery
+import raven
+
 db = SQLAlchemy()
 api = Api()
 
+class Celery(celery.Celery):
+    def on_configure(self):
+        if config.Config.SENTRY_DNS:
+            client = raven.Client(config.Config.SENTRY_DNS)
+            # register a custom filter to filter out duplicate logs
+            register_logger_signal(client)
+            # hook into the Celery error handler
+            register_signal(client)
+
+            
+celery_app = Celery()
+celery_app.config_from_object('meerkat_api.config.Config')
 
 @api.representation('text/csv')
 def output_csv(data_dict, code, headers=None):

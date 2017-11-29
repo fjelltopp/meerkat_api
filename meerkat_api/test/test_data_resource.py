@@ -5,11 +5,9 @@ Meerkat API Tests
 Unit tests for the data resource in Meerkat API
 """
 import json
-import unittest
 from . import settings
 import meerkat_api
 from meerkat_api.test import db_util
-import meerkat_abacus.util as abacus_util
 
 class MeerkatAPIDataTestCase(meerkat_api.test.TestCase):
 

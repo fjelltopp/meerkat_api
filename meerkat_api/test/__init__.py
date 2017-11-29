@@ -11,7 +11,7 @@ from unittest.mock import patch
 from datetime import datetime
 
 import meerkat_api
-from meerkat_abacus.task_queue import app as celery_app
+from meerkat_api.extensions import celery_app
 from meerkat_api.test import db_util
 
 # Check if auth requirements have been installed
@@ -144,14 +144,14 @@ def get_url(app, url, header):
     return rv
 
 
-def _epi_year_start_by_year_side_effect(year):
+def _epi_year_start_by_year_side_effect(year, **kwargs):
     return datetime(year, 1, 1)
 
 
-def _epi_year_start_by_date_side_effect(date):
+def _epi_year_start_by_date_side_effect(date, **kwargs):
     return datetime(date.year, 1, 1)
 
-def _epi_year_by_date_side_effect(date):
+def _epi_year_by_date_side_effect(date, **kwargs):
     return date.year
 
 class TestCase(unittest.TestCase):
