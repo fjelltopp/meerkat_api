@@ -1,6 +1,5 @@
 import pandas as pd
 import numpy as np
-import copy
 from flask_restful import Resource
 from sqlalchemy import or_, Float
 from meerkat_api.extensions import db, api
@@ -8,7 +7,10 @@ from meerkat_api.util import series_to_json_dict
 from meerkat_analysis.indicators import count_over_count, count
 from meerkat_abacus.model import Data
 from meerkat_api.authentication import authenticate
+import meerkat_abacus.util.epi_week as epi_week_util
 import time
+import datetime
+
 
 class Indicators(Resource):
     """
@@ -29,6 +31,12 @@ class Indicators(Resource):
     decorators = [authenticate]
 
     def get(self, flags, variables, location, start_date=None, end_date=None):
+
+        # If no start date given, we should default to start of the epi year.
+        if not start_date:
+            this_year = datetime.datetime.now().year
+            start_date = epi_week_util.epi_year_start_date_by_year(this_year)
+
         s = time.time()
         mult_factor = 1
         count_over = False
@@ -105,7 +113,7 @@ class Indicators(Resource):
         print("After DB", time.time() - s)
 
         #Call meerkat_analysis
-        
+
         if count_over:
             analysis_output = count_over_count(data, nominator, denominator, start_date, end_date)
         else:
@@ -121,7 +129,7 @@ class Indicators(Resource):
 
         timeline = analysis_output[1] * mult_factor
         # # indicator_data["timeline"] = {"w1":-99,"w2":99}
-        indicator_data["timeline"] = series_to_json_dict(timeline) 
+        indicator_data["timeline"] = series_to_json_dict(timeline)
 
         indicator_data["current"] = timeline.iloc[-1]
         indicator_data["previous"] = timeline.iloc[-2]
