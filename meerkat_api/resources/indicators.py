@@ -7,7 +7,7 @@ from meerkat_api.util import series_to_json_dict
 from meerkat_analysis.indicators import count_over_count, count
 from meerkat_abacus.model import Data
 from meerkat_api.authentication import authenticate
-import meerkat_abacus.util.epi_week as epi_week_util
+import meerkat_abacus.util.epi_week as ew
 import time
 import datetime
 
@@ -35,7 +35,7 @@ class Indicators(Resource):
         # If no start date given, we should default to start of the epi year.
         if not start_date:
             this_year = datetime.datetime.now().year
-            start_date = epi_week_util.epi_year_start_date_by_year(this_year)
+            start_date = ew.epi_year_start_date_by_year(this_year).isoformat()
 
         s = time.time()
         mult_factor = 1
