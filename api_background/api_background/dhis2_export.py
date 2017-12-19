@@ -16,8 +16,10 @@ from meerkat_abacus.model import form_tables
 from meerkat_abacus.util import get_db_engine, all_location_data
 
 try:
-    from meerkat_abacus.config import dhis2_config
+    from meerkat_abacus.config import config
+    dhis2_config = config.dhis2_config
 except ImportError:
+    config = {}
     dhis2_config = {}
 
 db, session = get_db_engine()
@@ -303,7 +305,7 @@ def process_form_records(form_config, program_id):
     """
     status = form_config['status']
     form_name = form_config['name']
-    results = session.query(form_tables[form_name].data).all()
+    results = session.query(form_tables()[form_name].data).all()
     event_payload_list = []
     for counter, result in enumerate(results):
 

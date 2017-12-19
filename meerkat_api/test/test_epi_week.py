@@ -6,10 +6,8 @@ Unit tests for the epi week resource of Meerkat Api
 """
 
 import json
-import unittest
 
 import meerkat_api
-import meerkat_abacus.util as abacus_util
 import meerkat_abacus.util.epi_week
 from . import settings
 
