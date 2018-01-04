@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+from dateutil.relativedelta import relativedelta
 from flask_restful import Resource
 from sqlalchemy import or_, Float
 from meerkat_api.extensions import db, api
@@ -32,10 +33,9 @@ class Indicators(Resource):
 
     def get(self, flags, variables, location, start_date=None, end_date=None):
 
-        # If no start date given, we should default to start of the epi year.
         if not start_date:
-            this_year = datetime.datetime.now().year
-            start_date = ew.epi_year_start_date_by_year(this_year).isoformat()
+            one_year_ago = datetime.datetime.now() - relativedelta(years=1)
+            start_date = one_year_ago.isoformat()
 
         s = time.time()
         mult_factor = 1
