@@ -29,22 +29,22 @@ class MeerkatAPITestCase(unittest.TestCase):
 
     def tearDown(self):
         pass
-    
+
     @freeze_time("2016-07-02")
     def test_key_indicators(self):
         """ Test getting key indicators """
-        
+
         rv = self.app.get('/key_indicators')
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))
-        self.assertEqual(data["reg_1"]["year"], 1)
-        self.assertEqual(data["reg_2"]["year"], 15)
-        self.assertEqual(data["tot_1"]["year"], 2)
+        self.assertEqual(data["reg_1"]["value"], 1)
+        self.assertEqual(data["reg_2"]["value"], 15)
+        self.assertEqual(data["tot_1"]["value"], 2)
 
     @freeze_time("2016-07-02")
     def test_tot_map(self):
         """ Test getting the map of cases"""
-        
+
         rv = self.app.get('/tot_map')
         self.assertEqual(rv.status_code, 200)
         data = json.loads(rv.data.decode("utf-8"))
@@ -67,7 +67,7 @@ class MeerkatAPITestCase(unittest.TestCase):
         self.assertEqual(data["8"]["value"], 15)
         self.assertEqual(data["10"]["value"], 0)
         self.assertEqual(data["11"]["value"], 0)
-        
+
     @freeze_time("2016-07-02")
     def test_num_alerts(self):
         """ Test getting the number of consultations"""
@@ -90,7 +90,3 @@ class MeerkatAPITestCase(unittest.TestCase):
 
         self.assertEqual(data[1]["location_id"], 11)
         self.assertEqual(data[1]["value"], 77)
-
-
-        
-        
