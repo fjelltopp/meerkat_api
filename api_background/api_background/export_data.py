@@ -140,7 +140,7 @@ def export_category(uuid, form_name, category, download_name,
                 languages=["en", "fr"]
             )
         except FileNotFoundError:
-            print("Translations not found")
+            logging.warning("Translations not found", exc_info=True)
 
     db, session = get_db_engine()
     db2, session2 = get_db_engine()

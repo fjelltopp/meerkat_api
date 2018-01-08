@@ -124,12 +124,14 @@ class ExportCategory(Resource):
             return "No variables"
         language = request.args.get("language", "en")
         yaml_config = yaml.dump(abacus_config)
-        export_category.delay(uid, form_name, category,
-                              download_name, variables, data_type,
-                              g.allowed_location,
-                              start_date=request.args.get("start_date", None),
-                              end_date=request.args.get("end_date", None),
-                              language=language, param_config_yaml=yaml_config)
+        export_category.delay(
+            uid, form_name, category, download_name,
+            variables, data_type, g.allowed_location,
+            start_date=request.args.get("start_date", None),
+            end_date=request.args.get("end_date", None),
+            language=language,
+            param_config_yaml=yaml_config
+        )
         return uid
 
 
