@@ -755,7 +755,7 @@ def export_form(uuid, form, allowed_location, fields=None,
     if fields:
         keys = fields
     else:
-        keys = __get_keys_from_db(db, form)
+        keys = __get_keys_from_db(db, form, param_config)
 
     xls_csv_writer = XlsCsvFileWriter(base_folder, form, uuid)
     xls_csv_writer.write_xls_row(keys)
@@ -770,7 +770,7 @@ def export_form(uuid, form, allowed_location, fields=None,
     return True
 
 
-def __get_keys_from_db(db, form):
+def __get_keys_from_db(db, form, param_config=config):
     keys = ["clinic", "region", "district"]
     sql = text("SELECT DISTINCT(jsonb_object_keys(data)) from {}".
                format(form_tables(param_config)[form].__tablename__))
