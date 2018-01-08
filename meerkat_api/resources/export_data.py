@@ -3,16 +3,16 @@ Data resource for exporting data
 """
 import json
 import uuid
-
+import yaml
+import logging
 from flask import request, redirect, g
 from flask_restful import Resource, abort
-
 from meerkat_abacus.model import form_tables, DownloadDataFiles
+from meerkat_abacus.config import config as abacus_config
 from api_background.export_data import export_category, export_data, export_data_table
 from api_background.export_data import export_form
 from meerkat_api.extensions import db, output_csv, output_xls, api
 from meerkat_api.authentication import authenticate
-
 
 # Uncomment to run export data during request
 # from meerkat_abacus.task_queue import app as celery_app
@@ -57,7 +57,11 @@ class ExportData(Resource):
 
     def get(self, use_loc_ids=False):
         uid = str(uuid.uuid4())
-        export_data.delay(uid, g.allowed_location, use_loc_ids)
+        yaml_config = yaml.dump(abacus_config)
+        export_data.delay(
+            uid, g.allowed_location, use_loc_ids,
+            param_config_yaml=yaml_config
+        )
         return uid
 
 
@@ -91,9 +95,11 @@ class ExportDataTable(Resource):
             location_conditions = json.loads(request.args["location_conditions"])
 
         uid = str(uuid.uuid4())
+        yaml_config = yaml.dump(abacus_config)
         export_data_table.delay(uid, download_name,
                                 restrict_by, variables, group_by,
-                                location_conditions=location_conditions)
+                                location_conditions=location_conditions,
+                                param_config_yaml=yaml_config)
         return uid
 
 
@@ -117,12 +123,13 @@ class ExportCategory(Resource):
         else:
             return "No variables"
         language = request.args.get("language", "en")
+        yaml_config = yaml.dump(abacus_config)
         export_category.delay(uid, form_name, category,
                               download_name, variables, data_type,
                               g.allowed_location,
                               start_date=request.args.get("start_date", None),
                               end_date=request.args.get("end_date", None),
-                              language=language)
+                              language=language, param_config_yaml=yaml_config)
         return uid
 
 
@@ -229,7 +236,11 @@ class ExportForm(Resource):
             fields = request.args["fields"].split(",")
         else:
             fields = None
-        export_form.delay(uid, form, g.allowed_location, fields)
+        yaml_config = yaml.dump(abacus_config)
+        export_form.delay(
+            uid, form, g.allowed_location, fields,
+            param_config_yaml=yaml_config
+        )
         return uid
 
 

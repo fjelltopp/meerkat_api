@@ -8,36 +8,26 @@ import json
 import logging
 import xlsxwriter
 import os
+import yaml
 from sqlalchemy.orm import aliased
 from sqlalchemy import text, or_, func, Float
 from dateutil.parser import parse
 from datetime import datetime
 from celery import task
-
 from api_background._populate_locations import set_empty_locations, populate_row_locations
 from api_background.xls_csv_writer import XlsCsvFileWriter
-from meerkat_abacus.config import config
-country_config = config.country_config
-config_directory = config.config_directory
+from meerkat_abacus import config
 from meerkat_abacus.model import DownloadDataFiles, AggregationVariables
 from meerkat_abacus.model import form_tables, Data, Links
 from meerkat_abacus.util import all_location_data, get_db_engine, get_links
 from meerkat_abacus.util import get_locations, is_child
 from meerkat_abacus.util.epi_week import epi_week_for_date
-
-translation_dir = country_config.get("translation_dir", None)
-
-if translation_dir:
-    try:
-        t = gettext.translation('messages', translation_dir, languages=["en", "fr"])
-    except FileNotFoundError:
-        print("Translations not found")
-
 base_folder = os.path.dirname(os.path.realpath(__file__))
 
 
 @task
-def export_data(uuid, allowed_location, use_loc_ids=False):
+def export_data(uuid, allowed_location, use_loc_ids=False,
+                param_config_yaml=yaml.dump(config)):
     """
     Exports the data table from db
 
@@ -47,6 +37,10 @@ def export_data(uuid, allowed_location, use_loc_ids=False):
        uuid: uuid for download
        use_loc_ids: If we use names are location ids
     """
+    # Runner loads the config object through a function parameter.
+    param_config = yaml.load(param_config_yaml)
+    country_config = param_config.country_config
+
     db, session = get_db_engine()
     status = DownloadDataFiles(
         uuid=uuid,
@@ -105,7 +99,8 @@ def export_data(uuid, allowed_location, use_loc_ids=False):
 @task
 def export_category(uuid, form_name, category, download_name,
                     variables, data_type, allowed_location,
-                    start_date=None, end_date=None, language="en"):
+                    start_date=None, end_date=None, language="en",
+                    param_config_yaml=yaml.dump(config)):
     """
     We take a variable dictionary of form field name: display_name.
     There are some special commands that can be given in the form field name:
@@ -130,6 +125,23 @@ def export_category(uuid, form_name, category, download_name,
        variables: variable dictionary\n
 
     """
+    # Runner loads the config object through a function parameter.
+    param_config = yaml.load(param_config_yaml)
+    country_config = param_config.country_config
+    config_directory = param_config.config_directory
+
+    # Some strings in download data need to be translated
+    translation_dir = country_config.get("translation_dir", None)
+    if translation_dir:
+        try:
+            t = gettext.translation(
+                'messages',
+                translation_dir,
+                languages=["en", "fr"]
+            )
+        except FileNotFoundError:
+            print("Translations not found")
+
     db, session = get_db_engine()
     db2, session2 = get_db_engine()
     status = DownloadDataFiles(
@@ -167,7 +179,7 @@ def export_category(uuid, form_name, category, download_name,
     def add_translations_from_file(details):
         # Load the csv file and reader
         file_path = '{}api/{}'.format(
-            config.config_directory,
+            config_directory,
             details['dict_file']
         )
         csv_file = open(file_path, 'rt')
@@ -180,7 +192,6 @@ def export_category(uuid, form_name, category, download_name,
         trans_dict = {}
         for row in reader:
             trans_dict[row[from_index]] = row[to_index]
-        # logging.warning(trans_dict)
         return trans_dict
 
     # DB conditions
@@ -273,9 +284,9 @@ def export_category(uuid, form_name, category, download_name,
             results = session2.query(
                 func.distinct(
                     func.regexp_split_to_table(
-                        form_tables()[form_name].data[field].astext, ' '))).join(
+                        form_tables(param_config)[form_name].data[field].astext, ' '))).join(
                 Data,
-                Data.uuid == form_tables()[form_name].uuid).filter(
+                Data.uuid == form_tables(param_config)[form_name].uuid).filter(
                 *conditions).all()
             if tr_dict.get('dict_file', False):
                 translations = add_translations_from_file(tr_dict)
@@ -301,8 +312,7 @@ def export_category(uuid, form_name, category, download_name,
     links_by_type, links_by_name = get_links(config_directory +
                                              country_config["links_file"])
     # DB query, with yield_per(200) for memory reasons
-
-    columns = [Data, form_tables()[form_name]]
+    columns = [Data, form_tables(param_config)[form_name]]
 
     link_id_index = {}
     joins = []
@@ -314,16 +324,16 @@ def export_category(uuid, form_name, category, download_name,
             link_data[row.uuid_to] = row.data_to
 
     for i, l in enumerate(link_ids):
-        form = aliased(form_tables()[links_by_name[l]["to_form"]])
+        form = aliased(form_tables(param_config)[links_by_name[l]["to_form"]])
         joins.append((form, Data.links[(l, -1)].astext == form.uuid))
         link_id_index[l] = i + 2
         columns.append(form.data)
 
     number_query = session2.query(func.count(Data.id)).join(
-        form_tables()[form_name], Data.uuid == form_tables()[form_name].uuid)
+        form_tables(param_config)[form_name], Data.uuid == form_tables(param_config)[form_name].uuid)
 
     results = session2.query(*columns).join(
-        form_tables()[form_name], Data.uuid == form_tables()[form_name].uuid)
+        form_tables(param_config)[form_name], Data.uuid == form_tables(param_config)[form_name].uuid)
     for join in joins:
         results = results.outerjoin(join[0], join[1])
 
@@ -573,6 +583,7 @@ def export_category(uuid, form_name, category, download_name,
 
             if translation_dir and language != "en" and list_row[index]:
                 list_row[index] = t.gettext(list_row[index])
+
         list_rows.append(list_row)
         # Can write row immediately to xls file as memory is flushed after.
         write_xls_row(list_row, i + 1, xls_sheet)
@@ -609,12 +620,17 @@ def export_category(uuid, form_name, category, download_name,
 @task
 def export_data_table(uuid, download_name,
                       restrict_by, variables, group_by,
-                      location_conditions=None):
+                      location_conditions=None,
+                      param_config_yaml=yaml.dump(config)):
     """
     Export an aggregated data table restricted by restrict by,
 
 
     """
+    # Runner loads the config object through a function parameter.
+    param_config = yaml.load(param_config_yaml)
+    country_config = param_config.country_config
+
     return_keys = []
     db, session = get_db_engine()
     locs = get_locations(session)
@@ -648,7 +664,8 @@ def export_data_table(uuid, download_name,
         return_keys.append(v[1])
 
     result = session.query(*columns).filter(
-        Data.variables.has_key(restrict_by)).group_by(*groups)
+        Data.variables.has_key(restrict_by)
+    ).group_by(*groups)
     filename = base_folder + "/exported_data/" + uuid + "/" + download_name
     os.mkdir(base_folder + "/exported_data/" + uuid)
     csv_content = open(filename + ".csv", "w")
@@ -676,8 +693,8 @@ def export_data_table(uuid, download_name,
         for l in location_subs:
             if row_list[l]:
                 if location_conditions:
-                    if location_conditions[0][1] in getattr(locs[row_list[l]],
-                                                            location_conditions[0][0]):
+                    tmp = getattr(locs[row_list[l]], location_conditions[0][0])
+                    if location_conditions[0][1] in tmp:
                         location_condition = False
                 row_list[l] = locs[row_list[l]].name
         if location_condition:
@@ -700,7 +717,8 @@ def export_data_table(uuid, download_name,
 
 
 @task
-def export_form(uuid, form, allowed_location, fields=None):
+def export_form(uuid, form, allowed_location, fields=None,
+                param_config_yaml=yaml.dump(config)):
     """
     Export a form. If fields is in the request variable we only include
     those fields.
@@ -718,9 +736,13 @@ def export_form(uuid, form, allowed_location, fields=None):
 
     """
 
+    # Runner loads the config object through a function parameter.
+    param_config = yaml.load(param_config_yaml)
+    country_config = param_config.country_config
+
     db, session = get_db_engine()
     operation_status = OperationStatus(form, uuid)
-    if form not in form_tables():
+    if form not in form_tables(param_config):
         operation_status.submit_operation_failure()
         return False
 
@@ -739,8 +761,9 @@ def export_form(uuid, form, allowed_location, fields=None):
     xls_csv_writer.write_xls_row(keys)
     xls_csv_writer.write_csv_row(keys)
 
-    query_form_data = session.query(form_tables()[form].data)
-    __save_form_data(xls_csv_writer, query_form_data, operation_status, keys, allowed_location, location_data)
+    query_form_data = session.query(form_tables(param_config)[form].data)
+    __save_form_data(xls_csv_writer, query_form_data,
+                     operation_status, keys, allowed_location, location_data)
     operation_status.submit_operation_success()
     xls_csv_writer.flush_csv_buffer()
     xls_csv_writer.close_cvs_xls_buffers()
@@ -750,11 +773,12 @@ def export_form(uuid, form, allowed_location, fields=None):
 def __get_keys_from_db(db, form):
     keys = ["clinic", "region", "district"]
     sql = text("SELECT DISTINCT(jsonb_object_keys(data)) from {}".
-               format(form_tables()[form].__tablename__))
+               format(form_tables(param_config)[form].__tablename__))
     results = db.execute(sql)
     for r in results:
         keys.append(r[0])
     return keys
+
 
 class OperationStatus:
     def __init__(self, form, uuid):
@@ -762,8 +786,10 @@ class OperationStatus:
         self.__initialize(form, uuid)
 
     def __initialize(self, form, uuid):
-        self.download_data_file = DownloadDataFiles(uuid=uuid, generation_time=datetime.now(), type=form, success=0,
-                                                    status=0.0)
+        self.download_data_file = DownloadDataFiles(
+            uuid=uuid, generation_time=datetime.now(),
+            type=form, success=0, status=0.0
+        )
         self.session.add(self.download_data_file)
         self.session.commit()
 
@@ -772,12 +798,10 @@ class OperationStatus:
         self.download_data_file.success = 0
         self.session.commit()
 
-
     def submit_operation_success(self):
         self.download_data_file.status = 1.0
         self.download_data_file.success = 1
         self.session.commit()
-
 
     def submit_operation_failure(self):
         self.download_data_file.status = 1.0
@@ -785,8 +809,10 @@ class OperationStatus:
         self.session.commit()
 
 
-def __save_form_data(xls_csv_writer, query_form_data, operation_status, keys, allowed_location, location_data):
-    (locations, locs_by_deviceid, zones, regions, districts, devices) = location_data
+def __save_form_data(xls_csv_writer, query_form_data,
+                     operation_status, keys, allowed_location, location_data):
+    (locations, locs_by_deviceid,
+     zones, regions, districts, devices) = location_data
     results = query_form_data.yield_per(1000)
     results_count = query_form_data.count()
     for i, result in enumerate(results):
@@ -797,7 +823,8 @@ def __save_form_data(xls_csv_writer, query_form_data, operation_status, keys, al
             logging.error("Skipping result %d. Data is None", i)
             continue
         if not isinstance(result.data, dict):
-            logging.error("Skipping result %d which data is not of a dictionary type", i)
+            logging.error("Skipping result %d which "
+                          "data is not of a dictionary type", i)
             continue
         # Initialise empty result for header line
         row = []
@@ -805,7 +832,10 @@ def __save_form_data(xls_csv_writer, query_form_data, operation_status, keys, al
             try:
                 row.append(result.data.get(key, ''))
             except AttributeError:
-                logging.exception("Error while parsing row %s with data:\n%s", result, result.data, exc_info=True)
+                logging.exception(
+                    "Error while parsing row %s with data:\n%s",
+                    result, result.data, exc_info=True
+                )
 
         # Add the location data if it has been requested and exists.
         if 'deviceid' in result.data:
@@ -831,6 +861,8 @@ def __save_form_data(xls_csv_writer, query_form_data, operation_status, keys, al
 if __name__ == "__main__":
     import uuid
 
-    export_data_table(str(uuid.uuid4()), "test", "reg_1", [["reg_2", "Consultations"]],
-                      [["epi_year", "year"], ["clinic:location", "clinic"], ["epi_week", "week"]],
-                      location_conditions=[["case_type", "SARI"]])
+    export_data_table(
+        str(uuid.uuid4()), "test", "reg_1", [["reg_2", "Consultations"]],
+        [["epi_year", "year"], ["clinic:location", "clinic"], ["epi_week", "week"]],
+        location_conditions=[["case_type", "SARI"]]
+    )
