@@ -39,10 +39,8 @@ class Indicators(Resource):
                 this_year = datetime.datetime.now().year
                 start_date = ew.epi_year_start_date_by_year(this_year).isoformat()
             else:
-                one_year_ago = datetime.datetime.now() - relativedelta(years=1)
+                one_year_ago = datetime.datetime.now().date() - relativedelta(years=1)
                 start_date = one_year_ago.isoformat()
-
-
 
 
         s = time.time()
@@ -114,12 +112,10 @@ class Indicators(Resource):
             print("After DB", time.time() - s)
 
             #Call meerkat_analysis
-
             if count_over:
                 analysis_output = count_over_count(data, nominator, denominator, start_date, end_date)
             else:
                 analysis_output = count(data, nominator, start_date, end_date)
-
 
             print("After Analysis", time.time() - s)
             indicator_data = dict()
