@@ -150,5 +150,4 @@ class Indicators(Resource):
 
 
 api.add_resource(Indicators, "/indicators/<flags>/<variables>/<location>",
-                  "/indicators/<flags>/<variables>/<location>",
                   "/indicators/<flags>/<variables>/<location>/<start_date>/<end_date>")
