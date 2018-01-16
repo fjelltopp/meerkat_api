@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 from dateutil.relativedelta import relativedelta
 from flask_restful import Resource
+from flask import request
 from sqlalchemy import or_, Float
 from meerkat_api.extensions import db, api
 from meerkat_api.util import series_to_json_dict
@@ -32,8 +33,9 @@ class Indicators(Resource):
     decorators = [authenticate]
 
     def get(self, flags, variables, location, start_date=None, end_date=None, current_year=None):
+        current_year= request.args.get('current_year')
         if not start_date:
-            if current_year==1:
+            if current_year=="1":
                 this_year = datetime.datetime.now().year
                 start_date = ew.epi_year_start_date_by_year(this_year).isoformat()
             else:
