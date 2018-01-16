@@ -9,31 +9,29 @@ from geoalchemy2.shape import to_shape
 from meerkat_api.extensions import db, api
 from meerkat_abacus.util import get_locations
 from meerkat_api.util import get_children
-from meerkat_api.resources.data import AggregateYear
+from meerkat_api.resources.data import Aggregate
 from meerkat_api.resources.map import MapVariable
 from meerkat_api.resources.variables import Variables
-from meerkat_api.resources.alerts import Alerts, get_alerts
+from meerkat_api.resources.alerts import get_alerts
 from meerkat_api.resources.reports import get_latest_category
 from meerkat_api.resources.locations import TotClinics
 
 
 class KeyIndicators(Resource):
     """
-    Get the aggregation for this year of the variables with the key_indicators category.
+    Get the aggregation for all time of the variables with
+    the key_indicators category.
     """
 
     def get(self, location=1):
         g.allowed_locations = location
-        year = datetime.today().year
         variables_instance = Variables()
         variables = variables_instance.get("key_indicators")
-        aggregate_year = AggregateYear()
+        aggregate = Aggregate()
 
         return_data = {}
         for variable in variables.keys():
-            return_data[variable] = aggregate_year.get(variable,
-                                                       location,
-                                                       year)
+            return_data[variable] = aggregate.get(variable, location)
         return return_data
 
 
@@ -66,8 +64,7 @@ class NumAlerts(Resource):
 
     def get(self, location=1):
         g.allowed_locations = location
-        al = Alerts()
-        alerts = get_alerts({"location":location}, allowed_location=location)
+        alerts = get_alerts({"location": location}, allowed_location=location)
         return {"num_alerts": len(alerts)}
 
 
@@ -105,7 +102,7 @@ class RefugeePage(Resource):
                 tot_pop += clinic_pop
             geo = to_shape(locs[clinic].point_location)
             clinic_map.append({"value": clinic_pop,
-                               "geolocation":[geo.y, geo.x],
+                               "geolocation": [geo.y, geo.x],
                                "clinic": locs[clinic].name,
                                "location_id": clinic})
         return clinic_map
