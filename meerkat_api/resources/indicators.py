@@ -33,12 +33,12 @@ class Indicators(Resource):
 
     def get(self, flags, variables, location, start_date=None, end_date=None, current_year=None):
         if not start_date:
-            if not current_year:
-                one_year_ago = datetime.datetime.now() - relativedelta(years=1)
-                start_date = one_year_ago.isoformat()
-            else:
+            if current_year==1:
                 this_year = datetime.datetime.now().year
                 start_date = ew.epi_year_start_date_by_year(this_year).isoformat()
+            else:
+                one_year_ago = datetime.datetime.now() - relativedelta(years=1)
+                start_date = one_year_ago.isoformat()
 
 
 
@@ -148,5 +148,5 @@ class Indicators(Resource):
 
 
 api.add_resource(Indicators, "/indicators/<flags>/<variables>/<location>",
-                  "/indicators/<flags>/<variables>/<location>/<current_year>",
+                  "/indicators/<flags>/<variables>/<location>",
                   "/indicators/<flags>/<variables>/<location>/<start_date>/<end_date>")
