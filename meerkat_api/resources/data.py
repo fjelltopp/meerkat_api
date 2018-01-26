@@ -5,7 +5,7 @@ Resource for aggregating and querying data
 from flask_restful import Resource
 from sqlalchemy import or_
 from datetime import datetime, timedelta
-from flask import jsonify, g
+from flask import jsonify, g, request
 from meerkat_api.util import rows_to_dicts
 from meerkat_api.extensions import db, api
 from meerkat_abacus.model import Data
@@ -112,13 +112,20 @@ class AggregateYear(Resource):
         start_date = datetime(year, 1, 1)
         end_date = datetime(year + 1, 1, 1)
         variables = [vi]
+
+        req_level= request.args.get('level')
+
         # We sum over variable grouped by epi_week
         if(lim_variable != ""):
             variables.append(lim_variable)
         result = query_sum(
-            db, variables, start_date, end_date, location_id, weeks=True
+            db, variables, start_date, end_date, location_id, weeks=True, level=req_level
         )
-        return {"weeks": result["weeks"], "year": result["total"]}
+        if req_level==None:
+            return {"weeks": result["weeks"], "year": result["total"]}
+        else:
+            return result
+
 
 
 class AggregateCategory(Resource):
