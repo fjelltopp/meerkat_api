@@ -257,7 +257,7 @@ api.add_resource(Clinics, "/clinics/<location_id>",
                  "/clinics/<location_id>/<clinic_type>",
                  "/clinics/<location_id>/<clinic_type>/<require_case_report>")
 api.add_resource(Shapes, "/geo_shapes/<level>")
-api.add_resource(SafeShape, "/geo_shape/<locID>")
+api.add_resource(SafeShape, "/geo_shape/<location_id>")
 api.add_resource(MapVariable, "/map/<variable_id>",
                  "/map/<variable_id>/<location>",
                  "/map/<variable_id>/<location>/<end_date>",
