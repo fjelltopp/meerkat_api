@@ -36,7 +36,7 @@ class Clinics(Resource):
         points = []
         if not is_allowed_location(location_id, g.allowed_location):
             return FeatureCollection(points)
-        
+
         for l in locations:
             if ((locations[l].case_report or require_case_report == "no") and is_child(
                     location_id, l, locations) and locations[l].point_location is not None
@@ -57,7 +57,7 @@ class Clinics(Resource):
         return FeatureCollection(points)
 
 
-    
+
 class MapVariable(Resource):
     """
     Want to map a variable id by clinic (only include case reporting clinics)
@@ -115,7 +115,7 @@ class MapVariable(Resource):
                         cords = [geo.y, geo.x]  # Leaflet uses LatLng
                         ret[str(cords)] = {"value": r[0], "geolocation": cords,
                                            "clinic": "Outbreak Investigation"}
-                    
+
 
         if include_all_clinics:
             results = db.session.query(model.Locations)
@@ -169,7 +169,7 @@ class IncidenceMap(Resource):
 class Shapes(Resource):
     """
     Returns the shapes for the given level
-    
+
     Args:\n
        level: region, district or clinic
     """
@@ -182,32 +182,84 @@ class Shapes(Resource):
         ).filter(
             Locations.level == level
         )
-
         features = []
-
         for r in results:
-            if r[1] is not None:
-                if level == "clinic":
-                    shape = to_shape(r[0])
-                else:
-                    shape = to_shape(r[1])
-                    
-                feature = {"type": "Feature",
-                       "properties": {
-                           "Name": r[2]
-                       },
-                           "geometry": shapely.geometry.mapping(shape)
-                }
+            feature = {"type": "Feature", "properties": {"Name": r[2]}}
+            if level == "clinic" and r[0] is not None:
+                shape = to_shape(r[0])
+                feature["geometry"] = shapely.geometry.mapping(shape)
+                features.append(feature)
+            elif r[1] is not None:
+                shape = to_shape(r[1])
+                feature["geometry"] = shapely.geometry.mapping(shape)
                 features.append(feature)
         return {"type": "FeatureCollection", "features": features}
-            
+
+
+class SafeShape(Resource):
+    """
+    Returns the shape for the given locID.
+    If there is no shape data stored for the given loc id, it will return
+    the nearest parent for which there is a shape stored.
+
+    Args:\n
+       locID (int): The location id for the desired shape
+    """
+    def get(self, locID):
+        locID = int(locID)
+        results = db.session.query(
+            Locations.id,
+            Locations.name,
+            Locations.parent_location,
+            Locations.level,
+            Locations.point_location,
+            Locations.area
+        )
+
+        def get_location(locID):
+            locations = list(filter(lambda r: r[0] == locID, list(results)))
+            if len(locations) == 1:
+                return locations[0]
+            else:
+                return None
+
+        location_ancestors = [get_location(locID)]
+        while location_ancestors[-1][2] is not None:
+            parent = get_location(location_ancestors[-1][2])
+            location_ancestors.append(parent)
+
+        for location in location_ancestors:
+
+            has_area = location[5] is not None
+            is_point = location[3] == "clinic" and location[4] is not None
+            if has_area or is_point:
+                feature = {
+                    "type": "Feature",
+                    "properties": {
+                        "Name": location[1],
+                        "id": location[0],
+                        "parent": location[2]
+                    }
+                }
+                if location[3] == "clinic" and location[4] is not None:
+                    shape = to_shape(location[4])
+                    feature["geometry"] = shapely.geometry.mapping(shape)
+                elif location[5] is not None:
+                    shape = to_shape(location[5])
+                    feature["geometry"] = shapely.geometry.mapping(shape)
+                return feature
+
+        # Return nothing if there is no valid shape data for any parents.
+        return {}
+
+
 api.add_resource(Clinics, "/clinics/<location_id>",
                  "/clinics/<location_id>/<clinic_type>",
                  "/clinics/<location_id>/<clinic_type>/<require_case_report>")
 api.add_resource(Shapes, "/geo_shapes/<level>")
-
+api.add_resource(SafeShape, "/geo_shape/<locID>")
 api.add_resource(MapVariable, "/map/<variable_id>",
                  "/map/<variable_id>/<location>",
                  "/map/<variable_id>/<location>/<end_date>",
-                 "/map/<variable_id>/<location>/<end_date>/<start_date>" )
+                 "/map/<variable_id>/<location>/<end_date>/<start_date>")
 api.add_resource(IncidenceMap, "/incidence_map/<variable_id>")
