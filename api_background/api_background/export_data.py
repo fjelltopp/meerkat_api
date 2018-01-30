@@ -514,11 +514,12 @@ def export_category(uuid, form_name, category, download_name,
             elif "value" == form_var.split(":")[0]:
                 list_row[index] = form_var.split(":")[1]
             elif "$to_columns$" in form_var:
+                int_has_code = 0
                 field = form_var.split("$")[0]
                 codes = form_var.split("$")[-1].split(",")
-                int_has_code = 0
-                if field in raw_data:
-                    elements = raw_data[field].split(" ")
+                str_elements = raw_data.get(field)
+                if type(str_elements) == str:
+                    elements = str_elements.split(" ")
                     has_code = any(code in elements for code in codes)
                     int_has_code = int(has_code)
                 list_row[index] = int_has_code
