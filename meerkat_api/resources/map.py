@@ -203,10 +203,10 @@ class SafeShape(Resource):
     the nearest parent for which there is a shape stored.
 
     Args:\n
-       locID (int): The location id for the desired shape
+       location_id (int): The location id for the desired shape
     """
-    def get(self, locID):
-        locID = int(locID)
+    def get(self, location_id):
+        locID = int(location_id)
         results = db.session.query(
             Locations.id,
             Locations.name,
