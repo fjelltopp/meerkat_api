@@ -70,7 +70,7 @@ class Prescriptions(Resource):
         # Restructure the DB return sets into a JSON
         for item in first_last_prescr_query.all():
 
-            #if the medicine type is not configured to be reported, skip
+            # if the medicine type is not configured to be reported, skip
             if item[1] not in kit_contents.keys():
                 continue
 
@@ -104,7 +104,6 @@ class Prescriptions(Resource):
                                 if kit_contents[item[1]]["tablets_in_kit"] == "" 
                                 else 1-item[2]/(float(kit_contents[item[1]]["tablets_in_kit"]) * kits_in_clinic)
                             ),
-                        "total_prescriptions": item[2]
                         }
                     })
             # If clinic is not in the JSON object yet    
@@ -131,34 +130,35 @@ class Prescriptions(Resource):
                                     if kit_contents[item[1]]["tablets_in_kit"] == "" 
                                     else 1-item[2]/(float(kit_contents[item[1]]["tablets_in_kit"]) * kits_in_clinic)
                                 ),
-                            "total_prescriptions": item[2]
                             }
                         }
                     })
 
         # Assign the number of prescriptions to data object
         for item in prescription_query.all():
-            prescriptions['clinic_data'][str(item[0])][str(item[1])]['prescriptions'] = item[2]
+            prescriptions['clinic_data'].setdefault(str(item[0]),{}).setdefault(str(item[1]),{})['prescriptions'] = item[2]
 
 
         #create clinic table info
         for item in clinic_info.all():
 
-            highest_depletion = findHighestDepletion(prescriptions['clinic_data'][str(item[0])])
-            prescriptions['clinic_table'].append({
-                    "clinic_id": str(item[0]),
-                    "clinic_name":locs[item[0]].name,
-                    "min_date":item[2].strftime("%Y-%m-%d"),
-                    "max_date":item[3].strftime("%Y-%m-%d"),
-                    "most_depleted_medicine":barcode_variables[highest_depletion['medicine']],
-                    "depletion":highest_depletion['depletion'],
-                    "str_depletion": str(round(highest_depletion['depletion'] * 100,1)) + '%' 
-                })
+            highest_depletion = findHighestDepletion(prescriptions['clinic_data'].setdefault(str(item[0]), {}))
+            if highest_depletion:
+                prescriptions['clinic_table'].append({
+                        "clinic_id": str(item[0]),
+                        "clinic_name":locs[item[0]].name,
+                        "min_date":item[2].strftime("%Y-%m-%d"),
+                        "max_date":item[3].strftime("%Y-%m-%d"),
+                        "most_depleted_medicine":barcode_variables[highest_depletion['medicine']],
+                        "depletion":highest_depletion['depletion'],
+                        "str_depletion": str(round(highest_depletion['depletion'] * 100,1)) + '%'
+                    })
 
         #create medicine table info
         for clinic in prescriptions['clinic_data']:
             for medicine in prescriptions['clinic_data'][clinic]:
-                if kit_contents[medicine]['tablets_in_kit'] != '':
+                kit_medicite_ = kit_contents.get(medicine, {})
+                if kit_medicite_.get('tablets_in_kit', '') != '':
                     prescriptions['medicine_table'].append({
                         "clinic_id": clinic,
                         "clinic_name": locs[int(clinic)].name,
@@ -179,11 +179,13 @@ class Prescriptions(Resource):
         return prescriptions
 
 def findHighestDepletion(clinic_medicines):
+    if not clinic_medicines:
+        return {}
     depletion_list = []
     for medicine in clinic_medicines.keys():
         depletion_list.append({
             'medicine':medicine,
-            'depletion':clinic_medicines[medicine]['depletion']
+            'depletion':clinic_medicines[medicine].get('depletion', False)
         })
 
     sorted_depletion_list = sorted(depletion_list, key=lambda k: k['depletion'], reverse=True)
