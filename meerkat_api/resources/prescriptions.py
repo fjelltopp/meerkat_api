@@ -28,19 +28,12 @@ class Prescriptions(Resource):
     def get(self, location, start_date=None, end_date=None):
 
         start_date, end_date = fix_dates(start_date, end_date)
-
         locs = get_locations(db.session)
-
         clinics = get_children(parent=location, locations=locs, require_case_report=True)
-
         kit_contents = db.session.query(CalculationParameters.parameters) \
             .filter(CalculationParameters.name == 'medicine_kits') \
             .one()[0]
-
         barcode_category = 'barcode_prescription'
-
-        barcode_variables = get_variables(barcode_category)
-
         conditions = [Data.categories.has_key(barcode_category), Data.clinic.in_(clinics)]
 
         # Get first and last prescription for a clinic and medicine without time constraints
@@ -54,15 +47,18 @@ class Prescriptions(Resource):
                                                                    Data.categories[barcode_category].astext)
 
         # Get first and last prescription for a clinic without time constraints
-        clinic_info = db.session.query(Data.clinic, func.count(Data.id), func.min(Data.date), func.max(Data.date))
+        clinic_info = db.session.query(Data.clinic,
+                                       func.count(Data.id),
+                                       func.min(Data.date),
+                                       func.max(Data.date))
         clinic_info = clinic_info.filter(*conditions).group_by(Data.clinic)
 
-        date_conditions = [Data.date >= start_date, Data.date < end_date]
 
         # Get number of prescriptions within time constraints
+        date_conditions = [Data.date >= start_date, Data.date < end_date]
         prescription_in_date_range_query = db.session.query(Data.clinic,
-                                              Data.categories[barcode_category].astext,
-                                              func.count(Data.id))
+                                                            Data.categories[barcode_category].astext,
+                                                            func.count(Data.id))
         prescription_in_date_range_query = prescription_in_date_range_query.filter(*conditions)
         prescription_in_date_range_query = prescription_in_date_range_query.filter(*date_conditions)
         prescription_in_date_range_query = prescription_in_date_range_query.group_by(Data.clinic, Data.categories[barcode_category].astext)
@@ -156,6 +152,7 @@ class Prescriptions(Resource):
             medicine = prescriptions['clinic_data'][str_prescription_location].setdefault(medicine_key, {})
             medicine['prescriptions'] = prescription_count
 
+        barcode_variables = get_variables(barcode_category)
         # create clinic table info
         for prescription in clinic_info.all():
             location_id = prescription[0]
