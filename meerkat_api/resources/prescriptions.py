@@ -1,9 +1,6 @@
 """
 Data resource for completeness data
 """
-from collections import defaultdict
-from functools import partial
-
 from flask_restful import Resource
 
 from meerkat_api.extensions import db, api
@@ -13,6 +10,8 @@ from meerkat_abacus.util import get_locations
 from meerkat_api.authentication import authenticate
 from sqlalchemy import func
 from meerkat_api.resources.explore import get_variables
+
+DEFAULT_KIT_COUNT_IN_CLINIC = 1
 
 
 class Prescriptions(Resource):
@@ -28,8 +27,8 @@ class Prescriptions(Resource):
     def get(self, location, start_date=None, end_date=None):
 
         start_date, end_date = fix_dates(start_date, end_date)
-        locs = get_locations(db.session)
-        clinics = get_children(parent=location, locations=locs, require_case_report=True)
+        self.locs = get_locations(db.session)
+        clinics = get_children(parent=location, locations=self.locs, require_case_report=True)
         kit_contents = db.session.query(CalculationParameters.parameters) \
             .filter(CalculationParameters.name == 'medicine_kits') \
             .one()[0]
@@ -80,15 +79,11 @@ class Prescriptions(Resource):
             prescription_max_date = prescription[4]
 
             # if the medicine type is not configured to be reported, skip
-            if medicine_key not in kit_contents.keys():
+            if medicine_key not in kit_contents:
                 continue
 
             # get number of kits in the clinic
-            kits_in_clinic = locs[prescription_location_id].other.get('IEHK kits', '')
-            try:
-                kits_in_clinic = int(kits_in_clinic)
-            except ValueError:
-                kits_in_clinic = 1
+            kits_in_clinic = self._get_number_of_kits_in_clinic(prescription_location_id)
 
             # If clinic is already in JSON
             if str(prescription_location_id) in prescriptions['clinic_data'].keys():
@@ -166,7 +161,7 @@ class Prescriptions(Resource):
                 depletion_round_percent = round(highest_depletion['depletion'] * 100, 1)
                 prescriptions['clinic_table'].append({
                     "clinic_id": location_id_str,
-                    "clinic_name": locs[location_id].name,
+                    "clinic_name": self.locs[location_id].name,
                     "min_date": prescription_min_date.strftime("%Y-%m-%d"),
                     "max_date": prescription_max_date.strftime("%Y-%m-%d"),
                     "most_depleted_medicine": barcode_variables[highest_depletion['medicine']],
@@ -182,7 +177,7 @@ class Prescriptions(Resource):
                     medicine_round_stock_percentage = round(medicine['stock'] * 100, 1)
                     prescriptions['medicine_table'].append({
                         "clinic_id": clinic,
-                        "clinic_name": locs[int(clinic)].name,
+                        "clinic_name": self.locs[int(clinic)].name,
                         "medicine_name": barcode_variables[medicine_key],
                         "min_date": medicine['min_date'],
                         "max_date": medicine['max_date'],
@@ -197,6 +192,14 @@ class Prescriptions(Resource):
                     })
 
         return prescriptions
+
+    def _get_number_of_kits_in_clinic(self, prescription_location_id):
+        kits_in_clinic = self.locs[prescription_location_id].other.get('IEHK kits', '')
+        try:
+            kits_in_clinic = int(kits_in_clinic)
+        except ValueError:
+            kits_in_clinic = DEFAULT_KIT_COUNT_IN_CLINIC
+        return kits_in_clinic
 
 
 def find_highest_depletion(clinic_medicines):
