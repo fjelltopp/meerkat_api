@@ -72,72 +72,43 @@ class Prescriptions(Resource):
         # Restructure the DB return sets into a JSON
         for prescription in first_last_prescr_query.all():
 
-            prescription_location_id = prescription[0]
+            location_id = prescription[0]
+            location_id_str = str(location_id)
             medicine_key = prescription[1]
             prescription_count = prescription[2]
             prescription_min_date = prescription[3]
             prescription_max_date = prescription[4]
 
             # if the medicine type is not configured to be reported, skip
-            if medicine_key not in kit_contents:
+            medicine_kit_details = kit_contents.get(medicine_key)
+            if not medicine_kit_details:
                 continue
 
             # get number of kits in the clinic
-            kits_in_clinic = self._get_number_of_kits_in_clinic(prescription_location_id)
+            kits_in_clinic = self._get_number_of_kits_in_clinic(location_id)
 
-            # If clinic is already in JSON
-            if str(prescription_location_id) in prescriptions['clinic_data'].keys():
-
-                prescriptions['clinic_data'][str(prescription_location_id)].update({
-                    str(medicine_key): {
-                        "min_date": prescription_min_date.strftime("%Y-%m-%d"),
-                        "max_date": prescription_max_date.strftime("%Y-%m-%d"),
-                        "total_prescriptions": prescription_count,
-                        "inventory":
-                            (kit_contents[medicine_key]["total"] * kits_in_clinic
-                             if kit_contents[medicine_key]["tablets_in_kit"] == ""
-                             else int(kit_contents[medicine_key]["tablets_in_kit"]) * kits_in_clinic - prescription_count
-                             ),
-                        "depletion":
-                            (prescription_count / (float(kit_contents[medicine_key]["total"]) * kits_in_clinic)
-                             if kit_contents[medicine_key]["tablets_in_kit"] == ""
-                             else prescription_count / (float(kit_contents[medicine_key]["tablets_in_kit"]) * kits_in_clinic)
-                             ),
-                        "stock":
-                            (1 - prescription_count / (float(kit_contents[medicine_key]["total"]) * kits_in_clinic)
-                             if kit_contents[medicine_key]["tablets_in_kit"] == ""
-                             else 1 - prescription_count / (float(kit_contents[medicine_key]["tablets_in_kit"]) * kits_in_clinic)
-                             ),
-                    }
-                })
-            # If clinic is not in the JSON object yet
-            else:
-                prescriptions['clinic_data'].update({
-                    str(prescription_location_id): {
-                        str(medicine_key):
-                            {
-                                "min_date": prescription_min_date.strftime("%Y-%m-%d"),
-                                "max_date": prescription_max_date.strftime("%Y-%m-%d"),
-                                "total_prescriptions": prescription_count,
-                                "inventory":
-                                    (kit_contents[medicine_key]["total"] * kits_in_clinic
-                                     if kit_contents[medicine_key]["tablets_in_kit"] == ""
-                                     else int(kit_contents[medicine_key]["tablets_in_kit"]) * kits_in_clinic - prescription_count
-                                     ),
-                                "depletion":
-                                    (prescription_count / (float(kit_contents[medicine_key]["total"]) * kits_in_clinic)
-                                     if kit_contents[medicine_key]["tablets_in_kit"] == ""
-                                     else prescription_count / (float(kit_contents[medicine_key]["tablets_in_kit"]) * kits_in_clinic)
-                                     ),
-                                "stock":
-                                    (1 - prescription_count / (float(kit_contents[medicine_key]["total"]) * kits_in_clinic)
-                                     if kit_contents[medicine_key]["tablets_in_kit"] == ""
-                                     else 1 - prescription_count / (
-                                            float(kit_contents[medicine_key]["tablets_in_kit"]) * kits_in_clinic)
-                                     ),
-                            }
-                    }
-                })
+            # If clinic is not in JSON yet
+            prescription_for_clinic = prescriptions['clinic_data'].setdefault(location_id_str, {})
+            prescription_for_clinic[medicine_key] = {
+                "min_date": prescription_min_date.strftime("%Y-%m-%d"),
+                "max_date": prescription_max_date.strftime("%Y-%m-%d"),
+                "total_prescriptions": prescription_count,
+                "inventory":
+                    (medicine_kit_details["total"] * kits_in_clinic
+                     if medicine_kit_details["tablets_in_kit"] == ""
+                     else int(medicine_kit_details["tablets_in_kit"]) * kits_in_clinic - prescription_count
+                     ),
+                "depletion":
+                    (prescription_count / (float(medicine_kit_details["total"]) * kits_in_clinic)
+                     if medicine_kit_details["tablets_in_kit"] == ""
+                     else prescription_count / (float(medicine_kit_details["tablets_in_kit"]) * kits_in_clinic)
+                     ),
+                "stock":
+                    (1 - prescription_count / (float(medicine_kit_details["total"]) * kits_in_clinic)
+                     if medicine_kit_details["tablets_in_kit"] == ""
+                     else 1 - prescription_count / (float(medicine_kit_details["tablets_in_kit"]) * kits_in_clinic)
+                     ),
+            }
 
         # Assign the number of prescriptions to data object
         for prescription in prescription_in_date_range_query.all():
