@@ -32,17 +32,16 @@ class Indicators(Resource):
     """
     decorators = [authenticate]
 
-    def get(self, flags, variables, location, start_date=None, end_date=None, current_year=None):
+    def get(self, flags, variables, location, start_date=None,
+            end_date=None, current_year=None):
         current_year= request.args.get('current_year')
         if not start_date:
-            if current_year=="1":
+            if current_year == "1":
                 this_year = datetime.datetime.now().year
                 start_date = ew.epi_year_start_date_by_year(this_year).isoformat()
             else:
                 one_year_ago = datetime.datetime.now().date() - relativedelta(years=1)
                 start_date = one_year_ago.isoformat()
-
-
         s = time.time()
         mult_factor = 1
         count_over = False
@@ -70,7 +69,7 @@ class Indicators(Resource):
                         Data.region, Data.district,
                         Data.clinic))
         ]
-
+        conditions += [Data.date >= start_date]
 
         # Limit to given restrict variables
         for res_var in restricted_var:
