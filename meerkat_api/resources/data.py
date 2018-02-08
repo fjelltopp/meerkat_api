@@ -88,7 +88,7 @@ class AggregateLatest(Resource):
         return{"value":  result["total"]}
 
 
-    
+
 class AggregateYear(Resource):
     """
     Get total and weekly aggregate for the current year for the given
@@ -121,10 +121,17 @@ class AggregateYear(Resource):
         result = query_sum(
             db, variables, start_date, end_date, location_id, weeks=True, level=req_level
         )
-        if req_level==None:
+
+        sub_level_result = dict()
+        for key in result[req_level]:
+            sub_level_result[key] = dict()
+            sub_level_result[key]["year"] = result[req_level][key]["total"]
+            sub_level_result[key]["weeks"] = result[req_level][key]["weeks"]
+
+        if req_level == None:
             return {"weeks": result["weeks"], "year": result["total"]}
         else:
-            return result
+            return {"weeks": result["weeks"], "year": result["total"], req_level: sub_level_result}
 
 
 
