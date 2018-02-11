@@ -125,11 +125,12 @@ class AggregateYear(Resource):
         if req_level == None:
             return {"weeks": result["weeks"], "year": result["total"]}
         else:
-            sub_level_result = dict()
-            for key in result[req_level]:
-                sub_level_result[key] = dict()
-                sub_level_result[key]["year"] = result[req_level][key]["total"]
-                sub_level_result[key]["weeks"] = result[req_level][key]["weeks"]
+            sub_level_result = {}
+            for key, value in result[req_level].items():
+                sub_level_result[key] = {
+                    "year": value["total"],
+                    "weeks": value["weeks"]
+                }
             return {"weeks": result["weeks"], "year": result["total"], req_level: sub_level_result}
 
 
