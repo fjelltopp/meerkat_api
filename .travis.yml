@@ -9,9 +9,9 @@ matrix:
                MEERKAT_ABACUS_DB_URL='postgresql+psycopg2://postgres:postgres@localhost/meerkat_db'
                SQLALCHEMY_DATABASE_URI='postgresql+psycopg2://postgres:postgres@localhost/meerkat_db'
                MEERKAT_BRANCH='development'
-               DATA_DIRECTORY="$TRAVIS_BUILD_DIR/meerkat_abacus/meerkat_abacus/data/"
-               COUNTRY_CONFIG_DIR="$TRAVIS_BUILD_DIR/meerkat_abacus/meerkat_abacus/country_config/"
-               MEERKAT_AUTH_SETTINGS="$TRAVIS_BUILD_DIR/meerkat_libs/meerkat_libs/auth_client/dev_auth_config.py"
+               DATA_DIRECTORY="$TRAVIS_BUILD_DIR/../meerkat_abacus/meerkat_abacus/data/"
+               COUNTRY_CONFIG_DIR="$TRAVIS_BUILD_DIR/../meerkat_abacus/meerkat_abacus/country_config/"
+               MEERKAT_AUTH_SETTINGS="$TRAVIS_BUILD_DIR/../meerkat_libs/meerkat_libs/auth_client/dev_auth_config.py"
                CONFIG_OBJECT="meerkat_api.config.Testing"
 addons:
   postgresql: '9.6'
@@ -20,7 +20,7 @@ addons:
 services: postgresql
 install:
     - chmod +x ${TRAVIS_BUILD_DIR}/.travis-install.sh
-    - ${TRAVIS_BUILD_DIR}/.travis-install.sh
+    - . ${TRAVIS_BUILD_DIR}/.travis-install.sh
 script:
     - if [ "${TRAVIS_BUILD}" = "tests" ]; then nosetests -v --logging-level=WARNING; fi
     - if [ "${TRAVIS_BUILD}" = "docs" ]; then sphinx-build -a -b html -d docs/build/doctrees docs/source docs/build/html; fi
