@@ -15,11 +15,13 @@
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
-# documentation root, use os.path.abspath to make it absolute, like shown here.
-
-import sys
+# documentation root, use os.path.abspath to make it absolute.
+import pip
 import logging
+import os
+import sys
 from unittest.mock import MagicMock
+
 
 # -- Mock Modules --------------------------------------------------------------
 
@@ -44,7 +46,11 @@ MOCK_MODULES = [
     'numpy',
     'pandas',
     'pandas.tseries.offsets',
-    'yaml'
+    'yaml',
+    'shapely',
+    'shapely.wkb',
+    'shapely.wkt',
+    'shapely.geometry'
 ]
 
 
@@ -55,11 +61,22 @@ class Mock(MagicMock):
 
 
 def mock_modules():
-    logging.info("Mocking the following modules: {}".format(MOCK_MODULES))
     sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
 
 
 mock_modules()
+
+
+def install_package():
+    sys.path.insert(0, os.path.abspath('../../'))
+    with open(os.path.abspath('../../requirements.txt')) as f:
+        for line in f:
+            try:
+                pip.main(['install', line])
+            except Exception:
+                logging.warning("Failed to install {}".format(line))
+
+install_package()
 
 
 # -- General configuration ------------------------------------------------
