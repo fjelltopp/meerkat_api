@@ -18,6 +18,7 @@
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 
 import sys
+import logging
 from unittest.mock import MagicMock
 
 # -- Mock Modules --------------------------------------------------------------
@@ -26,7 +27,25 @@ from unittest.mock import MagicMock
 # the list of modules to mock below.  This will ensure that the build continues
 # even if the module isn't installed.
 
-MOCK_MODULES = ['meerkat_libs', 'meerkat_libs.auth_client']
+MOCK_MODULES = [
+    'meerkat_libs',
+    'meerkat_libs.auth_client',
+    'meerkat_libs.logger_client',
+    'meerkat_abacus',
+    'meerkat_abacus.util',
+    'meerkat_abacus.util.epi_week',
+    'meerkat_abacus.model',
+    'meerkat_analysis',
+    'meerkat_analysis.util',
+    'meerkat_analysis.indicators',
+    'meerkat_abacus.config',
+    'api_background',
+    'api_background.export_data',
+    'numpy',
+    'pandas',
+    'pandas.tseries.offsets',
+    'yaml'
+]
 
 
 class Mock(MagicMock):
@@ -36,6 +55,7 @@ class Mock(MagicMock):
 
 
 def mock_modules():
+    logging.info("Mocking the following modules: {}".format(MOCK_MODULES))
     sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
 
 

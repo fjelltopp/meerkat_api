@@ -5,7 +5,7 @@ elif [ "$TRAVIS_BUILD" = "tests" ]
 then
     wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh;
     bash miniconda.sh -b -p $HOME/miniconda
-    export PATH="$HOME/miniconda/bin:$PATH"
+    export PATH=$HOME/miniconda/bin:$PATH && echo $PATH
     hash -r
     conda config --set always_yes yes --set changeps1 no
     conda update -q conda
@@ -18,5 +18,5 @@ then
     pip install ../meerkat_analysis
     git clone --branch $MEERKAT_BRANCH https://github.com/meerkat-code/meerkat_abacus.git ../meerkat_abacus
     pip install ../meerkat_abacus
-    python ../meerkat_abacus/manage.py create-d
+    python ../meerkat_abacus/meerkat_abacus/manage.py create-db
 fi
