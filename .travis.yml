@@ -1,54 +1,29 @@
 language: python
-dist: 
-   - trusty
+dist: trusty
 sudo: false
-python:
-- '3.6'
-env:
-- MEERKAT_ABACUS_DB_URL='postgresql+psycopg2://postgres:postgres@localhost/meerkat_db'
-  SQLALCHEMY_DATABASE_URI='postgresql+psycopg2://postgres:postgres@localhost/meerkat_db'
-  MEERKAT_BRANCH='development'
-  DATA_DIRECTORY="$TRAVIS_BUILD_DIR/meerkat_abacus/meerkat_abacus/data/"
-  COUNTRY_CONFIG_DIR="$TRAVIS_BUILD_DIR/meerkat_abacus/meerkat_abacus/country_config/"
-  MEERKAT_AUTH_SETTINGS="$TRAVIS_BUILD_DIR/meerkat_libs/meerkat_libs/auth_client/dev_auth_config.py"
-  CONFIG_OBJECT="meerkat_api.config.Testing"
-
+python: '3.6'
+matrix:
+    include:
+        - env: TRAVIS_BUILD=docs
+        - env: TRAVIS_BUILD=tests
+               MEERKAT_ABACUS_DB_URL='postgresql+psycopg2://postgres:postgres@localhost/meerkat_db'
+               SQLALCHEMY_DATABASE_URI='postgresql+psycopg2://postgres:postgres@localhost/meerkat_db'
+               MEERKAT_BRANCH='development'
+               DATA_DIRECTORY="$TRAVIS_BUILD_DIR/../meerkat_abacus/meerkat_abacus/data/"
+               COUNTRY_CONFIG_DIR="$TRAVIS_BUILD_DIR/../meerkat_abacus/meerkat_abacus/country_config/"
+               MEERKAT_AUTH_SETTINGS="$TRAVIS_BUILD_DIR/../meerkat_libs/meerkat_libs/auth_client/dev_auth_config.py"
+               CONFIG_OBJECT="meerkat_api.config.Testing"
 addons:
   postgresql: '9.6'
   apt:
-     packages:
-     - postgresql-9.6-postgis-2.3
-
-services:
-- postgresql
-
+     packages: postgresql-9.6-postgis-2.3
+services: postgresql
 install:
-- wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh;
-- bash miniconda.sh -b -p $HOME/miniconda
-- export PATH="$HOME/miniconda/bin:$PATH"
-- hash -r
-- conda config --set always_yes yes --set changeps1 no
-- conda update -q conda
-- conda install pandas
-- pip install -r requirements.txt
-- cd api_background
-- pip install .
-- cd ..
-- git clone --branch $MEERKAT_BRANCH --single-branch https://github.com/meerkat-code/meerkat_libs.git
-- pip install -r meerkat_libs/requirements.txt
-- export PYTHONPATH=$PYTHONPATH:$HOME/build/meerkat-code/meerkat_api/meerkat_libs
-- git clone --branch $MEERKAT_BRANCH --single-branch https://github.com/meerkat-code/meerkat_analysis.git
-- pip install -r meerkat_analysis/requirements.txt
-- export PYTHONPATH=$PYTHONPATH:$HOME/build/meerkat-code/meerkat_api/meerkat_analysis
-- git clone https://github.com/meerkat-code/meerkat_abacus.git
-- pip install -r meerkat_abacus/requirements.txt
-- cd meerkat_abacus
-- git checkout $MEERKAT_BRANCH
-- pip install .
-- python meerkat_abacus/manage.py create-db
-- cd ..
-
-script: nosetests -v
+    - chmod +x ${TRAVIS_BUILD_DIR}/.travis-install.sh
+    - . ${TRAVIS_BUILD_DIR}/.travis-install.sh
+script:
+    - if [ "${TRAVIS_BUILD}" = "tests" ]; then nosetests -v --logging-level=WARNING; fi
+    - if [ "${TRAVIS_BUILD}" = "docs" ]; then sphinx-build -a -b html -d docs/build/doctrees docs/source docs/build/html; fi
 notifications:
   slack:
     secure: 1xYND1jMCeczxf0kP+dclEF59T/7Sc1i2Z05iq5emMLfKiOgBmmi2NDAn1QUwMx0hT0d4F6pp+O598K5M3IswvOayy5Y4x2YtC8s3VY3mqqU0RnDNzz9ghX1m79jNPMC22JsQ+7IUCVrSbJmy2RvJCe2r78i4O/JadShK3CrU2AwACk7UVlkGO+19cQitihXZhkXpy8I6rqslJe0Zk4iMgT/ri2kgcHo1Axwz0DBMTBGBbTmLRcNafQEWtnkTmEtp7UULtf38ZB9pNQc1gdfc6XzBozRu8+PwrVOPn56ukKyNbaR22LRdLUBxBMvezjhEpjBW109+WN0poZtBFdZFZu6vFF/tjb3jJDz1pvdxmghWdYZuHQ8y6HeX3XMVrox6Zw8p3PcaVCQB187GSFB0sL9D5gWdnzCDRGKSxPLVjrxD2Qc+lx7MzgACjE+Yk1Zmv/uIqGG/xU5fXom418OQEfipqCwrW3K8Sh79KTA8B0PRSMk5qF3zlDX9nUqjqNCd9GnauAX5XfPbOFOJ10yRVwEjVmfML9FNIJz/NYHq8lIu45eaoUlFoEgahFnx9MqMQDDJ6fkV4XXoDtXNr99qY7z9CXKZbANHhzIqNZUpGQ1ufjPoRyb/4QztAAk4KSSyrqU6IW3japmxK2ytsxIPD++U0AMBvC0RDI94UBh9Sc=
