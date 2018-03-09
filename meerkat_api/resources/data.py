@@ -2,7 +2,7 @@
 Resource for aggregating and querying data
 
 """
-from flask_restful import Resource
+from flask_restful import Resource, reqparse
 from sqlalchemy import or_
 from datetime import datetime, timedelta
 from flask import jsonify, g, request
@@ -135,6 +135,8 @@ class AggregateYear(Resource):
 
 
 
+EXCLUDED_VARIABLES_ARG_NAME = 'excluded_variables'
+
 class AggregateCategory(Resource):
     """
     Get total and weekly aggregate for a year for all variables
@@ -150,7 +152,13 @@ class AggregateCategory(Resource):
     """
     decorators = [authenticate]
 
+
     def get(self, category, location_id, lim_variables=None, year=None):
+
+        parser = reqparse.RequestParser()
+        parser.add_argument(EXCLUDED_VARIABLES_ARG_NAME, action='append')
+        args = parser.parse_args()
+
         if year is None:
             year = datetime.today().year
         year = int(year)
@@ -162,10 +170,16 @@ class AggregateCategory(Resource):
         else:
             filter_variables = ["data_entry"]
 
+        excluded_variables_ = args[EXCLUDED_VARIABLES_ARG_NAME]
+        if excluded_variables_:
+            excluded_variables = excluded_variables_
+        else:
+            excluded_variables = []
 
         result = query_sum(
             db, filter_variables, start_date, end_date, location_id,
-            group_by_category=category, weeks=True
+            group_by_category=category, weeks=True,
+            excluded_variables=excluded_variables
         )
         return_data = {}
         variables_instance = Variables()
@@ -201,6 +215,8 @@ class AggregateCategorySum(Resource):
         variables_instance = Variables()
         variables = variables_instance.get(category)
         aggregate_year = AggregateYear()
+
+        #TODO: parse filer with excluded variables
 
         return_data = {}
         for variable in variables.keys():
