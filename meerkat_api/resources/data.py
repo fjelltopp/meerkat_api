@@ -106,7 +106,7 @@ class AggregateYear(Resource):
     decorators = [authenticate]
 
     def get(self, variable_id, location_id, year=datetime.today().year,
-            lim_variable=""):
+            lim_variables=""):
         vi = str(variable_id)
         year = int(year)
         start_date = datetime(year, 1, 1)
@@ -116,8 +116,8 @@ class AggregateYear(Resource):
         req_level= request.args.get('level')
 
         # We sum over variable grouped by epi_week
-        if(lim_variable != ""):
-            variables.append(lim_variable)
+        if lim_variables != "":
+            variables += lim_variables.split(",")
         result = query_sum(
             db, variables, start_date, end_date, location_id, weeks=True, level=req_level
         )
@@ -150,15 +150,15 @@ class AggregateCategory(Resource):
     """
     decorators = [authenticate]
 
-    def get(self, category, location_id, lim_variable=None, year=None):
+    def get(self, category, location_id, lim_variables=None, year=None):
         if year is None:
             year = datetime.today().year
         year = int(year)
         start_date = datetime(year, 1, 1)
         end_date = datetime(year + 1, 1, 1)
 
-        if lim_variable is not None:
-            filter_variables = ["data_entry"] + [lim_variable]
+        if lim_variables is not None:
+            filter_variables = ["data_entry"] + lim_variables.split(",")
         else:
             filter_variables = ["data_entry"]
 
@@ -193,7 +193,7 @@ class AggregateCategorySum(Resource):
     """
     decorators = [authenticate]
 
-    def get(self, category, location_id, lim_variable="", year=None):
+    def get(self, category, location_id, lim_variables="", year=None):
 
         
         if year is None:
@@ -207,7 +207,7 @@ class AggregateCategorySum(Resource):
             return_data[variable] = aggregate_year.get(variable,
                                                        location_id,
                                                        year,
-                                                       lim_variable)
+                                                       lim_variables)
         return return_data
     
 class AggregateLatestYear(Resource):
@@ -370,9 +370,9 @@ api.add_resource(AggregateLatestCategory,
 api.add_resource(AggregateCategory,
                  "/aggregate_category/<category>/<location_id>",
                  "/aggregate_category/<category>/<location_id>/<year>",
-                 "/aggregate_category/<category>/<location_id>/<year>/<lim_variable>")
+                 "/aggregate_category/<category>/<location_id>/<year>/<lim_variables>")
 api.add_resource(AggregateCategorySum,
                  "/aggregate_category_sum/<category>/<location_id>",
                  "/aggregate_category_sum/<category>/<location_id>/<year>",
-                 "/aggregate_category_sum/<category>/<location_id>/<year>/<lim_variable>")
+                 "/aggregate_category_sum/<category>/<location_id>/<year>/<lim_variables>")
 api.add_resource(Records, "/records/<variable>/<location_id>")

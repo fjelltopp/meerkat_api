@@ -61,8 +61,10 @@ def query_sum(db, var_ids, start_date, end_date, location,
     ret = {"total": 0}
 
     for i, var_id in enumerate(var_ids):
-        where_clauses.append("(data.variables ? :variables_{})".format(i + 2))
-        variables["variables_" + str(i + 2)] = var_id
+        var_counter = i + 2 # variables_1 already in place
+        condition_ = "(data.variables ? :variables_{})".format(var_counter)
+        where_clauses.append(condition_)
+        variables["variables_" + str(var_counter)] = var_id
 
     if weeks:
         extra_columns = ", epi_week AS week"
