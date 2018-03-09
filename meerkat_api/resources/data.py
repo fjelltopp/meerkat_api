@@ -106,12 +106,14 @@ class AggregateYear(Resource):
     decorators = [authenticate]
 
     def get(self, variable_id, location_id, year=datetime.today().year,
-            lim_variables=""):
+            lim_variables="", exclude_variables=None):
         vi = str(variable_id)
         year = int(year)
         start_date = datetime(year, 1, 1)
         end_date = datetime(year + 1, 1, 1)
         variables = [vi]
+        if not exclude_variables:
+            exclude_variables = []
 
         req_level= request.args.get('level')
 
@@ -119,7 +121,7 @@ class AggregateYear(Resource):
         if lim_variables != "":
             variables += lim_variables.split(",")
         result = query_sum(
-            db, variables, start_date, end_date, location_id, weeks=True, level=req_level
+            db, variables, start_date, end_date, location_id, weeks=True, level=req_level, exclude_variables=exclude_variables
         )
 
         if req_level == None:
@@ -179,7 +181,7 @@ class AggregateCategory(Resource):
         result = query_sum(
             db, filter_variables, start_date, end_date, location_id,
             group_by_category=category, weeks=True,
-            excluded_variables=excluded_variables
+            exclude_variables=excluded_variables
         )
         return_data = {}
         variables_instance = Variables()
@@ -209,14 +211,21 @@ class AggregateCategorySum(Resource):
 
     def get(self, category, location_id, lim_variables="", year=None):
 
-        
+        parser = reqparse.RequestParser()
+        parser.add_argument(EXCLUDED_VARIABLES_ARG_NAME, action='append')
+        args = parser.parse_args()
+
         if year is None:
             year = datetime.today().year
         variables_instance = Variables()
         variables = variables_instance.get(category)
         aggregate_year = AggregateYear()
 
-        #TODO: parse filer with excluded variables
+        excluded_variables_ = args[EXCLUDED_VARIABLES_ARG_NAME]
+        if excluded_variables_:
+            excluded_variables = excluded_variables_
+        else:
+            excluded_variables = []
 
         return_data = {}
         for variable in variables.keys():
