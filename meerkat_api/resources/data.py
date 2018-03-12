@@ -147,7 +147,7 @@ class AggregateCategory(Resource):
         category: category\n
         location: location_id\n
         year: year\n
-        lim_variable: limit results to those with this variable\n
+        lim_variables: limit results to those with this variable\n
 
     Returns:\n
         result_dict: {variable_id: AggregateYear result_dict}\n
