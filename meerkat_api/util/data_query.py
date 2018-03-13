@@ -13,7 +13,7 @@ qu = "SELECT sum(CAST(data.variables ->> :variables_1 AS FLOAT)) AS sum_1 extra_
 
 def query_sum(db, var_ids, start_date, end_date, location,
               group_by_category=None, allowed_location=1,
-              level=None, weeks=False, date_variable=None):
+              level=None, weeks=False, date_variable=None, exclude_variables=None):
     """
     Calculates the total number of records with every variable in var_ids.
     If var_ids is only one variable it can also be used to sum up the numbers
@@ -30,6 +30,7 @@ def query_sum(db, var_ids, start_date, end_date, location,
         level: Level to brea down the total by
         weeks: True if we want a breakdwon by weeks.
         date_variable: if None we use date from data otherwise we use the variable indicated
+        exclude_variables: list with variables to be excluded
     Returns:
        result(dict): Dictionary with results. Always has total key, and if
                      level was given there is a level key with the data
@@ -44,6 +45,8 @@ def query_sum(db, var_ids, start_date, end_date, location,
         return {"weeks": [], "total": 0}
     if not isinstance(var_ids, list):
         var_ids = [var_ids]
+    if exclude_variables is None:
+        exclude_variables = []
     variables = {
         "date_1": start_date,
         "date_2": end_date,
@@ -60,9 +63,15 @@ def query_sum(db, var_ids, start_date, end_date, location,
     where_clauses = []
     ret = {"total": 0}
 
-    for i, var_id in enumerate(var_ids):
-        where_clauses.append("(data.variables ? :variables_{})".format(i + 2))
-        variables["variables_" + str(i + 2)] = var_id
+    for i, var_id in enumerate(var_ids, 2): # variables_1 already in place
+        condition_ = "(data.variables ? :variables_{})".format(i)
+        where_clauses.append(condition_)
+        variables[f"variables_{i}"] = var_id
+
+    for i, var_id in enumerate(exclude_variables, 1):
+        condition_ = f"(data.variables->>:excluded_variables_{i}) is null"
+        where_clauses.append(condition_)
+        variables[f"excluded_variables_{i}"] = var_id
 
     if weeks:
         extra_columns = ", epi_week AS week"
