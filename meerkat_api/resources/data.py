@@ -139,7 +139,24 @@ class AggregateYear(Resource):
 
 EXCLUDED_VARIABLES_ARG_NAME = 'excluded_variables'
 
-class AggregateCategory(Resource):
+class AggregateBaseResource(Resource):
+
+    def _get_url_params(self):
+        parser = reqparse.RequestParser()
+        parser.add_argument(EXCLUDED_VARIABLES_ARG_NAME, action='append')
+        args = parser.parse_args()
+        return args
+
+    def _get_excluded_variables(self, args):
+        excluded_variables_ = args[EXCLUDED_VARIABLES_ARG_NAME]
+        if excluded_variables_:
+            excluded_variables = excluded_variables_
+        else:
+            excluded_variables = []
+        return excluded_variables
+
+
+class AggregateCategory(AggregateBaseResource):
     """
     Get total and weekly aggregate for a year for all variables
     with a given category. Only aggregate over the given location. It is faster than AggregateCategorySum() if each variable in the categories are mutually exclusive (for instance for gender) but gives exactly the same output.
@@ -157,9 +174,7 @@ class AggregateCategory(Resource):
 
     def get(self, category, location_id, lim_variables=None, year=None):
 
-        parser = reqparse.RequestParser()
-        parser.add_argument(EXCLUDED_VARIABLES_ARG_NAME, action='append')
-        args = parser.parse_args()
+        args = self._get_url_params()
 
         if year is None:
             year = datetime.today().year
@@ -172,11 +187,7 @@ class AggregateCategory(Resource):
         else:
             filter_variables = ["data_entry"]
 
-        excluded_variables_ = args[EXCLUDED_VARIABLES_ARG_NAME]
-        if excluded_variables_:
-            excluded_variables = excluded_variables_
-        else:
-            excluded_variables = []
+        excluded_variables = self._get_excluded_variables(args)
 
         result = query_sum(
             db, filter_variables, start_date, end_date, location_id,
@@ -193,8 +204,8 @@ class AggregateCategory(Resource):
             else:
                 return_data[r] = {"year": 0, "weeks": {}}
         return return_data
-    
-class AggregateCategorySum(Resource):
+
+class AggregateCategorySum(AggregateBaseResource):
     """
     This function does the same as AggregateCategory. Get total and weekly aggregate for a year for all variables with a given category. Only aggregate over the given location. It gives the same output as AggregateCategory() and is better suited if variables within a category are overlapping.
 
@@ -211,9 +222,7 @@ class AggregateCategorySum(Resource):
 
     def get(self, category, location_id, lim_variables="", year=None):
 
-        parser = reqparse.RequestParser()
-        parser.add_argument(EXCLUDED_VARIABLES_ARG_NAME, action='append')
-        args = parser.parse_args()
+        args = self._get_url_params()
 
         if year is None:
             year = datetime.today().year
@@ -221,18 +230,15 @@ class AggregateCategorySum(Resource):
         variables = variables_instance.get(category)
         aggregate_year = AggregateYear()
 
-        excluded_variables_ = args[EXCLUDED_VARIABLES_ARG_NAME]
-        if excluded_variables_:
-            excluded_variables = excluded_variables_
-        else:
-            excluded_variables = []
+        excluded_variables = self._get_excluded_variables(args)
 
         return_data = {}
         for variable in variables.keys():
             return_data[variable] = aggregate_year.get(variable,
                                                        location_id,
                                                        year,
-                                                       lim_variables)
+                                                       lim_variables,
+                                                       exclude_variables=excluded_variables)
         return return_data
     
 class AggregateLatestYear(Resource):
