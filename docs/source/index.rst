@@ -10,11 +10,17 @@ We use flaskRESTful to create the API and flask-sqlalchemy to access the db
 Structure
 ---------
 
-__init__.py - Sets up the flask app and all the URLs
+__init__.py - Basic intiailisation of flaks ap
+
+app.py - Initialises flask extensions
+
+extensions.py - Defines flask extensions
 
 authentication.py - Methods for authentication
 
 util/__init__.py - Various utility methods
+
+util/data_query.py - Main utility for aggregating data over time and location
 
 resources/: Folder containing the following files:
 
@@ -24,12 +30,14 @@ resources/: Folder containing the following files:
 * alerts.py - Access to alerts and alert_investigations
 * epi_week.py - Calculating epi weeks
 * incidence.py - Calculating incidence rates.
-* explore.py - Export various data as csv-files
-* export_data.py - Gives options to look at cross tables and time-lines of data
+* explore.py - Functinality for displaying  cross tables and timelines
+* export_data.py - Exports data as csv (run in the background as a celery task)
 * map.py - Mapping different data
+* indicators.py - Calculate timeline indicators
+* incidence.py - Calculate incidence rates
+* prescriptions.py - Calculating prescriptions used and remaining stock
 * reports.py - Data for specified reports
 * completeness.py - Calculating completeness of reporting
-* links.py - Retrieve link information
 * frontpage.py - High level information
 
 ------

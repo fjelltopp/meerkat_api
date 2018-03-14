@@ -18,6 +18,7 @@
 # documentation root, use os.path.abspath to make it absolute.
 import sys
 import os
+import importlib
 from unittest.mock import MagicMock
 
 sys.path.insert(0, os.path.abspath('../../'))
@@ -49,9 +50,12 @@ MOCK_MODULES = [
     'shapely',
     'shapely.wkb',
     'shapely.wkt',
-    'shapely.geometry'
+    'shapely.geometry',
+    "geoalchemy2.elements",
+    "geoalchemy2.shape"
 ]
 
+print(__name__)
 
 class Mock(MagicMock):
     @classmethod
@@ -60,7 +64,11 @@ class Mock(MagicMock):
 
 
 def mock_modules():
-    sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
+    for mod_name in MOCK_MODULES:
+        try:
+            mod = importlib.import_module(mod_name)
+        except:
+            sys.modules.update({mod_name: Mock()})
 
 
 mock_modules()
