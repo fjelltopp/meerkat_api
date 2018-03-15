@@ -97,6 +97,38 @@ class DataQueryTests(meerkat_api.test.TestCase):
         self.assertEqual(result["gender"]["gen_1"]["weeks"], {18: 3})
         self.assertEqual(result["gender"]["gen_2"]["total"], 7)
 
+    def test_query_sum_category_with_multiple_limit_variables(self):
+        start_date = datetime(2015, 1, 1)
+        end_date = datetime(2016, 1, 1)
+
+        actual = data_query.query_sum(self.db, ["tot_1", "age_1"], start_date,
+                                      end_date, 1,
+                                      group_by_category="gender")
+        expected = {
+            'total': 2.0,
+            'gender': {
+                'gen_1': 2.0
+            }
+        }
+        self.assertDictEqual(actual, expected)
+
+    def test_query_sum_category_with_excluded_variables(self):
+        start_date = datetime(2015, 1, 1)
+        end_date = datetime(2016, 1, 1)
+
+        actual = data_query.query_sum(self.db, "tot_1", start_date,
+                                      end_date, 1,
+                                      group_by_category="gender",
+                                      exclude_variables=["age_1"])
+        expected = {
+            'total': 8.0,
+            'gender': {
+                'gen_1': 1.0,
+                'gen_2': 7.0
+            }
+        }
+        self.assertDictEqual(actual, expected)
+
 
     def test_query_sum_weeks(self):
         """ Test that the week breakdown works"""

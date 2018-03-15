@@ -2,7 +2,7 @@
 Resource for aggregating and querying data
 
 """
-from flask_restful import Resource
+from flask_restful import Resource, reqparse
 from sqlalchemy import or_
 from datetime import datetime, timedelta
 from flask import jsonify, g, request
@@ -27,7 +27,7 @@ class LatestData(Resource):
     def get(self, location_id):
         if not is_allowed_location(location_id, g.allowed_location):
             return {"records": []}
-            
+
         results = db.session.query(Data).filter(or_(
                 loc == location_id for loc in (Data.country,
                                                Data.region,
@@ -36,6 +36,7 @@ class LatestData(Resource):
                                                 Data.submission_date >= datetime.now() - timedelta(days=1)).order_by(Data.submission_date.desc()).all()
 
         return jsonify({"records": rows_to_dicts(results)})
+
 
 class Aggregate(Resource):
     """
@@ -51,7 +52,6 @@ class Aggregate(Resource):
     decorators = [authenticate]
 
     def get(self, variable_id, location_id):
-
         result = query_sum(
             db,
             [variable_id],
@@ -85,8 +85,7 @@ class AggregateLatest(Resource):
         result = latest_query(
             db, variable_id, identifier_id, start_date, end_date, location_id
         )
-        return{"value":  result["total"]}
-
+        return {"value": result["total"]}
 
 
 class AggregateYear(Resource):
@@ -106,20 +105,22 @@ class AggregateYear(Resource):
     decorators = [authenticate]
 
     def get(self, variable_id, location_id, year=datetime.today().year,
-            lim_variable=""):
+            lim_variables="", exclude_variables=None):
         vi = str(variable_id)
         year = int(year)
         start_date = datetime(year, 1, 1)
         end_date = datetime(year + 1, 1, 1)
         variables = [vi]
+        if not exclude_variables:
+            exclude_variables = []
 
-        req_level= request.args.get('level')
+        req_level = request.args.get('level')
 
         # We sum over variable grouped by epi_week
-        if(lim_variable != ""):
-            variables.append(lim_variable)
+        if lim_variables != "":
+            variables += lim_variables.split(",")
         result = query_sum(
-            db, variables, start_date, end_date, location_id, weeks=True, level=req_level
+            db, variables, start_date, end_date, location_id, weeks=True, level=req_level, exclude_variables=exclude_variables
         )
 
         if req_level == None:
@@ -134,8 +135,27 @@ class AggregateYear(Resource):
             return {"weeks": result["weeks"], "year": result["total"], req_level: sub_level_result}
 
 
+EXCLUDED_VARIABLES_ARG_NAME = 'excluded_variables'
 
-class AggregateCategory(Resource):
+
+class AggregateBaseResource(Resource):
+
+    def _get_url_params(self):
+        parser = reqparse.RequestParser()
+        parser.add_argument(EXCLUDED_VARIABLES_ARG_NAME, action='append')
+        args = parser.parse_args()
+        return args
+
+    def _get_excluded_variables(self, args):
+        excluded_variables_ = args[EXCLUDED_VARIABLES_ARG_NAME]
+        if excluded_variables_:
+            excluded_variables = excluded_variables_
+        else:
+            excluded_variables = []
+        return excluded_variables
+
+
+class AggregateCategory(AggregateBaseResource):
     """
     Get total and weekly aggregate for a year for all variables
     with a given category. Only aggregate over the given location. It is faster than AggregateCategorySum() if each variable in the categories are mutually exclusive (for instance for gender) but gives exactly the same output.
@@ -143,29 +163,34 @@ class AggregateCategory(Resource):
         category: category\n
         location: location_id\n
         year: year\n
-        lim_variable: limit results to those with this variable\n
+        lim_variables: limit results to those with this variable\n
 
     Returns:\n
         result_dict: {variable_id: AggregateYear result_dict}\n
     """
     decorators = [authenticate]
 
-    def get(self, category, location_id, lim_variable=None, year=None):
+    def get(self, category, location_id, lim_variables=None, year=None):
+
+        args = self._get_url_params()
+
         if year is None:
             year = datetime.today().year
         year = int(year)
         start_date = datetime(year, 1, 1)
         end_date = datetime(year + 1, 1, 1)
 
-        if lim_variable is not None:
-            filter_variables = ["data_entry"] + [lim_variable]
+        if lim_variables is not None:
+            filter_variables = ["data_entry"] + lim_variables.split(",")
         else:
             filter_variables = ["data_entry"]
 
+        excluded_variables = self._get_excluded_variables(args)
 
         result = query_sum(
             db, filter_variables, start_date, end_date, location_id,
-            group_by_category=category, weeks=True
+            group_by_category=category, weeks=True,
+            exclude_variables=excluded_variables
         )
         return_data = {}
         variables_instance = Variables()
@@ -177,8 +202,9 @@ class AggregateCategory(Resource):
             else:
                 return_data[r] = {"year": 0, "weeks": {}}
         return return_data
-    
-class AggregateCategorySum(Resource):
+
+
+class AggregateCategorySum(AggregateBaseResource):
     """
     This function does the same as AggregateCategory. Get total and weekly aggregate for a year for all variables with a given category. Only aggregate over the given location. It gives the same output as AggregateCategory() and is better suited if variables within a category are overlapping.
 
@@ -193,23 +219,28 @@ class AggregateCategorySum(Resource):
     """
     decorators = [authenticate]
 
-    def get(self, category, location_id, lim_variable="", year=None):
+    def get(self, category, location_id, lim_variables="", year=None):
 
-        
+        args = self._get_url_params()
+
         if year is None:
             year = datetime.today().year
         variables_instance = Variables()
         variables = variables_instance.get(category)
         aggregate_year = AggregateYear()
 
+        excluded_variables = self._get_excluded_variables(args)
+
         return_data = {}
         for variable in variables.keys():
             return_data[variable] = aggregate_year.get(variable,
                                                        location_id,
                                                        year,
-                                                       lim_variable)
+                                                       lim_variables,
+                                                       exclude_variables=excluded_variables)
         return return_data
-    
+
+
 class AggregateLatestYear(Resource):
     """
     Get total and weekly aggregate for the current year for the given
@@ -260,7 +291,7 @@ class AggregateLatestCategory(Resource):
     """
     decorators = [authenticate]
 
-    def get(self, category,  identifier_id, location_id, weeks=True, year=None):
+    def get(self, category, identifier_id, location_id, weeks=True, year=None):
         if year is None:
             year = datetime.today().year
 
@@ -278,10 +309,10 @@ class AggregateLatestCategory(Resource):
                 location_id,
                 year,
                 weeks=weeks)
-                
+
         return return_data
 
-    
+
 class AggregateLatestLevel(Resource):
     """
     Get total and weekly aggregate for the current year for the given
@@ -311,16 +342,15 @@ class AggregateLatestLevel(Resource):
         )
         ret = {}
         locs = get_locations(db.session)
-        if result: 
+        if result:
             for r in result[level]:
                 ret[locs[r].name] = {"total": result[level][r]["total"],
                                      "weeks": result[level][r]["weeks"],
                                      "id": r}
-            
+
         return ret
 
 
-    
 class Records(Resource):
     """
     Return the records with a given variable and location
@@ -337,7 +367,7 @@ class Records(Resource):
     def get(self, variable, location_id):
         if not is_allowed_location(location_id, g.allowed_location):
             return {"records": []}
-            
+
         results = db.session.query(Data).filter(
             Data.variables.has_key(str(variable)), or_(
                 loc == location_id for loc in (Data.country,
@@ -346,6 +376,8 @@ class Records(Resource):
                                                Data.clinic))).all()
 
         return jsonify({"records": rows_to_dicts(results)})
+
+
 api.add_resource(Aggregate, "/aggregate/<variable_id>/<location_id>")
 api.add_resource(AggregateLatest, "/aggregate_latest/<variable_id>/<identifier_id>/<location_id>")
 
@@ -365,14 +397,14 @@ api.add_resource(AggregateLatestCategory,
                  "/aggregate_latest_category/<category>/<identifier_id>/<location_id>/<weeks>",
                  "/aggregate_latest_category/<category>/<identifier_id>/<location_id>/<weeks>/<year>"
 
-                )
+                 )
 
 api.add_resource(AggregateCategory,
                  "/aggregate_category/<category>/<location_id>",
                  "/aggregate_category/<category>/<location_id>/<year>",
-                 "/aggregate_category/<category>/<location_id>/<year>/<lim_variable>")
+                 "/aggregate_category/<category>/<location_id>/<year>/<lim_variables>")
 api.add_resource(AggregateCategorySum,
                  "/aggregate_category_sum/<category>/<location_id>",
                  "/aggregate_category_sum/<category>/<location_id>/<year>",
-                 "/aggregate_category_sum/<category>/<location_id>/<year>/<lim_variable>")
+                 "/aggregate_category_sum/<category>/<location_id>/<year>/<lim_variables>")
 api.add_resource(Records, "/records/<variable>/<location_id>")
