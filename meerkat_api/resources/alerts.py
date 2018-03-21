@@ -190,7 +190,7 @@ class AggregateAlerts(Resource):
                     if "ale_1" in a["variables"]:
                         if "ale_2" in a["variables"]:
                             status = "Ongoing"
-                        elif "ale_3" in a["variables"]:
+                        elif ( "ale_3" in a["variables"] ) or ( "ale_10" in a["variables"] ):
                             status = "Disregarded"
                         elif "ale_4" in a["variables"]:
                             status = "Ongoing"
@@ -211,7 +211,7 @@ class AggregateAlerts(Resource):
                     if "ale_1" in a["variables"]:
                         if "ale_2" in a["variables"]:
                             status = "Confirmed"
-                        elif "ale_3" in a["variables"]:
+                        elif ( "ale_3" in a["variables"] ) or ( "ale_10" in a["variables"] ):
                             status = "Disregarded"
                         elif "ale_4" in a["variables"]:
                             status = "Ongoing"
