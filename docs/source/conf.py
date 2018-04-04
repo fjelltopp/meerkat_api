@@ -31,6 +31,7 @@ sys.path.insert(0, os.path.abspath('../../'))
 
 MOCK_MODULES = [
     'meerkat_libs',
+    'pylab',
     'meerkat_libs.auth_client',
     'meerkat_libs.logger_client',
     'meerkat_abacus',
@@ -68,6 +69,7 @@ def mock_modules():
         try:
             mod = importlib.import_module(mod_name)
         except:
+            print("Mocking: {}".format(mod_name))
             sys.modules.update({mod_name: Mock()})
 
 

@@ -10,7 +10,7 @@ from geoalchemy2.elements import WKBElement
 from geoalchemy2.shape import to_shape
 from raven.contrib.flask import Sentry
 from werkzeug.contrib.fixers import ProxyFix
-from meerkat_libs.logger_client import FlaskActivityLogger
+import meerkat_libs
 import os
 
 from meerkat_api.extensions import db, api
@@ -64,7 +64,7 @@ def create_app():
 def register_extensions(app):
     db.init_app(app)
     api.init_app(app)
-    FlaskActivityLogger(app)
+    meerkat_libs.logger_client.FlaskActivityLogger(app)
     if app.config["SENTRY_DNS"]:
         sentry = Sentry(app, dsn=app.config["SENTRY_DNS"])
     app.wsgi_app = ProxyFix(app.wsgi_app)
