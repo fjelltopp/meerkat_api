@@ -38,12 +38,20 @@ def fix_dates(start_date, end_date):
        dates(tuple): (start_date, end_date)
     """
     if end_date:
-        end_date  = parser.parse(end_date).replace(tzinfo=None)
+        end_date = parser.parse(end_date).replace(hour=23,
+                                                  minute=59,
+                                                  second=59,
+                                                  microsecond=999,
+                                                  tzinfo=None)
     else:
         end_date = datetime.now()
+
     if start_date:
-        start_date = parser.parse(start_date).replace(tzinfo=None)
-      
+        start_date = parser.parse(start_date).replace(hour=0,
+                                                      minute=0,
+                                                      second=0,
+                                                      microsecond=0,
+                                                      tzinfo=None)
     else:
         start_date = end_date.replace(month=1, day=1,
                                       hour=0, second=0,
