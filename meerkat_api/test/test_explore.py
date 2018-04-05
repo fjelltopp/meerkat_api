@@ -5,11 +5,11 @@ Meerkat API Tests
 Unit tests for the explore resource of Meerkat API
 """
 import json
-import unittest
 from datetime import datetime
 import pytz
 from . import settings
 import meerkat_api
+import meerkat_api.util as util
 from meerkat_api.test import db_util
 from meerkat_api.resources import explore
 
@@ -27,20 +27,21 @@ class MeerkatAPITestCase(meerkat_api.test.TestCase):
 
         start_date = datetime(2015, 4, 3)
         end_date = datetime(2013, 4, 5)
-        new_dates = explore.fix_dates(start_date.isoformat(),
+        new_dates = util.fix_dates(start_date.isoformat(),
                                       end_date.isoformat())
-        self.assertEqual(new_dates[0], start_date)
-        self.assertEqual(new_dates[1], end_date)
-        new_dates = explore.fix_dates(None, None)
-        self.assertEqual(new_dates[0], datetime(datetime.now().year, 1, 1))
+        self.assertEqual(new_dates[0].date(), start_date.date())
+        self.assertEqual(new_dates[1].date(), end_date.date())
+
+        new_dates = util.fix_dates(None, None)
+        self.assertEqual(new_dates[0].date(), datetime(datetime.now().year, 1, 1).date())
         self.assertLess((datetime.now() - new_dates[1]).seconds, 1)
 
         start_date_timezone = pytz.UTC.localize(start_date)
         end_date_timezone = pytz.UTC.localize(end_date)
-        new_dates = explore.fix_dates(start_date_timezone.isoformat(),
+        new_dates = util.fix_dates(start_date_timezone.isoformat(),
                                       end_date_timezone.isoformat())
-        self.assertEqual(new_dates[0], start_date)
-        self.assertEqual(new_dates[1], end_date)
+        self.assertEqual(new_dates[0].date(), start_date.date())
+        self.assertEqual(new_dates[1].date(), end_date.date())
 
 
     def test_get_variables(self):

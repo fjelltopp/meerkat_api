@@ -142,18 +142,18 @@ class MeerkatAPIReportsUtilityTestCase(meerkat_api.test.TestCase):
         end_date = datetime(2013, 4, 5)
         new_dates = reports.fix_dates(start_date.isoformat(),
                                       end_date.isoformat())
-        self.assertEqual(new_dates[0], start_date)
-        self.assertEqual(new_dates[1], end_date)
+        self.assertEqual(new_dates[0].date(), start_date.date())
+        self.assertEqual(new_dates[1].date(), end_date.date())
         new_dates = reports.fix_dates(None, None)
         self.assertEqual(new_dates[0], datetime(datetime.now().year, 1, 1))
         self.assertLess((datetime.now() - new_dates[1]).seconds, 1)
 
-        start_date_timezone = pytz.UTC.localize(start_date)
-        end_date_timezone = pytz.UTC.localize(end_date)
-        new_dates = reports.fix_dates(start_date_timezone.isoformat(),
-                                      end_date_timezone.isoformat())
-        self.assertEqual(new_dates[0], start_date)
-        self.assertEqual(new_dates[1], end_date)
+        start_date_utc = pytz.UTC.localize(start_date)
+        end_date_utc = pytz.UTC.localize(end_date)
+        new_dates = reports.fix_dates(start_date_utc.isoformat(),
+                                      end_date_utc.isoformat())
+        self.assertEqual(new_dates[0].date(), start_date.date())
+        self.assertEqual(new_dates[1].date(), end_date.date())
 
     def test_get_variables_category(self):
         """ Test get category """
@@ -423,14 +423,15 @@ class MeerkatAPIReportsTestCase(meerkat_api.test.TestCase):
             rv = self.app.get('/reports/{}/1/{}'.format(report, end_date), headers=settings.header)
             self.assertEqual(rv.status_code, 200, msg=failure_message)
             data = json.loads(rv.data.decode("utf-8"))["data"]
+            expected_end_date = datetime(2015, 8, 7, 23, 59, 59).isoformat()
             self.assertEqual(data["start_date"], datetime(2015, 1, 1).isoformat(), msg=failure_message)
-            self.assertEqual(data["end_date"], end_date, msg=failure_message)
+            self.assertEqual(data["end_date"], expected_end_date, msg=failure_message)
 
             rv = self.app.get('/reports/{}/1/{}/{}'.format(report, end_date, start_date), headers=settings.header)
             self.assertEqual(rv.status_code, 200, msg=failure_message)
             data = json.loads(rv.data.decode("utf-8"))["data"]
             self.assertEqual(data["start_date"], start_date, msg=failure_message)
-            self.assertEqual(data["end_date"], end_date, msg=failure_message)
+            self.assertEqual(data["end_date"], expected_end_date, msg=failure_message)
 
     def test_public_health(self):
         """ test the public health report """
