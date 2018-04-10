@@ -6,8 +6,7 @@ Unit tests for the export_data resource of Meerkat API
 """
 import json
 import unittest
-from unittest.mock import patch, PropertyMock
-
+from unittest.mock import patch, PropertyMock, MagicMock
 import csv
 import os
 
@@ -87,6 +86,7 @@ class MeerkatAPITestCase(unittest.TestCase):
         self.assertEqual(data["demo_register"], [])
         self.assertEqual(sorted(data["demo_case"]), sorted(keys))
 
+        
     def test_export_data(self):
         """ Test the export of the data table """
         rv = self.app.get('/export/data', headers={**settings.header})
@@ -164,14 +164,26 @@ class MeerkatAPITestCase(unittest.TestCase):
             self.assertTrue(has_found_clinic_2)
             self.assertTrue(has_found_clinic_3)
 
-    def test_week_level(self):
+    @patch('api_background.export_data.requests.get')
+    @patch('api_background.export_data.meerkat_libs.authenticate')
+    def test_week_level(self, mock_authenticate, request_mock):
         """ Test the export of the week_level"""
         self.session.query(model.Data).delete()
         self.session.commit()
         db_util.insert_cases(self.session, "completeness")
+
+        mock_authenticate.return_value = 'meerkatjwt'
         date = datetime.datetime.today()
         start_date = datetime.datetime(date.year, 1, 1)
         end_date = datetime.datetime(date.year, 12, 31)
+
+        rv = self.app.get(
+            '/completeness/reg_1/1/4/1/5,6/reg_1/{}?sublevel=clinic'.format(end_date.isoformat()),
+            headers={**settings.header})
+        result_mock = MagicMock()
+        result_mock.json = MagicMock(return_value=json.loads(rv.data.decode("utf-8")))
+        request_mock.return_value = result_mock
+        print(json.loads(rv.data.decode("utf-8")))
         rv = self.app.get(
             '/export/week_level/test/clinic?variable=["completeness:/completeness/reg_1/1/4/<start_week>/5,6/reg_1/<end_date>", "completeness"]&start_date={}&end_date={}'.format(
                 start_date.isoformat(), end_date.isoformat()),
@@ -191,6 +203,9 @@ class MeerkatAPITestCase(unittest.TestCase):
         self.assertIn("exported_data/" + uuid + "/test.csv",
                       rv.data.decode("utf-8"))
 
+        request_mock.assert_called()
+        mock_authenticate.assert_called()
+        
         filename = base_folder + "/exported_data/" + uuid + "/test.csv"
         current_epi_week = epi_week_for_date(date)[1]
         with open(filename) as csv_file:
