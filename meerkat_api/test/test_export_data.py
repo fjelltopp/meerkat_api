@@ -14,12 +14,12 @@ import os
 from . import settings
 import meerkat_api
 from meerkat_api.test import db_util
-
+import datetime
 from meerkat_api.extensions import celery_app
 from meerkat_abacus import util, model, data_import
 from meerkat_abacus.config import config
 from api_background.export_data import base_folder
-
+from meerkat_abacus.util.epi_week import epi_week_for_date
 
 class MeerkatAPITestCase(unittest.TestCase):
     def setUp(self):
@@ -31,13 +31,14 @@ class MeerkatAPITestCase(unittest.TestCase):
         self.session = db_util.session
         for table in model.form_tables():
             self.session.query(model.form_tables()[table]).delete()
+        self.session.query(model.Locations).delete()
+        
         self.session.commit()
 
         db_util.insert_codes(self.session)
         db_util.insert_locations(self.session)
         db_util.insert_cases(self.session, "public_health_report")
         current_directory = os.path.dirname(__file__)
-
         form_data = []
         for d in util.read_csv(current_directory + "/test_data/" + "demo_case.csv"):
             form_data.append(d)
@@ -163,6 +164,73 @@ class MeerkatAPITestCase(unittest.TestCase):
             self.assertTrue(has_found_clinic_2)
             self.assertTrue(has_found_clinic_3)
 
+    def test_week_level(self):
+        """ Test the export of the week_level"""
+        self.session.query(model.Data).delete()
+        self.session.commit()
+        db_util.insert_cases(self.session, "completeness")
+        date = datetime.datetime.today()
+        start_date = datetime.datetime(date.year, 1, 1)
+        end_date = datetime.datetime(date.year, 12, 31)
+        rv = self.app.get(
+            '/export/week_level/test/clinic?variable=["completeness:/completeness/reg_1/1/4/<start_week>/5,6/reg_1/<end_date>", "completeness"]&start_date={}&end_date={}'.format(
+                start_date.isoformat(), end_date.isoformat()),
+            headers={**settings.header})
+
+        self.assertEqual(rv.status_code, 200)
+        uuid = rv.data.decode("utf-8")[1:-2]
+        test = self.session.query(model.DownloadDataFiles).filter(
+            model.DownloadDataFiles.uuid == uuid).all()
+        self.assertEqual(len(test), 1)
+        self.assertEqual(test[0].uuid, uuid)
+
+        rv = self.app.get('/export/getcsv/' + uuid,
+                          headers={**{"Accept": "text/csv"},
+                                   **settings.header})
+        self.assertEqual(rv.status_code, 302)
+        self.assertIn("exported_data/" + uuid + "/test.csv",
+                      rv.data.decode("utf-8"))
+
+        filename = base_folder + "/exported_data/" + uuid + "/test.csv"
+        current_epi_week = epi_week_for_date(date)[1]
+        with open(filename) as csv_file:
+            self.assertEqual(len(csv_file.readlines()), 52*2 + 1 + 47)
+            csv_file.seek(0)
+            c = csv.DictReader(csv_file)
+            found = False
+            for line in c:
+                if int(line["week"]) == current_epi_week - 1 and line["location"] == "Demo":
+                    self.assertEqual(line["completeness"], '50.0')
+                    found = True
+            self.assertTrue(found)
+   
+        rv = self.app.get(
+            '/export/week_level/test/clinic?variable=["completeness:/completeness/reg_1/1/4/<start_week>/5,6/reg_1/<end_date>", "completeness"]&start_date={}&end_date={}&data_orientation=wide'.format(
+                start_date.isoformat(), end_date.isoformat()),
+            headers={**settings.header})
+
+        self.assertEqual(rv.status_code, 200)
+        uuid = rv.data.decode("utf-8")[1:-2]
+        test = self.session.query(model.DownloadDataFiles).filter(
+            model.DownloadDataFiles.uuid == uuid).all()
+        self.assertEqual(len(test), 1)
+        self.assertEqual(test[0].uuid, uuid)
+
+        rv = self.app.get('/export/getcsv/' + uuid,
+                          headers={**{"Accept": "text/csv"},
+                                   **settings.header})
+        self.assertEqual(rv.status_code, 302)
+        self.assertIn("exported_data/" + uuid + "/test.csv",
+                      rv.data.decode("utf-8"))
+
+        filename = base_folder + "/exported_data/" + uuid + "/test.csv"
+        current_epi_week = epi_week_for_date(date)[1]
+        with open(filename) as csv_file:
+            self.assertEqual(len(csv_file.readlines()), 6)
+        self.session.query(model.Data).delete()
+        self.session.commit()
+
+
     def test_export_category(self):
         """ Test getting a from with category """
         rv = self.app.get(
@@ -225,7 +293,6 @@ class MeerkatAPITestCase(unittest.TestCase):
     def test_export_forms(self):
         """ Test the basic export form functionality """
 
-        print(len(self.session.query(model.form_tables()["demo_case"]).all()))
         rv = self.app.get('/export/form/demo_case', headers={**settings.header})
 
         self.assertEqual(rv.status_code, 200)
@@ -250,7 +317,6 @@ class MeerkatAPITestCase(unittest.TestCase):
                       rv.data.decode("utf-8"))
 
         filename = base_folder + "/exported_data/" + uuid + "/demo_case.csv"
-        print(uuid)
         with open(filename, errors="replace") as csv_file:
 
             self.assertEqual(len(csv_file.readlines()), 11)
@@ -285,7 +351,6 @@ class MeerkatAPITestCase(unittest.TestCase):
         self.assertEqual(rv.status_code, 302)
 
         filename = base_folder + "/exported_data/" + uuid + "/demo_case.csv"
-        print(uuid)
         with open(filename, errors="replace") as csv_file:
             self.assertEqual(len(csv_file.readlines()), 11)
             csv_file.seek(0)

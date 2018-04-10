@@ -10,12 +10,12 @@ from flask_restful import Resource, abort
 from meerkat_abacus.model import form_tables, DownloadDataFiles
 from meerkat_abacus.config import config as abacus_config
 from api_background.export_data import export_category, export_data, export_data_table
-from api_background.export_data import export_form
+from api_background.export_data import export_form, export_week_level
 from meerkat_api.extensions import db, output_csv, output_xls, api
 from meerkat_api.authentication import authenticate
 
 # Uncomment to run export data during request
-# from meerkat_abacus.task_queue import app as celery_app
+# from meerkat_abacus.tasks import app as celery_app
 # celery_app.conf.CELERY_ALWAYS_EAGER = True
 
 
@@ -65,6 +65,37 @@ class ExportData(Resource):
         return uid
 
 
+class ExportWeekLevel(Resource):
+    """
+    Exports a variable broken down by week and location level
+
+    Args:
+       download_name: Name of downloaded file
+       level: Location level
+    Returns:
+       uuid: Uuid of download data process
+
+
+    """
+    decorators = [authenticate]
+    
+    def get(self, download_name, level):
+        if "variable" in request.args.keys():
+            variable = json.loads(request.args["variable"])
+        else:
+            return "No variables"
+        uid = str(uuid.uuid4())
+        yaml_config = yaml.dump(abacus_config)
+        export_week_level.delay(uid, download_name, level,
+                                variable,
+                                start_date=request.args.get("start_date", None),
+                                end_date=request.args.get("end_date", None),
+                                data_orientation=request.args.get("data_orientation", "long"),
+                                param_config_yaml=yaml_config)
+        return uid
+
+
+    
 class ExportDataTable(Resource):
     """
     Export data table with aggregated data from db
@@ -93,12 +124,15 @@ class ExportDataTable(Resource):
 
         if "location_conditions" in request.args.keys():
             location_conditions = json.loads(request.args["location_conditions"])
-
+            
         uid = str(uuid.uuid4())
         yaml_config = yaml.dump(abacus_config)
         export_data_table.delay(uid, download_name,
                                 restrict_by, variables, group_by,
                                 location_conditions=location_conditions,
+                                start_date=request.args.get("start_date", None),
+                                end_date=request.args.get("end_date", None),
+                                data_orientation=request.args.get("data_orientation", "long"),
                                 param_config_yaml=yaml_config)
         return uid
 
@@ -259,3 +293,5 @@ api.add_resource(ExportCategory,
                  "/export/category/<form_name>/<category>/<download_name>/<data_type>")
 api.add_resource(ExportDataTable,
                  "/export/data_table/<download_name>/<restrict_by>")
+api.add_resource(ExportWeekLevel,
+                 "/export/week_level/<download_name>/<level>")

@@ -14,6 +14,8 @@ from sqlalchemy import text, or_, func, Float
 from dateutil.parser import parse
 from datetime import datetime
 from celery import task
+import requests
+import pandas
 from api_background._populate_locations import set_empty_locations, populate_row_locations
 from api_background.xls_csv_writer import XlsCsvFileWriter
 from meerkat_abacus import config
@@ -22,6 +24,7 @@ from meerkat_abacus.model import form_tables, Data, Links
 from meerkat_abacus.util import all_location_data, get_db_engine, get_links
 from meerkat_abacus.util import get_locations, is_child
 from meerkat_abacus.util.epi_week import epi_week_for_date
+import meerkat_libs
 base_folder = os.path.dirname(os.path.realpath(__file__))
 
 
@@ -606,21 +609,135 @@ def export_category(uuid, form_name, category, download_name,
     return True
 
 
+def construct_completeness_call(variable_config, sublevel, start_date, end_date):
+    """
+    Construct the correct completess calls
+
+    """
+
+    api_calls = []
+    for year in range(start_date.year, end_date.year + 1):
+        year_start_week = 1
+        year_end_date = "{}-12-31".format(year)
+
+        if year == start_date.year:
+            year_start_week = epi_week_for_date(start_date)[1]
+            if year_start_week > 52:
+                year_start_week = 1
+        if year == end_date.year:
+            year_end_date = end_date.isoformat()
+    
+        api_call = variable_config.split(":")[1]
+        api_call = api_call.replace("<start_week>", str(year_start_week))
+        api_call = api_call.replace("<end_date>", str(year_end_date))
+        api_call += "?sublevel={}".format(sublevel)
+        api_calls.append((api_call, year, year_start_week))
+    return api_calls
+
+
+@task
+def export_week_level(uuid, download_name, level,
+                      variable, start_date=None, end_date=None,
+                      data_orientation="long",
+                      param_config_yaml=yaml.dump(config)):
+    return_keys = []
+    if "completeness" in variable[0]:
+        db, session = get_db_engine()
+        param_config = yaml.load(param_config_yaml)
+        locs = get_locations(session)
+        status = DownloadDataFiles(
+            uuid=uuid,
+            generation_time=datetime.now(),
+            type=download_name,
+            success=0,
+            status=0
+        )
+        session.add(status)
+        session.commit()
+        param_config = yaml.load(param_config_yaml)
+        if start_date:
+            start_date = parse(start_date).replace(tzinfo=None)
+        if end_date:
+            end_date = parse(end_date).replace(tzinfo=None)
+        completeness_calls = construct_completeness_call(variable[0],
+                                                         level,
+                                                         start_date,
+                                                         end_date)
+        jwt_auth_token = meerkat_libs.authenticate(
+            username=param_config.server_auth_username,
+            password=param_config.server_auth_password,
+            auth_root=param_config.auth_root)
+        if not jwt_auth_token:
+            raise AttributeError("Not sucessfully logged in for api access")
+        headers = {'content-type': 'application/json'}
+        headers['authorization'] = 'Bearer {}'.format(jwt_auth_token)
+        data = []
+        for call, year, start_week in completeness_calls:
+            api_result = requests.get(param_config.api_root + call, headers=headers)
+            timeline = api_result.json()["timeline"]
+            max_per_week = int(call.split("/")[4])
+            for location in timeline:
+                loc_id = int(location)
+                for week in range(len(timeline[location]["weeks"])):
+                    data.append({"location": locs[loc_id].name,
+                                 "year": year,
+                                 "week": week + start_week,
+                                 variable[1]: timeline[location]["values"][week] / max_per_week * 100
+                                 })
+
+        filename = base_folder + "/exported_data/" + uuid + "/" + download_name
+        os.mkdir(base_folder + "/exported_data/" + uuid)
+        df = pandas.DataFrame(data)
+        if data_orientation == "wide":
+            df = df.set_index(["year", "location", "week"]).unstack()
+        
+        df.to_csv(filename + ".csv")
+        df.to_excel(filename + ".xlsx")
+
+        status.status = 1
+        status.success = 1
+        session.commit()
+
+    else:
+        restrict_by, variable, display_name = variable
+        return export_data_table(uuid,
+                                 download_name,
+                                 restrict_by,
+                                 [[variable, display_name]],
+                                 [["epi_year", "Year"],
+                                  [level + ":location", "Location"],
+                                  ["epi_week", "Week"]
+                                  ],
+                                 start_date=start_date,
+                                 end_date=end_date,
+                                 data_orientation=data_orientation,
+                                 param_config_yaml=param_config_yaml)
+    
+
 @task
 def export_data_table(uuid, download_name,
                       restrict_by, variables, group_by,
                       location_conditions=None,
+                      start_date=None, end_date=None,
+                      data_orientation="long",
                       param_config_yaml=yaml.dump(config)):
     """
     Export an aggregated data table restricted by restrict by,
 
-
+    Args:\n
+      uuid: uuid for the download process
+      variables: the variables we want to aggregate
+      group_by: The data to group by (clinic, epi_week)
+      data_orientation: long or wide data set
+      start_date: The date to start the data set
+      end_date: End date for the aggregation
+      param_config: The configuration values
     """
     return_keys = []
     db, session = get_db_engine()
     locs = get_locations(session)
     list_rows = []
-
+    param_config = yaml.load(param_config_yaml)
     status = DownloadDataFiles(
         uuid=uuid,
         generation_time=datetime.now(),
@@ -643,36 +760,27 @@ def export_data_table(uuid, download_name,
         columns.append(getattr(Data, field))
         groups.append(getattr(Data, field))
         return_keys.append(v[1])
-
+    print(return_keys)
+    print(group_by)
+    conditions = [Data.variables.has_key(restrict_by)]                 
+    if start_date:
+        start_date = parse(start_date).replace(tzinfo=None)
+        conditions.append(Data.date >= start_date)
+    if end_date:
+        end_date = parse(end_date).replace(tzinfo=None)
+        conditions.append(Data.date <= end_date)
     for v in variables:
         columns.append(func.sum(Data.variables[v[0]].astext.cast(Float)))
         return_keys.append(v[1])
-
-    result = session.query(*columns).filter(Data.variables.has_key(restrict_by)).group_by(*groups)
+    result = session.query(*columns).filter(*conditions).group_by(*groups)
     filename = base_folder + "/exported_data/" + uuid + "/" + download_name
     os.mkdir(base_folder + "/exported_data/" + uuid)
-    csv_content = open(filename + ".csv", "w")
-    csv_writer = csv.writer(csv_content)
-    csv_writer.writerows([return_keys])
-
-    # XlsxWriter with "constant_memory" set to true, flushes mem after each row
-    xls_content = open(filename + ".xlsx", "wb")
-    xls_book = xlsxwriter.Workbook(xls_content, {'constant_memory': True})
-    xls_sheet = xls_book.add_worksheet()
-
-    # xls_sheet = pyexcel.Sheet([keys])
-
-    # Little utility function write a row to file.
-    def write_xls_row(data, row, sheet):
-        for cell in range(len(data)):
-            xls_sheet.write(row, cell, data[cell])
-
-    write_xls_row(return_keys, 0, xls_sheet)
     i = 0
     for row in result:
         # Can write row immediately to xls file as memory is flushed after.
         row_list = list(row)
         location_condition = True
+        
         for l in location_subs:
             if row_list[l]:
                 if location_conditions:
@@ -682,16 +790,17 @@ def export_data_table(uuid, download_name,
                 row_list[l] = locs[row_list[l]].name
         if location_condition:
             row_list = [x if x is not None else 0 for x in row_list]
-            write_xls_row(row_list, i + 1, xls_sheet)
             list_rows.append(row_list)
             # Append the row to list of rows to be written to csv.
             i += 1
-    csv_writer.writerows(list_rows)
 
-    csv_content.close()
-    xls_book.close()
+    df = pandas.DataFrame(list_rows, columns=return_keys)
+    if data_orientation == "wide":
+        df = df.set_index(return_keys[:3]).unstack()
+   
+    df.to_csv(filename + ".csv")
+    df.to_excel(filename + ".xlsx")
 
-    xls_content.close()
     status.status = 1
     status.success = 1
     session.commit()
