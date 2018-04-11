@@ -641,7 +641,7 @@ def construct_completeness_call(variable_config, sublevel, start_date, end_date)
 @task
 def export_week_level(uuid, download_name, level,
                       variable, start_date=None, end_date=None,
-                      data_orientation="long",
+                      data_orientation="long", language="en",
                       param_config_yaml=yaml.dump(config)):
     """
     Export aggregated data by location and week ( and year),
@@ -656,6 +656,14 @@ def export_week_level(uuid, download_name, level,
       end_date: End date for the aggregation
       param_config: The configuration values
     """
+    param_config = yaml.load(param_config_yaml)
+    translation_dir = param_config.country_config.get("translation_dir", None)
+    if translation_dir:
+        try:
+            t = gettext.translation('messages', translation_dir, languages=["en", "fr"])
+        except FileNotFoundError:
+            logging.warning("Translations not found", exc_info=True)
+
     if "completeness" in variable[0]:
         db, session = get_db_engine()
         param_config = yaml.load(param_config_yaml)
@@ -680,40 +688,61 @@ def export_week_level(uuid, download_name, level,
         headers = {'content-type': 'application/json',
                    'authorization': 'Bearer {}'.format(jwt_auth_token)}
         data = []
-        
+
+        year_label = t.gettext("Year")
+        location_label = t.gettext(level.title())
+        week_label = t.gettext("Week")
+        district_label = t.gettext("District")
+        variable_label = t.gettext(variable[1])
+
         for call, year, start_week in completeness_calls:
             api_result = requests.get(param_config.api_root + call, headers=headers)
             timeline = api_result.json()["timeline"]
-            max_per_week = int(call.split("/")[4]) # Extract the maximum number per week from api call
+            max_per_week = int(call.split("/")[4])  # Extract the maximum number from api call
             for location in timeline:
                 loc_id = int(location)
                 for week in range(len(timeline[location]["weeks"])):
-                    data.append({"year": year,
-                                 "location": locs[loc_id].name,
-                                 "week": week + start_week,
-                                 variable[1]: timeline[location]["values"][week] / max_per_week * 100
+                    data.append({year_label: year,
+                                 location_label: locs[loc_id].name,
+                                 week_label: week + start_week,
+                                 variable_label: timeline[location]["values"][week] / max_per_week * 100
                                  })
+                    if level == "clinic" and loc_id != 1:
+                        data[-1][district_label] = locs[locs[loc_id].parent_location].name
 
         filename = base_folder + "/exported_data/" + uuid + "/" + download_name
         os.mkdir(base_folder + "/exported_data/" + uuid)
         df = pandas.DataFrame(data)
         if data_orientation == "wide":
-            df = df.set_index(["year", "location", "week"]).unstack()
-        
+            if level == "clinic":
+                index_labels = [year_label, district_label, location_label, week_label]
+            else:
+                index_labels = [year_label, location_label, week_label]
+            df = df.set_index(index_labels).unstack()
+            print(df)
         df.to_csv(filename + ".csv")
         df.to_excel(filename + ".xlsx")
         operation_status.submit_operation_success()
 
     else:
         restrict_by, variable, display_name = variable
+        if level == "clinic":
+            group_by =  [["epi_year", t.gettext("Year")],
+                         ["district:location", t.gettext("District")],
+                         [level + ":location", t.gettext(level.title())],
+                         ["epi_week", t.gettext("Week")]
+            ]
+        else:
+            group_by =  [["epi_year", t.gettext("Year")],
+                         [level + ":location", t.gettext(level.title())],
+                         ["epi_week", t.gettext("Week")]
+            ]
+        print(group_by)
         return export_data_table(uuid,
                                  download_name,
                                  restrict_by,
                                  [[variable, display_name]],
-                                 [["epi_year", "Year"],
-                                  [level + ":location", "Location"],
-                                  ["epi_week", "Week"]
-                                  ],
+                                 group_by,
                                  start_date=start_date,
                                  end_date=end_date,
                                  data_orientation=data_orientation,
@@ -791,7 +820,7 @@ def export_data_table(uuid, download_name,
 
     df = pandas.DataFrame(list_rows, columns=return_keys)
     if data_orientation == "wide":
-        df = df.set_index(return_keys[:3]).unstack()
+        df = df.set_index(return_keys[:-1]).unstack().fillna(0)
    
     df.to_csv(filename + ".csv")
     df.to_excel(filename + ".xlsx")

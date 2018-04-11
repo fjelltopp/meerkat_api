@@ -89,6 +89,7 @@ class ExportWeekLevel(Resource):
                                 variable,
                                 start_date=request.args.get("start_date", None),
                                 end_date=request.args.get("end_date", None),
+                                language=request.args.get("language", "en"),
                                 data_orientation=request.args.get("data_orientation", "long"),
                                 param_config_yaml=yaml_config)
         return uid
