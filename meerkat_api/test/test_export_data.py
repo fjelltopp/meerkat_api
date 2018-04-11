@@ -171,8 +171,8 @@ class MeerkatAPITestCase(unittest.TestCase):
         self.session.query(model.Data).delete()
         self.session.commit()
         db_util.insert_cases(self.session, "completeness")
-
         mock_authenticate.return_value = 'meerkatjwt'
+
         date = datetime.datetime.today()
         start_date = datetime.datetime(date.year, 1, 1)
         end_date = datetime.datetime(date.year, 12, 31)
@@ -183,7 +183,7 @@ class MeerkatAPITestCase(unittest.TestCase):
         result_mock = MagicMock()
         result_mock.json = MagicMock(return_value=json.loads(rv.data.decode("utf-8")))
         request_mock.return_value = result_mock
-        print(json.loads(rv.data.decode("utf-8")))
+
         rv = self.app.get(
             '/export/week_level/test/clinic?variable=["completeness:/completeness/reg_1/1/4/<start_week>/5,6/reg_1/<end_date>", "completeness"]&start_date={}&end_date={}'.format(
                 start_date.isoformat(), end_date.isoformat()),
@@ -210,6 +210,7 @@ class MeerkatAPITestCase(unittest.TestCase):
         current_epi_week = epi_week_for_date(date)[1]
         with open(filename) as csv_file:
             self.assertEqual(len(csv_file.readlines()), 52*2 + 1 + 47)
+            # One clinic has start date in Feb so only gives 47 weeks
             csv_file.seek(0)
             c = csv.DictReader(csv_file)
             found = False
@@ -244,7 +245,6 @@ class MeerkatAPITestCase(unittest.TestCase):
             self.assertEqual(len(csv_file.readlines()), 6)
         self.session.query(model.Data).delete()
         self.session.commit()
-
 
     def test_export_category(self):
         """ Test getting a from with category """

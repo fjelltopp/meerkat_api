@@ -24,6 +24,7 @@ from meerkat_abacus.model import form_tables, Data, Links
 from meerkat_abacus.util import all_location_data, get_db_engine, get_links
 from meerkat_abacus.util import get_locations, is_child
 from meerkat_abacus.util.epi_week import epi_week_for_date
+
 import meerkat_libs
 base_folder = os.path.dirname(os.path.realpath(__file__))
 
@@ -611,22 +612,24 @@ def export_category(uuid, form_name, category, download_name,
 
 def construct_completeness_call(variable_config, sublevel, start_date, end_date):
     """
-    Construct the correct completess calls
+    Construct the correct completess calls based on the dates
 
+    Args:\n
+       variable_config: The base api call
+       sublevel: The level to aggregate over
+       start_date: Start date
+       end_date: End date
     """
-
     api_calls = []
     for year in range(start_date.year, end_date.year + 1):
         year_start_week = 1
         year_end_date = "{}-12-31".format(year)
-
         if year == start_date.year:
             year_start_week = epi_week_for_date(start_date)[1]
             if year_start_week > 52:
                 year_start_week = 1
         if year == end_date.year:
             year_end_date = end_date.isoformat()
-    
         api_call = variable_config.split(":")[1]
         api_call = api_call.replace("<start_week>", str(year_start_week))
         api_call = api_call.replace("<end_date>", str(year_end_date))
@@ -640,21 +643,26 @@ def export_week_level(uuid, download_name, level,
                       variable, start_date=None, end_date=None,
                       data_orientation="long",
                       param_config_yaml=yaml.dump(config)):
-    return_keys = []
+    """
+    Export aggregated data by location and week ( and year),
+
+    Args:\n
+      uuid: uuid for the download process
+      download_name: Name of download file
+      level: level of location
+      variable: the variable we want to aggregate
+      data_orientation: long or wide data set
+      start_date: The date to start the data set
+      end_date: End date for the aggregation
+      param_config: The configuration values
+    """
     if "completeness" in variable[0]:
         db, session = get_db_engine()
         param_config = yaml.load(param_config_yaml)
         locs = get_locations(session)
-        status = DownloadDataFiles(
-            uuid=uuid,
-            generation_time=datetime.now(),
-            type=download_name,
-            success=0,
-            status=0
-        )
-        session.add(status)
-        session.commit()
+        operation_status = OperationStatus(download_name, uuid)
         param_config = yaml.load(param_config_yaml)
+        
         if start_date:
             start_date = parse(start_date).replace(tzinfo=None)
         if end_date:
@@ -669,18 +677,19 @@ def export_week_level(uuid, download_name, level,
             auth_root=param_config.auth_root)
         if not jwt_auth_token:
             raise AttributeError("Not sucessfully logged in for api access")
-        headers = {'content-type': 'application/json'}
-        headers['authorization'] = 'Bearer {}'.format(jwt_auth_token)
+        headers = {'content-type': 'application/json',
+                   'authorization': 'Bearer {}'.format(jwt_auth_token)}
         data = []
+        
         for call, year, start_week in completeness_calls:
             api_result = requests.get(param_config.api_root + call, headers=headers)
             timeline = api_result.json()["timeline"]
-            max_per_week = int(call.split("/")[4])
+            max_per_week = int(call.split("/")[4]) # Extract the maximum number per week from api call
             for location in timeline:
                 loc_id = int(location)
                 for week in range(len(timeline[location]["weeks"])):
-                    data.append({"location": locs[loc_id].name,
-                                 "year": year,
+                    data.append({"year": year,
+                                 "location": locs[loc_id].name,
                                  "week": week + start_week,
                                  variable[1]: timeline[location]["values"][week] / max_per_week * 100
                                  })
@@ -693,10 +702,7 @@ def export_week_level(uuid, download_name, level,
         
         df.to_csv(filename + ".csv")
         df.to_excel(filename + ".xlsx")
-
-        status.status = 1
-        status.success = 1
-        session.commit()
+        operation_status.submit_operation_success()
 
     else:
         restrict_by, variable, display_name = variable
@@ -737,16 +743,7 @@ def export_data_table(uuid, download_name,
     db, session = get_db_engine()
     locs = get_locations(session)
     list_rows = []
-    param_config = yaml.load(param_config_yaml)
-    status = DownloadDataFiles(
-        uuid=uuid,
-        generation_time=datetime.now(),
-        type=download_name,
-        success=0,
-        status=0
-    )
-    session.add(status)
-    session.commit()
+    operation_status = OperationStatus(download_name, uuid)
 
     columns = []
     groups = []
@@ -760,8 +757,6 @@ def export_data_table(uuid, download_name,
         columns.append(getattr(Data, field))
         groups.append(getattr(Data, field))
         return_keys.append(v[1])
-    print(return_keys)
-    print(group_by)
     conditions = [Data.variables.has_key(restrict_by)]                 
     if start_date:
         start_date = parse(start_date).replace(tzinfo=None)
@@ -800,10 +795,7 @@ def export_data_table(uuid, download_name,
    
     df.to_csv(filename + ".csv")
     df.to_excel(filename + ".xlsx")
-
-    status.status = 1
-    status.success = 1
-    session.commit()
+    operation_status.submit_operation_success()
 
     return True
 
