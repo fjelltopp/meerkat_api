@@ -215,7 +215,7 @@ class MeerkatAPITestCase(unittest.TestCase):
             c = csv.DictReader(csv_file)
             found = False
             for line in c:
-                if int(line["week"]) == current_epi_week - 1 and line["location"] == "Demo":
+                if int(line["Week"]) == current_epi_week - 1 and line["Clinic"] == "Demo":
                     self.assertEqual(line["completeness"], '50.0')
                     found = True
             self.assertTrue(found)

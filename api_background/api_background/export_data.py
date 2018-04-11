@@ -661,9 +661,14 @@ def export_week_level(uuid, download_name, level,
     if translation_dir:
         try:
             t = gettext.translation('messages', translation_dir, languages=["en", "fr"])
-        except FileNotFoundError:
+        except (FileNotFoundError, OSError):
             logging.warning("Translations not found", exc_info=True)
+            t = gettext.NullTranslations()
+    else:
+        t = gettext.NullTranslations()
 
+    if language != "en":
+        os.environ["LANGUAGE"] = language
     if "completeness" in variable[0]:
         db, session = get_db_engine()
         param_config = yaml.load(param_config_yaml)
@@ -727,17 +732,16 @@ def export_week_level(uuid, download_name, level,
     else:
         restrict_by, variable, display_name = variable
         if level == "clinic":
-            group_by =  [["epi_year", t.gettext("Year")],
-                         ["district:location", t.gettext("District")],
-                         [level + ":location", t.gettext(level.title())],
-                         ["epi_week", t.gettext("Week")]
+            group_by = [["epi_year", t.gettext("Year")],
+                        ["district:location", t.gettext("District")],
+                        [level + ":location", t.gettext(level.title())],
+                        ["epi_week", t.gettext("Week")]
             ]
         else:
-            group_by =  [["epi_year", t.gettext("Year")],
-                         [level + ":location", t.gettext(level.title())],
-                         ["epi_week", t.gettext("Week")]
+            group_by = [["epi_year", t.gettext("Year")],
+                        [level + ":location", t.gettext(level.title())],
+                        ["epi_week", t.gettext("Week")]
             ]
-        print(group_by)
         return export_data_table(uuid,
                                  download_name,
                                  restrict_by,
