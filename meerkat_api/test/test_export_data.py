@@ -164,10 +164,31 @@ class MeerkatAPITestCase(unittest.TestCase):
             self.assertTrue(has_found_clinic_2)
             self.assertTrue(has_found_clinic_3)
 
-    @patch('api_background.export_data.requests.get')
-    @patch('api_background.export_data.meerkat_libs.authenticate')
-    def test_week_level(self, mock_authenticate, request_mock):
-        """ Test the export of the week_level"""
+    def test_week_level_long(self):
+        """ Test the export of normal data for week_level with long format"""
+
+        rv = self.app.get(
+            '/export/week_level/test/clinic?variable=["tot_1", "tot_1", "N"]',
+            headers={**settings.header})
+        
+        self.assertEqual(rv.status_code, 200)
+        uuid = rv.data.decode("utf-8")[1:-2]
+        test = self.session.query(model.DownloadDataFiles).filter(
+            model.DownloadDataFiles.uuid == uuid).all()
+        self.assertEqual(len(test), 1)
+        self.assertEqual(test[0].uuid, uuid)
+        
+        rv = self.app.get('/export/getcsv/' + uuid,
+                          headers={**{"Accept": "text/csv"},
+                                   **settings.header})
+        self.assertEqual(rv.status_code, 302)
+        self.assertIn("exported_data/" + uuid + "/test.csv",
+                      rv.data.decode("utf-8"))
+        filename = base_folder + "/exported_data/" + uuid + "/test.csv"
+        with open(filename) as csv_file:
+            self.assertEqual(len(csv_file.readlines()), 6)
+            
+    def _prepare_week_level(self, mock_authenticate, mock_request):
         self.session.query(model.Data).delete()
         self.session.commit()
         db_util.insert_cases(self.session, "completeness")
@@ -182,8 +203,17 @@ class MeerkatAPITestCase(unittest.TestCase):
             headers={**settings.header})
         result_mock = MagicMock()
         result_mock.json = MagicMock(return_value=json.loads(rv.data.decode("utf-8")))
-        request_mock.return_value = result_mock
+        mock_request.return_value = result_mock
 
+        return date, start_date, end_date
+
+    
+    @patch('api_background.export_data.requests.get')
+    @patch('api_background.export_data.meerkat_libs.authenticate')
+    def test_week_level_long_completeness(self, mock_authenticate, mock_request):
+        """ Test the export of completeness data for week_level with long format"""
+
+        date, start_date, end_date = self._prepare_week_level(mock_authenticate, mock_request)
         rv = self.app.get(
             '/export/week_level/test/clinic?variable=["completeness:/completeness/reg_1/1/4/<start_week>/5,6/reg_1/<end_date>", "completeness"]&start_date={}&end_date={}'.format(
                 start_date.isoformat(), end_date.isoformat()),
@@ -203,7 +233,7 @@ class MeerkatAPITestCase(unittest.TestCase):
         self.assertIn("exported_data/" + uuid + "/test.csv",
                       rv.data.decode("utf-8"))
 
-        request_mock.assert_called()
+        mock_request.assert_called()
         mock_authenticate.assert_called()
         
         filename = base_folder + "/exported_data/" + uuid + "/test.csv"
@@ -219,9 +249,15 @@ class MeerkatAPITestCase(unittest.TestCase):
                     self.assertEqual(line["completeness"], '50.0')
                     found = True
             self.assertTrue(found)
-   
+
+            
+    @patch('api_background.export_data.requests.get')
+    @patch('api_background.export_data.meerkat_libs.authenticate')
+    def test_week_level_wide(self, mock_authenticate, mock_request):
+        """Test week_level with wide format"""
+        date, start_date, end_date = self._prepare_week_level(mock_authenticate, mock_request)
         rv = self.app.get(
-            '/export/week_level/test/clinic?variable=["completeness:/completeness/reg_1/1/4/<start_week>/5,6/reg_1/<end_date>", "completeness"]&start_date={}&end_date={}&data_orientation=wide'.format(
+            '/export/week_level/test/clinic?variable=["completeness:/completeness/reg_1/1/4/<start_week>/5,6/reg_1/<end_date>", "completeness"]&start_date={}&end_date={}&wide_data_format=1'.format(
                 start_date.isoformat(), end_date.isoformat()),
             headers={**settings.header})
 
