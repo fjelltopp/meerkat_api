@@ -67,7 +67,7 @@ class ExportData(Resource):
 class ExportWeekLevel(Resource):
     """
     Exports a variable broken down by week and location level.
-    If a variable is not submitted as a get arg it returns a 500 HTTP status code.
+    If a variable is not submitted as a get arg it returns a 400 HTTP status code.
 
     Args:
        download_name: Name of downloaded file
@@ -83,7 +83,7 @@ class ExportWeekLevel(Resource):
         if "variable" in request.args.keys():
             variable = json.loads(request.args["variable"])
         else:
-            abort(500, message="No variable were submitted")
+            abort(400, message="No variable were submitted")
         uid = str(uuid.uuid4())
         yaml_config = yaml.dump(abacus_config)
         export_week_level.delay(uid, download_name, level,
@@ -114,11 +114,11 @@ class ExportDataTable(Resource):
         if "variables" in request.args.keys():
             variables = json.loads(request.args["variables"])
         else:
-            abort(500, message="No variables were submitted")
+            abort(400, message="No variables were submitted")
         if "group_by" in request.args.keys():
             group_by = json.loads(request.args["group_by"])
         else:
-            abort(500, message="No Group by variables were submitted")
+            abort(400, message="No Group by variables were submitted")
 
         location_conditions = []
 
@@ -155,7 +155,7 @@ class ExportCategory(Resource):
         if "variables" in request.args.keys():
             variables = json.loads(request.args["variables"])
         else:
-            abort(500, message="No variables were submitted")
+            abort(400, message="No variables were submitted")
         language = request.args.get("language", "en")
         yaml_config = yaml.dump(abacus_config)
         export_category.delay(
