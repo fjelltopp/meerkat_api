@@ -33,6 +33,7 @@ def insert_cases(session, dataset_name, date=None, delete=True):
     if delete:
         session.query(model.Data).delete()
         session.query(model.DisregardedData).delete()
+    reload(cases)
     session.bulk_save_objects(getattr(cases, dataset_name))
     session.commit()
     if date:
@@ -137,6 +138,7 @@ def insert_locations(session, date=None):
         freezer.start()
         reload(locations)
 
+    reload(locations)
     session.query(model.Locations).delete()
     session.bulk_save_objects(locations.locations)
     session.commit()

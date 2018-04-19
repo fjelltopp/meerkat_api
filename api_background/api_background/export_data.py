@@ -14,6 +14,8 @@ from sqlalchemy import text, or_, func, Float
 from dateutil.parser import parse
 from datetime import datetime
 from celery import task
+import requests
+import pandas
 from api_background._populate_locations import set_empty_locations, populate_row_locations
 from api_background.xls_csv_writer import XlsCsvFileWriter
 from meerkat_abacus import config
@@ -23,6 +25,8 @@ from meerkat_abacus.util import all_location_data, get_db_engine, get_links
 from meerkat_abacus.util import get_locations, is_child
 from meerkat_abacus.util.epi_week import epi_week_for_date
 from api_background.celery_app import app
+import meerkat_libs
+
 base_folder = os.path.dirname(os.path.realpath(__file__))
 
 
@@ -130,11 +134,7 @@ def export_category(uuid, form_name, category, download_name,
 
     # Some strings in download data need to be translated
     translation_dir = country_config.get("translation_dir", None)
-    if translation_dir:
-        try:
-            t = gettext.translation('messages', translation_dir, languages=["en", "fr"])
-        except FileNotFoundError:
-            logging.warning("Translations not found", exc_info=True)
+    t = get_translator(param_config, language)
 
     db, session = get_db_engine()
     db2, session2 = get_db_engine()
@@ -150,9 +150,7 @@ def export_category(uuid, form_name, category, download_name,
     res = session.query(AggregationVariables).filter(
         AggregationVariables.category.has_key(category)
     )
-    print(language)
-    if language != "en":
-        os.environ["LANGUAGE"] = language
+
 
     locs = get_locations(session)
     print(uuid)
@@ -608,30 +606,229 @@ def export_category(uuid, form_name, category, download_name,
     return True
 
 
+
+def construct_completeness_call(variable_config, sublevel, start_date, end_date):
+    """
+    Construct the correct completess calls based on the dates
+
+    Args:\n
+       variable_config: The base api call
+       sublevel: The level to aggregate over
+       start_date: Start date
+       end_date: End date
+    """
+    api_calls = []
+    for year in range(start_date.year, end_date.year + 1):
+        year_start_week = 1
+        year_end_date_str = "{}-12-31".format(year)
+        if year == start_date.year:
+            year_start_week = epi_week_for_date(start_date)[1]
+            if year_start_week > 52:
+                year_start_week = 1
+        if year == end_date.year:
+            year_end_date_str = end_date.isoformat()
+        api_call = variable_config.split(":")[1]
+        api_call = api_call.replace("<start_week>", str(year_start_week))
+        api_call = api_call.replace("<end_date>", str(year_end_date_str))
+        api_call += "?sublevel={}".format(sublevel)
+        api_calls.append((api_call, year, year_start_week))
+    return api_calls
+
+
+def _export_week_level_completeness(uuid, download_name, level,
+                                    completeness_config, translator, param_config,
+                                    start_date=None, end_date=None,
+                                    wide_data_format=False):
+    """
+    Exports completeness data by location and week ( and year),
+
+    Args:\n
+      uuid: uuid for the download process
+      download_name: Name of download file
+      level: level of location
+      competeness_config: Specified the completeness call we want to make
+      translator: Translator 
+      param_config: param config
+      start_date: The date to start the data set
+      end_date: End date for the aggregation
+      wide_data_format: If true the data is returned in the wide format, else in long format
+    """
+    db, session = get_db_engine()
+    locs = get_locations(session)
+    operation_status = OperationStatus(download_name, uuid)
+
+    if start_date:
+        start_date = parse(start_date).replace(tzinfo=None)
+    if end_date:
+        end_date = parse(end_date).replace(tzinfo=None)
+    completeness_calls = construct_completeness_call(completeness_config[0],
+                                                     level,
+                                                     start_date,
+                                                     end_date)
+    jwt_auth_token = meerkat_libs.authenticate(
+        username=param_config.server_auth_username,
+        password=param_config.server_auth_password,
+        auth_root=param_config.auth_root)
+    if not jwt_auth_token:
+        raise AttributeError("Not sucessfully logged in for api access")
+    headers = {'content-type': 'application/json',
+               'authorization': 'Bearer {}'.format(jwt_auth_token)}
+    data = []
+
+    year_label = translator.gettext("Year")
+    location_label = translator.gettext(level.title())
+    week_label = translator.gettext("Week")
+    district_label = translator.gettext("District")
+    completeness_config_label = translator.gettext(completeness_config[1])
+
+    for call, year, start_week in completeness_calls:
+        api_result = requests.get(param_config.api_root + call, headers=headers)
+        timeline = api_result.json()["timeline"]
+        max_per_week = int(call.split("/")[4])  # Extract the maximum number from api call
+        for location in timeline:
+            loc_id = int(location)
+            for week in range(len(timeline[location]["weeks"])):
+                data.append({year_label: year,
+                             location_label: locs[loc_id].name,
+                             week_label: week + start_week,
+                             completeness_config_label: timeline[location]["values"][week] / max_per_week * 100
+                             })
+                if level == "clinic" and loc_id != 1:
+                    data[-1][district_label] = locs[locs[loc_id].parent_location].name
+
+    filename = base_folder + "/exported_data/" + uuid + "/" + download_name
+    os.mkdir(base_folder + "/exported_data/" + uuid)
+    df = pandas.DataFrame(data)
+    if wide_data_format:
+        if level == "clinic":
+            index_labels = [year_label, district_label, location_label, week_label]
+        else:
+            index_labels = [year_label, location_label, week_label]
+        df = df.set_index(index_labels).unstack()
+        print(df)
+    df.to_csv(filename + ".csv")
+    df.to_excel(filename + ".xlsx")
+    operation_status.submit_operation_success()
+
+    
+    
+def get_translator(param_config, language):
+    translation_dir = param_config.country_config.get("translation_dir", None)
+    if translation_dir:
+        try:
+            t = gettext.translation('messages', translation_dir, languages=["en", "fr"])
+        except (FileNotFoundError, OSError):
+            logging.warning("Translations not found", exc_info=True)
+            t = gettext.NullTranslations()
+    else:
+        t = gettext.NullTranslations()
+
+    if language != "en":
+        os.environ["LANGUAGE"] = language
+    return t
+
+@app.task
+def export_week_level(uuid, download_name, level,
+                      variable_config, start_date=None, end_date=None,
+                      wide_data_format=False, language="en",
+                      param_config_yaml=yaml.dump(config)):
+    """
+    Export aggregated data by location and week ( and year),
+
+    Args:\n
+      uuid: uuid for the download process
+      download_name: Name of download file
+      level: level of location
+      variable_config: the variable we want to aggregate
+      data_orientation: long or wide data set
+      start_date: The date to start the data set
+      end_date: End date for the aggregation
+      wide_data_format: If true the data is returned in the wide format, else in long format
+      param_config: The configuration values
+    """
+    param_config = yaml.load(param_config_yaml)
+    translator = get_translator(param_config, language)
+    if "completeness" in variable_config[0]:
+        _export_week_level_completeness(uuid, download_name, level,
+                                        variable_config, translator,
+                                        param_config, start_date=start_date,
+                                        end_date=end_date, wide_data_format=wide_data_format)
+    else:
+        _export_week_level_variable(uuid, download_name, level,
+                                    variable_config, translator,
+                                    start_date=start_date, end_date=end_date,
+                                    wide_data_format=wide_data_format,
+                                    param_config_yaml=param_config_yaml)
+    
+
+def _export_week_level_variable(uuid, download_name, level,
+                                variable_config, translator,
+                                start_date=None, end_date=None,
+                                wide_data_format=False,
+                                param_config_yaml=yaml.dump(config)):
+    """
+    Export aggregated data by location and week ( and year),
+
+    Args:\n
+      uuid: uuid for the download process
+      download_name: Name of download file
+      level: level of location
+      variable_config: the variable we want to aggregate. Consits of the restrict_by, variable to aggregate and the display name
+      data_orientation: long or wide data set
+      start_date: The date to start the data set
+      end_date: End date for the aggregation
+      wide_data_format: If true the data is returned in the wide format, else in long format
+      param_config: The configuration values
+    """
+
+    restrict_by, variable, display_name = variable_config
+    if level == "clinic":
+        group_by = [["epi_year", translator.gettext("Year")],
+                    ["district:location", translator.gettext("District")],
+                    [level + ":location", translator.gettext(level.title())],
+                    ["epi_week", translator.gettext("Week")]
+        ]
+    else:
+        group_by = [["epi_year", translator.gettext("Year")],
+                    [level + ":location", translator.gettext(level.title())],
+                    ["epi_week", translator.gettext("Week")]
+        ]
+    return export_data_table(uuid,
+                             download_name,
+                             restrict_by,
+                             [[variable, display_name]],
+                             group_by,
+                             start_date=start_date,
+                             end_date=end_date,
+                             wide_data_format=wide_data_format,
+                             param_config_yaml=param_config_yaml)
+
+        
 @app.task
 def export_data_table(uuid, download_name,
                       restrict_by, variables, group_by,
                       location_conditions=None,
+                      start_date=None, end_date=None,
+                      wide_data_format=False,
                       param_config_yaml=yaml.dump(config)):
     """
     Export an aggregated data table restricted by restrict by,
 
-
+    Args:\n
+      uuid: uuid for the download process
+      variables: the variables we want to aggregate
+      group_by: The data to group by (clinic, epi_week)
+      data_orientation: long or wide data set
+      start_date: The date to start the data set
+      end_date: End date for the aggregation
+      wide_data_format: If true the data is returned in the wide format, else in long format
+      param_config: The configuration values
     """
     return_keys = []
     db, session = get_db_engine()
     locs = get_locations(session)
     list_rows = []
-
-    status = DownloadDataFiles(
-        uuid=uuid,
-        generation_time=datetime.now(),
-        type=download_name,
-        success=0,
-        status=0
-    )
-    session.add(status)
-    session.commit()
+    operation_status = OperationStatus(download_name, uuid)
 
     columns = []
     groups = []
@@ -645,36 +842,25 @@ def export_data_table(uuid, download_name,
         columns.append(getattr(Data, field))
         groups.append(getattr(Data, field))
         return_keys.append(v[1])
-
+    conditions = [Data.variables.has_key(restrict_by)]                 
+    if start_date:
+        start_date = parse(start_date).replace(tzinfo=None)
+        conditions.append(Data.date >= start_date)
+    if end_date:
+        end_date = parse(end_date).replace(tzinfo=None)
+        conditions.append(Data.date <= end_date)
     for v in variables:
         columns.append(func.sum(Data.variables[v[0]].astext.cast(Float)))
         return_keys.append(v[1])
-
-    result = session.query(*columns).filter(Data.variables.has_key(restrict_by)).group_by(*groups)
+    result = session.query(*columns).filter(*conditions).group_by(*groups)
     filename = base_folder + "/exported_data/" + uuid + "/" + download_name
     os.mkdir(base_folder + "/exported_data/" + uuid)
-    csv_content = open(filename + ".csv", "w")
-    csv_writer = csv.writer(csv_content)
-    csv_writer.writerows([return_keys])
-
-    # XlsxWriter with "constant_memory" set to true, flushes mem after each row
-    xls_content = open(filename + ".xlsx", "wb")
-    xls_book = xlsxwriter.Workbook(xls_content, {'constant_memory': True})
-    xls_sheet = xls_book.add_worksheet()
-
-    # xls_sheet = pyexcel.Sheet([keys])
-
-    # Little utility function write a row to file.
-    def write_xls_row(data, row, sheet):
-        for cell in range(len(data)):
-            xls_sheet.write(row, cell, data[cell])
-
-    write_xls_row(return_keys, 0, xls_sheet)
     i = 0
     for row in result:
         # Can write row immediately to xls file as memory is flushed after.
         row_list = list(row)
         location_condition = True
+        
         for l in location_subs:
             if row_list[l]:
                 if location_conditions:
@@ -684,19 +870,17 @@ def export_data_table(uuid, download_name,
                 row_list[l] = locs[row_list[l]].name
         if location_condition:
             row_list = [x if x is not None else 0 for x in row_list]
-            write_xls_row(row_list, i + 1, xls_sheet)
             list_rows.append(row_list)
             # Append the row to list of rows to be written to csv.
             i += 1
-    csv_writer.writerows(list_rows)
 
-    csv_content.close()
-    xls_book.close()
-
-    xls_content.close()
-    status.status = 1
-    status.success = 1
-    session.commit()
+    df = pandas.DataFrame(list_rows, columns=return_keys)
+    if wide_data_format:
+        df = df.set_index(return_keys[:-1]).unstack().fillna(0)
+   
+    df.to_csv(filename + ".csv")
+    df.to_excel(filename + ".xlsx")
+    operation_status.submit_operation_success()
 
     return True
 
