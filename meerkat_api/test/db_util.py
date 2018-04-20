@@ -136,7 +136,6 @@ def insert_locations(session, date=None):
     if date:
         freezer = freeze_time(date)
         freezer.start()
-        reload(locations)
 
     reload(locations)
     session.query(model.Locations).delete()
@@ -157,7 +156,7 @@ def insert_specific_locations(session, variable, date=None):
     if date:
         freezer = freeze_time(date)
         freezer.start()
-        reload(locations)
+    reload(locations)
     session.query(model.Locations).delete()
     session.bulk_save_objects(getattr(locations, variable))
     session.commit()

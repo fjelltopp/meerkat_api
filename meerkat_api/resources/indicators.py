@@ -121,7 +121,9 @@ class Indicators(Resource):
             cummulative = analysis_output[0]
             if np.isnan(cummulative):
                 cummulative = 0
-            indicator_data["cummulative"] = np.asscalar(cummulative) * mult_factor
+            if isinstance(cummulative, np.generic):
+                cummulative = np.asscalar(cummulative)
+            indicator_data["cummulative"] = cummulative * mult_factor
 
             timeline = analysis_output[1] * mult_factor
             # # indicator_data["timeline"] = {"w1":-99,"w2":99}
@@ -134,7 +136,7 @@ class Indicators(Resource):
             print("End", time.time() - s)
             return indicator_data
 
-        except  (RuntimeError, TypeError, NameError, IndexError):
+        except (RuntimeError, TypeError, NameError, IndexError):
             print("Not enough data avaliable to show the indicator")
             return {
                 "timeline": [],
