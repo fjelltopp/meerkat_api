@@ -14,12 +14,21 @@ from . import settings
 import meerkat_api
 from meerkat_api.test import db_util
 import datetime
-from meerkat_api.extensions import celery_app
-from meerkat_abacus import util, model, data_import
+from api_background.celery_app import app as celery_app
+from meerkat_abacus import util, model
 from meerkat_abacus.config import config
 from api_background.export_data import base_folder
 from meerkat_abacus.util.epi_week import epi_week_for_date
 
+
+def add_rows_to_db(table, form_data, session):
+    db_table = model.form_tables(config)[table]
+    for data in form_data:
+        insert_obj = db_table(data=data,
+                              uuid=data["meta/instanceID"])
+        session.add(insert_obj)
+    session.commit()
+    
 class MeerkatAPITestCase(unittest.TestCase):
     def setUp(self):
         """Setup for testing"""
@@ -28,8 +37,8 @@ class MeerkatAPITestCase(unittest.TestCase):
         celery_app.conf.CELERY_ALWAYS_EAGER = True
         self.app = meerkat_api.app.test_client()
         self.session = db_util.session
-        for table in model.form_tables():
-            self.session.query(model.form_tables()[table]).delete()
+        for table in model.form_tables(config):
+            self.session.query(model.form_tables(config)[table]).delete()
         self.session.query(model.Locations).delete()
         
         self.session.commit()
@@ -42,24 +51,17 @@ class MeerkatAPITestCase(unittest.TestCase):
         for d in util.read_csv(current_directory + "/test_data/" + "demo_case.csv"):
             form_data.append(d)
         
-        data_import.add_rows_to_db("demo_case",
-                                   form_data,
-                                   db_util.session,
-                                   db_util.engine,
-                                   deviceids=["1", "2", "3",
-                                              "4", "5", "6"],
-                                   )
+        add_rows_to_db("demo_case",
+                       form_data,
+                       db_util.session)
 
         dr_name = config.country_config["tables"][1]
         form_data = []
         for d in util.read_csv(current_directory + "/test_data/" + "demo_alert.csv"):
             form_data.append(d)
-        data_import.add_rows_to_db("demo_alert",
-                                   form_data,
-                                   db_util.session,
-                                   db_util.engine,
-                                   deviceids=["1", "2", "3",
-                                              "4", "5", "6"])
+        add_rows_to_db("demo_alert",
+                       form_data,
+                       db_util.session)
 
 
     def tearDown(self):
