@@ -116,13 +116,19 @@ def valid_urls(app):
     for url in meerkat_api.app.url_map.iter_rules():
         str_url = str(url)
         if "static" not in str_url and str_url not in excluded_urls:
-            new_url = str_url
             for arg in url.arguments:
-                new_url = new_url.replace("<" + arg + ">",
+                str_url = str_url.replace("<" + arg + ">",
                                           substitutions[arg])
-                new_url = new_url.replace("<int:" + arg + ">",
+                str_url = str_url.replace("<int:" + arg + ">",
                                           substitutions[arg])
-            urls.append(new_url)
+
+            if "export/category" in str_url:
+                str_url += '?variables=["tot_1", "Test"]'
+            if "export/week_level" in str_url:
+                str_url += '?variable=["tot_1", "tot_1", "Test"]'
+            if "export/data_table" in str_url:
+                str_url += '?variables=[["tot_1", "Test"]]&group_by=[["epi_year", "Year"]]'
+            urls.append(str_url)
     return urls
 
 
@@ -245,7 +251,7 @@ class MeerkatAPITestCase(TestCase):
                              "clinics",
                              "epi_week",
                              "geo_shapes",
-                             "variables",
+                             "/variables",
                              "variable/tot_1"]
         no_authentication_full_paths = ["/device/4"]
 
