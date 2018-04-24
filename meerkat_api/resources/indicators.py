@@ -121,8 +121,7 @@ class Indicators(Resource):
             cummulative = analysis_output[0]
             if np.isnan(cummulative):
                 cummulative = 0
-
-            if isinstance(cummulative, np.generic):
+            elif isinstance(cummulative, np.generic):
                 cummulative = np.asscalar(cummulative)
             indicator_data["cummulative"] = cummulative * mult_factor
 
