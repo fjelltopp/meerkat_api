@@ -6,13 +6,33 @@ from flask import request
 from sqlalchemy import or_, Float
 from meerkat_api.extensions import db, api
 from meerkat_api.util import series_to_json_dict
-from meerkat_analysis.indicators import count_over_count, count
+from meerkat_analysis.indicators import count_over_count, count, grouped_indicator
 from meerkat_abacus.model import Data
 from meerkat_api.authentication import authenticate
 import meerkat_abacus.util.epi_week as ew
 import time
 import datetime
 
+def prepare_indicator_output(analysis_output, mult_factor):
+    """
+    Takes the output from the analysis and constructs the correct output
+
+    """
+    
+    indicator_data = dict()
+    cummulative = analysis_output[0]
+    if np.isnan(cummulative):
+        cummulative = 0
+    elif isinstance(cummulative, np.generic):
+        cummulative = np.asscalar(cummulative)
+    indicator_data["cummulative"] = cummulative * mult_factor
+        
+    timeline = analysis_output[1] * mult_factor
+    indicator_data["timeline"] = series_to_json_dict(timeline)
+    indicator_data["current"] = timeline.iloc[-1]
+    indicator_data["previous"] = timeline.iloc[-2]
+    indicator_data["name"] = "Name is not passed to the API!"
+    return indicator_data
 
 class Indicators(Resource):
     """
@@ -21,7 +41,7 @@ class Indicators(Resource):
 
     Args: \n
         flags: A list containings char flags defining operations on variables.
-            `d` - denominator of an indicator, `n` - nominator, `v` -
+            `d` - denominator of an indicator, `n` - numerator, `v` -
             additional variable to restrict query. `r` - restrict `
             count_over_count` query if set to `1`\n
         variables: A list of variables id to which flags correspond\n
@@ -34,7 +54,8 @@ class Indicators(Resource):
 
     def get(self, flags, variables, location, start_date=None,
             end_date=None, current_year=None):
-        current_year= request.args.get('current_year')
+        current_year = request.args.get('current_year')
+        group_by_level = request.args.get('group_by_level')
         if not start_date:
             if current_year == "1":
                 this_year = datetime.datetime.now().year
@@ -56,13 +77,13 @@ class Indicators(Resource):
                 count_over = True
                 denominator = op[1]
             if op[0] == "n":
-                nominator = op[1]
+                numerator = op[1]
             if op[0] == "v":
                 restricted_var.append(op[1])
 
             if op[0] == "m":
                 mult_factor = int(op[1])
-        # Limit to location and nominator variable
+        # Limit to location and numerator variable
         conditions = [or_(
             loc == location
             for loc in (Data.country, Data.zone,
@@ -78,27 +99,26 @@ class Indicators(Resource):
         print("Before DB", time.time() - s)
         try:
             if count_over:
-                if denominator == None or nominator == None:
+                if denominator is None or numerator is None:
                     return "Need both denominator and numerator"
                 conditions.append(Data.variables.has_key(denominator))
                 # Database query
                 data = pd.read_sql(
                     db.session.query(Data.region, Data.district, Data.clinic,
-                                    Data.date,
-                                    Data.variables[nominator].astext.label(nominator),
-                                    Data.variables[denominator].astext.cast(Float).label(denominator)
+                                     Data.date,
+                                     Data.variables[numerator].astext.label(numerator),
+                                     Data.variables[denominator].astext.cast(Float).label(denominator)
                                     ).filter(
                                         *conditions).statement, db.engine)
             else:
-                conditions.append(Data.variables.has_key(nominator))
+                conditions.append(Data.variables.has_key(numerator))
                 data = pd.read_sql(
                     db.session.query(Data.region, Data.district, Data.clinic,
-                                    Data.date,
-                                    Data.variables[nominator].label(nominator),
-                                    ).filter(
+                                     Data.date,
+                                     Data.variables[numerator].label(numerator),
+                    ).filter(
                                         *conditions).statement, db.session.bind)
             data = data.fillna(0)
-            indicator_data = dict()
 
             if data.empty:
                 print("Indicators: No records!!!")
@@ -110,33 +130,33 @@ class Indicators(Resource):
                 }
             print("After DB", time.time() - s)
 
-            #Call meerkat_analysis
-            if count_over:
-                analysis_output = count_over_count(data, nominator, denominator, start_date, end_date)
+            # Call meerkat_analysis
+
+            if group_by_level:
+                print(group_by_level)
+                if count_over:
+                    analysis_output = grouped_indicator(data, count_over_count,
+                                                        group_by_level,
+                                                        numerator, denominator,
+                                                        start_date, end_date)
+                else:
+                    analysis_output = grouped_indicator(data, count, group_by_level,
+                                                        numerator, start_date, end_date)
+                indicator_data = {}
+                for key in analysis_output:
+                    indicator_data[str(key)] = prepare_indicator_output(analysis_output[key],
+                                                                    mult_factor)
+                return indicator_data
             else:
-                analysis_output = count(data, nominator, start_date, end_date)
+                if count_over:
+                    analysis_output = count_over_count(data, numerator, denominator,
+                                                       start_date, end_date)
+                else:
+                    analysis_output = count(data, numerator, start_date, end_date)
+                return prepare_indicator_output(analysis_output, mult_factor)
 
-            print("After Analysis", time.time() - s)
-            indicator_data = dict()
-            cummulative = analysis_output[0]
-            if np.isnan(cummulative):
-                cummulative = 0
-            elif isinstance(cummulative, np.generic):
-                cummulative = np.asscalar(cummulative)
-            indicator_data["cummulative"] = cummulative * mult_factor
-
-            timeline = analysis_output[1] * mult_factor
-            # # indicator_data["timeline"] = {"w1":-99,"w2":99}
-            indicator_data["timeline"] = series_to_json_dict(timeline)
-
-            indicator_data["current"] = timeline.iloc[-1]
-            indicator_data["previous"] = timeline.iloc[-2]
-
-            indicator_data["name"] = "Name is not passed to the API!"
-            print("End", time.time() - s)
-            return indicator_data
-
-        except  (RuntimeError, TypeError, NameError, IndexError):
+        except (RuntimeError, TypeError, NameError, IndexError) as err:
+            print(err)
             print("Not enough data avaliable to show the indicator")
             return {
                 "timeline": [],
