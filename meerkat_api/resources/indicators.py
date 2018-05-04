@@ -23,7 +23,7 @@ def prepare_indicator_output(analysis_output, mult_factor):
     cummulative = analysis_output[0]
     if np.isnan(cummulative):
         cummulative = 0
-    elif isinstance(cummulative, np.generic):
+    elif isinstance(cummulative, np.generic) or isinstance(cummulative, np.ndarray):
         cummulative = np.asscalar(cummulative)
     indicator_data["cummulative"] = cummulative * mult_factor
         
@@ -32,6 +32,7 @@ def prepare_indicator_output(analysis_output, mult_factor):
     indicator_data["current"] = timeline.iloc[-1]
     indicator_data["previous"] = timeline.iloc[-2]
     indicator_data["name"] = "Name is not passed to the API!"
+    print(indicator_data)
     return indicator_data
 
 class Indicators(Resource):
@@ -145,7 +146,7 @@ class Indicators(Resource):
                 indicator_data = {}
                 for key in analysis_output:
                     indicator_data[str(key)] = prepare_indicator_output(analysis_output[key],
-                                                                    mult_factor)
+                                                                        mult_factor)
                 return indicator_data
             else:
                 if count_over:

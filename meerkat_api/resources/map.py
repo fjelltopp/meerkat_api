@@ -56,8 +56,6 @@ class Clinics(Resource):
                                                   "other": locations[l].other}))
         return FeatureCollection(points)
 
-
-    
 class MapVariable(Resource):
     """
     Want to map a variable id by clinic (only include case reporting clinics)
@@ -104,6 +102,77 @@ class MapVariable(Resource):
         locations = get_locations(db.session)
         ret = {}
         for r in results.all():
+            if r[1] is not None:
+                geo = to_shape(r[1])
+                if r[2]:
+                    # Leaflet uses LatLng
+                    ret[str(r[2])] = {"value": r[0], "geolocation": [geo.y, geo.x],
+                                 "clinic": locations[r[2]].name}
+                else:
+                    if not include_all_clinics:
+                        cords = [geo.y, geo.x]  # Leaflet uses LatLng
+                        ret[str(cords)] = {"value": r[0], "geolocation": cords,
+                                           "clinic": "Outbreak Investigation"}
+                    
+
+        if include_all_clinics:
+            results = db.session.query(model.Locations)
+            for row in results.all():
+                if is_allowed_location(row.id, location):
+                    if row.case_report and row.point_location is not None and str(row.id) not in ret.keys():
+                        geo = to_shape(row.point_location)
+                        ret[str(row.id)] = {"value": 0,
+                                            "geolocation": [geo.y, geo.x],
+                                            "clinic": row.name}
+        return ret
+    
+class MapCategory(Resource):
+    """
+    Want to map a variable id by clinic (only include case reporting clinics)
+
+    Args:\n
+       variable_id: variable to map\n
+       interval: the time interval to aggregate over (default=year)\n
+       location: If we should restrict on location\n
+       include_all_clinics: If true we include all clinics even with no cases\n
+
+    Returns:\n
+        map_data: [{value:0, geolocation: .., clinic:name},...]\n
+    """
+    decorators = [authenticate]
+
+    def get(self, category, location=1,
+            start_date=None, end_date=None, include_all_clinics=False):
+
+        start_date, end_date = fix_dates(start_date, end_date)
+        location = int(location)
+
+        allowed_location = 1
+        if g:
+            allowed_location = g.allowed_location
+        if not is_allowed_location(location, allowed_location):
+            return {}
+        results = db.session.query(
+            Data.categories[category],
+            Data.geolocation,
+            Data.clinic,
+            Data.date
+        ).distinct(Data.clinic).filter(
+            Data.categories.has_key(category),
+            Data.date >= start_date,
+            Data.date < end_date,
+            or_(
+                loc == location for loc in (Data.country,
+                                            Data.region,
+                                            Data.district,
+                                            Data.clinic)
+            )
+        ).order_by(Data.clinic).order_by(Data.date.desc())
+
+        locations = get_locations(db.session)
+        ret = {}
+        for r in results.all():
+            print(r)
             if r[1] is not None:
                 geo = to_shape(r[1])
                 if r[2]:
@@ -210,4 +279,6 @@ api.add_resource(MapVariable, "/map/<variable_id>",
                  "/map/<variable_id>/<location>",
                  "/map/<variable_id>/<location>/<end_date>",
                  "/map/<variable_id>/<location>/<end_date>/<start_date>" )
+api.add_resource(MapCategory, "/map_category/<category>")
+
 api.add_resource(IncidenceMap, "/incidence_map/<variable_id>")
