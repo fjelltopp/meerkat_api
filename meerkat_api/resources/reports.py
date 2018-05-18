@@ -3250,16 +3250,17 @@ class Malaria(Resource):
         thresholds = {}
         threshold_db_result = db.session.query(model.CalculationParameters).filter(
             model.CalculationParameters.name == "malaria_thresholds").first()
-        threshold_data = threshold_db_result.parameters
 
         year = start_date.year
-        assert start_date.year == end_date.year
         str_year = str(year)
-        for loc_id in country_location_ids:
-            if loc_id in threshold_data and str_year in threshold_data[loc_id]:
-                for week in cases.keys():
-                    thresholds.setdefault(week, 0)
-                    thresholds[week] += int(threshold_data[loc_id][str_year][str(week)])
+        if threshold_db_result and start_date.year == end_date.year:
+            threshold_data = threshold_db_result.parameters
+
+            for loc_id in country_location_ids:
+                if loc_id in threshold_data and str_year in threshold_data[loc_id]:
+                    for week in cases.keys():
+                        thresholds.setdefault(week, 0)
+                        thresholds[week] += int(threshold_data[loc_id][str_year][str(week)])
         weeks = sorted(cases.keys())
         ret["timeline"] = {"weeks": weeks,
                            "cases": [cases[w] for w in weeks]

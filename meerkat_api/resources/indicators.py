@@ -104,21 +104,12 @@ class Indicators(Resource):
                 conditions.append(Data.variables.has_key(denominator))
                 # Database query
                 data = pd.read_sql(
-<<<<<<< HEAD
                     db.session.query(Data.region, Data.district, Data.clinic,
                                      Data.date,
                                      Data.variables[numerator].astext.cast(Float).label(numerator),
                                      Data.variables[denominator].astext.cast(Float).label(denominator)
                                     ).filter(
                                         *conditions).statement, db.engine)
-                print(data)
-=======
-                    db.session.query(
-                        Data.region, Data.district, Data.clinic,
-                        Data.date, Data.variables[numerator].astext.label(numerator),
-                        Data.variables[denominator].astext.cast(Float).label(denominator)
-                    ).filter(*conditions).statement, db.engine)
->>>>>>> 483f7ea2ba369ab89ab15738817072e4f11714a3
             else:
                 conditions.append(Data.variables.has_key(numerator))
                 data = pd.read_sql(
