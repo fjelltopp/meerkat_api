@@ -26,13 +26,15 @@ def prepare_indicator_output(analysis_output, mult_factor):
     elif isinstance(cummulative, np.generic) or isinstance(cummulative, np.ndarray):
         cummulative = np.asscalar(cummulative)
     indicator_data["cummulative"] = cummulative * mult_factor
-        
+
     timeline = analysis_output[1] * mult_factor
     indicator_data["timeline"] = series_to_json_dict(timeline)
     indicator_data["current"] = timeline.iloc[-1]
     indicator_data["previous"] = timeline.iloc[-2]
     indicator_data["name"] = "Name is not passed to the API!"
-    print(indicator_data)
+    for key, value in indicator_data.items():
+        if isinstance(value, np.generic):
+            indicator_data[key] = np.asscalar(value)
     return indicator_data
 
 class Indicators(Resource):
@@ -107,10 +109,11 @@ class Indicators(Resource):
                 data = pd.read_sql(
                     db.session.query(Data.region, Data.district, Data.clinic,
                                      Data.date,
-                                     Data.variables[numerator].astext.label(numerator),
+                                     Data.variables[numerator].astext.cast(Float).label(numerator),
                                      Data.variables[denominator].astext.cast(Float).label(denominator)
                                     ).filter(
                                         *conditions).statement, db.engine)
+                print(data)
             else:
                 conditions.append(Data.variables.has_key(numerator))
                 data = pd.read_sql(

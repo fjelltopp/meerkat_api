@@ -279,6 +279,7 @@ api.add_resource(MapVariable, "/map/<variable_id>",
                  "/map/<variable_id>/<location>",
                  "/map/<variable_id>/<location>/<end_date>",
                  "/map/<variable_id>/<location>/<end_date>/<start_date>" )
-api.add_resource(MapCategory, "/map_category/<category>")
+api.add_resource(MapCategory, "/map_category/<category>",
+                 "/map_category/<category>/<location>")
 
 api.add_resource(IncidenceMap, "/incidence_map/<variable_id>")

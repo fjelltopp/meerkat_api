@@ -3119,6 +3119,8 @@ class Malaria(Resource):
 
         start_date, end_date = fix_dates(start_date, end_date)
         end_date_limit = end_date + timedelta(days=1)
+        first_day_of_year = datetime(year=end_date.year,
+                                     month=1, day=1)
 
         ret = {}
 
@@ -3144,6 +3146,7 @@ class Malaria(Resource):
         location_name = locs[int(location)]
         ret["data"]["project_region"] = location_name.name
         ret["data"]["project_region_id"] = location
+        ret["data"]["project_region_level"] = location_name.level
 
         #  Actually get the data.
         conn = db.engine.connect()
@@ -3241,7 +3244,7 @@ class Malaria(Resource):
                                locs)
         country_location_ids = [locs[clinic].country_location_id for clinic in clinics]
         cases = query_sum(db, ["cmd_17"],
-                          start_date,
+                          first_day_of_year,
                           end_date_limit, location,
                           weeks=True)["weeks"]
         thresholds = {}
@@ -3257,12 +3260,13 @@ class Malaria(Resource):
                 for week in cases.keys():
                     thresholds.setdefault(week, 0)
                     thresholds[week] += int(threshold_data[loc_id][str_year][str(week)])
-        print(thresholds)
         weeks = sorted(cases.keys())
         ret["timeline"] = {"weeks": weeks,
-                           "cases": [cases[w] for w in weeks],
-                           "thresholds": [thresholds[w] for w in weeks]
+                           "cases": [cases[w] for w in weeks]
                            }
+        if thresholds:
+            ret["timeline"]["thresholds"] = [thresholds[w] for w in weeks]
+
         return ret
 
 class VaccinationReport(Resource):
