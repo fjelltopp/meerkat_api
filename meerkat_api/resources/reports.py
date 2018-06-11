@@ -4014,7 +4014,7 @@ class PlagueReport(Resource):
 
         tot_clinics = TotClinics()
         ret["data"]["clinic_num"] = tot_clinics.get(location)["total"]
-        plague_code = "cmd_7"
+        plague_codes = ["alert_cmd_7_0", "alert_cmd_7_1", "alert_cmd_7_2", "alert_cmd_7_3"]
         start_week = 34
         current_year = end_date.year
 
@@ -4022,7 +4022,9 @@ class PlagueReport(Resource):
         data_list = [0 for week in weeks]
         if epi_week > start_week:
             current_year = current_year + 1
-        plague_cases = alerts.get_alerts({"location": location, "reason": plague_code})
+        plague_cases = []
+        for plague_code in plague_codes:
+            plague_cases += alerts.get_alerts({"location": location, "reason": plague_code})
 
         # Figure 1: Epi curve for plague cases
         # Figure 2: Status breakdown
