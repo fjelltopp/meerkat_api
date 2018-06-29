@@ -30,13 +30,14 @@ class Forms(Resource):
 
     def get(self):
         return_data = {}
-        for form in form_tables():
-            results = db.session.query(form_tables()[form]).first()
+        form_tables_ = form_tables()
+        for form_name, form_table in form_tables_.items():
+            results = db.session.query(form_table).filter(form_table.uuid != None).first()
             if results and results.data:
-                return_data[form] = list(results.data.keys(
+                return_data[form_name] = list(results.data.keys(
                 )) + ["clinic", "district", "region"]
             else:
-                return_data[form] = []
+                return_data[form_name] = []
         return return_data
 
 
