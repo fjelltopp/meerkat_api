@@ -27,3 +27,15 @@ import api_background.export_data
 
 if __name__ == "__main__":
     app.start()
+# @task
+# def cleanup_downloads():
+#     folder = '/var/www/meerkat_api/api_background/api_background/exported_data'
+#     downloads = os.listdir(folder)
+#     oldest = time.time() - 3600
+#     for download in downloads:
+#         path = '{}/{}'.format(folder, download)
+#         if os.stat(path).st_mtime < oldest:
+#             try:
+#                 shutil.rmtree(path)
+#             except NotADirectoryError:
+#                 pass
