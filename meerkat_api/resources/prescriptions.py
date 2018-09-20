@@ -115,7 +115,8 @@ class Prescriptions(Resource):
             str_prescription_location = str(prescription[0])
             medicine_key = str(prescription[1])
             prescription_count = prescription[2]
-            medicine = prescriptions['clinic_data'][str_prescription_location].setdefault(medicine_key, {})
+            prescription_for_location = prescriptions['clinic_data'].setdefault(str_prescription_location, {})
+            medicine = prescription_for_location.setdefault(medicine_key, {})
             medicine['prescriptions'] = prescription_count
 
         barcode_variables = get_variables(barcode_category)
