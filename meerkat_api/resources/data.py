@@ -408,3 +408,4 @@ api.add_resource(AggregateCategorySum,
                  "/aggregate_category_sum/<category>/<location_id>/<year>",
                  "/aggregate_category_sum/<category>/<location_id>/<year>/<lim_variables>")
 api.add_resource(Records, "/records/<variable>/<location_id>")
+api.add_resource(LatestData, "/latest/<location_id>")
