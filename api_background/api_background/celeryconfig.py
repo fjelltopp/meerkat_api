@@ -10,7 +10,7 @@ given by the config.interval value.
 """
 
 import os
-
+from celery.schedules import crontab
 
 BROKER_URL = 'amqp://guest@rabbit//'
 CELERY_RESULT_BACKEND = 'rpc://guest@rabbit//'
@@ -25,3 +25,8 @@ CELERY_RESULT_SERIALIZER = 'json'
 CELERY_ACCEPT_CONTENT = ['json', 'yaml']
 CELERY_ENABLE_UTC = True
 CELERYD_MAX_TASKS_PER_CHILD = 1  # To help with memory constraints
+CELERYBEAT_SCHEDULE = {}
+CELERYBEAT_SCHEDULE['cleanup_downloads'] = {
+    'task': 'meerkat_abacus.tasks.cleanup_downloads',
+    'schedule': crontab(minute=16, hour='*')
+}
