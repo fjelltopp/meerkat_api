@@ -210,7 +210,7 @@ class MeerkatAPITestCase(TestCase):
                              delete=False)
         db_util.insert_cases(self.db_session, "completeness",
                              delete=False)
-        db_util.insert_cases(self.db_session, "afro_report",
+        db_util.insert_cases(self.db_session, "oms_report",
                              delete=False)
         db_util.insert_cases(self.db_session, "mental_health",
                              delete=False)

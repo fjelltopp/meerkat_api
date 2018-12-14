@@ -1609,36 +1609,36 @@ class MeerkatAPIReportsTestCase(meerkat_api.test.TestCase):
             expected=1)
 
     @freeze_time("2016-12-30")
-    def test_afro(self):
-        """ Test AFRO report """
-        print("afro test began")
-        afro_expected = meerkat_api.test.test_data.expected_output.afro_expected
+    def test_oms(self):
+        """ Test OMS report """
+        print("OMS test began")
+        oms_expected = meerkat_api.test.test_data.expected_output.oms_expected
         print("freezing time")
 
         # Load the test data.
         # db_util.insert_specific_locations(self.db, "mad_dump")
         db_util.insert_specific_locations(self.db_session, "testshire")
         db_util.insert_codes_from_file(self.db_session, "codes.csv")
-        db_util.insert_cases(self.db_session, "afro_report")
+        db_util.insert_cases(self.db_session, "oms_report")
 
         # This test assumes the period is the whole year despite whatever it is
         rv = self.app.get(
-            '/reports/afro/{}/{}/{}'
+            '/reports/oms/{}/{}/{}'
                 .format(
                 1,
                 datetime(2016, 12, 25).isoformat(),
                 datetime(2016, 12, 18).isoformat(),
             ), headers=settings.header)
         self.assertEqual(rv.status_code, 200)
-        afro_returned = json.loads(rv.data.decode("utf-8"))
-        print("[Output afro_returned]:")
-        print(afro_returned)
-        print(type(afro_returned))
+        oms_returned = json.loads(rv.data.decode("utf-8"))
+        print("[Output oms_returned]:")
+        print(oms_returned)
+        print(type(oms_returned))
         print("[end]")
-        afro_expected.pop("meta", None)
-        afro_returned.pop("meta", None)
-        dictdiffstructure = dict_struct_compare(afro_expected, afro_returned)
-        dictdiffcontent = simplified_dict_compare(afro_expected, afro_returned)
+        oms_expected.pop("meta", None)
+        oms_returned.pop("meta", None)
+        dictdiffstructure = dict_struct_compare(oms_expected, oms_returned)
+        dictdiffcontent = simplified_dict_compare(oms_expected, oms_returned)
         print("Difference in response structure")
         print(dictdiffstructure)
         print("Difference in response content")

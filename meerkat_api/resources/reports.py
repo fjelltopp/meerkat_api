@@ -3355,9 +3355,9 @@ class VaccinationReport(Resource):
 
         return ret
 
-class AFROBulletin(Resource):
+class OMSBulletin(Resource):
     """
-    AFRO Bulletin
+    OMS Bulletin
 
     This reports gives a comple summary of the state of the system.
 
@@ -3429,7 +3429,7 @@ class AFROBulletin(Resource):
 
         # Get single variables
         ret["data"]["weekly_highlights"] = get_variables_category(
-            'afro',
+            'oms',
             start_date,
             end_date_limit,
             location,
@@ -4928,9 +4928,9 @@ api.add_resource(Malaria, "/reports/malaria/<location>",
 api.add_resource(VaccinationReport, "/reports/vaccination/<location>",
                  "/reports/vaccination/<location>/<end_date>",
                  "/reports/vaccination/<location>/<end_date>/<start_date>")
-api.add_resource(AFROBulletin, "/reports/afro/<location>",
-                 "/reports/afro/<location>/<end_date>",
-                 "/reports/afro/<location>/<end_date>/<start_date>")
+api.add_resource(OMSBulletin, "/reports/oms/<location>",
+                 "/reports/oms/<location>/<end_date>",
+                 "/reports/oms/<location>/<end_date>/<start_date>")
 api.add_resource(MhReport, "/reports/mh_report/<location>",
                  "/reports/mh_report/<location>/<end_date>",
                  "/reports/mh_report/<location>/<end_date>/<start_date>")
