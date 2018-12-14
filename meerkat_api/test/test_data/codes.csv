@@ -22,7 +22,7 @@ icd_4183,"Influenza, virus not identified",case,mad_case,,icd_code,,,match,J11,i
 icd_9225,Open wound of unspecified body region,case,mad_case,,icd_code,,,match,T14.1,"individual_icd;Injuries to unspecified part of trunk, limb or body region",,icd_code,,Suspected,International Classification of Disease (ICD-10),http://apps.who.int/classifications/icd10/browse/2015/en,None,International Classification of Disease (ICD-10),,,,,,,,,
 icd_9646,Toxic effect: Other fish and shellfish poisoning,case,mad_case,,icd_code,,,match,T61.2,individual_icd;Toxic effects of substances chiefly nonmedicinal as to source,,icd_code,,Suspected,International Classification of Disease (ICD-10),http://apps.who.int/classifications/icd10/browse/2015/en,None,International Classification of Disease (ICD-10),,,,,,,,,
 reg_4,Active Surveillence Fever,register,mad_register,,intro./fever,,,calc,,epi_monitoring,intro./fever,,,,,,,,,,,,,,,,
-dea_0,Deaths,case,mad_case,,intro./death,,,match,yes,"tot_mortality,afro",None;child_age,,,,,,,,,,,,,,,,
+dea_0,Deaths,case,mad_case,,intro./death,,,match,yes,"tot_mortality,oms",None;child_age,,,,,,,,,,,,,,,,
 dea_1,<29 days,case,mad_case,,intro./death;child_age,,,match and between,"yes;0,1",tot_mortality,None;child_age,,,,,,,,,,,,,,,,
 dea_2,29 days-12 months,case,mad_case,,intro./death;child_age,,,match and between,"yes;1,12",tot_mortality,None;child_age,,,,,,,,,,,,,,,,
 dea_3,1-4 years,case,mad_case,,intro./death;child_age,,,match and between,"yes;12,60",tot_mortality,None;child_age,,,,,,,,,,,,,,,,
@@ -78,8 +78,8 @@ epi_6,Plague Type ICD A20.2,case,mad_case,,cd./plague_type,,,match,A20.2,epi_mon
 epi_7,Cholera >5 years,case,mad_case,,icd_code;pt./age,,,match and between,"A00;6,200",epi_monitoring,None;pt./age,,,,,,,,,,,,,,,,
 epi_8,Malnutrition <5 years,case,mad_case,,icd_code;pt./age,,,match and between,"E43;0,5",,None;pt./age,,,,,,,,,,,,,,,,
 mls_1,Consultations,register,mad_register,,intro./consultations,,,calc,,malaria_situation_no_case,intro./consultations,,,,,,,,,,,,,,,,
-mls_2,Fever,register,mad_register,,intro./fever,,,calc,,"malaria_situation_no_case,afro",intro./fever,,,,,,,,,,,,,,,,
-mls_3,RDT Total,register,mad_register,,intro./rdt,,,calc,,"malaria_situation_no_case,afro",intro./rdt,,,,,,,,,,,,,,,,
+mls_2,Fever,register,mad_register,,intro./fever,,,calc,,"malaria_situation_no_case,oms",intro./fever,,,,,,,,,,,,,,,,
+mls_3,RDT Total,register,mad_register,,intro./rdt,,,calc,,"malaria_situation_no_case,oms",intro./rdt,,,,,,,,,,,,,,,,
 mls_4,RDT 0-1 Months,case,mad_case,,cd./malaria_rdt;cd./malaria_rdt;child_age,,,match or match and between,"positive;negative;0,2",malaria_situation_no_case,None;None;child_age,,,,,,,,,,,,,,,,
 mls_5,RDT 2-12 Months,case,mad_case,,cd./malaria_rdt;cd./malaria_rdt;child_age,,,match or match and between,"positive;negative;2,12",malaria_situation_no_case,None;None;child_age,,,,,,,,,,,,,,,,
 mls_6,RDT 1-5 Years,case,mad_case,,cd./malaria_rdt;cd./malaria_rdt;child_age,,,match or match and between,"positive;negative;12,72",malaria_situation_no_case,None;None;child_age,,,,,,,,,,,,,,,,
@@ -88,7 +88,7 @@ mls_8,RDT 14+ Years,case,mad_case,,cd./malaria_rdt;cd./malaria_rdt;pt./age,,,mat
 mls_9,RDT Male,case,mad_case,,cd./malaria_rdt;cd./malaria_rdt,,,match or match,positive;negative,malaria_situation_no_case,,,,,,,,,,,,,,,,,
 mls_10,RDT Female,case,mad_case,,cd./malaria_rdt;cd./malaria_rdt,,,match or match,positive;negative,malaria_situation_no_case,,,,,,,,,,,,,,,,,
 mls_11,RDT Pregnant Women,case,mad_case,,cd./malaria_rdt;cd./malaria_rdt,,,match or match,positive;negative,malaria_situation_no_case,,,,,,,,,,,,,,,,,
-mls_12,Simple Total,case,mad_case,,cd./malaria_type,,,match,simple,"malaria_situation,afro",,,,,,,,,,,,,,,,,
+mls_12,Simple Total,case,mad_case,,cd./malaria_type,,,match,simple,"malaria_situation,oms",,,,,,,,,,,,,,,,,
 mls_13,Simple 0-1 Months,case,mad_case,,cd./malaria_type;child_age,,,match and between,"simple;0,2",malaria_situation,None;child_age,,,,,,,,,,,,,,,,
 mls_14,Simple 2-12 Months,case,mad_case,,cd./malaria_type;child_age,,,match and between,"simple;2,12",malaria_situation,None;child_age,,,,,,,,,,,,,,,,
 mls_15,Simple 1-5 Years,case,mad_case,,cd./malaria_type;child_age;cd./malaria_type;pt./age,,,match and between or match and between,"simple;12,72;simple;5,6",malaria_situation,None;child_age;None;pt./age,,,,,,,,,,,,,,,,
@@ -100,7 +100,7 @@ mls_20,Simple RDT Positive,case,mad_case,,cd./malaria_type;cd./malaria_rdt,,,mat
 mls_21,Simple RDT Negative,case,mad_case,,cd./malaria_type;cd./malaria_rdt,,,match and match,simple;negative,malaria_situation,,,,,,,,,,,,,,,,,
 mls_22,Simple RDT Don't know,case,mad_case,,cd./malaria_type;cd./malaria_rdt,,,match and match,simple;notdone,malaria_situation,,,,,,,,,,,,,,,,,
 mls_23,Simple Pregnant Women,case,mad_case,,cd./malaria_type;cd./malaria_pregnant,,,match and match,simple;yes,malaria_situation,,,,,,,,,,,,,,,,,
-mls_24,Severe Total,case,mad_case,,cd./malaria_type,,,match,severe,"malaria_situation,afro",,,,,,,,,,,,,,,,,
+mls_24,Severe Total,case,mad_case,,cd./malaria_type,,,match,severe,"malaria_situation,oms",,,,,,,,,,,,,,,,,
 mls_25,Severe 0-1 Months,case,mad_case,,cd./malaria_type;child_age,,,match and between,"severe;0,2",malaria_situation,None;child_age,,,,,,,,,,,,,,,,
 mls_26,Severe 2-12 Months,case,mad_case,,cd./malaria_type;child_age,,,match and between,"severe;2,12",malaria_situation,None;child_age,,,,,,,,,,,,,,,,
 mls_27,Severe 1-5 Years,case,mad_case,,cd./malaria_type;child_age;cd./malaria_type;pt./age,,,match and between or match and between,"severe;12,72;severe;5,6",malaria_situation,None;child_age;None;pt./age,,,,,,,,,,,,,,,,
@@ -112,7 +112,7 @@ mls_32,Severe RDT Positive,case,mad_case,,cd./malaria_type;cd./malaria_rdt,,,mat
 mls_33,Severe RDT Negative,case,mad_case,,cd./malaria_type;cd./malaria_rdt,,,match and match,severe;negative,malaria_situation,,,,,,,,,,,,,,,,,
 mls_34,Severe RDT Don't Know,case,mad_case,,cd./malaria_type;cd./malaria_rdt,,,match and match,severe;notdone,malaria_situation,,,,,,,,,,,,,,,,,
 mls_35,Severe Pregnant Women,case,mad_case,,cd./malaria_type;cd./malaria_pregnant,,,match and match,severe;yes,malaria_situation,,,,,,,,,,,,,,,,,
-mls_36,Deaths Total,case,mad_case,,intro./death;mortality,,,match and match,yes;B54,"malaria_situation_no_case,afro",,,,,,,,,,,,,,,,,
+mls_36,Deaths Total,case,mad_case,,intro./death;mortality,,,match and match,yes;B54,"malaria_situation_no_case,oms",,,,,,,,,,,,,,,,,
 mls_37,Deaths 0-1 Months,case,mad_case,,intro./death;mortality;child_age,,,match and match and between,"yes;B54;0,2",malaria_situation_no_case,None;None;child_age,,,,,,,,,,,,,,,,
 mls_38,Deaths 2-12 Months,case,mad_case,,intro./death;mortality;child_age,,,match and match and between,"yes;B54;2,12",malaria_situation_no_case,None;None;child_age,,,,,,,,,,,,,,,,
 mls_39,Deaths 1-5 Years,case,mad_case,,intro./death;mortality;child_age;intro./death;mortality;pt./age,,,match and match and between or match and match and between,"yes;B54;12,72;yes;B54;5,6",malaria_situation_no_case,None;None;child_age;None;None;pt./age,,,,,,,,,,,,,,,,
@@ -124,7 +124,7 @@ mls_44,Deaths RDT Positive,case,mad_case,,intro./death;mortality;cd./malaria_rdt
 mls_45,Deaths RDT Negative,case,mad_case,,intro./death;mortality;cd./malaria_rdt,,,match and match and match,yes;B54;negative,malaria_situation_no_case,,,,,,,,,,,,,,,,,
 mls_46,Deaths RDT Don't Know,case,mad_case,,intro./death;mortality;cd./malaria_rdt;intro./death;mortality;cd./malaria_rdt,,,match and match and match or match and match and match,yes;B54;notdone;yes;B54;,malaria_situation_no_case,,,,,,,,,,,,,,,,,
 mls_47,Deaths Pregnant Women,case,mad_case,,intro./death;mortality;cd./malaria_pregnant,,,match and match and match,yes;B54;yes,malaria_situation_no_case,,,,,,,,,,,,,,,,,
-mls_48,ACT Total,case,mad_case,,cd./malaria_rx,,,match,yes,"malaria_situation,afro",,,,,,,,,,,,,,,,,
+mls_48,ACT Total,case,mad_case,,cd./malaria_rx,,,match,yes,"malaria_situation,oms",,,,,,,,,,,,,,,,,
 mls_49,ACT 0-1 Months,case,mad_case,,cd./malaria_rx;child_age,,,match and between,"yes;0,2",malaria_situation,None;child_age,,,,,,,,,,,,,,,,
 mls_50,ACT 2-12 Months,case,mad_case,,cd./malaria_rx;child_age,,,match and between,"yes;2,12",malaria_situation,None;child_age,,,,,,,,,,,,,,,,
 mls_51,ACT 1-5 Years,case,mad_case,,cd./malaria_rx;child_age;cd./malaria_rx;pt./age,,,match and between or match and between,"yes;12,72;yes;5,6",malaria_situation,None;child_age;None;pt./age,,,,,,,,,,,,,,,,
@@ -205,10 +205,10 @@ ale_6,Case Management,case,alert_investigation,last,checklist,,,sub_match,case_m
 ale_7,Contact Tracing,case,alert_investigation,last,checklist,,,sub_match,contract_tracing,alert,,,,,,,,,,,,,,,,,
 ale_8,Laboratory Diagnosis,case,alert_investigation,last,checklist,,,sub_match,return_lab,alert,,,,,,,,,,,,,,,,,
 ale_9,Number of Investigation Forms,case,alert_investigation,count,,,,value,,,,,,,,,,,,,,,,,,,
-cmd_1,Acute Diarrhoea,case,mad_case,,icd_code,1,double,match,A09.0,"cd_tab,Intestinal infectious diseases,afro,epi_monitoring",,tabs,,Suspected,International Classification of Disease (ICD-10),http://apps.who.int/classifications/icd10/browse/2015/en,None,"Suspected case
+cmd_1,Acute Diarrhoea,case,mad_case,,icd_code,1,double,match,A09.0,"cd_tab,Intestinal infectious diseases,oms,epi_monitoring",,tabs,,Suspected,International Classification of Disease (ICD-10),http://apps.who.int/classifications/icd10/browse/2015/en,None,"Suspected case
 Une maladie qui se caractérise par les selles molles ou liquides 3 fois ou plus par jour","Cas suspect
 A disease characterised by loose or watery stools three or more times a day ","Contaminated water sources, Contaminated food sources, Low environmental sanitation, Other, None of the above","Sources d'eau contaminés, Sources de la nourriture contaminée, Une faible assainissement de l'environnement, Autre, Aucune de ces réponses","Watery diarrhoea (3 or more abnormally loose or fluid stools in the past 24 hours, Dehydration, Other, None of the above","Diarrhée aqueuse (3 ou plus de selles anormalement molles ou liquides dans les dernières 24 heures, une déshydratation",,,• Date of onset of symptoms,• Date d'apparition des symptômes
-cmd_2,Cholera,case,mad_case,,icd_code,1,double,match,"A00,A00.0,A00.1,A00.9","cd_tab,Intestinal infectious diseases,afro",,tabs,,Suspected,International Classification of Disease (ICD-10),http://apps.who.int/classifications/icd10/browse/2015/en,None,"Suspected case
+cmd_2,Cholera,case,mad_case,,icd_code,1,double,match,"A00,A00.0,A00.1,A00.9","cd_tab,Intestinal infectious diseases,oms",,tabs,,Suspected,International Classification of Disease (ICD-10),http://apps.who.int/classifications/icd10/browse/2015/en,None,"Suspected case
 A disease characterized by acute painless watery diarrhea with or without vomiting or dehydration.
 
 Probable case
@@ -244,7 +244,7 @@ Cas confirmé
 Un cas clinique compatible avec la confirmation en laboratoire.","Work in or travel to areas where typhoid fever is endemic, Close contact with someone who is infected or has recently been infected with typhoid fever, Drink water contaminated by sewage that contains S. typhi, Other, None of the above","Travail ou Voyage dans les zones où la fièvre typhoïde est endémique, En contact étroit avec une personne infectée ou a récemment été infectés par la fièvre typhoïde, Boire de l'eau contaminée par les eaux usées qui contiennent S. typhi  , Autre, Aucune de ces réponses","Fever, Headache, Malaise, Cough, Bradycardia, Splenomegaly, Rose spot on the trunk, Gastrointestinal symptoms, Other, None of the above","Fièvre, maux de tête, malaise, toux, une bradycardie, une splénomégalie, Tâches roses sur le tronc, les symptômes gastro-intestinaux","• Salmonella Typhi isolated from any clinical specimen 
 • Widal test result of a four-fold or greater rise in the titre of Salmonella Typhi O antibody in paired sera ","• Salmonella Typhi isolé de tout échantillon clinique  
 • Le  résultat  du  test de  Widal  avec une  augmentation  de  quatre  fois  ou  plus  du  titre  de l'anticorps  Salmonella Typhi O dans les sérums apparié",,
-cmd_4,Bloody Diarrhoea,case,mad_case,,icd_code,1,double,match,"A03,A03.0,A03.1,A03.2,A03.3,A03.8,A03.9","cd_tab,Intestinal infectious diseases,afro,epi_monitoring",,tabs,,Suspected,International Classification of Disease (ICD-10),http://apps.who.int/classifications/icd10/browse/2015/en,None,"Suspected case
+cmd_4,Bloody Diarrhoea,case,mad_case,,icd_code,1,double,match,"A03,A03.0,A03.1,A03.2,A03.3,A03.8,A03.9","cd_tab,Intestinal infectious diseases,oms,epi_monitoring",,tabs,,Suspected,International Classification of Disease (ICD-10),http://apps.who.int/classifications/icd10/browse/2015/en,None,"Suspected case
 A disease characterized by the insidious onset of persistent fever, headache, malaise, cough, bradycardia, splenomegaly or pink stain on the trunk with or without gastrointestinal symptoms.
   
 Probable case
@@ -288,7 +288,7 @@ Toute personne toussant depuis au moins 3 semaines.
 
 Cas confirmé 
 Examen direct de cachat ou par GeneXpert Cas confirmé par la radiographie, la culture pour les extrapulmonaires.","Promiscuity, Exposure to known case of TB, HIV positive, Lack of hygiene, Malnutrition, Other, None of the above","La promiscuité, l'exposition à une personne atteinte de tuberculose connue, Le VIH-positif, Le manque d’hygiène, La malnutrition, Autre, Aucune de ces réponses","Cough of long duration (>2 weeks), Coughing blood , Chest pain, Shortness of breath, Fever/night sweats, Tiredness, Loss of appetite, Weight loss, Other, None of the above","Toux de longue durée (> 2 semaines),  des douleurs thoraciques, essoufflement, fièvre / sueurs nocturnes, fatigue, perte d'appétit, perte de poids.","At least one positive plate of 3 sputum specimens by direct examination by light microscopy (samples early in the morning are more likely to contain the TB germ in the body), a positive result by the GeneXpert technology, culture result positive despite a negative direct examination, radiography. Intradermal (IDR) with pediatric score in children.","Au moins une lame positive sur 3 échantillons de crachats par examen direct au microscope optique (échantillons tôt le matin sont plus susceptibles de contenir de germe de la tuberculose dans l’organisme), un résultat positif par la technique de GeneXpert, un résultat de culture positif malgré un examen direct négatif, radiographie. Intradermoréaction (IDR) avec score pédiatrique chez les enfants.",What is the patient's HIV status? ,• Quel est le statut VIH du patient?
-cmd_7,Plague,case,mad_case,,icd_code,1,individual,match,"A20,A20.0,A20.1,A20.2,A20.3,A20.7,A20.8,A20.9","cd_tab,Certain zoonotic bacterial diseases,afro,epi_monitoring",,tabs,,Suspected,International Classification of Disease (ICD-10),http://apps.who.int/classifications/icd10/browse/2015/en,1 case,"Suspected case
+cmd_7,Plague,case,mad_case,,icd_code,1,individual,match,"A20,A20.0,A20.1,A20.2,A20.3,A20.7,A20.8,A20.9","cd_tab,Certain zoonotic bacterial diseases,oms,epi_monitoring",,tabs,,Suspected,International Classification of Disease (ICD-10),http://apps.who.int/classifications/icd10/browse/2015/en,1 case,"Suspected case
 Anyone with a high fever of sudden onset, with chills, headache, malaise importantly, prostration and very painful swelling of lymph nodes, or cough with blood-stained sputum, chest pain, and difficulty breathing.
 
 Probable case
@@ -338,7 +338,7 @@ Cas probable
 Une personne ayant au moins un des signes suivants: l'impossibilité d'ouvrir la bouche ou le spasme prolongée des muscles faciaux; OU contractions musculaires douloureuses. 
 Tétanos exige une blessure ou une plaie, mais les patients peuvent être incapables de se rappeler un événement spécifique.","Injury or wound, Cutting the umbilical cord in a non-sterile manner (pregnant women during childbirth), Other, None of the above","Blessure ou plaie, Coupe de cordon ombilical non stérile potentielle (les femmes enceintes lors de l'accouchement) , Autre, Aucune de ces réponses","Inability to open the mouth ( ""lockjaw""), spasm sustained facial muscles, including the jaw, painful muscle contractions, inability to breastfeed (newborn), stiff body or arc (newborn ), inability to breathe","Incapacité à ouvrir la bouche («trismus»), le spasme soutenu des muscles du visage, y compris la mâchoire, des contractions musculaires douloureuses, l'incapacité d'allaiter (nouveau-né), le corps raide ou arc (nouveau-né), incapacité à respirer ",Not applicable.  The organism is rarely recovered from the site of infection and usually there is no detectable antibody response.,"•N'est pas applicable 
 • en général il n'y a pas de réponse d'anticorps détectable.",• The patient has previously been vaccinated? ,• Le patient a déjà été vaccinés?
-cmd_10,Acute Flaccid Paralysis,case,mad_case,,icd_code,1,individual,match,"A80,A80.0,A80.1,A80.2,A80.3,A80.4,A80.9,A80.10","cd_tab,Viral infections of the central nervous system,afro,epi_monitoring",,tabs,,Suspected,International Classification of Disease (ICD-10),http://apps.who.int/classifications/icd10/browse/2015/en,1 case,"Suspected case
+cmd_10,Acute Flaccid Paralysis,case,mad_case,,icd_code,1,individual,match,"A80,A80.0,A80.1,A80.2,A80.3,A80.4,A80.9,A80.10","cd_tab,Viral infections of the central nervous system,oms,epi_monitoring",,tabs,,Suspected,International Classification of Disease (ICD-10),http://apps.who.int/classifications/icd10/browse/2015/en,1 case,"Suspected case
 Acute flaccid paralysis (AFP) is a syndrome characterized by paralysis (weakness, decrease or loss of movement) which is flange (loss of muscle tone, soft or flaccid member, not spasmadique) and acute (sudden onset). Paralysis of one or more members suddenly occurring in children of senior age 15 or case diagnosed as such by the clinician.
 
 Probable case
@@ -371,7 +371,7 @@ Tout enfant <15 ans atteints de paralysie flasque aiguë, y compris le syndrome 
 • Date de notification
 • Date d’investigation
 • Nombre de dose de VPO recues"
-cmd_11,Rabies,case,mad_case,,icd_code,1,individual,match,"A82,A82.0,A82.1,A82.9","cd_tab,Viral infections of the central nervous system,afro,epi_monitoring",,tabs,,Suspected,International Classification of Disease (ICD-10),http://apps.who.int/classifications/icd10/browse/2015/en,1 case,"Suspected case
+cmd_11,Rabies,case,mad_case,,icd_code,1,individual,match,"A82,A82.0,A82.1,A82.9","cd_tab,Viral infections of the central nervous system,oms,epi_monitoring",,tabs,,Suspected,International Classification of Disease (ICD-10),http://apps.who.int/classifications/icd10/browse/2015/en,1 case,"Suspected case
 Anyone who has been bitten or licked by an animal to wild or domestic hot blood, with respiratory gene with hydrophobic or Aerophobia spasm or paralysis.
 
 Probable case
@@ -434,7 +434,7 @@ Un cas clinique compatible avec l'un quelconque des éléments de preuve épidé
 
 Cas confirmé
 Un cas confirmé en laboratoire. ","Reside in or move to an endemic area, Exposure to vectors (ticks, rodents, livestock, mosquitoes, camels, horses etc.), Other, None of the above","Résider ou se déplacer vers une zone d'endémie, L'exposition aux vecteurs (tiques, rongeurs, bétail, les moustiques, les chameaux, chevaux, etc.) , Autre, Aucune de ces réponses",,,,,,
-cmd_15,Measles / Rubella,case,mad_case,,icd_code,1,individual,match,B05.06,"cd_tab,Viral infections characterized by skin and mucous membrane lesions,afro,epi_monitoring",,tabs,,Suspected,International Classification of Disease (ICD-10),http://apps.who.int/classifications/icd10/browse/2015/en,1 case,"Suspected case
+cmd_15,Measles / Rubella,case,mad_case,,icd_code,1,individual,match,B05.06,"cd_tab,Viral infections characterized by skin and mucous membrane lesions,oms,epi_monitoring",,tabs,,Suspected,International Classification of Disease (ICD-10),http://apps.who.int/classifications/icd10/browse/2015/en,1 case,"Suspected case
 A disease characterized by all of the following:
 • generalized rash lasting 3 days
 • temperature and a ≥38.3oC
@@ -488,7 +488,7 @@ Une maladie cliniquement compatible avec la sérologie de soutien. (Stable élev
 
 Cas confirmé 
 Une maladie cliniquement compatible confirmée en laboratoire. ","Endemic Hepatitis A, Contaminated water sources, Contaminated food sources, Presence of other known cases, Other, None of the above","Endémique de l'hépatite A, Sources d'eau contaminées, Sources alimentaires contaminées, Présence d'autres cas connus, Autre, Aucune de ces réponses","Fever, hepatitis, albuminuria, renal failure, shock, haemorrhage","La fièvre, l'hépatite, albuminurie, l'insuffisance rénale, choc, hémorragie",,,,
-cmd_17,Malaria,case,mad_case,,icd_code;cd./malaria_rdt;icd_code;./malaria_slide,1,double,match and match or match and match,"B50,B50.0,B50.8,B50.9,B51,B51.0,B51.8,B51.9,B52,B52.0,B52.8,B52.9,B53,B53.0,B53.1,B53.8,B54;positive;B50,B50.0,B50.8,B50.9,B51,B51.0,B51.8,B51.9,B52,B52.0,B52.8,B52.9,B53,B53.0,B53.1,B53.8,B54;positive","cd_tab,Protozoal diseases,afro",,tabs,,Suspected,International Classification of Disease (ICD-10),http://apps.who.int/classifications/icd10/browse/2015/en,None,"Suspected case
+cmd_17,Malaria,case,mad_case,,icd_code;cd./malaria_rdt;icd_code;./malaria_slide,1,double,match and match or match and match,"B50,B50.0,B50.8,B50.9,B51,B51.0,B51.8,B51.9,B52,B52.0,B52.8,B52.9,B53,B53.0,B53.1,B53.8,B54;positive;B50,B50.0,B50.8,B50.9,B51,B51.0,B51.8,B51.9,B52,B52.0,B52.8,B52.9,B53,B53.0,B53.1,B53.8,B54;positive","cd_tab,Protozoal diseases,oms",,tabs,,Suspected,International Classification of Disease (ICD-10),http://apps.who.int/classifications/icd10/browse/2015/en,None,"Suspected case
 Fever without signs of other diseases. Other common symptoms include headache, back pain, chills, sweat, myalgia, nausea, vomiting.
 
 Confirmed case
@@ -528,7 +528,7 @@ L'exposition à des zones où le moustique vecteur est présent, les sources d'e
 • Est-ce que le patient a reçu MID en mode routine
 • Est-ce que le patient a reçu MID en autres mode
 • Pourquoi le patient non traité par ACT?"
-cmd_18,Influenza-like illness ,case,mad_case,,icd_code,1,double,match,"J09,J10,J10.0,J10.1,J10.8,J11,J11.0,J11.1,J11.8","cd_tab,Influenza and pneumonia,afro,epi_monitoring",,tabs,,Suspected,International Classification of Disease (ICD-10),http://apps.who.int/classifications/icd10/browse/2015/en,None,"Suspected case
+cmd_18,Influenza-like illness ,case,mad_case,,icd_code,1,double,match,"J09,J10,J10.0,J10.1,J10.8,J11,J11.0,J11.1,J11.8","cd_tab,Influenza and pneumonia,oms,epi_monitoring",,tabs,,Suspected,International Classification of Disease (ICD-10),http://apps.who.int/classifications/icd10/browse/2015/en,None,"Suspected case
 A person with an acute respiratory infection with:
 • measured fever> = 38 ° C; and
 •Cough; with
@@ -585,25 +585,25 @@ Une maladie cliniquement compatible
 
 Cas confirmé 
 Une maladie cliniquement compatible qui est confirmé en laboratoire..   ","Unprotected vaginal and/or anal intercourse, Other, None of the above","La pénétration vaginale et / ou anale non protégée, Autre, Aucune de ces réponses","Fever, lymphadenopathy, genital discharge","Fièvre, Lymphadénopathie, Ecoulement génital",,,,
-cmd_21,Maternal Death,case,mad_case,,mortality,1,individual,match,O95,"cd_tab,Other obstetric conditions, not elsewhere classified,afro",,,,,,,,,,,,,,,,,
-cmd_22,Neonatal Death,case,mad_case,,mortality,1,individual,match,P96.8,"cd_tab,Other obstetric conditions, not elsewhere classified,afro",,,,Suspected,International Classification of Disease (ICD-10),http://apps.who.int/classifications/icd10/browse/2015/en,1 case,"Suspected case
+cmd_21,Maternal Death,case,mad_case,,mortality,1,individual,match,O95,"cd_tab,Other obstetric conditions, not elsewhere classified,oms",,,,,,,,,,,,,,,,,
+cmd_22,Neonatal Death,case,mad_case,,mortality,1,individual,match,P96.8,"cd_tab,Other obstetric conditions, not elsewhere classified,oms",,,,Suspected,International Classification of Disease (ICD-10),http://apps.who.int/classifications/icd10/browse/2015/en,1 case,"Suspected case
 Death of a newborn from 0 to 28 days.","Cas suspect
 Décès d’un nouveau-né de 0 à 28 jours.",,,,,,,,
-cmd_23,Moderate malnutrition,case,mad_case,,icd_code,1,double,match,E46,"cd_tab,Malnutrition,epi_monitoring,afro",,tabs,,Suspected,International Classification of Disease (ICD-10),http://apps.who.int/classifications/icd10/browse/2015/en,None,"Suspected case
+cmd_23,Moderate malnutrition,case,mad_case,,icd_code,1,double,match,E46,"cd_tab,Malnutrition,epi_monitoring,oms",,tabs,,Suspected,International Classification of Disease (ICD-10),http://apps.who.int/classifications/icd10/browse/2015/en,None,"Suspected case
 Children aged under 5 years with weight for height (P / T) between -2 and -3 Z-scores below the median or MUAC (PB) from 115 to 125mm.","Cas suspect
 Enfant âgé de moins de 5 ans ayant un poids pour taille (P/T) entre -2 et -3 Z scores au-dessous de la médiane, ou un périmètre brachial (PB) de 115 à 125mm.","Inadequate food availability at household level, Children's diseases, Other, None of the above","Insuffisance de disponibilité alimentaire au niveau du ménage, Les maladies de l’enfant, Autre, Aucune de ces réponses",Small relative to size.,Maigre par rapport à sa taille.,"• Weight
 • Cut
 • MUAC ","• Poids
 • Taille
 • Périmètre brachial",,
-cmd_24,Severe malnutrition,case,mad_case,,icd_code,1,double,match,E43,"cd_tab,Malnutrition,afro,epi_monitoring",,tabs,,Suspected,International Classification of Disease (ICD-10),http://apps.who.int/classifications/icd10/browse/2015/en,None,"Suspected case
+cmd_24,Severe malnutrition,case,mad_case,,icd_code,1,double,match,E43,"cd_tab,Malnutrition,oms,epi_monitoring",,tabs,,Suspected,International Classification of Disease (ICD-10),http://apps.who.int/classifications/icd10/browse/2015/en,None,"Suspected case
 Children aged under 5 years with weight on size below the -3 Z-score line scores or presence of edema of both feet or arm circumference (PB) is less than 115 mm.","Cas suspect
 Enfant âgé de moins de 5 ans ayant un poids sur taille au-dessous de la courbe de valeur du -3 Z scores ou présence d’œdème au niveau des deux pieds ou périmètre brachial (PB) est inférieur à 115 mm.","Inadequate food availability at household level, Lack of appetite, Small birth weight, Low educational level of mothers, Other, None of the above","Insuffisance de disponibilité alimentaire au niveau du ménage, Manque d’appétit, Petit poids à la naissance, Mère de niveau éducatif faible, Autre, Aucune de ces réponses","Presence of oedema in both feet, marasmus (visible weight loss and severe), combination of the two forms","Présence d’œdème au niveau des deux pieds, Marasme (amaigrissement visible et severe), association des deux forms","• Weight
 • Cut
 • MUAC ","• Poids
 • Taille
 • Périmètre brachial",,
-cmd_25,Acute Respiratory Tract Infection,case,mad_case,,icd_code,1,double,match,J06.9,"cd_tab,Acute upper respiratory infections,afro,epi_monitoring",,tabs,,Suspected,International Classification of Disease (ICD-10),http://apps.who.int/classifications/icd10/browse/2015/en,None,"Suspected case
+cmd_25,Acute Respiratory Tract Infection,case,mad_case,,icd_code,1,double,match,J06.9,"cd_tab,Acute upper respiratory infections,oms,epi_monitoring",,tabs,,Suspected,International Classification of Disease (ICD-10),http://apps.who.int/classifications/icd10/browse/2015/en,None,"Suspected case
 Cough and colds with increased respiratory rate and fever.
 
 Confirmed case
@@ -628,7 +628,7 @@ Ultrasound","Résultat positif de frottis sanguin pour la recherche de la microf
 Test immunocartographique (ICT)
 Echographie","Are you already taking mass treatment? How many times ?
 ",Est-ce que vous avez déjà pris des traitements de masse? Combien de fois ?
-cmd_27,Animal Bite,case,mad_case,,icd_code,1,double,match,T14.1,"cd_tab, Injury of unspecified body region,afro,epi_monitoring",,tabs,,Suspected,International Classification of Disease (ICD-10),http://apps.who.int/classifications/icd10/browse/2015/en,None,"Suspected case
+cmd_27,Animal Bite,case,mad_case,,icd_code,1,double,match,T14.1,"cd_tab, Injury of unspecified body region,oms,epi_monitoring",,tabs,,Suspected,International Classification of Disease (ICD-10),http://apps.who.int/classifications/icd10/browse/2015/en,None,"Suspected case
 Any case of scratch, bite or lick on any part of the body inflicted by a warm-blooded animal (dog, cat, monkey, ...).","Cas suspect
 Tout cas de griffure, morsure, voire léchage, sur une quelconque partie du corps infligé par un animal à sang chaud (chien, chat, singes, …).
 ",,,,,,,,
@@ -657,7 +657,7 @@ Questions supplémentaires
 • Vérifiez si l'une des conditions ci-dessus est notée sur ce patient","Travel History in areas where there is circulating a new pathogen that can have a serious impact on public health (eg avian influenza, cholera , …), Illness in a health care worker who takes care of patients with respiratory disease, Illness in a person working in a slaughterhouse, farmer or a person in close contact with livestock ( eg chickens ), Patient is admitted to ICU, History of illness in the family or close contact","Histoire d’un voyage dans les zones où il y a circulation d'un nouvel agent pathogène pouvant avoir un impact grave de santé publique (par exemple grippe aviaire, choléra, …), Une maladie chez un travailleur de la santé qui prend soin des patients atteints de maladies respiratoires, Une maladie chez une personne travaillant dans un abattoir, agriculteur ou une personne en contact étroit avec des animaux d’élevage (par exemple des poulets), Le patient étant admis en soins intensifs, Histoire de la maladie dans la famille ou chez un contact étroit","Unusual clinical presentation, Change in treatment response",Présentation clinique inhabituelle ; Changement dans la réponse au traitement,,,"• Date of onset of symptoms
 • Check if any of the above conditions is noted on the patient ","• Date d'apparition des symptomes
 • Vérifiez si l'une des conditions ci-dessus est notée sur ce patient"
-age_1,<5,case,mad_case,,pt./age,,,between,"0,5","age,under_five,afro",pt./age,age,,,,,,,,,,,,,,,
+age_1,<5,case,mad_case,,pt./age,,,between,"0,5","age,under_five,oms",pt./age,age,,,,,,,,,,,,,,,
 age_2,5-9,case,mad_case,,pt./age,,,between,"5,10",age,pt./age,age,,,,,,,,,,,,,,,
 age_3,10-14,case,mad_case,,pt./age,,,between,"10,15",age,pt./age,age,,,,,,,,,,,,,,,
 age_4,15-19,case,mad_case,,pt./age,,,between,"15,20",age,pt./age,age,,,,,,,,,,,,,,,
