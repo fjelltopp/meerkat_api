@@ -9,12 +9,13 @@ then
     hash -r
     conda config --set always_yes yes --set changeps1 no
     conda update -q conda
-    conda install pandas numpy scipy statsmodels matplotlib
+    conda install pandas
     pip install .
     pip install ./api_background
     git clone --branch $MEERKAT_BRANCH --single-branch https://github.com/meerkat-code/meerkat_libs.git ../meerkat_libs
     pip install ../meerkat_libs
     git clone --branch $MEERKAT_BRANCH --single-branch https://github.com/meerkat-code/meerkat_analysis.git ../meerkat_analysis
+    conda install -yes --file ../meerkat_analysis/requirements_conda.txt
     pip install ../meerkat_analysis
     git clone --branch $MEERKAT_BRANCH https://github.com/meerkat-code/meerkat_abacus.git ../meerkat_abacus
     pip install ../meerkat_abacus
