@@ -9,7 +9,7 @@ then
     hash -r
     conda config --set always_yes yes --set changeps1 no
     conda update -q conda
-    conda install pandas numpy scipy statsmodels
+    conda install pandas numpy scipy statsmodels matplotlib
     pip install .
     pip install ./api_background
     git clone --branch $MEERKAT_BRANCH --single-branch https://github.com/meerkat-code/meerkat_libs.git ../meerkat_libs
