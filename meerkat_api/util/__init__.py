@@ -22,7 +22,14 @@ def series_to_json_dict(series):
     """
     #np.asscalar is necessary to cast numpy types to python native
     if series is not None:
-        return dict((str(key), float(np.asscalar(value))) for key, value in series.to_dict().items())
+        ret = {}
+        for key, value in series.to_dict().items():
+            if isinstance(value, float):
+                ret[str(key)] = value
+            else:
+                ret[str(key)] =  float(np.asscalar(value))
+        
+        return ret
     else:
         return {}
 
