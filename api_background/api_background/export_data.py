@@ -150,7 +150,6 @@ def export_category(uuid, form_name, category, download_name,
 
 
     locs = get_locations(session)
-    print(uuid)
     data_keys = []
     cat_variables = {}
     for r in res:
@@ -643,7 +642,7 @@ def _export_week_level_completeness(uuid, download_name, level,
       download_name: Name of download file
       level: level of location
       competeness_config: Specified the completeness call we want to make
-      translator: Translator 
+      translator: Translator
       param_config: param config
       start_date: The date to start the data set
       end_date: End date for the aggregation
@@ -701,13 +700,12 @@ def _export_week_level_completeness(uuid, download_name, level,
         else:
             index_labels = [year_label, location_label, week_label]
         df = df.set_index(index_labels).unstack()
-        print(df)
     df.to_csv(filename + ".csv")
     df.to_excel(filename + ".xlsx")
     operation_status.submit_operation_success()
 
-    
-    
+
+
 def get_translator(param_config, language):
     translation_dir = param_config.country_config.get("translation_dir", None)
     if translation_dir:
@@ -755,7 +753,7 @@ def export_week_level(uuid, download_name, level,
                                     start_date=start_date, end_date=end_date,
                                     wide_data_format=wide_data_format,
                                     param_config_yaml=param_config_yaml)
-    
+
 
 def _export_week_level_variable(uuid, download_name, level,
                                 variable_config, translator,
@@ -799,7 +797,7 @@ def _export_week_level_variable(uuid, download_name, level,
                              wide_data_format=wide_data_format,
                              param_config_yaml=param_config_yaml)
 
-        
+
 @task
 def export_data_table(uuid, download_name,
                       restrict_by, variables, group_by,
@@ -835,7 +833,7 @@ def export_data_table(uuid, download_name,
         only_latest_from_clinic_in_week = True
     else:
         restrict_by_variable = restrict_by
-    
+
     for i, v in enumerate(group_by):
         field = v[0]
         if ":location" in field:
@@ -844,7 +842,7 @@ def export_data_table(uuid, download_name,
             location_subs.append(i)
         else:
             field_column = field
-            
+
         columns.append(getattr(Data, field_column))
         groups.append(getattr(Data, field_column))
         return_keys.append(v[1])
@@ -865,7 +863,6 @@ def export_data_table(uuid, download_name,
     if only_latest_from_clinic_in_week:
         conditions.append(Data.variables.has_key(restrict_by_variable))
         result =  session.query(*columns).distinct(Data.clinic).filter(*conditions).order_by(Data.clinic).order_by(Data.date.desc())
-        print(result, restrict_by_variable)
     else:
         result = session.query(*columns).filter(*conditions).group_by(*groups)
 
@@ -890,7 +887,7 @@ def export_data_table(uuid, download_name,
     df = pandas.DataFrame(list_rows, columns=return_keys)
     if wide_data_format:
         df = df.set_index(return_keys[:-len(variables)]).unstack().fillna(0)
-   
+
     df.to_csv(filename + ".csv")
     df.to_excel(filename + ".xlsx")
     operation_status.submit_operation_success()
