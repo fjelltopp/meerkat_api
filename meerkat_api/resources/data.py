@@ -374,13 +374,13 @@ class Records(Resource):
 
         conditions = [
             Data.variables.has_key(str(variable))
-            ]
+        ]
 
         if only_last_week:
             current_week = epi_week_util.epi_week_for_date(datetime.today())[1]
             # Get last full week
             conditions.append(Data.epi_week == current_week - 1)
-        
+
         results = db.session.query(Data).filter(
             *conditions, or_(
                 loc == location_id for loc in (Data.country,
@@ -401,8 +401,8 @@ class Records(Resource):
                 else:
                     results.append(
                         sorted(records, key=lambda x: x.date)[-1]
-                        )
-        
+                    )
+
         return jsonify({"records": rows_to_dicts(results)})
 
 

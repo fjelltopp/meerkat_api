@@ -76,8 +76,6 @@ def export_data(uuid, allowed_location, use_loc_ids=False, param_config_yaml=yam
         dict_row = dict(
             (col, getattr(row, col)) for col in row.__table__.columns.keys()
         )
-        #if not is_child(allowed_location, dict_row["clinic"], locs):
-        #    continue
 
         for l in ["country", "zone", "region", "district", "clinic"]:
             if dict_row[l]:
@@ -865,9 +863,6 @@ def export_data_table(uuid, download_name,
         return_keys.append(v[1])
 
     if only_latest_from_clinic_in_week:
-        
-        if level != "clinic":
-            raise AttributeError("Can only have a positive only_latest_from_clinic_in_week when the level is clinic. Level was %s", level)
         conditions.append(Data.variables.has_key(restrict_by_variable))
         result =  session.query(*columns).distinct(Data.clinic).filter(*conditions).order_by(Data.clinic).order_by(Data.date.desc())
         print(result, restrict_by_variable)
