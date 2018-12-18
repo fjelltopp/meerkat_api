@@ -6,7 +6,6 @@ from datetime import datetime
 from dateutil import parser
 import meerkat_abacus.util as abacus_util
 import numpy as np
-
 import meerkat_abacus.util.epi_week
 
 
@@ -14,15 +13,20 @@ def series_to_json_dict(series):
     """
     Takes pandas series and turns into a dict with string keys
 
-    Args: 
+    Args:
         series: pandas series
-    
-    Returns: 
+    Returns:
        dict: dict
     """
-    #np.asscalar is necessary to cast numpy types to python native
+    # np.asscalar is necessary to cast numpy types to python native
     if series is not None:
-        return dict((str(key), float(np.asscalar(value))) for key, value in series.to_dict().items())
+        ret = {}
+        for key, value in series.to_dict().items():
+            if isinstance(value, float):
+                ret[str(key)] = value
+            else:
+                ret[str(key)] =  float(np.asscalar(value))
+        return ret
     else:
         return {}
 
@@ -31,7 +35,7 @@ def fix_dates(start_date, end_date):
     """
     We parse the start and end date and remove any timezone information
 
-    Args: 
+    Args:
        start_date: start date
        end_date: end_date
     Returns:
@@ -125,7 +129,7 @@ def find_level(location, sublevel, locations):
     for loc in locations:
         if locations[loc].level == sublevel and abacus_util.is_child(loc, location, locations):
             return loc
-        
+
     return None
 
 def get_children(parent, locations, clinic_type=None, require_case_report=True, case_type=None):

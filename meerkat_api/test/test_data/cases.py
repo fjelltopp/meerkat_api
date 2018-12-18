@@ -385,7 +385,7 @@ vaccination_report = [
 # cmd_22 - neonatal, ale_1 investigated
 
 
-afro_report = [
+oms_report = [
     #completeness, Districts Blue, Red and Green
     Data(**{"uuid":"10","type":"case","date":"2016-12-20T00:00:00", "epi_week": 51, "country":1,"region":2,"district":4,"clinic":7,"clinic_type":"test","links":{},"tags":[],
             "variables": {"data_entry":1,
