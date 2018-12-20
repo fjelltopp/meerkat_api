@@ -22,10 +22,10 @@ def series_to_json_dict(series):
     if series is not None:
         ret = {}
         for key, value in series.to_dict().items():
-            if isinstance(value, float):
+            if isinstance(value, float) or isinstance(value, int):
                 ret[str(key)] = value
             else:
-                ret[str(key)] =  float(np.asscalar(value))
+                ret[str(key)] = float(np.asscalar(value))
         return ret
     else:
         return {}
