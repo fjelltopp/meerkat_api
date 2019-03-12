@@ -6,6 +6,7 @@ from flask_restful import Resource, reqparse
 from sqlalchemy import or_
 from datetime import datetime, timedelta
 from flask import jsonify, g, request
+
 from meerkat_api.util import rows_to_dicts
 from meerkat_api.extensions import db, api
 from meerkat_abacus.model import Data
@@ -14,7 +15,7 @@ from meerkat_api.authentication import authenticate, is_allowed_location
 from meerkat_api.util.data_query import query_sum
 from meerkat_api.util.data_query import latest_query
 from meerkat_abacus.util import get_locations
-
+import meerkat_abacus.util.epi_week as epi_week_util
 
 class LatestData(Resource):
     """
@@ -368,12 +369,39 @@ class Records(Resource):
         if not is_allowed_location(location_id, g.allowed_location):
             return {"records": []}
 
+        only_last_week = request.args.get('only_last_week')
+        unique_clinic = request.args.get('unique_clinic')
+
+        conditions = [
+            Data.variables.has_key(str(variable))
+        ]
+
+        if only_last_week:
+            current_week = epi_week_util.epi_week_for_date(datetime.today())[1]
+            # Get last full week
+            conditions.append(Data.epi_week == current_week - 1)
+
         results = db.session.query(Data).filter(
-            Data.variables.has_key(str(variable)), or_(
+            *conditions, or_(
                 loc == location_id for loc in (Data.country,
                                                Data.region,
                                                Data.district,
                                                Data.clinic))).all()
+        if unique_clinic:
+            assert unique_clinic == "last"
+            clinic_records = {}
+            for r in results:
+                clinic_records.setdefault(r.clinic, [])
+                clinic_records[r.clinic].append(r)
+
+            results = []
+            for clinic, records in clinic_records.items():
+                if len(records) == 1:
+                    results.append(records[0])
+                else:
+                    results.append(
+                        sorted(records, key=lambda x: x.date)[-1]
+                    )
 
         return jsonify({"records": rows_to_dicts(results)})
 

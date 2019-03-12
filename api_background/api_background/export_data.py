@@ -62,7 +62,8 @@ def export_data(uuid, allowed_location, use_loc_ids=False, param_config_yaml=yam
         variables.append(row[0])
     locs = get_locations(session)
     fieldnames = ["id", "zone", "country", "region",
-                  "district", "clinic", "clinic_type",
+                  "district", "clinic", "zone_id", "country_id", "region_id",
+                  "district_id", "clinic_id", "clinic_type",
                   "geolocation", "date", "uuid"] + list(variables)
     dict_rows = []
 
@@ -77,8 +78,6 @@ def export_data(uuid, allowed_location, use_loc_ids=False, param_config_yaml=yam
         dict_row = dict(
             (col, getattr(row, col)) for col in row.__table__.columns.keys()
         )
-        if not is_child(allowed_location, dict_row["clinic"], locs):
-            continue
 
         for l in ["country", "zone", "region", "district", "clinic"]:
             if dict_row[l]:
@@ -153,7 +152,6 @@ def export_category(uuid, form_name, category, download_name,
 
 
     locs = get_locations(session)
-    print(uuid)
     data_keys = []
     cat_variables = {}
     for r in res:
@@ -606,7 +604,6 @@ def export_category(uuid, form_name, category, download_name,
     return True
 
 
-
 def construct_completeness_call(variable_config, sublevel, start_date, end_date):
     """
     Construct the correct completess calls based on the dates
@@ -647,7 +644,7 @@ def _export_week_level_completeness(uuid, download_name, level,
       download_name: Name of download file
       level: level of location
       competeness_config: Specified the completeness call we want to make
-      translator: Translator 
+      translator: Translator
       param_config: param config
       start_date: The date to start the data set
       end_date: End date for the aggregation
@@ -705,13 +702,12 @@ def _export_week_level_completeness(uuid, download_name, level,
         else:
             index_labels = [year_label, location_label, week_label]
         df = df.set_index(index_labels).unstack()
-        print(df)
     df.to_csv(filename + ".csv")
     df.to_excel(filename + ".xlsx")
     operation_status.submit_operation_success()
 
-    
-    
+
+
 def get_translator(param_config, language):
     translation_dir = param_config.country_config.get("translation_dir", None)
     if translation_dir:
@@ -759,7 +755,7 @@ def export_week_level(uuid, download_name, level,
                                     start_date=start_date, end_date=end_date,
                                     wide_data_format=wide_data_format,
                                     param_config_yaml=param_config_yaml)
-    
+
 
 def _export_week_level_variable(uuid, download_name, level,
                                 variable_config, translator,
@@ -829,20 +825,30 @@ def export_data_table(uuid, download_name,
     locs = get_locations(session)
     list_rows = []
     operation_status = OperationStatus(download_name, uuid)
-
+    level = "region"
     columns = []
     groups = []
     location_subs = []
+    only_latest_from_clinic_in_week = False
+    if "only_latest_from_clinic_in_week:" in restrict_by:
+        restrict_by_variable = restrict_by.split(":")[1]
+        only_latest_from_clinic_in_week = True
+    else:
+        restrict_by_variable = restrict_by
 
     for i, v in enumerate(group_by):
         field = v[0]
         if ":location" in field:
-            field = field.split(":")[0]
+            field_column = field.split(":")[0]
+            level = field_column
             location_subs.append(i)
-        columns.append(getattr(Data, field))
-        groups.append(getattr(Data, field))
+        else:
+            field_column = field
+
+        columns.append(getattr(Data, field_column))
+        groups.append(getattr(Data, field_column))
         return_keys.append(v[1])
-    conditions = [Data.variables.has_key(restrict_by)]                 
+    conditions = [Data.variables.has_key(restrict_by_variable)]
     if start_date:
         start_date = parse(start_date).replace(tzinfo=None)
         conditions.append(Data.date >= start_date)
@@ -850,17 +856,24 @@ def export_data_table(uuid, download_name,
         end_date = parse(end_date).replace(tzinfo=None)
         conditions.append(Data.date <= end_date)
     for v in variables:
-        columns.append(func.sum(Data.variables[v[0]].astext.cast(Float)))
+        if only_latest_from_clinic_in_week:
+            columns.append(Data.variables[v[0]].astext.cast(Float))
+        else:
+            columns.append(func.sum(Data.variables[v[0]].astext.cast(Float)))
         return_keys.append(v[1])
-    result = session.query(*columns).filter(*conditions).group_by(*groups)
+
+    if only_latest_from_clinic_in_week:
+        conditions.append(Data.variables.has_key(restrict_by_variable))
+        result =  session.query(*columns).distinct(Data.clinic).filter(*conditions).order_by(Data.clinic).order_by(Data.date.desc())
+    else:
+        result = session.query(*columns).filter(*conditions).group_by(*groups)
+
     filename = base_folder + "/exported_data/" + uuid + "/" + download_name
     os.mkdir(base_folder + "/exported_data/" + uuid)
     i = 0
     for row in result:
-        # Can write row immediately to xls file as memory is flushed after.
         row_list = list(row)
         location_condition = True
-        
         for l in location_subs:
             if row_list[l]:
                 if location_conditions:
@@ -871,13 +884,12 @@ def export_data_table(uuid, download_name,
         if location_condition:
             row_list = [x if x is not None else 0 for x in row_list]
             list_rows.append(row_list)
-            # Append the row to list of rows to be written to csv.
             i += 1
 
     df = pandas.DataFrame(list_rows, columns=return_keys)
     if wide_data_format:
-        df = df.set_index(return_keys[:-1]).unstack().fillna(0)
-   
+        df = df.set_index(return_keys[:-len(variables)]).unstack().fillna(0)
+
     df.to_csv(filename + ".csv")
     df.to_excel(filename + ".xlsx")
     operation_status.submit_operation_success()

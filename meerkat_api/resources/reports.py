@@ -3119,6 +3119,8 @@ class Malaria(Resource):
 
         start_date, end_date = fix_dates(start_date, end_date)
         end_date_limit = end_date + timedelta(days=1)
+        first_day_of_year = datetime(year=end_date.year,
+                                     month=1, day=1)
 
         ret = {}
 
@@ -3144,10 +3146,42 @@ class Malaria(Resource):
         location_name = locs[int(location)]
         ret["data"]["project_region"] = location_name.name
         ret["data"]["project_region_id"] = location
+        ret["data"]["project_region_level"] = location_name.level
 
         #  Actually get the data.
         conn = db.engine.connect()
+        ret["data"]["sub_sites"] = []
+        ret["data"]["sub_sites"] = []
+        for l in locs.values():
+            if l.level == "clinic" and l.case_report == 0:
+                continue
+            if l.parent_location and int(l.parent_location) == int(location):
+                num = query_sum(db, ["cmd_17"],
+                                start_date,
+                                end_date_limit, l.id)["total"]
+                
+                num_imported = query_sum(db, ["cmd_17", "mls_subtype_1"],
+                                         start_date,
+                                         end_date_limit, l.id)["total"]
+                
+                num_indigenous = query_sum(db, ["cmd_17", "mls_subtype_12"],
+                                           start_date,
+                                           end_date_limit, l.id)["total"]
+                num_uncertain = query_sum(db, ["cmd_17", "mls_subtype_23"],
+                                          start_date,
+                                          end_date_limit, l.id)["total"]
+                if num > 0:
+                    ret["data"]["sub_sites"].append(
+                        {"name": l.name,
+                         "imported": num_imported,
+                         "indigenous": num_indigenous,
+                         "uncertain": num_uncertain,
+                         "total": num}
+                    )
+        ret["data"]["sub_sites"].sort(key=lambda x: x["total"], reverse=True)
 
+
+        
         var = {}
         query_variable = QueryVariable()
         #  get the age breakdown
@@ -3169,11 +3203,11 @@ class Malaria(Resource):
         ))
         ret['malaria_situation'] = malaria_data_totals
         for key, value in ret['malaria_situation'].items():
-            if type( value ) == float:
+            if type(value) == float:
                 ret['malaria_situation'][key] = int(round(value))
 
-        var.update( variables_instance.get('malaria_situation') )
-        var.update( variables_instance.get('malaria_situation_no_case') )
+        var.update(variables_instance.get('malaria_situation'))
+        var.update(variables_instance.get('malaria_situation_no_case'))
 
         ret['malaria_prevention'] = get_variables_category(
             'malaria_prevention',
@@ -3184,10 +3218,10 @@ class Malaria(Resource):
             use_ids=True
         )
         for key, value in ret['malaria_prevention'].items():
-            if type( value ) == float:
+            if type(value) == float:
                 ret['malaria_prevention'][key] = int(round(value))
 
-        var.update( variables_instance.get('malaria_prevention') )
+        var.update(variables_instance.get('malaria_prevention'))
 
         # Other values required for the email.
         ret['email'] = {
@@ -3202,6 +3236,37 @@ class Malaria(Resource):
         )
 
         ret['variables'] = var
+
+        # Malaria with threshold timeline
+        # Find all clinics
+
+        clinics = get_children(location,
+                               locs)
+        country_location_ids = [locs[clinic].country_location_id for clinic in clinics]
+        cases = query_sum(db, ["cmd_17"],
+                          first_day_of_year,
+                          end_date_limit, location,
+                          weeks=True)["weeks"]
+        thresholds = {}
+        threshold_db_result = db.session.query(model.CalculationParameters).filter(
+            model.CalculationParameters.name == "malaria_thresholds").first()
+
+        year = start_date.year
+        str_year = str(year)
+        if threshold_db_result and start_date.year == end_date.year:
+            threshold_data = threshold_db_result.parameters
+
+            for loc_id in country_location_ids:
+                if loc_id in threshold_data and str_year in threshold_data[loc_id]:
+                    for week in cases.keys():
+                        thresholds.setdefault(week, 0)
+                        thresholds[week] += int(threshold_data[loc_id][str_year][str(week)])
+        weeks = sorted(cases.keys())
+        ret["timeline"] = {"weeks": weeks,
+                           "cases": [cases[w] for w in weeks]
+                           }
+        if thresholds:
+            ret["timeline"]["thresholds"] = [thresholds[w] for w in weeks]
 
         return ret
 
@@ -3355,9 +3420,9 @@ class VaccinationReport(Resource):
 
         return ret
 
-class AFROBulletin(Resource):
+class OMSBulletin(Resource):
     """
-    AFRO Bulletin
+    OMS Bulletin
 
     This reports gives a comple summary of the state of the system.
 
@@ -3429,7 +3494,7 @@ class AFROBulletin(Resource):
 
         # Get single variables
         ret["data"]["weekly_highlights"] = get_variables_category(
-            'afro',
+            'oms',
             start_date,
             end_date_limit,
             location,
@@ -4928,9 +4993,9 @@ api.add_resource(Malaria, "/reports/malaria/<location>",
 api.add_resource(VaccinationReport, "/reports/vaccination/<location>",
                  "/reports/vaccination/<location>/<end_date>",
                  "/reports/vaccination/<location>/<end_date>/<start_date>")
-api.add_resource(AFROBulletin, "/reports/afro/<location>",
-                 "/reports/afro/<location>/<end_date>",
-                 "/reports/afro/<location>/<end_date>/<start_date>")
+api.add_resource(OMSBulletin, "/reports/oms/<location>",
+                 "/reports/oms/<location>/<end_date>",
+                 "/reports/oms/<location>/<end_date>/<start_date>")
 api.add_resource(MhReport, "/reports/mh_report/<location>",
                  "/reports/mh_report/<location>/<end_date>",
                  "/reports/mh_report/<location>/<end_date>/<start_date>")
