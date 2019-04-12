@@ -30,7 +30,7 @@ class Forms(Resource):
 
     def get(self):
         return_data = {}
-        form_tables_ = form_tables()
+        form_tables_ = form_tables(abacus_config)
         for form_name, form_table in form_tables_.items():
             results = db.session.query(form_table).filter(form_table.uuid != None).first()
             if results and results.data:
