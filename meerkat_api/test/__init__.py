@@ -6,6 +6,8 @@ Unit tests for the Meerkat API
 """
 import os
 import unittest
+
+from meerkat_abacus import config
 from unittest.mock import patch
 
 from datetime import datetime
@@ -226,16 +228,8 @@ class MeerkatAPITestCase(TestCase):
         self.assertEqual(rv.status_code, 200)
         self.assertIn(b'WHO', rv.data)
 
-    def test_all_urls(self):
-        db_util.insert_statuses(self.db_session)
-        urls = valid_urls(meerkat_api.app)
-        for url in urls:
-            print(url)
-            rv = get_url(self.app, url, settings.header)
-            isOK = rv.status_code in [200, 302]
-            if not isOK:
-                print("URL NOT OK: " + str(url))
-            self.assertIn(rv.status_code, [200, 302])
+    def test_config_serialisation(self):
+        yaml_config = yaml.dump(config)
 
     def test_authentication(self):
         db_util.insert_statuses(self.db_session)

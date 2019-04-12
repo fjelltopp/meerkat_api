@@ -15,7 +15,7 @@ shapely==1.5.17
 GeoAlchemy2 ==0.4.0
 Flask-Babel==0.10
 PyJWT==1.4.1
-cryptography==2.2.1
+cryptography==2.2.2
 SQLAlchemy==1.1.6
 celery==4.1.1
 SQLAlchemy-Utils==0.32.12

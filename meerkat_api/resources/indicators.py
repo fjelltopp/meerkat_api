@@ -25,7 +25,7 @@ def prepare_indicator_output(analysis_output, mult_factor):
         cummulative = 0
     elif isinstance(cummulative, np.generic) or isinstance(cummulative, np.ndarray):
         cummulative = np.asscalar(cummulative)
-    
+
     timeline = analysis_output[1] * mult_factor
     indicator_data["cummulative"] = cummulative * mult_factor
     indicator_data["timeline"] = series_to_json_dict(timeline)

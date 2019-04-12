@@ -4,7 +4,6 @@ Data resource for exporting data
 import json
 import uuid
 import yaml
-import logging
 from flask import request, redirect, g
 from flask_restful import Resource, abort
 from meerkat_abacus.model import form_tables, DownloadDataFiles
@@ -30,7 +29,7 @@ class Forms(Resource):
 
     def get(self):
         return_data = {}
-        form_tables_ = form_tables()
+        form_tables_ = form_tables(abacus_config)
         for form_name, form_table in form_tables_.items():
             results = db.session.query(form_table).filter(form_table.uuid != None).first()
             if results and results.data:
