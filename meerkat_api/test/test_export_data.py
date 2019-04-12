@@ -241,7 +241,7 @@ class MeerkatAPITestCase(unittest.TestCase):
         filename = base_folder + "/exported_data/" + uuid + "/test.csv"
         current_epi_week = epi_week_for_date(date)[1]
         with open(filename) as csv_file:
-            self.assertEqual(len(csv_file.readlines()), 52*2 + 1 + 47)
+            self.assertEqual(len(csv_file.readlines()), 51*2 + 1 + 47)
             # One clinic has start date in Feb so only gives 47 weeks
             csv_file.seek(0)
             c = csv.DictReader(csv_file)

@@ -4,7 +4,6 @@ Data resource for exporting data
 import json
 import uuid
 import yaml
-import logging
 from flask import request, redirect, g
 from flask_restful import Resource, abort
 from meerkat_abacus.model import form_tables, DownloadDataFiles
