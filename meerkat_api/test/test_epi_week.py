@@ -36,6 +36,13 @@ class MeerkatAPIEpiWeekTestCase(meerkat_api.test.TestCase):
         self.assertEqual(rv.status_code, 200)
         self.assertEqual(data["epi_week"], 48)
 
+    def test_epi_week_for_dd_mm_yyyy_format(self):
+        """ Test date to epi week"""
+        rv = self.app.get('/epi_week/04-01-2015', headers=settings.header)
+        data = json.loads(rv.data.decode("utf-8"))
+        self.assertEqual(rv.status_code, 200)
+        self.assertEqual(data["epi_week"], 1)
+
     def test_epi_week_start(self):
         """ test epi-week to date """
         rv = self.app.get('/epi_week_start/2015/49', headers=settings.header)
