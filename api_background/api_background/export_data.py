@@ -685,9 +685,10 @@ def _export_week_level_completeness(uuid, download_name, level,
         for location in timeline:
             loc_id = int(location)
             for week in range(len(timeline[location]["weeks"])):
+                week_start_day = datetime.strptime(timeline[location]["weeks"][week], '%Y-%m-%dT%H:%M:%S')
                 data.append({year_label: year,
                              location_label: locs[loc_id].name,
-                             week_label: week + start_week,
+                             week_label: epi_week_for_date(week_start_day)[1],
                              completeness_config_label: timeline[location]["values"][week] / max_per_week * 100
                              })
                 if level == "clinic" and loc_id != 1:
