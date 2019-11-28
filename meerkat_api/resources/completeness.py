@@ -260,6 +260,8 @@ class Completeness(Resource):
             # Can specify on which weekdays we expect a record
 
             bdays = self._get_business_days(weekend_days=weekend)
+            expected_days = pd.date_range(not_reported_dates_begining, shifted_end_date, freq=bdays)
+            data = data[data['date'].isin(expected_days)]
 
             expected_days = pd.date_range(not_reported_dates_begining, shifted_end_date, freq=bdays)
 
