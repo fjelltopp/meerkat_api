@@ -131,8 +131,8 @@ class Completeness(Resource):
 
         beginning_of_epi_start_week = self._get_epi_week_start(shifted_end_date, start_week)
 
-
         # Remove records dated on the days specified as weekends
+        not_reported_dates_begining = beginning_of_epi_start_week #for purpose of dropping weekend data we do not care if clinic start date is in the future. This calculation is updated when dates not reported is calculated
         bdays = self._get_business_days(weekend_days=weekend)
         expected_days = pd.date_range(not_reported_dates_begining, shifted_end_date, freq=bdays)
         data = data[data['date'].isin(expected_days)]
@@ -263,7 +263,8 @@ class Completeness(Resource):
             ) / number_per_week * 100
 
             # Sort out the dates on which nothing was reported
-
+            #expected_days variable is updated here with a new value of not_reported_dates_begining
+            expected_days = pd.date_range(not_reported_dates_begining, shifted_end_date, freq=bdays)
             found_dates = data["date"]
             dates_not_reported = expected_days.drop(
                 found_dates.values, errors="ignore").to_pydatetime()
