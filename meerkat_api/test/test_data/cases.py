@@ -661,6 +661,10 @@ completeness = [
     Data(**{'uuid': 'uuid:b59474ed-29e7-490b-a947-558babdf80a4', 'clinic_type': 'Primary', 'district': 4, 'variables': {"data_entry":1,  'reg_1': 1}, 'clinic': 7, 'geolocation': 'POINT(0.2 0.2)',  'region': 2, 'country': 1, 'date': date - datetime.timedelta(days=8 + offset), 'case_type': ['mh']}),
     Data(**{'uuid': 'uuid:b59474ed-29e7-490b-a947-558babdf80a5', 'clinic_type': 'Primary', 'district': 4, 'variables': {"data_entry":1,  'reg_1': 1}, 'clinic': 8, 'geolocation': 'POINT(0.2 0.2)',  'region': 2, 'country': 1, 'date': date - datetime.timedelta(days=1 + offset),  'case_type': ['pip']}),
     Data(**{'uuid': 'uuid:b59474ed-29e7-490b-a947-558babdf80a6', 'clinic_type': 'Primary', 'district': 4, 'variables': {"data_entry":1,  'reg_1': 1}, 'clinic': 8, 'geolocation': 'POINT(0.2 0.2)',  'region': 2, 'country': 1, 'date': date - datetime.timedelta(days=1 + offset),  'case_type': ['pip']}) # Same day should not count,
+    Data(**{'uuid': 'uuid:b59474ed-29e7-490b-a947-558babdf80a6', 'clinic_type': 'Primary', 'district': 4,
+            'variables': {"data_entry": 1, 'reg_1': 1}, 'clinic': 8, 'geolocation': 'POINT(0.2 0.2)', 'region': 2,
+            'country': 1, 'date': date - datetime.timedelta(days=1 + offset), 'case_type': ['pip']})
+    # weekend should be excluded,
 ]
 
 latest_test = [
