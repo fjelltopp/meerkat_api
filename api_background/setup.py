@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 import uuid
+import os
 from setuptools import setup, find_packages
 import pathlib
 import pkg_resources
-
-with pathlib.Path('../requirements.txt').open() as requirements_txt:
+pwd = pathlib.Path(__file__).parent.absolute()
+with pathlib.Path(os.path.join(pwd, '../requirements.txt')).open() as requirements_txt:
     reqs = [
         str(requirement)
         for requirement
