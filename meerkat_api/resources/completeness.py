@@ -242,7 +242,7 @@ class Completeness(Resource):
 
             dates = pd.date_range(beginning_of_epi_start_week, shifted_end_date, freq=timeseries_freq)
             completeness = data.groupby(
-                pd.TimeGrouper(
+                pd.Grouper(
                     key="date", freq=timeseries_freq, label="left")).sum().fillna(0)[
                 variable].reindex(dates).sort_index().fillna(0)
 
