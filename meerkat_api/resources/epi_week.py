@@ -22,7 +22,7 @@ class EpiWeek(Resource):
 
     def get(self, date=None):
         if date:
-            date = parse(date)
+            date = parse(date, dayfirst=True)
         else:
             date = datetime.datetime.today()
 

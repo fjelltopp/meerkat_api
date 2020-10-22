@@ -131,6 +131,12 @@ class Completeness(Resource):
 
         beginning_of_epi_start_week = self._get_epi_week_start(shifted_end_date, start_week)
 
+        # Remove records dated on the days specified as weekends
+        not_reported_dates_begining = beginning_of_epi_start_week #for purpose of dropping weekend data we do not care if clinic start date is in the future. This calculation is updated when dates not reported is calculated
+        bdays = self._get_business_days(weekend_days=weekend)
+        expected_days = pd.date_range(not_reported_dates_begining, shifted_end_date, freq=bdays)
+        data = data[data['date'].isin(expected_days)]
+
         if parsed_sublevel:
             # We first create an index with sublevel, clinic, dates
             # Where dates are the dates after the clinic started reporting
@@ -160,7 +166,7 @@ class Completeness(Resource):
             new_index = pd.MultiIndex.from_tuples(
                 tuples, names=[parsed_sublevel, "clinic", "date"])
             completeness = data.groupby([
-                parsed_sublevel, "clinic", pd.TimeGrouper(
+                parsed_sublevel, "clinic", pd.Grouper(
                     key="date", freq=timeseries_freq, label="left")
             ]).sum().reindex(new_index)[variable].fillna(0).sort_index()
 
@@ -170,8 +176,10 @@ class Completeness(Resource):
             zero_clinics = clinic_sums[clinic_sums == 0].index
             nr = NonReporting()
             non_reporting_clinics = nr.get(non_reporting_variable, location)["clinics"]
-            completeness = completeness.drop(non_reporting_clinics, level=1)
-            completeness.reindex()
+            #There is a bizarre bug that was supposedly fixed in 2018 that crashes if empty list is provided to drop from non-unique index. (https://github.com/pandas-dev/pandas/pull/21515)
+            if non_reporting_clinics:
+                completeness = completeness.drop(non_reporting_clinics, level=1)
+                completeness.reindex()
 
             # We only want to count a maximum of number per week per week
             completeness[completeness > number_per_week] = number_per_week
@@ -181,18 +189,15 @@ class Completeness(Resource):
             sublocations_completeness_per_week = completeness.groupby(
                 level=[0, 2]).mean()
 
-            # Find last two weeks
             idx = pd.IndexSlice
             last_two_weeks = location_completeness_per_week.index[-1:]
             last_year = location_completeness_per_week.index[:]
 
             # Get sublocation completeness for last two weeks as a percentage
-            completeness_last_two_weeks = sublocations_completeness_per_week.loc[
-                idx[:, last_two_weeks]]
+            completeness_last_two_weeks = sublocations_completeness_per_week[sublocations_completeness_per_week.index.get_level_values(1).isin(last_two_weeks)]
             score = completeness_last_two_weeks.groupby(
                 level=0).mean() / number_per_week * 100
-            completeness_last_year = sublocations_completeness_per_week.loc[
-                idx[:, last_year]]
+            completeness_last_year = sublocations_completeness_per_week[sublocations_completeness_per_week.index.get_level_values(1).isin(last_year)]
             yearly_score = completeness_last_year.groupby(
                 level=0).mean() / number_per_week * 100
 
@@ -218,8 +223,7 @@ class Completeness(Resource):
                 "values": location_completeness_per_week
             }
             # Calculate completness score for each clinic
-            clinic_completeness_last_two_weeks = completeness.loc[
-                idx[:, :, last_two_weeks]]
+            clinic_completeness_last_two_weeks = completeness[completeness.index.get_level_values(2).isin(last_two_weeks)]
             clinic_scores = clinic_completeness_last_two_weeks.groupby(
                 level=1).mean() / number_per_week * 100
             clinic_completeness_last_year = completeness.loc[idx[:, :, :]]
@@ -236,7 +240,7 @@ class Completeness(Resource):
 
             dates = pd.date_range(beginning_of_epi_start_week, shifted_end_date, freq=timeseries_freq)
             completeness = data.groupby(
-                pd.TimeGrouper(
+                pd.Grouper(
                     key="date", freq=timeseries_freq, label="left")).sum().fillna(0)[
                 variable].reindex(dates).sort_index().fillna(0)
 
@@ -257,12 +261,8 @@ class Completeness(Resource):
             ) / number_per_week * 100
 
             # Sort out the dates on which nothing was reported
-            # Can specify on which weekdays we expect a record
-
-            bdays = self._get_business_days(weekend_days=weekend)
-
+            #expected_days variable is updated here with a new value of not_reported_dates_begining
             expected_days = pd.date_range(not_reported_dates_begining, shifted_end_date, freq=bdays)
-
             found_dates = data["date"]
             dates_not_reported = expected_days.drop(
                 found_dates.values, errors="ignore").to_pydatetime()

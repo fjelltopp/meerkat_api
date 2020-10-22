@@ -24,12 +24,14 @@ from meerkat_abacus.model import form_tables, Data, Links
 from meerkat_abacus.util import all_location_data, get_db_engine, get_links
 from meerkat_abacus.util import get_locations, is_child
 from meerkat_abacus.util.epi_week import epi_week_for_date
-
+from api_background.celery_app import app
 import meerkat_libs
+
 base_folder = os.path.dirname(os.path.realpath(__file__))
 
 
-@task
+
+@app.task
 def export_data(uuid, allowed_location, use_loc_ids=False, param_config_yaml=yaml.dump(config)):
     """
     Exports the data table from db
@@ -95,7 +97,7 @@ def export_data(uuid, allowed_location, use_loc_ids=False, param_config_yaml=yam
     return True
 
 
-@task
+@app.task
 def export_category(uuid, form_name, category, download_name,
                     variables, data_type, allowed_location,
                     start_date=None, end_date=None, language="en",
@@ -683,9 +685,10 @@ def _export_week_level_completeness(uuid, download_name, level,
         for location in timeline:
             loc_id = int(location)
             for week in range(len(timeline[location]["weeks"])):
+                week_start_day = datetime.strptime(timeline[location]["weeks"][week], '%Y-%m-%dT%H:%M:%S')
                 data.append({year_label: year,
                              location_label: locs[loc_id].name,
-                             week_label: week + start_week,
+                             week_label: epi_week_for_date(week_start_day)[1],
                              completeness_config_label: timeline[location]["values"][week] / max_per_week * 100
                              })
                 if level == "clinic" and loc_id != 1:
@@ -721,7 +724,7 @@ def get_translator(param_config, language):
         os.environ["LANGUAGE"] = language
     return t
 
-@task
+@app.task
 def export_week_level(uuid, download_name, level,
                       variable_config, start_date=None, end_date=None,
                       wide_data_format=False, language="en",
@@ -797,8 +800,8 @@ def _export_week_level_variable(uuid, download_name, level,
                              wide_data_format=wide_data_format,
                              param_config_yaml=param_config_yaml)
 
-
-@task
+        
+@app.task
 def export_data_table(uuid, download_name,
                       restrict_by, variables, group_by,
                       location_conditions=None,
@@ -895,7 +898,7 @@ def export_data_table(uuid, download_name,
     return True
 
 
-@task
+@app.task
 def export_form(uuid, form, allowed_location, fields=None, param_config_yaml=yaml.dump(config)):
     """
     Export a form. If fields is in the request variable we only include

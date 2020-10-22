@@ -9,7 +9,7 @@ from datetime import datetime
 from geoalchemy2.elements import WKBElement
 from geoalchemy2.shape import to_shape
 from raven.contrib.flask import Sentry
-from werkzeug.contrib.fixers import ProxyFix
+from werkzeug.middleware.proxy_fix import ProxyFix
 from meerkat_libs.logger_client import FlaskActivityLogger
 import os
 

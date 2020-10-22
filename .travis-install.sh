@@ -22,5 +22,5 @@ then
     pip install ../meerkat_analysis
     git clone --branch $MEERKAT_BRANCH https://github.com/meerkat-code/meerkat_abacus.git ../meerkat_abacus
     pip install ../meerkat_abacus
-    python ../meerkat_abacus/meerkat_abacus/manage.py create-db
+    python ../meerkat_abacus/meerkat_abacus/consumer/database_setup.py create-db
 fi
