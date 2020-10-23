@@ -6,6 +6,7 @@ Unit tests for the Meerkat API
 """
 import os
 import unittest
+import yaml
 
 from meerkat_abacus import config
 from unittest.mock import patch
