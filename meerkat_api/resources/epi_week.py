@@ -2,7 +2,7 @@
 Resource to deal with epi-weeks
 """
 import datetime
-from dateutil.parser import parse
+from dateutil.parser import parse, isoparse
 from flask import jsonify
 from flask_restful import Resource
 
@@ -22,7 +22,10 @@ class EpiWeek(Resource):
 
     def get(self, date=None):
         if date:
-            date = parse(date, dayfirst=True)
+            try:
+                date = isoparse(date)
+            except ValueError:
+                date = parse(date, dayfirst=True)
         else:
             date = datetime.datetime.today()
 
