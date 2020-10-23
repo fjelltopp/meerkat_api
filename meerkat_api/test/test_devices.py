@@ -129,7 +129,7 @@ class TestDeviceSubmissionsForLocation(meerkat_api.test.TestCase):
         self.assertEqual(rv.status_code, 400)
         error_message = json.loads(rv.data.decode("utf-8")).get('message')
         self.assertIn("location", error_message)
-        self.assertIn("Missing required parameter in the JSON", error_message['location'])
+        self.assertIn('Please, provide a location parameter.', error_message['location'])
 
     def test_should_return_all_devices_from_single_clinic(self):
         rv = self.app.get('/devices/submissions/tot_1?location=7', headers=settings.header)
