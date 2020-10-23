@@ -3,7 +3,7 @@ Data resource for data exploration
 """
 from flask import request, g
 from flask_restful import Resource
-from sqlalchemy import or_, extract, func
+from sqlalchemy import or_, extract, func, text
 
 import meerkat_abacus.util.epi_week
 from meerkat_abacus.model import Data
@@ -180,7 +180,7 @@ class QueryVariable(Resource):
         # DB Query
         results = db.session.query(
             *tuple(columns_to_extract)
-        ).filter(*conditions).group_by("week," + group_by_query)
+        ).filter(*conditions).group_by(text("week," + group_by_query))
         # Assemble return dict
         ret = {}
         for n in names.values():
