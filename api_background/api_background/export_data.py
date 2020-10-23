@@ -127,7 +127,7 @@ def export_category(uuid, form_name, category, download_name,
 
     """
     # Runner loads the config object through a function parameter.
-    param_config = yaml.load(param_config_yaml)
+    param_config = yaml.load(param_config_yaml, Loader=yaml.Loader)
     country_config = param_config.country_config
     config_directory = param_config.config_directory
 
@@ -743,7 +743,7 @@ def export_week_level(uuid, download_name, level,
       wide_data_format: If true the data is returned in the wide format, else in long format
       param_config: The configuration values
     """
-    param_config = yaml.load(param_config_yaml)
+    param_config = yaml.load(param_config_yaml, Loader=yaml.Loader)
     translator = get_translator(param_config, language)
     if "completeness" in variable_config[0]:
         _export_week_level_completeness(uuid, download_name, level,
@@ -918,7 +918,7 @@ def export_form(uuid, form, allowed_location, fields=None, param_config_yaml=yam
     """
 
     # Runner loads the config object through a function parameter.
-    param_config = yaml.load(param_config_yaml)
+    param_config = yaml.load(param_config_yaml, Loader=yaml.Loader)
 
     db, session = get_db_engine()
     operation_status = OperationStatus(form, uuid)
