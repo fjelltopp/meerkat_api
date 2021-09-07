@@ -1,6 +1,6 @@
 Flask==1.1.2
 itsdangerous==1.1.0
-Jinja2==2.11.2
+Jinja2==2.11.3
 requests==2.24.0
 Werkzeug==1.0.1
 Flask-RESTful==0.3.8
@@ -32,3 +32,4 @@ sphinxcontrib-httpdomain==1.7.0
 sphinxcontrib-napoleon==0.7
 Cython==0.29.21
 uWSGI==2.0.19.1
+urllib3>=1.26.5 # not directly required, pinned by Snyk to avoid a vulnerability
